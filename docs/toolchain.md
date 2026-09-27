@@ -132,6 +132,7 @@ Der Ordner ist bewusst nicht der Standardordner von Android Studio. So verwaltet
 | `platform-tools` | 37.0.1 | Build | nein |
 | `emulator` | 37.1.11 | Test | nein |
 | `system-images;android-36;default;x86_64` | 2 | Test | nein |
+| `system-images;android-30;default;x86_64` | 11 | Test | nein |
 | `system-images;android-24;default;x86_64` | 8 | Test | nein |
 
 Archive und Prüfsummen (SHA-1) aus den Paketlisten von Google, Stand 2026-09-27:
@@ -148,6 +149,7 @@ Archive und Prüfsummen (SHA-1) aus den Paketlisten von Google, Stand 2026-09-27
 | Emulator 37.1.11, Windows | `emulator-windows_x64-15917651.zip` | `54fa750822ff462d57e04fc8e98e60f08df2bb61` |
 | Emulator 37.1.11, Linux | `emulator-linux_x64-15917651.zip` | `1b1f78891abf8ec268264356e1365c25519e8379` |
 | Systemabbild API 36 | `x86_64-36_r02.zip` | `829c076e8ff448a336097ae25a355b495ba36e2c` |
+| Systemabbild API 30 | `x86_64-30_r11.zip` | `5e4de3946d46f88856c35efcc4d797b381456347` |
 | Systemabbild API 24 | `x86_64-24_r08.zip` | `f6559e1949a5879f31a9662f4f0e50ad60181684` |
 
 Das Einrichtungsskript prüft das Archiv der Kommandozeilenwerkzeuge gegen die Prüfsumme und gibt zusätzlich dessen SHA-256 aus. Die übrigen Archive lädt und prüft `sdkmanager`.
@@ -171,8 +173,8 @@ So bleiben die Revisionen unter Kontrolle:
 Weitere Angaben:
 
 - `build-tools;35.0.0` ist die Mindest- und Standardversion des Android-Gradle-Plugins 8.13. Das App-Projekt trägt sie ausdrücklich als `buildToolsVersion` ein. `apksigner` und `zipalign` kommen aus diesem Paket, `keytool` aus dem JDK.
-- Die Systemabbilder der Reihe `default` enthalten keine Google-Dienste. Sie decken die Ziel-API und die Mindest-API ab.
-- Beide Gruppen werden zusammen eingerichtet. Die Gruppe „Test" umfasst rund 1,6 GB.
+- Die Systemabbilder der Reihe `default` enthalten keine Google-Dienste. Sie decken die Ziel-API (Android 16), eine mittlere Version (API 30, Android 11) und die Mindest-API (Android 7.0) ab.
+- Beide Gruppen werden zusammen eingerichtet. Die Gruppe „Test" umfasst rund 2,3 GB.
 - Das Android SDK steht unter den Lizenzbedingungen von Google. Wer es installiert, bestätigt sie selbst mit `sdkmanager --licenses`.
 
 ## Abweichungen von der Capacitor-Vorlage
@@ -276,7 +278,7 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 1. **npm 10 löst Vitest 4 nicht frisch auf.** `npm install vitest@4.1.11` bricht mit npm 10.9.8 und 10.9.9 ab: `Cannot read properties of null (reading 'edgesOut')`. Der Fehler liegt im Resolver von npm 10 und betrifft auch Vitest 4.1.10. npm 11.19.0 löst denselben Baum fehlerfrei auf. `npm ci` aus einem vorhandenen Lockfile läuft mit npm 10 fehlerfrei. Deshalb ist npm 11.19.0 die Referenzversion.
 2. **npm 11 führt Installationsskripte in der Voreinstellung aus** und weist nur auf ungeprüfte Skripte hin. Im festgelegten Baum hat `esbuild` ein solches Skript. Mit `ignore-scripts=true` läuft keines. Web-Build, Typprüfung und Tests laufen auch so.
 3. **`astro check` unterstützt TypeScript 7 noch nicht.** Deshalb gilt TypeScript 6.0.3. Eine Probe mit TypeScript 7.0.2 hat ein Minimalpaket fehlerfrei übersetzt. Der Wechsel folgt, sobald `astro check` TypeScript 7 unterstützt.
-4. **Betrieb ohne die Berechtigung `INTERNET`.** Capacitor lädt die Oberfläche aus den Dateien der App und nicht aus dem Netz. Dass das ohne die Berechtigung auf beiden Systemabbildern funktioniert, zeigt die Probe dieses Arbeitspakets. Den vollständigen Nachweis führt Arbeitspaket 2.5.
+4. **Betrieb ohne die Berechtigung `INTERNET`.** Capacitor lädt die Oberfläche aus den Dateien der App und nicht aus dem Netz. Dass das ohne die Berechtigung auf den drei Systemabbildern funktioniert, zeigt die Probe dieses Arbeitspakets. Den vollständigen Nachweis führt Arbeitspaket 2.5.
 5. **Version der WebView.** Capacitor 8 verlangt mindestens Version 60 der System-WebView. Der Web-Build kann einen neueren Stand voraussetzen.
 6. **Der Build lädt Werkzeuge und Abhängigkeiten aus dem Netz.** Das betrifft nur den Build. Die App greift im Betrieb nicht auf das Netzwerk zu.
 
@@ -308,7 +310,7 @@ Beispielprojekt: eine Astro-Seite mit einem TypeScript-Modul und einem Test, Cap
 | Gradle-Wrapper lädt Gradle 8.14.5, prüft die Prüfsumme und startet mit dem JDK 21 | bestanden am 2026-09-27 |
 | Projekt-SDK mit den Gruppen „Build" und „Test" eingerichtet, Revisionen wie festgelegt | offen |
 | Beispielprojekt baut eine APK | offen |
-| Emulator startet beide Systemabbilder, die Probe läuft ohne die Berechtigung `INTERNET` | offen |
+| Emulator startet die drei Systemabbilder, die Probe läuft ohne die Berechtigung `INTERNET` | offen |
 
 ## Quellen
 

@@ -71,7 +71,7 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | Bereich | Inhalt |
 |---|---|
 | Referenzfälle | Berechnungen gegen Kern 1.9.0, mit Feiertagen und Datumsgrenzen |
-| Geräte | Browser, Emulator ohne Google-Dienste mit Android in der Mindestversion und in der aktuellen Version. Ein echtes Gerät kommt vor Stufe 4 dazu. |
+| Geräte | Browser, Emulator ohne Google-Dienste mit Android in der Mindestversion, in einer mittleren und in der aktuellen Version. Ein echtes Gerät kommt vor Stufe 4 dazu. |
 | Barrierefreiheit | Screenreader, Fokusführung, Beschriftung der Felder und Fehlermeldungen, große Schrift, Kontrast, Bedienung bei eingeblendeter Tastatur |
 | Hinweis zum Rechtsstand | Monatsende, Schaltjahr, Zeitzonen, verstellte Uhr, Start und Wiederaufnahme der App |
 

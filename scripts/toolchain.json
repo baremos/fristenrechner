@@ -101,6 +101,16 @@
         }
       },
       {
+        "name": "system-images;android-30;default;x86_64",
+        "ordner": "system-images/android-30/default/x86_64",
+        "revision": "11",
+        "gruppe": "test",
+        "gehtInDieApp": false,
+        "archive": {
+          "alle": { "datei": "x86_64-30_r11.zip", "sha1": "5e4de3946d46f88856c35efcc4d797b381456347" }
+        }
+      },
+      {
         "name": "system-images;android-24;default;x86_64",
         "ordner": "system-images/android-24/default/x86_64",
         "revision": "8",
