@@ -7,7 +7,7 @@ Stand 2026-09-27 · Go von Andreas Schmidt für Stufe 1 und Stufe 2 · nach Kreu
 | Stufe | Inhalt | Status |
 |---|---|---|
 | 1 | Fachlicher Zuschnitt und Pflegekonzept | bestätigt am 2026-09-27 |
-| 2 | Technischer Nachweis: Android, F-Droid, Signierung | freigegeben, nicht begonnen |
+| 2 | Technischer Nachweis: Android, F-Droid, Signierung | freigegeben, begonnen am 2026-09-27 mit Paket 2.1 |
 | 3 | Pakete veröffentlichen, Website bindet sie ein | kein Go |
 | 4 | Google Play: Konto, Store-Material auf Deutsch und Englisch, Einreichung | kein Go |
 | 5 | F-Droid: Einreichung, Metadaten auf Deutsch und Englisch | kein Go |
@@ -33,7 +33,7 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 
 | Nr. | Paket | Abnahme |
 |---|---|---|
-| 2.1 | **Werkzeuge und Versionen.** Festlegen und sperren: Capacitor mit Plugins, JDK 21, Node und npm, Astro, Android-Gradle-Plugin, Gradle-Wrapper, Android SDK mit Mindest-API und Ziel-API nach der aktuellen Vorgabe von Google Play. Danach installieren. Das Go ist erteilt, die Lizenzbedingungen des Android SDK bestätigt Andreas selbst. | `docs/toolchain.md` nennt alle Versionen, ein Beispielprojekt baut |
+| 2.1 | **Werkzeuge und Versionen.** Festlegen und sperren: Capacitor mit Plugins, JDK 21, Node und npm, Astro, Android-Gradle-Plugin, Gradle-Wrapper, Android SDK mit Mindest-API und Ziel-API nach der aktuellen Vorgabe von Google Play. Danach einrichten: ein eigenes Projekt-SDK im Benutzerbereich mit Emulator und Systemabbildern ohne Google-Dienste. Ein vorhandenes JDK 21 wird mitgenutzt. Das Go ist erteilt, die Lizenzbedingungen des Android SDK bestätigt Andreas selbst. | `docs/toolchain.md` nennt alle Versionen, ein Beispielprojekt baut und startet im Emulator |
 | 2.2 | **Gerüst.** `git init`, npm-Workspaces, Lizenzdatei Apache-2.0 im Originalwortlaut, README und Beitragsregeln mit den Befehlen für Build und Test, Checkliste der Übernahmeprüfung. | der erste Commit enthält nur geprüfte Dateien, Build und Tests laufen ohne private Dateien |
 | 2.3 | **Kern übernehmen.** Dateien frisch kopieren, ohne Historie, Kommentare von internen Verweisen bereinigen. Die Schwellenwerte werden vollständig entfernt: die Tabelle, ihr Export in der Schnittstelle, der Import und der Testblock in den Tests sowie der Zusatz in der Angabe zum Rechtsstand. Der Rechtsstand wird als Datum im ISO-Format und als Anzeigetext geführt. | Typprüfung, Fachtests und Paket-Build grün, keine Schwellenwert-Beträge in den Dateien, Referenzfälle rechnen wie Kern 1.9.0 |
 | 2.4 | **Oberfläche als Paket.** Astro-Komponente, Bedienlogik, Exporte. Schnittstellen für Speichern, Importieren, Exportieren, Teilen. Globale Styles und plattformabhängige Texte herauslösen. | Oberfläche läuft im Browser mit der Web-Implementierung, Prüfpunkte zur Barrierefreiheit aus der Testmatrix bestanden |
@@ -71,7 +71,7 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | Bereich | Inhalt |
 |---|---|
 | Referenzfälle | Berechnungen gegen Kern 1.9.0, mit Feiertagen und Datumsgrenzen |
-| Geräte | Browser, Android in der Mindestversion und in der aktuellen Version, Emulator ohne Google-Dienste, mindestens ein echtes Gerät |
+| Geräte | Browser, Emulator ohne Google-Dienste mit Android in der Mindestversion und in der aktuellen Version. Ein echtes Gerät kommt vor Stufe 4 dazu. |
 | Barrierefreiheit | Screenreader, Fokusführung, Beschriftung der Felder und Fehlermeldungen, große Schrift, Kontrast, Bedienung bei eingeblendeter Tastatur |
 | Hinweis zum Rechtsstand | Monatsende, Schaltjahr, Zeitzonen, verstellte Uhr, Start und Wiederaufnahme der App |
 
@@ -92,7 +92,9 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | Aufgabe | Wann nötig |
 |---|---|
 | Lizenzbedingungen des Android SDK bei der Installation bestätigen | Paket 2.1 |
-| Ein Android-Gerät für den Test bereitstellen | Paket 2.10 |
+| Windows-Funktion „Windows-Hypervisor-Plattform" für den Emulator einschalten | Paket 2.1 |
+| Linux-Umgebung für die Werkzeuge von F-Droid freigeben (WSL 2 oder Container) | Paket 2.8, die frühe Probe folgt direkt auf Paket 2.2 |
+| Ein Android-Gerät für den Test bereitstellen | vor Stufe 4 |
 | Go für das öffentliche Repository `baremos/fristenrechner` auf GitHub | vor Stufe 3, für den lokalen F-Droid-Nachweis nicht nötig |
 | npm-Organisation `baremos` anlegen | vor Stufe 3 |
 | Google-Play-Organisationskonto mit D-U-N-S, einmalig 25 USD | vor Stufe 4, Verifizierung kann dauern |
