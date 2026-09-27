@@ -305,6 +305,7 @@ Beispielprojekt: eine Astro-Seite mit einem TypeScript-Modul und einem Test, Cap
 | Web-Build enthält keine Adresse im Netz | bestanden am 2026-09-27 |
 | Android-Projekt erzeugt, Abweichungen angewendet, keine Fundstelle zu Google-Diensten oder zur Berechtigung `INTERNET` | bestanden am 2026-09-27 |
 | JDK 21 vorhanden | bestanden am 2026-09-27: Microsoft Build of OpenJDK 21.0.8+9 |
+| Gradle-Wrapper lädt Gradle 8.14.5, prüft die Prüfsumme und startet mit dem JDK 21 | bestanden am 2026-09-27 |
 | Projekt-SDK mit den Gruppen „Build" und „Test" eingerichtet, Revisionen wie festgelegt | offen |
 | Beispielprojekt baut eine APK | offen |
 | Emulator startet beide Systemabbilder, die Probe läuft ohne die Berechtigung `INTERNET` | offen |
