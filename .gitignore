@@ -1,0 +1,37 @@
+# Lokale, private Hinweise und Übergabematerial
+CLAUDE.local.md
+*.local.md
+download/
+scratchpad/
+
+# Abhängigkeiten und Build-Ergebnisse
+node_modules/
+dist/
+.astro/
+*.tsbuildinfo
+
+# Android / Capacitor
+app/android/.gradle/
+app/android/build/
+app/android/app/build/
+app/android/local.properties
+app/android/captures/
+*.apk
+*.aab
+
+# Signierschlüssel und Zugangsdaten: niemals einchecken
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore.properties
+signing.properties
+.env
+.env.*
+
+# Werkzeuge
+.worktrees/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
