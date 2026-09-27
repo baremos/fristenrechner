@@ -248,7 +248,8 @@ if (werte.nurPruefen) process.exit(0);
 
 const umgebung = { ...process.env, JAVA_HOME: jdk.pfad, ANDROID_HOME: sdk };
 delete umgebung.ANDROID_SDK_ROOT;
+// Mit ".\" aufrufen: Ist NoDefaultCurrentDirectoryInExePath gesetzt, sucht cmd.exe nicht im aktuellen Ordner.
 const lauf = windows
-  ? spawnSync('cmd.exe', ['/d', '/c', 'gradlew.bat', werte.aufgabe], { cwd: projekt, env: umgebung, stdio: 'inherit' })
+  ? spawnSync('cmd.exe', ['/d', '/c', '.\\gradlew.bat', werte.aufgabe], { cwd: projekt, env: umgebung, stdio: 'inherit' })
   : spawnSync('./gradlew', [werte.aufgabe], { cwd: projekt, env: umgebung, stdio: 'inherit' });
 process.exit(lauf.status ?? 1);
