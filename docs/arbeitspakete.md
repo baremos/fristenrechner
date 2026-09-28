@@ -7,7 +7,7 @@ Stand 2026-09-28 · Go von Andreas Schmidt für Stufe 1 und Stufe 2 · nach Kreu
 | Stufe | Inhalt | Status |
 |---|---|---|
 | 1 | Fachlicher Zuschnitt und Pflegekonzept | bestätigt am 2026-09-27 |
-| 2 | Technischer Nachweis: Android, F-Droid, Signierung | freigegeben, begonnen am 2026-09-27. Paket 2.1 abgeschlossen am 2026-09-28, Paket 2.2 in Arbeit. |
+| 2 | Technischer Nachweis: Android, F-Droid, Signierung | freigegeben, begonnen am 2026-09-27. Pakete 2.1 und 2.2 abgeschlossen am 2026-09-28. |
 | 3 | Pakete veröffentlichen, Website bindet sie ein | kein Go |
 | 4 | Google Play: Konto, Store-Material auf Deutsch und Englisch, Einreichung | kein Go |
 | 5 | F-Droid: Einreichung, Metadaten auf Deutsch und Englisch | kein Go |
@@ -49,7 +49,7 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | Nr. | Stand | Ergebnis |
 |---|---|---|
 | 2.1 | abgeschlossen am 2026-09-28 | `docs/toolchain.md` mit Nachweis, `scripts/` |
-| 2.2 | in Arbeit | Projektgerüst, `docs/uebernahmepruefung.md` |
+| 2.2 | abgeschlossen am 2026-09-28 | Projektgerüst mit Workspaces, `LICENSE`, `NOTICE`, README und Beitragsregeln auf Deutsch und Englisch, `docs/uebernahmepruefung.md` |
 | 2.3 bis 2.10 | offen | – |
 
 Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt eine System-WebView mit, die Capacitor nicht unterstützt. Paket 2.5 legt fest, wie die App damit umgeht. Einzelheiten in `docs/toolchain.md`, Abschnitt „Bekannte Einschränkungen".
