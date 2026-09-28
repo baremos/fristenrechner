@@ -11,11 +11,11 @@
  *    Absendung") ⇒ Fristende = Start + n Kalendertage; fällt es auf
  *    Sa/So/Feiertag, verschiebt es sich auf den nächsten Arbeitstag
  *    (Art. 3 Abs. 4 VO 1182/71).
- *  - Wartefrist des § 134 Abs. 2 GWB: risikoarme Auslegung (seit Kern 1.3.0)
- *    — ein Fristende an Sa/So/Feiertag wird auf den nächsten Arbeitstag
- *    verlängert (wie OLG Bremen, 2 Verg 1/22; die h. M. ließe das Ende am
- *    Sa/So/Feiertag zu: VK Bund, VK 2-77/21). Der frühestmögliche Zuschlag
- *    liegt am Folgetag und wird praktisch auf den nächsten Arbeitstag gelegt.
+ *  - Wartefrist des § 134 Abs. 2 GWB: vorsorgliche Auslegung (seit
+ *    Kern 1.3.0) — ein Fristende an Sa/So/Feiertag wird entsprechend Art. 3
+ *    Abs. 4 VO 1182/71 auf den nächsten Arbeitstag verlängert. Der
+ *    frühestmögliche Zuschlag liegt am Folgetag und wird praktisch auf den
+ *    nächsten Arbeitstag gelegt.
  *  - AT-Fristen (interne Bearbeitung): WORKDAY-Semantik.
  */
 
@@ -1076,16 +1076,14 @@ function berechne(input: ScheduleInput): ScheduleResult {
     const wfWarn: string[] = [];
     if (eff.wartefristKT < wartefristNorm.wert) {
       wfWarn.push(
-        `Wartefrist von ${eff.wartefristKT} KT unterschreitet die gesetzliche Frist von ${wartefristNorm.wert} KT (${wartefristNorm.norm}) — ein früherer Zuschlag wäre nach § 135 Abs. 1 Nr. 1 GWB unwirksam.`
+        `Wartefrist von ${eff.wartefristKT} KT unterschreitet die gesetzliche Frist von ${wartefristNorm.wert} KT (${wartefristNorm.norm}).`
       );
     }
-    // Risikoarme Auslegung: Fällt das Wartefrist-Ende auf Sa/So/Feiertag, wird
-    // es auf den nächsten Arbeitstag verlängert — wie OLG Bremen, 2 Verg 1/22
-    // (unionsrechtliche Herleitung über Art. 2a RL 89/665/EWG i. V. m. Art. 3
-    // Abs. 4 VO 1182/71; § 82 VgV selbst gilt nur für VgV-Fristen). Die h. M.
-    // ließe das Fristende am Sa/So/Feiertag zu (VK Bund, VK 2-77/21) — der
-    // spätere Zuschlag ist unter beiden Lesarten sicher, ein früherer wäre es
-    // nach Bremer Linie nicht.
+    // Vorsorgliche Auslegung: Fällt das Wartefrist-Ende auf Sa/So/Feiertag, wird
+    // es entsprechend Art. 3 Abs. 4 VO 1182/71 auf den nächsten Arbeitstag
+    // verlängert (§ 82 VgV selbst gilt nur für VgV-Fristen). Ob die
+    // Verlängerung geboten ist, wird unterschiedlich beurteilt. Der Rechner
+    // wählt den späteren Termin.
     const wfRechnerisch = addTage(bieterinformation.datum, eff.wartefristKT);
     const wfEnde = aufArbeitstagVerschieben(wfRechnerisch, land);
     const wartefristEnde = merken({
@@ -1099,8 +1097,8 @@ function berechne(input: ScheduleInput): ScheduleResult {
       rechenweg:
         `${eff.wartefristKT} Kalendertage; die Frist beginnt am Tag nach der Absendung (§ 134 Abs. 2 Satz 3 GWB) → ${fmtDE(wfRechnerisch)}` +
         (wfEnde !== wfRechnerisch
-          ? `; Sa/So/Feiertag → risikoarm auf den nächsten Arbeitstag ${fmtDE(wfEnde)} verlängert ` +
-            '(wie OLG Bremen, 2 Verg 1/22; nach h. M. dürfte die Frist auch am Sa/So/Feiertag enden — VK Bund, VK 2-77/21)'
+          ? `; Sa/So/Feiertag → vorsorglich auf den nächsten Arbeitstag ${fmtDE(wfEnde)} verlängert ` +
+            '(entsprechend Art. 3 Abs. 4 VO (EWG) 1182/71)'
           : '. Stillhaltefrist (§ 134 Abs. 2 GWB)'),
       warnungen: wfWarn,
     });

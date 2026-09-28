@@ -281,12 +281,12 @@ describe('calculateSchedule — zweistufige Verfahren und Verhandlungsrunden', (
 });
 
 describe('calculateSchedule — Bieterinformation, Präsentation & Verhandlung', () => {
-  it('infoVersandAT verschiebt den Versand der Bieterinformation; Wartefrist-Ende am Samstag rückt risikoarm auf Montag (Kern 1.3.0)', () => {
+  it('infoVersandAT verschiebt den Versand der Bieterinformation; Wartefrist-Ende am Samstag rückt vorsorglich auf Montag (Kern 1.3.0)', () => {
     const input = basisInput();
     input.interneFristen.infoVersandAT = 1;
     const result = calculateSchedule(input);
     expect(datumVon(result, 'bieterinformation')).toBe('2026-10-28'); // interner Zuschlag 27.10. + 1 AT
-    expect(datumVon(result, 'wartefrist_ende')).toBe('2026-11-09'); // rechnerisch Sa 07.11. → nächster Arbeitstag Mo (wie OLG Bremen, 2 Verg 1/22)
+    expect(datumVon(result, 'wartefrist_ende')).toBe('2026-11-09'); // rechnerisch Sa 07.11. → nächster Arbeitstag Mo
     expect(datumVon(result, 'zuschlag')).toBe('2026-11-10'); // Folgetag Di
   });
 
@@ -1045,7 +1045,7 @@ describe('calculateSchedule — Abgabetermine an Heiligabend/Silvester', () => {
     }));
     expect(datumVon(result, 'finales_angebot')).toBe('2026-12-24');
     expect(warnungenVon(result, 'finales_angebot')).toContain('Heiligabend');
-    // Wartefrist-Ende rechnerisch So 31.01.2027 → risikoarm Mo 01.02.,
+    // Wartefrist-Ende rechnerisch So 31.01.2027 → vorsorglich Mo 01.02.,
     // frühester Zuschlag Di 02.02. (Kern 1.3.0)
     expect(datumVon(result, 'wartefrist_ende')).toBe('2027-02-01');
     expect(datumVon(result, 'zuschlag')).toBe('2027-02-02');

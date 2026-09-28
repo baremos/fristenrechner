@@ -6,7 +6,7 @@
 Alle Fristvorschläge sind Praxiswerte: Die UVgO kennt keine numerischen Mindestfristen, verlangt aber angemessene Fristen (§ 13 Abs. 1 UVgO); bei nachgereichten wesentlichen Informationen oder geänderten Vergabeunterlagen sind Fristen angemessen zu verlängern (§ 13 Abs. 4 UVgO).
 Beschleunigtes Verfahren: Die verkürzten Fristen setzen eine hinreichend begründete Dringlichkeit voraus — Begründung im Vergabevermerk dokumentieren.
 Beschränkte Ausschreibung ohne Teilnahmewettbewerb: nur in den Fällen des § 8 Abs. 3 UVgO zulässig; Zulässigkeitsgrund dokumentieren. Grundsätzlich sind mindestens drei Unternehmen zur Angebotsabgabe aufzufordern (§ 11 Abs. 1 UVgO).
-Beschränkte Ausschreibung ohne Teilnahmewettbewerb: zulässig bis 150.000 € Auftragswert oder in den Fällen des § 3a Abs. 2 Nr. 2–3 VOB/A (Stand TT.MM.JJJJ); Zulässigkeitsgrund dokumentieren.
+Beschränkte Ausschreibung ohne Teilnahmewettbewerb: zulässig bis zur Wertgrenze des § 3a VOB/A oder in den Fällen des § 3a Abs. 2 Nr. 2–3 VOB/A (Stand TT.MM.JJJJ); Zulässigkeitsgrund dokumentieren.
 Bindefrist: Sie beginnt mit dem Ablauf der Angebotsfrist und soll 30 Kalendertage nur in begründeten Fällen überschreiten (§ 10 Abs. 4 und 5 VOB/A).
 Der frühestmögliche Zuschlag (TT.MM.JJJJ) liegt nach Ablauf der Bindefrist (TT.MM.JJJJ) — Bindefrist verlängern oder Verfahrenszeiten straffen.
 Die Bindefrist (TT.MM.JJJJ) endet vor der letzten Angebotsabgabe (TT.MM.JJJJ) — Endtermin prüfen.
@@ -24,7 +24,7 @@ Die Verfahrensart „nicht_offen_mit_tnw" ist in der KonzVgV nicht vorgesehen.
 Die Verfahrensart „offen" ist in der VSVgV nicht vorgesehen.
 Die Verfahrensart „verhandlung_mit_tnw" ist in der VOB/A nicht vorgesehen.
 Ein fester Termin für die Aufforderung zur Angebotsabgabe ist nur bei Verfahren mit vorgeschaltetem Teilnahmewettbewerb möglich — er wird ignoriert.
-Freihändige Vergabe: zulässig bis 100.000 € Auftragswert oder in den Fällen des § 3a Abs. 3 VOB/A (Stand TT.MM.JJJJ); Zulässigkeitsgrund dokumentieren. Verhandlungen sind zulässig; eine gesetzliche Mindest-Angebotsfrist besteht nicht.
+Freihändige Vergabe: zulässig bis zur Wertgrenze des § 3a VOB/A oder in den Fällen des § 3a Abs. 3 VOB/A (Stand TT.MM.JJJJ); Zulässigkeitsgrund dokumentieren. Verhandlungen sind zulässig; eine gesetzliche Mindest-Angebotsfrist besteht nicht.
 KonzVgV: Das Vergabeverfahren ist frei gestaltbar (§ 12 Abs. 1 KonzVgV, ein- oder mehrstufig); Verhandlungen sind zulässig (§ 12 Abs. 2 KonzVgV) — Konzessionsgegenstand, Mindestanforderungen und Zuschlagskriterien dürfen dabei nicht geändert werden. Die Wartefrist gilt über § 154 Nr. 4 i. V. m. § 134 GWB.
 UVgO (unterhalb der EU-Schwellenwerte): keine Informations- und Wartepflicht nach § 134 GWB — die Unterrichtung der Bewerber und Bieter erfolgt nach § 46 UVgO nach der Zuschlagserteilung. Einzelne Landesvergabegesetze kennen eigene Vorabinformations-/Wartepflichten (z. B. Sachsen-Anhalt, Thüringen) — landesrechtlich prüfen.
 Ungültige Abgabe-Uhrzeit („25:00") — erwartet wird HH:MM (z. B. 10:00); die Abgabetermine bleiben unverschoben (Fristablauf 24:00 Uhr).
@@ -210,7 +210,7 @@ n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ; kein Arbeitstag → 
 n Kalendertage vor Ablauf der Teilnahmefrist (TT.MM.JJJJ) → TT.MM.JJJJ (Praxiswert)
 n Kalendertage vor Ablauf der Teilnahmefrist (TT.MM.JJJJ) → TT.MM.JJJJ; kein Arbeitstag → vorheriger Arbeitstag TT.MM.JJJJ (Praxiswert)
 n Kalendertage; die Frist beginnt am Tag nach der Absendung (§ 134 Abs. 2 Satz 3 GWB) → TT.MM.JJJJ. Stillhaltefrist (§ 134 Abs. 2 GWB)
-n Kalendertage; die Frist beginnt am Tag nach der Absendung (§ 134 Abs. 2 Satz 3 GWB) → TT.MM.JJJJ; Sa/So/Feiertag → risikoarm auf den nächsten Arbeitstag TT.MM.JJJJ verlängert (wie OLG Bremen, 2 Verg 1/22; nach h. M. dürfte die Frist auch am Sa/So/Feiertag enden — VK Bund, VK 2-77/21)
+n Kalendertage; die Frist beginnt am Tag nach der Absendung (§ 134 Abs. 2 Satz 3 GWB) → TT.MM.JJJJ; Sa/So/Feiertag → vorsorglich auf den nächsten Arbeitstag TT.MM.JJJJ verlängert (entsprechend Art. 3 Abs. 4 VO (EWG) 1182/71)
 
 ## Rechtsgrundlage
 § 10a EU Abs. 1 VOB/A
@@ -247,7 +247,7 @@ n Kalendertage; die Frist beginnt am Tag nach der Absendung (§ 134 Abs. 2 Satz 
 § 27 Abs. 4 Satz 1 KonzVgV
 
 ## Rechtsstand
-Juli 2026 — inkl. Vergabebeschleunigungsgesetz v. TT.MM.JJJJ (BGBl. 2026 I Nr. 137)
+Juli 2026
 
 ## Warnung am Termin
 Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 10 KT (§ 10 Abs. 1 Satz 1 VOB/A).
@@ -289,4 +289,4 @@ Verhandlungen sind im nicht offenen Verfahren nicht vorgesehen — zulässig ist
 Verhandlungen sind im offenen Verfahren nicht vorgesehen — zulässig ist nur die Aufklärung über Angebot oder Eignung.
 Verhandlungen sind im offenen Verfahren unstatthaft (§ 15 EU Abs. 3 VOB/A) — zulässig ist nur die Aufklärung (§ 15 EU Abs. 1 VOB/A).
 Verhandlungen sind im offenen Verfahren unzulässig (§ 15 Abs. 5 Satz 2 VgV) — zulässig ist nur die Aufklärung über Angebot oder Eignung (§ 15 Abs. 5 Satz 1 VgV).
-Wartefrist von 5 KT unterschreitet die gesetzliche Frist von 10 KT (§ 134 Abs. 2 Satz 2 GWB) — ein früherer Zuschlag wäre nach § 135 Abs. 1 Nr. 1 GWB unwirksam.
+Wartefrist von 5 KT unterschreitet die gesetzliche Frist von 10 KT (§ 134 Abs. 2 Satz 2 GWB).

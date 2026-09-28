@@ -68,13 +68,24 @@ Quelle ist der Rechenkern 1.9.0 des Fristenrechners auf www.baremos.de, Stand de
 | Nr. | Abweichung | Wirkung auf Berechnungen |
 |---|---|---|
 | A1 | Die Schwellenwerte sind entfernt: Tabelle, Typ, Export und die zwei Tests dazu. | keine, die Berechnung hat die Tabelle nie verwendet |
-| A2 | Der Anzeigetext zum Rechtsstand endet vor dem Zusatz „; EU-Schwellenwerte 2026/2027". | nur dieser Text |
+| A2 | Der Anzeigetext zum Rechtsstand lautet „Juli 2026". Der Zusatz „; EU-Schwellenwerte 2026/2027" und die Nennung eines einzelnen Änderungsgesetzes entfallen. Den Tag nennt `RECHTSSTAND_DATUM`. | nur dieser Text |
 | A3 | Neu ist `RECHTSSTAND_DATUM`. Jedes Ergebnis trägt zusätzlich `regelversion` und `rechtsstandDatum`, jede neue Projektdatei zusätzlich `rechtsstandDatum`. Projektdateien ohne dieses Feld bleiben lesbar. Ist das Feld vorhanden, muss es ein gültiges Datum enthalten. | keine, die Felder kommen hinzu |
 | A4 | Neu ist der Name `REGELVERSION`. `RECHENKERN_VERSION` bleibt mit demselben Wert erhalten. | keine |
 | A5 | Importe nennen die Dateiendung `.js`, wie es die Modulauflösung `NodeNext` verlangt. | keine |
-| A6 | Kommentare und Titel von Tests sind von internen Verweisen bereinigt: 95 Kommentarblöcke neu gefasst, 16 weitere Kommentare und 30 Titel angepasst, ein Wert in den Testdaten ersetzt. | keine |
+| A6 | Kommentare und Titel von Tests sind von internen Verweisen bereinigt: 95 Kommentarblöcke neu gefasst, 17 weitere Kommentare und 30 Titel angepasst, ein Wert in den Testdaten ersetzt. | keine |
+| A7 | Fünf sichtbare Texte sind neu gefasst, siehe die folgende Tabelle. | keine, die Termine bleiben gleich |
 
 Der Vergleich beider Stände ohne Kommentare zeigt genau diese Abweichungen und keine weitere. Verglichen wurde die Ausgabe des Syntaxbaums, mit Typen.
+
+Die Texte zu A2 und A7 hat der fachlich Verantwortliche am 2026-09-28 entschieden.
+
+| Text | Rechenkern 1.9.0 | Paket |
+|---|---|---|
+| Rechenweg der Wartefrist, wenn ihr Ende auf Samstag, Sonntag oder Feiertag fällt | nennt zwei Entscheidungen zur Auslegung | „… vorsorglich auf den nächsten Arbeitstag … verlängert (entsprechend Art. 3 Abs. 4 VO (EWG) 1182/71)" |
+| Hinweis zur Beschränkten Ausschreibung ohne Teilnahmewettbewerb, VOB/A 1. Abschnitt | nennt die Wertgrenze als Betrag | „zulässig bis zur Wertgrenze des § 3a VOB/A oder in den Fällen des § 3a Abs. 2 Nr. 2–3 VOB/A" |
+| Hinweis zur Freihändigen Vergabe, VOB/A 1. Abschnitt | nennt die Wertgrenze als Betrag | „zulässig bis zur Wertgrenze des § 3a VOB/A oder in den Fällen des § 3a Abs. 3 VOB/A" |
+| Warnung bei einer Wartefrist unter der gesetzlichen Frist | nennt zusätzlich eine Rechtsfolge | endet nach der Angabe der Norm |
+| Meldung beim Import einer Projektdatei mit unbekannter Schema-Version | nennt den „Terminplaner" | nennt den „Fristenrechner" |
 
 ### Ergebnis je Nachweis
 
@@ -84,7 +95,7 @@ Der Vergleich beider Stände ohne Kommentare zeigt genau diese Abweichungen und 
 | K2 | erfüllt | `api.ts` enthält weder den Typ noch den Export, siehe A1. |
 | K3 | erfüllt | `schedule.test.ts` enthält weder den Import noch den Testblock. Von 121 Tests der Quelle sind 119 übernommen. |
 | K4 | erfüllt | siehe A2. Der Test in `rechtsstand.test.ts` prüft es bei jedem Lauf. |
-| K5 | erfüllt | Die Suche nach Beträgen findet keinen Betrag der EU-Schwellenwerte. Zwei Hinweise zur VOB/A, 1. Abschnitt, nennen Wertgrenzen des § 3a VOB/A. Das sind keine EU-Schwellenwerte. |
+| K5 | erfüllt | Die Suche nach Beträgen findet in den Dateien des Pakets keinen Betrag in Euro. Auch die Wertgrenzen des § 3a VOB/A stehen dort nicht mehr als Betrag, siehe A7. |
 | K6 | erfüllt | `RECHTSSTAND_DATUM` im ISO-Format und `RECHTSSTAND` als Anzeigetext. Ein Test prüft, dass der Anzeigetext mit Monat und Jahr des Datums beginnt. |
 | K7 | erfüllt | siehe Abschnitt „Referenzfälle" |
 | K8 | erfüllt | `npm ci`, `npm run check`, `npm test` und `npm run build` laufen in einer Kopie, die nur die eingecheckten Dateien enthält: 81 Tests der Skripte und 134 Tests des Rechenkerns. |
@@ -106,7 +117,7 @@ Kombinationen, die eine Vergabeordnung nicht kennt, gehören zum Raster. Der Rec
 So ist der Nachweis entstanden:
 
 1. Der unveränderte Rechenkern 1.9.0 hat das Raster gerechnet. Seine 121 Tests waren dabei grün.
-2. Auf seine Ausgabe wurden die Abweichungen A2 und A3 angewendet, sonst nichts.
+2. Auf seine Ausgabe wurden die Abweichungen A2, A3 und A7 angewendet, sonst nichts. Für A2 und A7 sind das sieben wörtliche Ersetzungen in den Texten.
 3. Daraus sind die vier Dateien entstanden. Ein zweiter Lauf hat dieselben Dateien erzeugt.
 4. Der Rechenkern im Paket rechnet dasselbe Raster und stimmt mit den vier Dateien überein.
 
@@ -141,6 +152,6 @@ Jede Übernahme erhält eine Zeile. Ein Prüfpunkt, der nicht zutrifft, steht ni
 |---|---|---|---|---|---|
 | 2026-09-28 | 2.2 | `LICENSE` | https://www.apache.org/licenses/LICENSE-2.0.txt, geladen am 2026-09-28, 11.358 Byte, SHA-256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30` | keine, Wortlaut unverändert | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.2 | `package-lock.json` | erzeugt mit npm 11.19.0 unter Node 24.21.0 aus den Manifesten dieses Repositorys | keine. Die Datei nennt nur die eigenen Workspaces, keine fremden Pakete und keine Adressen im Netz. `npm ci` läuft damit unter npm 11.19.0 und npm 10.9.8. | Claude Code, Kreuz-Review Codex |
-| 2026-09-28 | 2.3 | acht Dateien des Rechenkerns unter `packages/kern/src` | Rechenkern 1.9.0 des Fristenrechners auf www.baremos.de, Stand 2026-08-26 | Prüfpunkt 1: Die Schwellenwerte gehören nicht zum Zuschnitt, entfernt (A1, A2). Prüfpunkt 4: interne Verweise in Kommentaren und in Titeln von Tests, bereinigt (A6). Die Texte in den Quelldateien sind bis auf A2 und die neue Meldung aus A3 unverändert. Die Texte, die der Rechenkern im Raster ausgibt, stehen in `texte-1.9.0.txt`. Die Meldungen beim Import einer Projektdatei gehören nicht dazu, sie stehen in `projekt.ts`. | Claude Code, Kreuz-Review Codex |
+| 2026-09-28 | 2.3 | acht Dateien des Rechenkerns unter `packages/kern/src` | Rechenkern 1.9.0 des Fristenrechners auf www.baremos.de, Stand 2026-08-26 | Prüfpunkt 1: Die Schwellenwerte gehören nicht zum Zuschnitt, entfernt (A1, A2). Prüfpunkt 4: interne Verweise in Kommentaren und in Titeln von Tests, bereinigt (A6). Prüfpunkt 8: fünf Texte neu gefasst, Anzeigetext zum Rechtsstand gekürzt (A2, A7). Die übrigen Texte in den Quelldateien sind unverändert, neu ist die Meldung aus A3. Die Texte, die der Rechenkern im Raster ausgibt, stehen in `texte-1.9.0.txt`. Die Meldungen beim Import einer Projektdatei gehören nicht dazu, sie stehen in `projekt.ts`. | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.3 | vier Referenzdateien unter `packages/kern/test/referenz` | erzeugt aus dem Rechenkern 1.9.0, siehe Abschnitt „Referenzfälle" | Prüfpunkt 10: Die Dateien sind erzeugt. Sie gehören ins Repository, weil die Tests sie brauchen. Raster und Abbild, aus denen sie entstehen, liegen daneben. | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.3 | `package-lock.json` | erzeugt mit npm 11.19.0 unter Node 24.21.0, nach Aufnahme von `typescript` und `vitest` | keine, siehe Abschnitt „Abhängigkeiten für Test und Build" | Claude Code, Kreuz-Review Codex |

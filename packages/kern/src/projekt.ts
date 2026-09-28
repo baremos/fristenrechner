@@ -279,7 +279,7 @@ export function parseProjektDatei(json: string):
       ok: false,
       fehler: [
         `Unbekannte Schema-Version "${String(roh.version)}" — diese Version des Rechners liest nur Version 1. ` +
-          'Bitte die Datei mit einer aktuellen Version des Terminplaners neu exportieren.',
+          'Bitte die Datei mit einer aktuellen Version des Fristenrechners neu exportieren.',
       ],
     };
   }

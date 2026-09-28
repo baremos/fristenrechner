@@ -76,8 +76,7 @@ export const RECHTSSTAND_DATUM: ISODate = '2026-07-17';
  * Rechtsstand als Anzeigetext, passend zu `RECHTSSTAND_DATUM`. Wird bei jeder
  * fachlichen Aktualisierung mitgepflegt.
  */
-export const RECHTSSTAND =
-  'Juli 2026 — inkl. Vergabebeschleunigungsgesetz v. 12.05.2026 (BGBl. 2026 I Nr. 137)';
+export const RECHTSSTAND = 'Juli 2026';
 
 interface TeilnahmefristProfil {
   /**
@@ -896,14 +895,14 @@ export const VERGABEORDNUNGEN: Record<Vergabeordnung, VergabeordnungProfil> = {
   },
 
   // Verifiziert 2026-07-30: VOB/A Abschnitt 1 i. d. F. 2019, § 3a neu
-  // gefasst zum 01.01.2026 (BAnz AT 16.12.2025 B7 — Wertgrenzen Direktauftrag
-  // 50.000 €, Freihändige Vergabe 100.000 €, Beschränkte ohne TNW 150.000 €).
-  // Einzige numerische Frist: Angebotsfrist „auch bei Dringlichkeit nicht
-  // unter zehn Kalendertagen" (§ 10 Abs. 1 Satz 1) — nach der Systematik des
-  // § 10 Abs. 6 gilt sie NICHT für die Freihändige Vergabe (Auslegung).
-  // Keine Wartepflicht (§ 134 GWB gilt nur ab den EU-Schwellenwerten;
-  // § 19 Abs. 1 VOB/A: Unterrichtung i. d. R. nach Zuschlag).
-  // Fristvorschläge = Praxiswerte.
+  // gefasst zum 01.01.2026 (BAnz AT 16.12.2025 B7, mit Wertgrenzen für
+  // Direktauftrag, Freihändige Vergabe und Beschränkte Ausschreibung ohne
+  // TNW). Einzige numerische Frist: Angebotsfrist „auch bei Dringlichkeit
+  // nicht unter zehn Kalendertagen" (§ 10 Abs. 1 Satz 1) — nach der
+  // Systematik des § 10 Abs. 6 gilt sie NICHT für die Freihändige Vergabe
+  // (Auslegung). Keine Wartepflicht (§ 134 GWB gilt nur ab den
+  // EU-Schwellenwerten; § 19 Abs. 1 VOB/A: Unterrichtung i. d. R. nach
+  // Zuschlag). Fristvorschläge = Praxiswerte.
   vob_a_1: {
     label: 'VOB/A 1. Abschnitt — Bauleistungen (unterhalb der Schwellenwerte)',
     kurz: 'VOB/A',
@@ -986,7 +985,7 @@ export const VERGABEORDNUNGEN: Record<Vergabeordnung, VergabeordnungProfil> = {
         verhandlungsverbot:
           'Verhandlungen sind bei Beschränkter Ausschreibung nicht vorgesehen — zulässig ist nur die Aufklärung (§ 15 VOB/A).',
         hinweise: [
-          'Beschränkte Ausschreibung ohne Teilnahmewettbewerb: zulässig bis 150.000 € Auftragswert oder in den ' +
+          'Beschränkte Ausschreibung ohne Teilnahmewettbewerb: zulässig bis zur Wertgrenze des § 3a VOB/A oder in den ' +
             'Fällen des § 3a Abs. 2 Nr. 2–3 VOB/A (Stand 01.01.2026); Zulässigkeitsgrund dokumentieren.',
         ],
       },
@@ -1005,7 +1004,7 @@ export const VERGABEORDNUNGEN: Record<Vergabeordnung, VergabeordnungProfil> = {
           ortsbegehungKT: 5,
         },
         hinweise: [
-          'Freihändige Vergabe: zulässig bis 100.000 € Auftragswert oder in den Fällen des § 3a Abs. 3 VOB/A ' +
+          'Freihändige Vergabe: zulässig bis zur Wertgrenze des § 3a VOB/A oder in den Fällen des § 3a Abs. 3 VOB/A ' +
             '(Stand 01.01.2026); Zulässigkeitsgrund dokumentieren. Verhandlungen sind zulässig; eine gesetzliche ' +
             'Mindest-Angebotsfrist besteht nicht.',
         ],
