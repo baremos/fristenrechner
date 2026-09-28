@@ -93,4 +93,4 @@ Fehlermeldungen und Beiträge sind willkommen. Der Ablauf steht in [CONTRIBUTING
 
 ## Lizenz
 
-Apache License 2.0. Der Wortlaut steht in der Datei [LICENSE](LICENSE). Die Datei [NOTICE](NOTICE) nennt den Ersteller.
+Apache License 2.0. Der Wortlaut steht in der Datei [LICENSE](LICENSE). Die Datei [NOTICE](NOTICE) nennt den Herausgeber.

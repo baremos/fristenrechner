@@ -93,4 +93,4 @@ Bug reports and contributions are welcome. The process is described in [CONTRIBU
 
 ## License
 
-Apache License 2.0. The text is in the file [LICENSE](LICENSE). The file [NOTICE](NOTICE) names the creator.
+Apache License 2.0. The text is in the file [LICENSE](LICENSE). The file [NOTICE](NOTICE) names the publisher.
