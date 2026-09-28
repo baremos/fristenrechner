@@ -20,12 +20,19 @@ So liest die Auswertung das Protokoll:
   Stufe steht nur dort. Zeilen ohne Kopf gehören zur Meldung davor.
 - Jede Meldung der Stufen WARNING, ERROR und CRITICAL ist eine Beanstandung,
   samt ihren Folgezeilen eine einzige. Steht dieselbe Beanstandung schon in
-  der Ausgabe im Format JSON, zählt sie einmal.
+  der Ausgabe im Format JSON, zählt sie einmal. Ein Fehler aus dem JSON
+  gleicht dabei nur eine Meldung der Stufe ERROR aus, eine Warnung nur eine
+  der Stufe WARNING.
 - Die Zusammenfassung "Scanner found <Zahl> problems in <App-ID>:<versionCode>:"
   muss zum geprüften Stand und zur Zahl der erfassten Fehler passen. Der
-  Scanner zählt dort Fehler, keine Warnungen.
+  Scanner zählt dort Fehler, keine Warnungen. Als Zusammenfassung gilt nur
+  eine Meldung der Stufe WARNING mit einer Zahl über 0.
+- Nach einem abgefangenen Abbruch schreibt der Scanner keine Zusammenfassung.
+  Die Prüfung ist dann unvollständig, der Abgleich der Zahl entfällt. Fehler
+  und Abbruch bleiben Beanstandungen.
 - Ein Traceback und eine Zeile, die mit einer der drei Stufen beginnt, sind
-  auch ohne Kopf eine Beanstandung.
+  auch ohne Kopf eine Beanstandung, außer in den Folgezeilen einer Meldung,
+  die selbst als Beanstandung aus dem Protokoll zählt.
 """
 
 import collections
@@ -36,9 +43,11 @@ import sys
 KOPF = re.compile(
     r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} (DEBUG|INFO|WARNING|ERROR|CRITICAL): (.*)$"
 )
-ZUSAMMENFASSUNG = re.compile(r"^Scanner found (\d+) problems in (.*):$")
+ZUSAMMENFASSUNG = re.compile(r"^Scanner found ([1-9]\d*) problems in (.*):$")
+ABBRUCH = re.compile(r"^(?:Could not scan app |VCS error while scanning app )")
 BEANSTANDET = ("WARNING", "ERROR", "CRITICAL")
 OHNE_KOPF = re.compile(r"^(?:Traceback \(most recent call last\)|WARNING:|ERROR:|CRITICAL:)")
+STUFE_IM_JSON = {"errors": "ERROR", "warnings": "WARNING"}
 
 
 def lies_meldungen(zeilen):
@@ -48,7 +57,7 @@ def lies_meldungen(zeilen):
     for zeile in zeilen:
         kopf = KOPF.match(zeile)
         if kopf:
-            meldungen.append((kopf.group(1), kopf.group(2).strip(), []))
+            meldungen.append((kopf.group(1), kopf.group(2), []))
         elif meldungen:
             meldungen[-1][2].append(zeile)
         else:
@@ -77,7 +86,7 @@ def auswerten(lauf, appid, version_name, version_code, rueckgabe):
             for art, name in (("errors", "Fehler"), ("warnings", "Warnung")):
                 for text, datei in befund.get(art, []):
                     probleme.append(f"{name}: {text} ({datei})")
-                    gemeldet[f"Found {text} at {datei}"] += 1
+                    gemeldet[(STUFE_IM_JSON[art], f"Found {text} at {datei}")] += 1
                     if art == "errors":
                         fehler_erfasst += 1
             for text, datei in befund.get("infos", []):
@@ -95,33 +104,34 @@ def auswerten(lauf, appid, version_name, version_code, rueckgabe):
     vorspann, meldungen = lies_meldungen(protokoll)
 
     zusammenfassungen = []
+    abgebrochen = False
     for zeile in vorspann:
         if OHNE_KOPF.match(zeile):
             probleme.append("Protokoll, Zeile ohne Kopf: " + zeile.strip())
     for stufe, text, folgezeilen in meldungen:
-        if stufe not in BEANSTANDET:
-            for zeile in folgezeilen:
-                if OHNE_KOPF.match(zeile):
-                    probleme.append("Protokoll, Zeile ohne Kopf: " + zeile.strip())
-            continue
-        treffer = ZUSAMMENFASSUNG.match(text)
+        treffer = ZUSAMMENFASSUNG.match(text) if stufe == "WARNING" else None
         if treffer:
             zusammenfassungen.append((int(treffer.group(1)), treffer.group(2)))
+        elif stufe in BEANSTANDET and gemeldet[(stufe, text)] > 0:
+            gemeldet[(stufe, text)] -= 1
+        elif stufe in BEANSTANDET:
+            if stufe == "ERROR":
+                fehler_erfasst += 1
+            if stufe == "WARNING" and ABBRUCH.match(text):
+                abgebrochen = True
+            zusatz = f" (dazu {len(folgezeilen)} Folgezeilen)" if folgezeilen else ""
+            probleme.append("Protokoll: " + text.strip() + zusatz)
             continue
-        if gemeldet[text] > 0:
-            gemeldet[text] -= 1
-            continue
-        if stufe == "ERROR":
-            fehler_erfasst += 1
-        zusatz = f" (dazu {len(folgezeilen)} Folgezeilen)" if folgezeilen else ""
-        probleme.append("Protokoll: " + text + zusatz)
+        for zeile in folgezeilen:
+            if OHNE_KOPF.match(zeile):
+                probleme.append("Protokoll, Zeile ohne Kopf: " + zeile.strip())
 
     stand = f"{appid}:{version_code}"
     for zahl, genannt in zusammenfassungen:
         if genannt != stand:
             probleme.append(f"Die Zusammenfassung des Scanners nennt einen anderen Stand: {genannt}")
     zahl_genannt = sum(zahl for zahl, genannt in zusammenfassungen)
-    if zahl_genannt != fehler_erfasst:
+    if not abgebrochen and zahl_genannt != fehler_erfasst:
         probleme.append(
             f"Die Zusammenfassung des Scanners nennt {zahl_genannt} Probleme, erfasst sind {fehler_erfasst} Fehler."
         )
