@@ -8,6 +8,8 @@ Danke für das Interesse am Fristenrechner Vergabe. Diese Seite beschreibt, wie 
 
 Eine Rechenhilfe für Fristen in Vergabeverfahren nach deutschem Recht. Die Software ist unverbindlich, ersetzt keine Rechtsberatung, und alle Angaben erfolgen ohne Gewähr. Herausgeber ist die BAREMOS IT GmbH, die Lizenz ist Apache-2.0.
 
+Die Oberfläche und die Dokumente im Ordner `docs` sind deutsch. Issues und Pull Requests sind auf Deutsch und auf Englisch willkommen.
+
 ## Fehler melden und Vorschläge machen
 
 Bitte ein Issue anlegen. Hilfreich sind:
@@ -45,13 +47,13 @@ Dateien aus anderen Quellen werden vor dem ersten Einchecken geprüft. Die Prüf
 
 ## Build und Test
 
-| Schritt | Befehl |
-|---|---|
-| Abhängigkeiten installieren | `npm ci` |
-| Tests | `npm test` |
-| Typprüfung | `npm run check` |
-| Build der Pakete | `npm run build` |
-| Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` |
+| Schritt | Befehl | Stand |
+|---|---|---|
+| Abhängigkeiten installieren | `npm ci` | läuft |
+| Tests | `npm test` | läuft, prüft bisher die Skripte |
+| Typprüfung | `npm run check` | läuft ohne Wirkung, bis die Pakete eine Typprüfung mitbringen |
+| Build der Pakete | `npm run build` | läuft ohne Wirkung, bis die Pakete einen Build mitbringen |
+| Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 
 Die Befehle funktionieren ohne private Dateien. Die Versionen der Werkzeuge stehen in [docs/toolchain.md](docs/toolchain.md).
 

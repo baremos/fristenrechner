@@ -1,10 +1,10 @@
 # Fristenrechner Vergabe
 
-Procurement Deadline Calculator (Germany). A calculation aid for dates and deadlines in public procurement procedures under German law. Published by BAREMOS IT GmbH, Berlin.
+A calculation aid for dates and deadlines in public procurement procedures under German law. Published by BAREMOS IT GmbH, Berlin. The English name is "Procurement Deadline Calculator (Germany)".
 
 [Deutsche Fassung](README.md)
 
-> The calculator is a non-binding calculation aid. It is no legal advice. All information is provided without guarantee.
+> The calculator is a non-binding calculation aid. It does not replace legal advice. All information is provided without guarantee.
 
 The user interface of the app and its exports are in German. The calculator follows German procurement law, and its technical terms are German.
 
@@ -20,11 +20,13 @@ The repository is under construction. Nothing has been released yet.
 | User interface | to follow |
 | Android app | to follow |
 
-The work packages are listed in [docs/arbeitspakete.md](docs/arbeitspakete.md). The documents in `docs` are in German.
+The work packages are listed in [docs/arbeitspakete.md](docs/arbeitspakete.md). The documents in the folder `docs` are in German.
 
-## What the software calculates
+## What the software will calculate
 
-From the data entered, the software produces a schedule of dates and deadlines for a procurement procedure. Version 1 calculates the same as the calculator on www.baremos.de. The scope is defined in [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md).
+This section describes the scope of version 1. It is not yet implemented in the repository.
+
+From the data entered, the software produces a schedule of dates and deadlines for a procurement procedure. Version 1 calculates the same as the [calculator on www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). The scope is defined in [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md).
 
 | Area | Content |
 |---|---|
@@ -34,7 +36,7 @@ From the data entered, the software produces a schedule of dates and deadlines f
 | Output | PDF, Excel and project file |
 | Traceability | Every calculation and every export states the rule version and the date of the legal status |
 
-## What the software does not do
+## What the software will not do
 
 - It does not remind of dates and sends no notifications.
 - It does not select the procurement regulation from the contract value.
@@ -45,6 +47,8 @@ From the data entered, the software produces a schedule of dates and deadlines f
 
 ## Structure
 
+So far, the folders of the packages and of the app contain only their manifest. The table states the intended content.
+
 | Folder | Content | Package name |
 |---|---|---|
 | `packages/kern` | Calculation core, TypeScript without dependencies, with tests | `@baremos/fristenrechner-kern` |
@@ -53,7 +57,7 @@ From the data entered, the software produces a schedule of dates and deadlines f
 | `scripts` | Scripts for setup, build and checks | – |
 | `docs` | Definitions and evidence | – |
 
-Website and app use the same calculation core and the same user interface.
+Website and app are meant to use the same calculation core and the same user interface.
 
 ## Requirements
 
@@ -68,16 +72,16 @@ All versions and the reasons for them are in [docs/toolchain.md](docs/toolchain.
 
 ## Build and test
 
-| Step | Command |
-|---|---|
-| Install dependencies | `npm ci` |
-| Tests | `npm test` |
-| Type check | `npm run check` |
-| Build the packages | `npm run build` |
-| Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` |
-| Build the Android app | `node scripts/android-build.mjs` |
+| Step | Command | Status |
+|---|---|---|
+| Install dependencies | `npm ci` | works |
+| Tests | `npm test` | works, so far it tests the scripts |
+| Type check | `npm run check` | runs without effect until the packages bring a type check |
+| Build the packages | `npm run build` | runs without effect until the packages bring a build |
+| Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the Android project in `app/android`, which follows with the app |
+| Build the Android app | `node scripts/android-build.mjs` | needs the Android project in `app/android`, which follows with the app |
 
-Build and tests need no private files. The build downloads tools and dependencies from the network. The app itself does not access the network during operation.
+Build and tests need no private files. The build downloads tools and dependencies from the network. The app itself is meant not to access the network during operation.
 
 ## Maintenance of the rules
 
@@ -89,4 +93,4 @@ Bug reports and contributions are welcome. The process is described in [CONTRIBU
 
 ## License
 
-Apache License 2.0. The text is in the file [LICENSE](LICENSE), the copyright notice in the file [NOTICE](NOTICE).
+Apache License 2.0. The text is in the file [LICENSE](LICENSE). The file [NOTICE](NOTICE) names the creator.

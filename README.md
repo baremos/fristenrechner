@@ -1,10 +1,12 @@
 # Fristenrechner Vergabe
 
-Rechenhilfe für Termine und Fristen in Vergabeverfahren nach deutschem Recht. Herausgeber ist die BAREMOS IT GmbH, Berlin.
+Rechenhilfe für Termine und Fristen in Vergabeverfahren nach deutschem Recht. Herausgeber ist die BAREMOS IT GmbH, Berlin. Der englische Name lautet „Procurement Deadline Calculator (Germany)“.
 
 [English version](README.en.md)
 
 > Der Fristenrechner ist eine unverbindliche Rechenhilfe. Er ersetzt keine Rechtsberatung. Alle Angaben erfolgen ohne Gewähr.
+
+Die Oberfläche der App und ihre Exporte sind deutsch. Der Fristenrechner folgt dem deutschen Vergaberecht, seine Fachbegriffe sind deutsch.
 
 ## Stand
 
@@ -18,11 +20,13 @@ Das Repository ist im Aufbau. Es gibt noch keine Veröffentlichung.
 | Oberfläche | folgt |
 | Android-App | folgt |
 
-Die Arbeitspakete stehen in [docs/arbeitspakete.md](docs/arbeitspakete.md).
+Die Arbeitspakete stehen in [docs/arbeitspakete.md](docs/arbeitspakete.md). Die Dokumente im Ordner `docs` sind deutsch.
 
-## Was die Software rechnet
+## Was die Software rechnen wird
 
-Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren. Version 1 rechnet dasselbe wie der Fristenrechner auf www.baremos.de. Den Umfang legt [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md) fest.
+Dieser Abschnitt beschreibt den Umfang von Version 1. Im Repository ist er noch nicht umgesetzt.
+
+Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren. Version 1 rechnet dasselbe wie der [Fristenrechner auf www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). Den Umfang legt [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md) fest.
 
 | Bereich | Inhalt |
 |---|---|
@@ -32,7 +36,7 @@ Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren.
 | Ausgabe | PDF, Excel und Projektdatei |
 | Nachvollziehbarkeit | Jede Berechnung und jeder Export nennt Regelversion und Rechtsstand |
 
-## Was die Software nicht tut
+## Was die Software nicht tun wird
 
 - Sie erinnert nicht an Termine und sendet keine Benachrichtigungen.
 - Sie wählt die Vergabeordnung nicht selbst aus dem Auftragswert.
@@ -43,6 +47,8 @@ Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren.
 
 ## Aufbau
 
+Die Ordner der Pakete und der App enthalten bisher nur ihr Manifest. Die Tabelle nennt den vorgesehenen Inhalt.
+
 | Ordner | Inhalt | Paketname |
 |---|---|---|
 | `packages/kern` | Rechenkern, TypeScript ohne Abhängigkeiten, mit Tests | `@baremos/fristenrechner-kern` |
@@ -51,7 +57,7 @@ Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren.
 | `scripts` | Skripte für Einrichtung, Build und Prüfung | – |
 | `docs` | Festlegungen und Nachweise | – |
 
-Website und App nutzen denselben Rechenkern und dieselbe Oberfläche.
+Website und App sollen denselben Rechenkern und dieselbe Oberfläche nutzen.
 
 ## Voraussetzungen
 
@@ -66,16 +72,16 @@ Alle Versionen und ihre Begründung stehen in [docs/toolchain.md](docs/toolchain
 
 ## Build und Test
 
-| Schritt | Befehl |
-|---|---|
-| Abhängigkeiten installieren | `npm ci` |
-| Tests | `npm test` |
-| Typprüfung | `npm run check` |
-| Build der Pakete | `npm run build` |
-| Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` |
-| Android-App bauen | `node scripts/android-build.mjs` |
+| Schritt | Befehl | Stand |
+|---|---|---|
+| Abhängigkeiten installieren | `npm ci` | läuft |
+| Tests | `npm test` | läuft, prüft bisher die Skripte |
+| Typprüfung | `npm run check` | läuft ohne Wirkung, bis die Pakete eine Typprüfung mitbringen |
+| Build der Pakete | `npm run build` | läuft ohne Wirkung, bis die Pakete einen Build mitbringen |
+| Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
+| Android-App bauen | `node scripts/android-build.mjs` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 
-Build und Tests brauchen keine privaten Dateien. Der Build lädt Werkzeuge und Abhängigkeiten aus dem Netz. Die App selbst greift im Betrieb nicht auf das Netzwerk zu.
+Build und Tests brauchen keine privaten Dateien. Der Build lädt Werkzeuge und Abhängigkeiten aus dem Netz. Die App selbst soll im Betrieb nicht auf das Netzwerk zugreifen.
 
 ## Pflege der Regeln
 
@@ -87,4 +93,4 @@ Fehlermeldungen und Beiträge sind willkommen. Der Ablauf steht in [CONTRIBUTING
 
 ## Lizenz
 
-Apache License 2.0. Der Wortlaut steht in der Datei [LICENSE](LICENSE), der Urhebervermerk in der Datei [NOTICE](NOTICE).
+Apache License 2.0. Der Wortlaut steht in der Datei [LICENSE](LICENSE). Die Datei [NOTICE](NOTICE) nennt den Ersteller.

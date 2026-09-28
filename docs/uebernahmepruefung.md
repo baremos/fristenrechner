@@ -34,9 +34,26 @@ Die Prüfung gilt für Dateien aus anderen Repositorys, für Vorlagen von Werkze
 
 1. Liste der Dateien aufstellen, mit Quelle und Stand der Quelle.
 2. Jede Datei gegen die Prüfpunkte prüfen. Fundstellen bereinigen oder die Datei weglassen.
-3. Build und Tests ausführen.
-4. Protokoll ergänzen.
-5. Kreuz-Review, danach einchecken.
+3. Build und Tests ausführen, aus einer Kopie des Stands ohne private Dateien.
+4. Neue Abhängigkeiten samt Transitivabhängigkeiten auf freie, verträgliche Lizenzen prüfen.
+5. Protokoll ergänzen.
+6. Kreuz-Review, danach einchecken.
+
+## Zusätzliche Abschlussprüfung für den Rechenkern
+
+Arbeitspaket 2.3 übernimmt den Rechenkern. Die allgemeinen Prüfpunkte reichen dafür nicht. Die Abnahme aus [arbeitspakete.md](arbeitspakete.md), Paket 2.3, wird Punkt für Punkt nachgewiesen:
+
+| Nr. | Nachweis |
+|---|---|
+| K1 | Die Tabelle der Schwellenwerte ist entfernt. |
+| K2 | Ihr Typ und ihr Export in der Schnittstelle sind entfernt. |
+| K3 | Der Import und der Testblock zu den Schwellenwerten in den Tests sind entfernt. |
+| K4 | Die Angabe zum Rechtsstand nennt keine Schwellenwert-Periode. |
+| K5 | Kein Betrag der EU-Schwellenwerte steht in den übernommenen Dateien. |
+| K6 | Der Rechtsstand liegt als Datum im ISO-Format vor, dazu ein Anzeigetext. |
+| K7 | Die Referenzfälle rechnen wie der Rechenkern 1.9.0. |
+| K8 | Typprüfung, Fachtests und Build des Pakets laufen aus einer Kopie ohne private Dateien. |
+| K9 | Neue Abhängigkeiten für Test und Build sind samt Transitivabhängigkeiten auf ihre Lizenz geprüft. |
 
 ## Protokoll
 
@@ -45,3 +62,4 @@ Jede Übernahme erhält eine Zeile. Ein Prüfpunkt, der nicht zutrifft, steht ni
 | Datum | Arbeitspaket | Dateien | Quelle und Stand | Befunde und Bereinigung | Geprüft von |
 |---|---|---|---|---|---|
 | 2026-09-28 | 2.2 | `LICENSE` | https://www.apache.org/licenses/LICENSE-2.0.txt, geladen am 2026-09-28, 11.358 Byte, SHA-256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30` | keine, Wortlaut unverändert | Claude Code, Kreuz-Review Codex |
+| 2026-09-28 | 2.2 | `package-lock.json` | erzeugt mit npm 11.19.0 unter Node 24.21.0 aus den Manifesten dieses Repositorys | keine. Die Datei nennt nur die eigenen Workspaces, keine fremden Pakete und keine Adressen im Netz. `npm ci` läuft damit unter npm 11.19.0 und npm 10.9.8. | Claude Code, Kreuz-Review Codex |

@@ -6,9 +6,9 @@ Thank you for your interest in Fristenrechner Vergabe. This page describes how c
 
 ## What the project is
 
-A calculation aid for deadlines in public procurement procedures under German law. The software is non-binding, it is no legal advice, and all information is provided without guarantee. The publisher is BAREMOS IT GmbH, the license is Apache-2.0.
+A calculation aid for deadlines in public procurement procedures under German law. The software is non-binding, it does not replace legal advice, and all information is provided without guarantee. The publisher is BAREMOS IT GmbH, the license is Apache-2.0.
 
-The user interface and the documents in `docs` are in German. Issues and pull requests are welcome in German or English.
+The user interface and the documents in the folder `docs` are in German. Issues and pull requests are welcome in German and in English.
 
 ## Reporting bugs and making suggestions
 
@@ -26,7 +26,7 @@ Please open an issue. Helpful details are:
 3. Run build and tests locally.
 4. Open a pull request and describe what changes and why.
 
-## Rules for changes to the rules of calculation
+## Rules for subject-matter changes
 
 - Every deadline rule names its legal basis with the exact reference.
 - Every change to a rule has a test that proves it.
@@ -47,13 +47,13 @@ Files from other sources are checked before they are first committed. The checkp
 
 ## Build and test
 
-| Step | Command |
-|---|---|
-| Install dependencies | `npm ci` |
-| Tests | `npm test` |
-| Type check | `npm run check` |
-| Build the packages | `npm run build` |
-| Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` |
+| Step | Command | Status |
+|---|---|---|
+| Install dependencies | `npm ci` | works |
+| Tests | `npm test` | works, so far it tests the scripts |
+| Type check | `npm run check` | runs without effect until the packages bring a type check |
+| Build the packages | `npm run build` | runs without effect until the packages bring a build |
+| Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the Android project in `app/android`, which follows with the app |
 
 The commands work without private files. The versions of the tools are in [docs/toolchain.md](docs/toolchain.md).
 
