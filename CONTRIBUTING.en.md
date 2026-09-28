@@ -32,6 +32,7 @@ Please open an issue. Helpful details are:
 - Every change to a rule has a test that proves it.
 - No value is estimated. Without a reliable source, the rule stays unchanged.
 - Only the person responsible for the content raises the rule version and the date of the legal status.
+- The reference files in `packages/kern/test/referenz` record what the calculation core calculates. Whoever changes a rule rewrites them with `npm run referenz:schreiben --workspace packages/kern`. The differences are part of the pull request.
 
 ## Rules for dependencies
 
@@ -50,9 +51,9 @@ Files from other sources are checked before they are first committed. The checkp
 | Step | Command | Status |
 |---|---|---|
 | Install dependencies | `npm ci` | works |
-| Tests | `npm test` | works, so far it tests the scripts |
-| Type check | `npm run check` | runs without effect until the packages bring a type check |
-| Build the packages | `npm run build` | runs without effect until the packages bring a build |
+| Tests | `npm test` | works, tests the scripts and the calculation core |
+| Type check | `npm run check` | works for the calculation core |
+| Build the packages | `npm run build` | works for the calculation core |
 | Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the Android project in `app/android`, which follows with the app |
 
 The commands work without private files. The versions of the tools are in [docs/toolchain.md](docs/toolchain.md).

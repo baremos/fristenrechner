@@ -1,0 +1,292 @@
+# Regelversion 1.9.0, Rechtsstand 2026-07-17
+# Alle Texte, die der Rechenkern im Raster ausgibt, je Art sortiert.
+# Platzhalter: TT.MM.JJJJ für ein Datum, n für die gezählten Tage einer Eingabe.
+
+## Hinweis
+Alle Fristvorschläge sind Praxiswerte: Die UVgO kennt keine numerischen Mindestfristen, verlangt aber angemessene Fristen (§ 13 Abs. 1 UVgO); bei nachgereichten wesentlichen Informationen oder geänderten Vergabeunterlagen sind Fristen angemessen zu verlängern (§ 13 Abs. 4 UVgO).
+Beschleunigtes Verfahren: Die verkürzten Fristen setzen eine hinreichend begründete Dringlichkeit voraus — Begründung im Vergabevermerk dokumentieren.
+Beschränkte Ausschreibung ohne Teilnahmewettbewerb: nur in den Fällen des § 8 Abs. 3 UVgO zulässig; Zulässigkeitsgrund dokumentieren. Grundsätzlich sind mindestens drei Unternehmen zur Angebotsabgabe aufzufordern (§ 11 Abs. 1 UVgO).
+Beschränkte Ausschreibung ohne Teilnahmewettbewerb: zulässig bis 150.000 € Auftragswert oder in den Fällen des § 3a Abs. 2 Nr. 2–3 VOB/A (Stand TT.MM.JJJJ); Zulässigkeitsgrund dokumentieren.
+Bindefrist: Sie beginnt mit dem Ablauf der Angebotsfrist und soll 30 Kalendertage nur in begründeten Fällen überschreiten (§ 10 Abs. 4 und 5 VOB/A).
+Der frühestmögliche Zuschlag (TT.MM.JJJJ) liegt nach Ablauf der Bindefrist (TT.MM.JJJJ) — Bindefrist verlängern oder Verfahrenszeiten straffen.
+Die Bindefrist (TT.MM.JJJJ) endet vor der letzten Angebotsabgabe (TT.MM.JJJJ) — Endtermin prüfen.
+Die KonzVgV sieht für diese Verfahrensart keine gesonderten Dringlichkeitsfristen vor — die Fristwerte bleiben unverändert.
+Die SektVO sieht für diese Verfahrensart keine gesonderten Dringlichkeitsfristen vor — die Fristwerte bleiben unverändert.
+Die UVgO sieht für diese Verfahrensart keine gesonderten Dringlichkeitsfristen vor — die Fristwerte bleiben unverändert.
+Die VOB/A sieht für diese Verfahrensart keine gesonderten Dringlichkeitsfristen vor — die Fristwerte bleiben unverändert.
+Die VSVgV sieht für diese Verfahrensart keine gesonderten Dringlichkeitsfristen vor — die Fristwerte bleiben unverändert.
+Die Verfahrensart „beschraenkt_ohne_tnw" ist in der KonzVgV nicht vorgesehen.
+Die Verfahrensart „beschraenkt_ohne_tnw" ist in der SektVO nicht vorgesehen.
+Die Verfahrensart „beschraenkt_ohne_tnw" ist in der VOB/A-EU nicht vorgesehen.
+Die Verfahrensart „beschraenkt_ohne_tnw" ist in der VSVgV nicht vorgesehen.
+Die Verfahrensart „beschraenkt_ohne_tnw" ist in der VgV nicht vorgesehen.
+Die Verfahrensart „nicht_offen_mit_tnw" ist in der KonzVgV nicht vorgesehen.
+Die Verfahrensart „offen" ist in der VSVgV nicht vorgesehen.
+Die Verfahrensart „verhandlung_mit_tnw" ist in der VOB/A nicht vorgesehen.
+Ein fester Termin für die Aufforderung zur Angebotsabgabe ist nur bei Verfahren mit vorgeschaltetem Teilnahmewettbewerb möglich — er wird ignoriert.
+Freihändige Vergabe: zulässig bis 100.000 € Auftragswert oder in den Fällen des § 3a Abs. 3 VOB/A (Stand TT.MM.JJJJ); Zulässigkeitsgrund dokumentieren. Verhandlungen sind zulässig; eine gesetzliche Mindest-Angebotsfrist besteht nicht.
+KonzVgV: Das Vergabeverfahren ist frei gestaltbar (§ 12 Abs. 1 KonzVgV, ein- oder mehrstufig); Verhandlungen sind zulässig (§ 12 Abs. 2 KonzVgV) — Konzessionsgegenstand, Mindestanforderungen und Zuschlagskriterien dürfen dabei nicht geändert werden. Die Wartefrist gilt über § 154 Nr. 4 i. V. m. § 134 GWB.
+UVgO (unterhalb der EU-Schwellenwerte): keine Informations- und Wartepflicht nach § 134 GWB — die Unterrichtung der Bewerber und Bieter erfolgt nach § 46 UVgO nach der Zuschlagserteilung. Einzelne Landesvergabegesetze kennen eigene Vorabinformations-/Wartepflichten (z. B. Sachsen-Anhalt, Thüringen) — landesrechtlich prüfen.
+Ungültige Abgabe-Uhrzeit („25:00") — erwartet wird HH:MM (z. B. 10:00); die Abgabetermine bleiben unverschoben (Fristablauf 24:00 Uhr).
+Ungültiger Termin für die Aufforderung zur Angebotsabgabe („kein-datum") — berechnet wird das Ende der Teilnahmeantrags-Bewertung.
+Ungültiger Wert für Angebotsfrist („-3") — verwendet wird n.
+Ungültiger Wert für Wartefrist („1.5") — verwendet wird n.
+VOB/A 1. Abschnitt (unterhalb der EU-Schwellenwerte): keine Informations- und Wartepflicht nach § 134 GWB — die Unterrichtung nicht berücksichtigter Bieter richtet sich nach § 19 VOB/A (in der Regel nach Zuschlagserteilung). Einzelne Landesvergabegesetze kennen eigene Vorabinformations-/Wartepflichten (z. B. MV, SN, ST, TH) — landesrechtlich prüfen.
+VOB/A-EU: Abgebildet ist der 2. Abschnitt der VOB/A (EU-weite Vergabe von Bauleistungen ab Erreichen des Schwellenwerts), Ausgabe 2019 i. d. F. 2023.
+VSVgV: kein offenes Verfahren — frei wählbar sind das nicht offene Verfahren und das Verhandlungsverfahren mit Teilnahmewettbewerb (§ 11 Abs. 1 VSVgV). Für verteidigungs- oder sicherheitsspezifische Bauaufträge gilt im Wesentlichen der 3. Abschnitt der VOB/A (VOB/A-VS, § 2 Abs. 2 VSVgV), den der Rechner nicht abbildet.
+Vergabe ohne Konzessionsbekanntmachung: nur in den Ausnahmefällen des § 20 KonzVgV zulässig (z. B. nur ein Unternehmen kommt in Betracht, ausschließliche Rechte); Zulässigkeitsgrund dokumentieren. Es gibt keine gesetzliche Mindest-Angebotsfrist — die Frist muss angemessen sein (§ 27 Abs. 1 KonzVgV).
+Verhandlungen im nicht offenen Verfahren sind unzulässig (§ 11 Abs. 2 VSVgV) — zulässig ist nur die Aufklärung.
+Verhandlungen sind auch im einstufigen Verfahren zulässig (§ 12 Abs. 2 KonzVgV) — für geplante Verhandlungsrunden mit erneuter Angebotsabgabe im Rechner das mehrstufige Verfahren wählen.
+Verhandlungen sind auch im nicht offenen Verfahren unstatthaft (§ 15 EU Abs. 3 VOB/A) — zulässig ist nur die Aufklärung (§ 15 EU Abs. 1 VOB/A).
+Verhandlungen sind auch im nicht offenen Verfahren unzulässig (§ 16 Abs. 9 i. V. m. § 15 Abs. 5 Satz 2 VgV) — zulässig ist nur die Aufklärung.
+Verhandlungen sind bei Beschränkter Ausschreibung nicht vorgesehen — zulässig ist nur die Aufklärung (§ 15 VOB/A).
+Verhandlungen sind bei der Beschränkten Ausschreibung nicht vorgesehen — zulässig ist nur die Aufklärung.
+Verhandlungen sind bei der Öffentlichen Ausschreibung nicht vorgesehen — zulässig ist nur die Aufklärung.
+Verhandlungen sind bei Öffentlicher Ausschreibung nicht vorgesehen — zulässig ist nur die Aufklärung (§ 15 VOB/A).
+Verhandlungen sind im nicht offenen Verfahren nicht vorgesehen — zulässig ist nur die Aufklärung über Angebot oder Eignung.
+Verhandlungen sind im offenen Verfahren nicht vorgesehen — zulässig ist nur die Aufklärung über Angebot oder Eignung.
+Verhandlungen sind im offenen Verfahren unstatthaft (§ 15 EU Abs. 3 VOB/A) — zulässig ist nur die Aufklärung (§ 15 EU Abs. 1 VOB/A).
+Verhandlungen sind im offenen Verfahren unzulässig (§ 15 Abs. 5 Satz 2 VgV) — zulässig ist nur die Aufklärung über Angebot oder Eignung (§ 15 Abs. 5 Satz 1 VgV).
+Verhandlungsrunde 1 ist geplant, aber es ist weder eine Frist für die optimierten noch für die finalen Angebote gesetzt — die Runde wird nicht eingeplant (Frist „optimierte Angebote" oder „finale Angebote" ergänzen).
+Verhandlungsverfahren ohne Teilnahmewettbewerb: nur in den Fällen des § 13 Abs. 2 SektVO zulässig; Zulässigkeitsgrund dokumentieren. Es gibt keine gesetzliche Mindest-Angebotsfrist — die Frist muss angemessen sein (§ 16 Abs. 1 SektVO).
+Verhandlungsverfahren ohne Teilnahmewettbewerb: nur in den Fällen des § 14 Abs. 4 VgV zulässig; Zulässigkeitsgrund dokumentieren. Es gibt keine gesetzliche Mindest-Angebotsfrist — die Frist muss angemessen sein (§ 20 Abs. 1 VgV).
+Verhandlungsverfahren ohne Teilnahmewettbewerb: nur in den Fällen des § 3a EU Abs. 3 VOB/A zulässig; Zulässigkeitsgrund dokumentieren. Die Angebotsfrist muss ausreichend sein und darf auch bei Dringlichkeit 10 KT nicht unterschreiten (§ 10c EU Abs. 2 VOB/A).
+Verhandlungsverfahren ohne Teilnahmewettbewerb: nur in den begründeten Ausnahmefällen des § 12 Abs. 1 VSVgV zulässig; Zulässigkeitsgrund dokumentieren (§ 12 Abs. 2 VSVgV). Es gibt keine gesetzliche Mindest-Angebotsfrist — die Frist muss angemessen sein (§ 20 Abs. 1 VSVgV).
+Verhandlungsvergabe: nur in den Fällen des § 8 Abs. 4 UVgO zulässig; Zulässigkeitsgrund dokumentieren.
+Verhandlungsvergabe: nur in den Fällen des § 8 Abs. 4 UVgO zulässig; Zulässigkeitsgrund dokumentieren. Ohne Teilnahmewettbewerb sind grundsätzlich mindestens drei Unternehmen aufzufordern (§ 12 Abs. 2 UVgO); in den Fällen des § 8 Abs. 4 Nr. 9 bis 14 genügt ein Unternehmen (§ 12 Abs. 3 UVgO).
+
+## Konflikt
+Der gewählte Starttermin der Teststellung (TT.MM.JJJJ) liegt vor der Aufforderung zur Teststellung (TT.MM.JJJJ) — frühestmöglich ist der TT.MM.JJJJ.
+Der gewählte Starttermin „Beginn der Bieterverhandlungen (Runde 1)" (TT.MM.JJJJ) liegt vor dem Versand der Einladung zur Bieterverhandlung (Runde 1) (TT.MM.JJJJ) — frühestmöglich ist der TT.MM.JJJJ.
+Der gewählte Termin der Aufforderung zur Angebotsabgabe (TT.MM.JJJJ) liegt vor dem Ablauf der Teilnahmefrist (TT.MM.JJJJ) — frühestmöglich ist der TT.MM.JJJJ.
+
+## Meilenstein
+Abgabe der finalen Angebote
+Abgabe der finalen Angebote (bis 10:00 Uhr)
+Abgabe der optimierten Angebote
+Abgabe der optimierten Angebote (bis 10:00 Uhr)
+Ablauf der Angebotsfrist (Angebotsabgabe bis 10:00 Uhr)
+Ablauf der Angebotsfrist (Angebotsabgabe)
+Ablauf der Binde-/Zuschlagsfrist
+Ablauf der Erstangebotsfrist (Abgabe der Erstangebote bis 10:00 Uhr)
+Ablauf der Erstangebotsfrist (Abgabe der Erstangebote)
+Ablauf der Teilnahmefrist (Eingang der Teilnahmeanträge bis 10:00 Uhr)
+Ablauf der Teilnahmefrist (Eingang der Teilnahmeanträge)
+Ablauf der Wartefrist (§ 134 Abs. 2 GWB)
+Absendung der Aufforderung zur Angebotsabgabe
+Absendung der Auftragsbekanntmachung
+Anpassung der Vergabeunterlagen für die finalen Angebote abgeschlossen
+Anpassung der Vergabeunterlagen für die optimierten Angebote abgeschlossen
+Aufforderung zur Teststellung
+Aufklärung/Entscheidungsfindung abgeschlossen (Zuschlagsempfehlung)
+Auswertung der Teststellung abgeschlossen
+Beginn der Bieterpräsentationen
+Beginn der Bieterverhandlungen (Runde 1)
+Beginn der Bieterverhandlungen (Runde 2)
+Beginn der Teststellung
+Bewertung der Angebote abgeschlossen
+Bewertung der Erstangebote abgeschlossen
+Bewertung der Teilnahmeanträge abgeschlossen
+Bewertung der optimierten Angebote abgeschlossen
+Ende der Bieterpräsentationen
+Ende der Bieterverhandlungen (Runde 1)
+Ende der Bieterverhandlungen (Runde 2)
+Ende der Frist für Bewerberfragen
+Ende der Frist für Bieterfragen
+Ende der Teststellung
+Frühestmöglicher Zuschlag (Vertragsschluss)
+Interne Zuschlagsentscheidung
+Versand der Aufforderung zur Abgabe der finalen Angebote
+Versand der Aufforderung zur Abgabe der optimierten Angebote
+Versand der Aufforderung zur Angebotsabgabe
+Versand der Einladung zur Bieterverhandlung (Runde 1)
+Versand der Einladung zur Bieterverhandlung (Runde 2)
+Versand der Information an die nicht berücksichtigten Bieter (§ 134 Abs. 1 GWB)
+Versand der letzten Auskünfte/Klarstellungen
+Vorbewertung der Angebote abgeschlossen
+
+## Phase
+Angebotsphase
+Bewertung
+Teilnahmewettbewerb
+Teststellung
+Verhandlungsphase
+Zuschlag
+
+## Rechenweg
+Am Tag der internen Zuschlagsentscheidung möglich — unterhalb der EU-Schwellenwerte gilt die Informations- und Wartepflicht des § 134 GWB nicht; landesrechtliche Informations-/Wartepflichten sind gesondert zu prüfen.
+Dauer n Arbeitstage (Starttag zählt mit) → TT.MM.JJJJ
+Frühestens am Tag nach Ablauf der Wartefrist (TT.MM.JJJJ)
+Frühestens am Tag nach Ablauf der Wartefrist (TT.MM.JJJJ); auf den nächsten Arbeitstag gelegt → TT.MM.JJJJ
+Nutzereingabe (Starttermin des Verfahrens)
+Nutzereingabe (fester Endtermin) — n Kalendertage ab Angebotsabgabe (TT.MM.JJJJ)
+Nutzereingabe (fester Starttermin)
+Nutzereingabe (fester Termin) — die Bewertung der Teilnahmeanträge muss bis dahin abgeschlossen sein
+Versand am Tag dem Ende der Anpassung der Vergabeunterlagen (TT.MM.JJJJ)
+Versand am Tag dem Ende der Bewertung der Teilnahmeanträge (TT.MM.JJJJ)
+Versand am Tag der Bewertung der Erstangebote (TT.MM.JJJJ)
+am Tag der internen Zuschlagsentscheidung (TT.MM.JJJJ) — Versand in Textform an alle betroffenen Bieter/Bewerber (§ 134 Abs. 1 GWB)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (Finalisierung der Bewertung nach der Bieterpräsentation)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (Versand 1 AT nach dem Ende der Angebotsbewertung)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (Versand 1 AT nach dem Ende der Anpassung der Vergabeunterlagen)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (Versand 1 AT nach dem Ende der Bewertung der Teilnahmeanträge)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (Versand 1 AT nach dem Ende der Bieterpräsentationen)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (Versand 1 AT nach der Bewertung der Erstangebote)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (Versand 1 AT nach der Bewertung der optimierten Angebote)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit nach dem Ende der Bieterpräsentationen)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit nach dem Ende der Verhandlungsrunde 1)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit nach dem Ende der Verhandlungsrunde 2)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit nach der Bewertung der Erstangebote)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit nach der Bewertung der optimierten Angebote)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit) — Versand in Textform an alle betroffenen Bieter/Bewerber (§ 134 Abs. 1 GWB)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit; Grundlage der Bieterpräsentation)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit; Voraussetzung für Präsentation, Verhandlung und die nächste Angebotsrunde)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (interne Bearbeitungszeit; Voraussetzung für Verhandlungsrunde 2 bzw. die finale Angebotsrunde)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (nächster Arbeitstag nach dem Versand der Einladung zur Bieterverhandlung (Runde 1))
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (nächster Arbeitstag nach dem Versand der Einladung zur Bieterverhandlung (Runde 2))
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (nächster Arbeitstag nach der Aufforderung)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (nächster Arbeitstag nach der Bewertung der Erstangebote)
+n Arbeitstage nach TT.MM.JJJJ → TT.MM.JJJJ (nächster Arbeitstag nach der Vorbewertung der Angebote)
+n Kalendertage ab Angebotsabgabe (TT.MM.JJJJ) → TT.MM.JJJJ
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 10 KT, § 10 Abs. 1 Satz 1 VOB/A)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 10 KT, § 10c EU Abs. 2 VOB/A)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ (Praxiswert; läuft ab dem Versand der Aufforderung)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ (Praxiswert; ohne einvernehmliche Festlegung mindestens 10 KT, § 15 Abs. 3 SektVO)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ (Praxiswert; § 10 Abs. 3 VOB/A verlangt nur eine ausreichende Frist ohne Zahlwert)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ (Praxiswert; § 13 Abs. 1 UVgO verlangt nur eine ausreichende Frist ohne Zahlwert)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; gesetzliches Minimum 10 KT, § 10c EU Abs. 2 VOB/A)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; läuft ab dem Versand der Aufforderung)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; ohne einvernehmliche Festlegung mindestens 10 KT, § 15 Abs. 3 SektVO)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 188 Abs. 1 BGB (entsprechend)) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 188 Abs. 1 BGB (entsprechend)) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; gesetzliches Minimum 10 KT, § 10 Abs. 1 Satz 1 VOB/A)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 188 Abs. 1 BGB (entsprechend)) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; § 10 Abs. 3 VOB/A verlangt nur eine ausreichende Frist ohne Zahlwert)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 54 UVgO i. V. m. § 188 Abs. 1 BGB) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 54 UVgO i. V. m. § 188 Abs. 1 BGB) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; läuft ab dem Versand der Aufforderung)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 54 UVgO i. V. m. § 188 Abs. 1 BGB) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; § 13 Abs. 1 UVgO verlangt nur eine ausreichende Frist ohne Zahlwert)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71) (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71) (Praxiswert; gesetzliches Minimum 10 KT, § 10c EU Abs. 2 VOB/A)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71) (Praxiswert; läuft ab dem Versand der Aufforderung)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71) (Praxiswert; ohne einvernehmliche Festlegung mindestens 10 KT, § 15 Abs. 3 SektVO)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71); Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71); Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71); Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; gesetzliches Minimum 10 KT, § 10c EU Abs. 2 VOB/A)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71); Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; läuft ab dem Versand der Aufforderung)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (Art. 3 Abs. 4 VO (EWG) 1182/71); Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (Art. 3 Abs. 2 Buchst. b VO (EWG) 1182/71) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; ohne einvernehmliche Festlegung mindestens 10 KT, § 15 Abs. 3 SektVO)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 193 BGB (entsprechend)) (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 193 BGB (entsprechend)) (Praxiswert; gesetzliches Minimum 10 KT, § 10 Abs. 1 Satz 1 VOB/A)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 193 BGB (entsprechend)) (Praxiswert; läuft ab dem Versand der Aufforderung)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 193 BGB (entsprechend)) (Praxiswert; § 10 Abs. 3 VOB/A verlangt nur eine ausreichende Frist ohne Zahlwert)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 193 BGB (entsprechend)); Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 188 Abs. 1 BGB (entsprechend)) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 54 UVgO i. V. m. § 193 BGB) (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 54 UVgO i. V. m. § 193 BGB) (Praxiswert; läuft ab dem Versand der Aufforderung)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 54 UVgO i. V. m. § 193 BGB) (Praxiswert; § 13 Abs. 1 UVgO verlangt nur eine ausreichende Frist ohne Zahlwert)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 54 UVgO i. V. m. § 193 BGB); Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 54 UVgO i. V. m. § 188 Abs. 1 BGB) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert, keine gesetzliche Mindestfrist)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 54 UVgO i. V. m. § 193 BGB); Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 54 UVgO i. V. m. § 188 Abs. 1 BGB) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; läuft ab dem Versand der Aufforderung)
+n Kalendertage ab TT.MM.JJJJ (Tag nach der Absendung zählt als Tag 1) → TT.MM.JJJJ; Sa/So/Feiertag → nächster Arbeitstag TT.MM.JJJJ (§ 54 UVgO i. V. m. § 193 BGB); Abgabe bis 10:00 Uhr statt Fristablauf 24:00 Uhr (§ 54 UVgO i. V. m. § 188 Abs. 1 BGB) → nächster Arbeitstag TT.MM.JJJJ, damit die volle Frist gewahrt bleibt (Praxiswert; § 13 Abs. 1 UVgO verlangt nur eine ausreichende Frist ohne Zahlwert)
+n Kalendertage vor Ablauf der Angebotsfrist (TT.MM.JJJJ) → TT.MM.JJJJ (Praxiswert)
+n Kalendertage vor Ablauf der Angebotsfrist (TT.MM.JJJJ) → TT.MM.JJJJ; kein Arbeitstag → vorheriger Arbeitstag TT.MM.JJJJ (Praxiswert)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 4 KT, § 12a EU Abs. 3, § 10a/10b EU Abs. 6 Nr. 1 VOB/A)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 4 KT, § 16 Abs. 3 Nr. 1 SektVO)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 4 KT, § 20 Abs. 3 Satz 1 Nr. 1 VgV)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 4 KT, § 20 Abs. 5 VSVgV)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 12a EU Abs. 3, § 10a/10b EU Abs. 6 Nr. 1 VOB/A)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 16 Abs. 3 Nr. 1 SektVO)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 18 KonzVgV)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 20 Abs. 3 Satz 1 Nr. 1 VgV)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 20 Abs. 5 VSVgV)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ (Praxiswert; kein gesetzliches Minimum)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ; kein Arbeitstag → vorheriger Arbeitstag TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 12a EU Abs. 3, § 10a/10b EU Abs. 6 Nr. 1 VOB/A)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ; kein Arbeitstag → vorheriger Arbeitstag TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 16 Abs. 3 Nr. 1 SektVO)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ; kein Arbeitstag → vorheriger Arbeitstag TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 18 KonzVgV)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ; kein Arbeitstag → vorheriger Arbeitstag TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 20 Abs. 3 Satz 1 Nr. 1 VgV)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ; kein Arbeitstag → vorheriger Arbeitstag TT.MM.JJJJ (Praxiswert; gesetzliches Minimum 6 KT, § 20 Abs. 5 VSVgV)
+n Kalendertage vor Ablauf der Angebotsfrist → TT.MM.JJJJ; kein Arbeitstag → vorheriger Arbeitstag TT.MM.JJJJ (Praxiswert; kein gesetzliches Minimum)
+n Kalendertage vor Ablauf der Teilnahmefrist (TT.MM.JJJJ) → TT.MM.JJJJ (Praxiswert)
+n Kalendertage vor Ablauf der Teilnahmefrist (TT.MM.JJJJ) → TT.MM.JJJJ; kein Arbeitstag → vorheriger Arbeitstag TT.MM.JJJJ (Praxiswert)
+n Kalendertage; die Frist beginnt am Tag nach der Absendung (§ 134 Abs. 2 Satz 3 GWB) → TT.MM.JJJJ. Stillhaltefrist (§ 134 Abs. 2 GWB)
+n Kalendertage; die Frist beginnt am Tag nach der Absendung (§ 134 Abs. 2 Satz 3 GWB) → TT.MM.JJJJ; Sa/So/Feiertag → risikoarm auf den nächsten Arbeitstag TT.MM.JJJJ verlängert (wie OLG Bremen, 2 Verg 1/22; nach h. M. dürfte die Frist auch am Sa/So/Feiertag enden — VK Bund, VK 2-77/21)
+
+## Rechtsgrundlage
+§ 10a EU Abs. 1 VOB/A
+§ 10a EU Abs. 3 VOB/A
+§ 10b EU Abs. 1 VOB/A
+§ 10b EU Abs. 2 VOB/A
+§ 10b EU Abs. 5 Nr. 1 VOB/A
+§ 10b EU Abs. 5 Nr. 2 VOB/A
+§ 10c EU Abs. 1 i. V. m. § 10b EU Abs. 1 VOB/A
+§ 10c EU Abs. 1 i. V. m. § 10b EU Abs. 2 VOB/A
+§ 10c EU Abs. 1 i. V. m. § 10b EU Abs. 5 Nr. 1 VOB/A
+§ 10c EU Abs. 1 i. V. m. § 10b EU Abs. 5 Nr. 2 VOB/A
+§ 134 Abs. 2 GWB
+§ 134 Abs. 2 Satz 1 GWB
+§ 134 Abs. 2 Satz 2 GWB
+§ 14 Abs. 2 SektVO
+§ 14 Abs. 3 SektVO
+§ 15 Abs. 2 SektVO
+§ 15 Abs. 2 VgV
+§ 15 Abs. 3 VgV
+§ 16 Abs. 2 VgV
+§ 16 Abs. 3 VgV
+§ 16 Abs. 5 VgV
+§ 16 Abs. 7 VgV
+§ 17 Abs. 2 VgV
+§ 17 Abs. 3 VgV
+§ 17 Abs. 6 VgV
+§ 17 Abs. 8 VgV
+§ 20 Abs. 2 Satz 1 VSVgV
+§ 20 Abs. 2 Satz 2 VSVgV
+§ 20 Abs. 3 Satz 1 VSVgV
+§ 20 Abs. 3 Satz 2 VSVgV
+§ 27 Abs. 3 KonzVgV
+§ 27 Abs. 4 Satz 1 KonzVgV
+
+## Rechtsstand
+Juli 2026 — inkl. Vergabebeschleunigungsgesetz v. TT.MM.JJJJ (BGBl. 2026 I Nr. 137)
+
+## Warnung am Termin
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 10 KT (§ 10 Abs. 1 Satz 1 VOB/A).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 10 KT (§ 10c EU Abs. 2 VOB/A).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 17 KT (§ 27 Abs. 4 Satz 1 KonzVgV).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 25 KT (§ 10b EU Abs. 2 VOB/A).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 25 KT (§ 10c EU Abs. 1 i. V. m. § 10b EU Abs. 2 VOB/A).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 25 KT (§ 16 Abs. 5 VgV).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 25 KT (§ 17 Abs. 6 VgV).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 10a EU Abs. 1 VOB/A).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 14 Abs. 2 SektVO).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 15 Abs. 2 VgV).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 27 Abs. 3 KonzVgV).
+Angebotsfrist von 8 KT unterschreitet die gesetzliche Mindestfrist von 35 KT (§ 20 Abs. 3 Satz 1 VSVgV).
+Angebotsfrist von 8 KT unterschreitet die ohne einvernehmliche Festlegung geltende Mindestfrist von 10 KT (§ 15 Abs. 3 SektVO) — kürzer nur im gegenseitigen Einvernehmen mit allen Bewerbern (dieselbe Frist für alle ausgewählten Bewerber).
+Der Abgabetermin TT.MM.JJJJ fällt auf Heiligabend — formal ein Arbeitstag, faktisch vielerorts Betriebsruhe; die Frist sollte angepasst werden.
+Der Abgabetermin TT.MM.JJJJ fällt auf Silvester — formal ein Arbeitstag, faktisch vielerorts Betriebsruhe; die Frist sollte angepasst werden.
+Der frühestmögliche Zuschlag (TT.MM.JJJJ) liegt nach Ablauf der Bindefrist (TT.MM.JJJJ) — Bindefrist verlängern oder Verfahrenszeiten straffen.
+Letzte Auskünfte nur 3 KT vor Ablauf der Angebotsfrist — § 12a EU Abs. 3, § 10a/10b EU Abs. 6 Nr. 1 VOB/A verlangt spätestens 6 KT; andernfalls ist die Angebotsfrist zu verlängern.
+Letzte Auskünfte nur 3 KT vor Ablauf der Angebotsfrist — § 16 Abs. 3 Nr. 1 SektVO verlangt spätestens 6 KT; andernfalls ist die Angebotsfrist zu verlängern.
+Letzte Auskünfte nur 3 KT vor Ablauf der Angebotsfrist — § 18 KonzVgV verlangt spätestens 6 KT; andernfalls ist die Angebotsfrist zu verlängern.
+Letzte Auskünfte nur 3 KT vor Ablauf der Angebotsfrist — § 20 Abs. 3 Satz 1 Nr. 1 VgV verlangt spätestens 6 KT; andernfalls ist die Angebotsfrist zu verlängern.
+Letzte Auskünfte nur 3 KT vor Ablauf der Angebotsfrist — § 20 Abs. 5 VSVgV verlangt spätestens 6 KT; andernfalls ist die Angebotsfrist zu verlängern.
+Teilnahmefrist von 10 KT unterschreitet die absolute Untergrenze von 15 KT (§ 15 Abs. 2 SektVO).
+Teilnahmefrist von 10 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 10b EU Abs. 1 VOB/A).
+Teilnahmefrist von 10 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 10c EU Abs. 1 i. V. m. § 10b EU Abs. 1 VOB/A).
+Teilnahmefrist von 10 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 16 Abs. 2 VgV).
+Teilnahmefrist von 10 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 17 Abs. 2 VgV).
+Teilnahmefrist von 10 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 20 Abs. 2 Satz 1 VSVgV).
+Teilnahmefrist von 10 KT unterschreitet die gesetzliche Mindestfrist von 30 KT (§ 27 Abs. 3 KonzVgV).
+Verhandlungen im nicht offenen Verfahren sind unzulässig (§ 11 Abs. 2 VSVgV) — zulässig ist nur die Aufklärung.
+Verhandlungen sind auch im nicht offenen Verfahren unstatthaft (§ 15 EU Abs. 3 VOB/A) — zulässig ist nur die Aufklärung (§ 15 EU Abs. 1 VOB/A).
+Verhandlungen sind auch im nicht offenen Verfahren unzulässig (§ 16 Abs. 9 i. V. m. § 15 Abs. 5 Satz 2 VgV) — zulässig ist nur die Aufklärung.
+Verhandlungen sind bei Beschränkter Ausschreibung nicht vorgesehen — zulässig ist nur die Aufklärung (§ 15 VOB/A).
+Verhandlungen sind bei der Beschränkten Ausschreibung nicht vorgesehen — zulässig ist nur die Aufklärung.
+Verhandlungen sind bei der Öffentlichen Ausschreibung nicht vorgesehen — zulässig ist nur die Aufklärung.
+Verhandlungen sind bei Öffentlicher Ausschreibung nicht vorgesehen — zulässig ist nur die Aufklärung (§ 15 VOB/A).
+Verhandlungen sind im nicht offenen Verfahren nicht vorgesehen — zulässig ist nur die Aufklärung über Angebot oder Eignung.
+Verhandlungen sind im offenen Verfahren nicht vorgesehen — zulässig ist nur die Aufklärung über Angebot oder Eignung.
+Verhandlungen sind im offenen Verfahren unstatthaft (§ 15 EU Abs. 3 VOB/A) — zulässig ist nur die Aufklärung (§ 15 EU Abs. 1 VOB/A).
+Verhandlungen sind im offenen Verfahren unzulässig (§ 15 Abs. 5 Satz 2 VgV) — zulässig ist nur die Aufklärung über Angebot oder Eignung (§ 15 Abs. 5 Satz 1 VgV).
+Wartefrist von 5 KT unterschreitet die gesetzliche Frist von 10 KT (§ 134 Abs. 2 Satz 2 GWB) — ein früherer Zuschlag wäre nach § 135 Abs. 1 Nr. 1 GWB unwirksam.

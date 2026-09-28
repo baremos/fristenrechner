@@ -8,5 +8,20 @@
   "type": "module",
   "engines": {
     "node": "^22.23.2 || ^24.18.1"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/api.d.ts",
+      "default": "./dist/api.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "referenz:schreiben": "vitest run test/referenz --update"
   }
 }

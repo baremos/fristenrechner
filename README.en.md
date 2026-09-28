@@ -16,7 +16,7 @@ The repository is under construction. Nothing has been released yet.
 |---|---|
 | Tools and versions | defined, see [docs/toolchain.md](docs/toolchain.md) |
 | Project scaffold | in place |
-| Calculation core | to follow |
+| Calculation core | in place, with tests and reference cases |
 | User interface | to follow |
 | Android app | to follow |
 
@@ -24,7 +24,7 @@ The work packages are listed in [docs/arbeitspakete.md](docs/arbeitspakete.md). 
 
 ## What the software will calculate
 
-This section describes the scope of version 1. It is not yet implemented in the repository.
+This section describes the scope of version 1. So far, the repository implements the calculation core; user interface and app follow.
 
 From the data entered, the software produces a schedule of dates and deadlines for a procurement procedure. Version 1 calculates the same as the [calculator on www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). The scope is defined in [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md).
 
@@ -47,7 +47,7 @@ From the data entered, the software produces a schedule of dates and deadlines f
 
 ## Structure
 
-So far, the folders of the packages and of the app contain only their manifest. The table states the intended content.
+The folder `packages/kern` contains the calculation core. So far, the folders of the user interface and of the app contain only their manifest; the table states the intended content.
 
 | Folder | Content | Package name |
 |---|---|---|
@@ -75,9 +75,9 @@ All versions and the reasons for them are in [docs/toolchain.md](docs/toolchain.
 | Step | Command | Status |
 |---|---|---|
 | Install dependencies | `npm ci` | works |
-| Tests | `npm test` | works, so far it tests the scripts |
-| Type check | `npm run check` | runs without effect until the packages bring a type check |
-| Build the packages | `npm run build` | runs without effect until the packages bring a build |
+| Tests | `npm test` | works, tests the scripts and the calculation core |
+| Type check | `npm run check` | works for the calculation core |
+| Build the packages | `npm run build` | works for the calculation core |
 | Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the Android project in `app/android`, which follows with the app |
 | Build the Android app | `node scripts/android-build.mjs` | needs the Android project in `app/android`, which follows with the app |
 

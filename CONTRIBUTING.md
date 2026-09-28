@@ -32,6 +32,7 @@ Bitte ein Issue anlegen. Hilfreich sind:
 - Jede Änderung einer Regel hat einen Test, der sie belegt.
 - Kein Wert wird geschätzt. Fehlt eine belastbare Quelle, bleibt die Regel unverändert.
 - Regelversion und Rechtsstand hebt nur der fachlich Verantwortliche an.
+- Die Referenzdateien unter `packages/kern/test/referenz` halten fest, was der Rechenkern rechnet. Wer eine Regel ändert, schreibt sie mit `npm run referenz:schreiben --workspace packages/kern` neu. Die Unterschiede gehören zum Pull Request.
 
 ## Regeln für Abhängigkeiten
 
@@ -50,9 +51,9 @@ Dateien aus anderen Quellen werden vor dem ersten Einchecken geprüft. Die Prüf
 | Schritt | Befehl | Stand |
 |---|---|---|
 | Abhängigkeiten installieren | `npm ci` | läuft |
-| Tests | `npm test` | läuft, prüft bisher die Skripte |
-| Typprüfung | `npm run check` | läuft ohne Wirkung, bis die Pakete eine Typprüfung mitbringen |
-| Build der Pakete | `npm run build` | läuft ohne Wirkung, bis die Pakete einen Build mitbringen |
+| Tests | `npm test` | läuft, prüft die Skripte und den Rechenkern |
+| Typprüfung | `npm run check` | läuft für den Rechenkern |
+| Build der Pakete | `npm run build` | läuft für den Rechenkern |
 | Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 
 Die Befehle funktionieren ohne private Dateien. Die Versionen der Werkzeuge stehen in [docs/toolchain.md](docs/toolchain.md).

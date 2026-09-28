@@ -16,7 +16,7 @@ Das Repository ist im Aufbau. Es gibt noch keine Veröffentlichung.
 |---|---|
 | Werkzeuge und Versionen | festgelegt, siehe [docs/toolchain.md](docs/toolchain.md) |
 | Projektgerüst | vorhanden |
-| Rechenkern | folgt |
+| Rechenkern | vorhanden, mit Tests und Referenzfällen |
 | Oberfläche | folgt |
 | Android-App | folgt |
 
@@ -24,7 +24,7 @@ Die Arbeitspakete stehen in [docs/arbeitspakete.md](docs/arbeitspakete.md). Die 
 
 ## Was die Software rechnen wird
 
-Dieser Abschnitt beschreibt den Umfang von Version 1. Im Repository ist er noch nicht umgesetzt.
+Dieser Abschnitt beschreibt den Umfang von Version 1. Im Repository ist bisher der Rechenkern umgesetzt, Oberfläche und App folgen.
 
 Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren. Version 1 rechnet dasselbe wie der [Fristenrechner auf www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). Den Umfang legt [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md) fest.
 
@@ -47,7 +47,7 @@ Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren.
 
 ## Aufbau
 
-Die Ordner der Pakete und der App enthalten bisher nur ihr Manifest. Die Tabelle nennt den vorgesehenen Inhalt.
+Der Ordner `packages/kern` enthält den Rechenkern. Die Ordner der Oberfläche und der App enthalten bisher nur ihr Manifest, die Tabelle nennt den vorgesehenen Inhalt.
 
 | Ordner | Inhalt | Paketname |
 |---|---|---|
@@ -75,9 +75,9 @@ Alle Versionen und ihre Begründung stehen in [docs/toolchain.md](docs/toolchain
 | Schritt | Befehl | Stand |
 |---|---|---|
 | Abhängigkeiten installieren | `npm ci` | läuft |
-| Tests | `npm test` | läuft, prüft bisher die Skripte |
-| Typprüfung | `npm run check` | läuft ohne Wirkung, bis die Pakete eine Typprüfung mitbringen |
-| Build der Pakete | `npm run build` | läuft ohne Wirkung, bis die Pakete einen Build mitbringen |
+| Tests | `npm test` | läuft, prüft die Skripte und den Rechenkern |
+| Typprüfung | `npm run check` | läuft für den Rechenkern |
+| Build der Pakete | `npm run build` | läuft für den Rechenkern |
 | Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 | Android-App bauen | `node scripts/android-build.mjs` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 
