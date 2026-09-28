@@ -95,13 +95,22 @@ function Find-Jdk {
     throw "Kein JDK $($vorgabe.jdk.hauptversion) gefunden. Zuerst ein JDK nach docs/toolchain.md installieren oder -JavaHome angeben."
 }
 
+# Entfernt Schraegstriche am Ende eines Pfads, ausser bei einem Wurzelordner.
+# Windows PowerShell 5.1 setzt ein Argument mit Leerzeichen in Anfuehrungszeichen.
+# Ein Backslash direkt davor wuerde das schliessende Zeichen maskieren.
+function Get-OhneEndstrich([string]$Pfad) {
+    $wurzel = [string][System.IO.Path]::GetPathRoot($Pfad)
+    if ($Pfad.Length -le $wurzel.Length) { return $Pfad }
+    return $wurzel + $Pfad.Substring($wurzel.Length).TrimEnd('\', '/')
+}
+
 # Prueft Pakete mit scripts/SdkPruefung.java und liefert je Paket Status, Name,
 # gefundene Revision und Meldung. Das Build-Skript ruft dasselbe Programm auf.
 # Status: OK, ABWEICHUNG, FEHLT oder UNGUELTIG.
-function Test-Pakete([string]$Jdk, [string]$Sdk, $Pakete) {
+function Test-Pakete([string]$Jdk, [string]$Sdk, $Pakete, [string]$Programm = (Join-Path $PSScriptRoot 'SdkPruefung.java')) {
     $angaben = @()
     foreach ($paket in $Pakete) { $angaben += @([string]$paket.name, [string]$paket.ordner, [string]$paket.revision) }
-    $zeilen = @(& (Join-Path $Jdk 'bin\java.exe') (Join-Path $PSScriptRoot 'SdkPruefung.java') $Sdk @angaben)
+    $zeilen = @(& (Join-Path $Jdk 'bin\java.exe') $Programm (Get-OhneEndstrich $Sdk) @angaben)
     if ($LASTEXITCODE -ne 0) { throw "Die Pruefung der Pakete endete mit Code $LASTEXITCODE." }
     $zeilen = @($zeilen | Where-Object { $_ })
     if ($zeilen.Count -ne @($Pakete).Count) { throw 'Die Pruefung der Pakete hat eine unerwartete Ausgabe geliefert.' }
@@ -141,6 +150,7 @@ try {
     $laufwerk = $null
     $SdkRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($SdkRoot, [ref]$anbieter, [ref]$laufwerk)
     if ($anbieter.Name -ne 'FileSystem') { throw "Der Ort des SDK muss ein Ordner im Dateisystem sein: $SdkRoot" }
+    $SdkRoot = Get-OhneEndstrich $SdkRoot
     Write-Host "JDK:  $jdk"
     Write-Host "SDK:  $SdkRoot ($herkunft)"
 

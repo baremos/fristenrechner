@@ -191,6 +191,55 @@ test('falscher Aufruf endet mit Code 2', { skip: ohneJdk }, () => {
   assert.equal(spawnSync(java, [join(hier, 'SdkPruefung.java'), 'sdk', name], { encoding: 'utf8' }).status, 2);
 });
 
+// Das Einrichtungsskript ruft das Programm aus PowerShell auf. Windows PowerShell 5.1
+// maskiert Argumente anders als PowerShell 7. Geprüft wird ein SDK-Ordner mit
+// Leerzeichen und Umlauten, auch mit Schrägstrich am Ende. Die Pfade gehen über
+// Umgebungsvariablen an das Hilfsskript, das selbst nur ASCII enthält.
+const hilfsskript = [
+  "$ErrorActionPreference = 'Stop'",
+  'Set-StrictMode -Version Latest',
+  '$baum = [System.Management.Automation.Language.Parser]::ParseFile($env:PRUEF_SKRIPT, [ref]$null, [ref]$null)',
+  '$baum.FindAll({ param($k) $k -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false) |',
+  "    Where-Object { $_.Name -in @('Get-OhneEndstrich', 'Test-Pakete') } |",
+  '    ForEach-Object { . ([scriptblock]::Create($_.Extent.Text)) }',
+  '$paket = [pscustomobject]@{ name = $env:PRUEF_PAKET; ordner = $env:PRUEF_ORDNER; revision = $env:PRUEF_REVISION }',
+  "foreach ($ende in @('', '\\', '\\\\', '/')) {",
+  '    $e = @(Test-Pakete $env:PRUEF_JDK ($env:PRUEF_SDK + $ende) @($paket) $env:PRUEF_PROGRAMM)[0]',
+  '    "$($e.Status) $($e.Gefunden)"',
+  '}',
+  "\"Wurzel $(Get-OhneEndstrich 'C:\\')\"",
+].join('\r\n');
+
+for (const programm of ['powershell', 'pwsh']) {
+  const vorhanden = windows && java && spawnSync(programm, ['-NoProfile', '-Command', 'exit 0']).status === 0;
+  const grund = vorhanden ? false : `${programm} mit JDK ${vorgabe.jdk.hauptversion} unter Windows ist nicht vorhanden`;
+  test(`${programm}: SDK-Ordner mit Leerzeichen, Umlauten und Schrägstrich am Ende`, { skip: grund }, () => {
+    const arbeit = mkdtempSync(join(tmpdir(), 'sdk-pruefung-'));
+    try {
+      const sdk = join(arbeit, 'Pr\u00fcf SDK \u00e4 \u00df');
+      mkdirSync(join(sdk, 'build-tools', '35.0.0'), { recursive: true });
+      writeFileSync(join(sdk, 'build-tools', '35.0.0', 'package.xml'), paket(voll));
+      const skript = join(arbeit, 'aufruf.ps1');
+      writeFileSync(skript, hilfsskript);
+      const umgebung = {
+        ...process.env,
+        PRUEF_SKRIPT: join(hier, 'android-sdk-einrichten.ps1'),
+        PRUEF_PROGRAMM: join(hier, 'SdkPruefung.java'),
+        PRUEF_JDK: dirname(dirname(java)),
+        PRUEF_SDK: sdk,
+        PRUEF_PAKET: name,
+        PRUEF_ORDNER: 'build-tools/35.0.0',
+        PRUEF_REVISION: soll,
+      };
+      const probe = spawnSync(programm, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', skript], { encoding: 'utf8', env: umgebung });
+      assert.equal(probe.status, 0, `${probe.stdout}${probe.stderr}`);
+      assert.deepEqual(probe.stdout.trim().split(/\r?\n/), ['OK 35.0.0', 'OK 35.0.0', 'OK 35.0.0', 'OK 35.0.0', 'Wurzel C:\\']);
+    } finally {
+      rmSync(arbeit, { recursive: true, force: true });
+    }
+  });
+}
+
 test('Kennung mit fremden Zeichen erscheint in der Meldung als ASCII', { skip: ohneJdk }, () => {
   const arbeit = mkdtempSync(join(tmpdir(), 'sdk-pruefung-'));
   try {
