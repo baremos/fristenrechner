@@ -1,6 +1,6 @@
 # Fristenrechner Vergabe
 
-A calculation aid for dates and deadlines in public procurement procedures under German law. Published by BAREMOS IT GmbH, Berlin. The English name is "Procurement Deadline Calculator (Germany)".
+A calculation aid for dates and deadlines in public procurement procedures (tenders) under German law: VgV, VOB/A, SektVO, UVgO and further procurement regulations. Published by BAREMOS IT GmbH, Berlin. The English name is "Procurement Deadline Calculator (Germany)".
 
 [Deutsche Fassung](README.md)
 

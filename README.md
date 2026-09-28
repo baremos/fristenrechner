@@ -1,6 +1,6 @@
 # Fristenrechner Vergabe
 
-Rechenhilfe für Termine und Fristen in Vergabeverfahren nach deutschem Recht. Herausgeber ist die BAREMOS IT GmbH, Berlin. Der englische Name lautet „Procurement Deadline Calculator (Germany)“.
+Rechenhilfe für Termine und Fristen in Vergabeverfahren (Ausschreibungen) nach deutschem Recht: VgV, VOB/A, SektVO, UVgO und weitere Vergabeordnungen. Herausgeber ist die BAREMOS IT GmbH, Berlin. Der englische Name lautet „Procurement Deadline Calculator (Germany)“.
 
 [English version](README.en.md)
 
