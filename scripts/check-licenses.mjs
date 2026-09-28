@@ -5,7 +5,7 @@
 // Regeln und Grenzen: docs/lizenzen.md, Daten: check-licenses.json.
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join, posix, resolve } from 'node:path';
+import { dirname, join, posix, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const hier = dirname(fileURLToPath(import.meta.url));
@@ -19,8 +19,13 @@ function sortiert(x) {
   return Object.fromEntries(Object.keys(x).sort().map((k) => [k, sortiert(x[k])]));
 }
 
-function leseJson(datei) {
-  return JSON.parse(readFileSync(datei, 'utf8').replace(/^\uFEFF/, ''));
+function leseJson(datei, wurzel) {
+  try {
+    return JSON.parse(readFileSync(datei, 'utf8').replace(/^\uFEFF/, ''));
+  } catch (e) {
+    const pfad = relative(wurzel, datei).replaceAll('\\', '/');
+    throw new Error(`JSON-Datei ${pfad} ist nicht lesbar oder ungültig: ${e.code ?? e.message}`, { cause: e });
+  }
 }
 
 function pruefePfad(pfad) {
@@ -174,14 +179,14 @@ export function pruefePackliste(liste, workspaces, wurzel) {
 }
 
 export function pruefeProjekt(wurzel, { packliste } = {}) {
-  const lock = leseJson(join(wurzel, 'package-lock.json'));
+  const lock = leseJson(join(wurzel, 'package-lock.json'), wurzel);
   if (lock.lockfileVersion !== 3 || !objekt(lock.packages) || !objekt(lock.packages[''])) {
     throw new Error('Erwartet wird package-lock.json im Format 3 mit packages und Wurzeleintrag.');
   }
   const pakete = lock.packages;
-  const root = leseJson(join(wurzel, 'package.json'));
+  const root = leseJson(join(wurzel, 'package.json'), wurzel);
   const lokalePfade = ['', ...workspacePfade(wurzel, root.workspaces ?? [])];
-  const lokale = new Map(lokalePfade.map((p) => [p, p ? leseJson(join(wurzel, p, 'package.json')) : root]));
+  const lokale = new Map(lokalePfade.map((p) => [p, p ? leseJson(join(wurzel, p, 'package.json'), wurzel) : root]));
   const fehler = [];
   const hinweise = [];
   const workspaces = [...lokale].filter(([p]) => p).map(([pfad, m]) => ({ pfad, name: m.name, version: m.version }));
@@ -251,7 +256,7 @@ export function pruefeProjekt(wurzel, { packliste } = {}) {
     let hinweisdateien = [];
     if (existsSync(ordner)) {
       try {
-        const manifest = leseJson(join(ordner, 'package.json'));
+        const manifest = leseJson(join(ordner, 'package.json'), wurzel);
         installiert = true;
         lizenzInstalliert = manifest.license ?? null;
         if (manifest.name !== name) paketFehler.push(`Installierter Paketname weicht ab: ${manifest.name}`);
@@ -275,13 +280,22 @@ export function pruefeProjekt(wurzel, { packliste } = {}) {
     fehler.push(...paketFehler.map((f) => `${pfad}: ${f}`));
   }
   for (const datei of vorgabe.paketHinweise) {
-    try { if (!readFileSync(join(wurzel, datei)).length) fehler.push(`${datei} in der Wurzel ist leer.`); }
+    let original;
+    try {
+      original = readFileSync(join(wurzel, datei));
+      if (!original.length) fehler.push(`${datei} in der Wurzel ist leer.`);
+    }
     catch { fehler.push(`${datei} in der Wurzel fehlt oder ist nicht lesbar.`); }
     for (const w of workspaces.filter((w) => w.pfad.startsWith('packages/'))) {
-      if (!existsSync(join(wurzel, w.pfad, datei))) hinweise.push(`${w.pfad}/${datei} fehlt; vor Stufe 3 ergänzen und Packliste prüfen.`);
+      const pfad = `${w.pfad}/${datei}`;
+      try {
+        const kopie = readFileSync(join(wurzel, pfad));
+        if (!kopie.length) fehler.push(`${pfad} ist leer.`);
+        else if (original && !kopie.equals(original)) fehler.push(`${pfad} stimmt nicht mit der Wurzeldatei überein.`);
+      } catch { fehler.push(`${pfad} fehlt oder ist nicht lesbar.`); }
     }
   }
-  if (packliste !== undefined) fehler.push(...pruefePackliste(leseJson(packliste), workspaces, wurzel));
+  if (packliste !== undefined) fehler.push(...pruefePackliste(leseJson(packliste, wurzel), workspaces, wurzel));
   else hinweise.push('npm-Packlisten wurden nicht geprüft; dafür --packliste verwenden.');
   hinweise.push('Installationsskripte und vorgebaute Programme sind Hinweise für Paket 2.8, keine automatische F-Droid-Freigabe.');
   hinweise.push('Proprietäre Dienste, eingebettete Fremdanteile und vollständige Lizenztexte werden nicht automatisch bewertet.');

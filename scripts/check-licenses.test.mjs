@@ -40,6 +40,9 @@ function probe(aendern = () => {}) {
   for (const [pfad, manifest] of Object.entries(f.installiert)) schreiben(join(wurzel, pfad, 'package.json'), manifest);
   schreiben(join(wurzel, 'LICENSE'), 'Lizenz der Probe\n');
   schreiben(join(wurzel, 'NOTICE'), 'Hinweis der Probe\n');
+  for (const datei of ['LICENSE', 'NOTICE']) {
+    schreiben(join(wurzel, 'packages/kern', datei), readFileSync(join(wurzel, datei), 'utf8'));
+  }
   return f;
 }
 
@@ -99,7 +102,7 @@ test('Ohne node_modules werden alle Lockfile-Pakete geprüft', () => {
   assert.equal(b.zusammenfassung.nurLockfile, 1);
   assert.equal(b.zusammenfassung.ausgeliefert, 0);
   assert.equal(b.packlisteGeprueft, false);
-  assert.match(b.hinweise.join('\n'), /LICENSE fehlt/);
+  assert.match(b.hinweise.join('\n'), /npm-Packlisten wurden nicht geprüft/);
 });
 
 test('Installierte Metadaten und Hinweisdateien werden gelesen, aber kein Skript ausgeführt', () => {
@@ -336,6 +339,55 @@ function cli(f, args) {
     encoding: 'utf8', cwd: arbeit, env: { ...process.env, TEMP: arbeit, TMP: arbeit },
   });
 }
+
+for (const datei of ['LICENSE', 'NOTICE']) {
+  for (const [fall, aendern, muster] of [
+    ['gleich', () => {}, null],
+    ['abweichend', (pfad) => schreiben(pfad, 'Veraltet\n'), /stimmt nicht mit der Wurzeldatei/],
+    ['andere Zeilenenden', (pfad) => schreiben(pfad, readFileSync(pfad, 'utf8').replaceAll('\n', '\r\n')), /stimmt nicht mit der Wurzeldatei/],
+    ['leer', (pfad) => schreiben(pfad, ''), /ist leer/],
+    ['fehlend', (pfad) => rmSync(pfad), /fehlt oder ist nicht lesbar/],
+  ]) {
+    test(`Normaler CLI-Lauf prüft Paketkopie ${datei}: ${fall}`, () => {
+      const f = probe();
+      aendern(join(f.wurzel, 'packages/kern', datei));
+      const lauf = cli(f, ['--json']);
+      assert.equal(lauf.status, muster ? 1 : 0, lauf.stdout || lauf.stderr);
+      assert.equal(lauf.stderr, '');
+      const bericht = JSON.parse(lauf.stdout);
+      assert.equal(bericht.packlisteGeprueft, false);
+      assert.equal(bericht.ok, !muster);
+      if (muster) {
+        const meldung = bericht.fehler.find((f) => f.startsWith(`packages/kern/${datei} `));
+        assert.match(meldung ?? '', muster);
+      } else assert.deepEqual(bericht.fehler, []);
+    });
+  }
+}
+
+for (const pfad of ['package-lock.json', 'package.json', 'packages/kern/package.json', 'node_modules/werkzeug/package.json', 'packliste.json']) {
+  test(`JSON-Fehler nennt den wurzelrelativen Dateipfad: ${pfad}`, () => {
+    const f = probe();
+    schreiben(join(f.wurzel, pfad), '{');
+    const args = pfad === 'packliste.json' ? ['--packliste', join(f.wurzel, pfad)] : [];
+    for (const json of [false, true]) {
+      const lauf = cli(f, [...args, ...(json ? ['--json'] : [])]);
+      assert.equal(lauf.status, 1);
+      assert.equal(lauf.stderr, '');
+      const meldung = json ? JSON.parse(lauf.stdout).fehler.join('\n') : lauf.stdout;
+      assert.ok(meldung.includes(`JSON-Datei ${pfad} ist nicht lesbar oder ungültig:`), meldung);
+      assert.ok(!meldung.includes(f.wurzel), meldung);
+    }
+  });
+}
+
+test('Nicht lesbare JSON-Datei wird mit relativem Pfad und Fehlercode gemeldet', () => {
+  const f = probe();
+  rmSync(join(f.wurzel, 'package-lock.json'));
+  const lauf = cli(f, ['--json']);
+  assert.equal(lauf.status, 1);
+  assert.deepEqual(JSON.parse(lauf.stdout).fehler, ['JSON-Datei package-lock.json ist nicht lesbar oder ungültig: ENOENT']);
+});
 
 test('CLI liefert sauberes JSON sowie deutsche Ausgabe und passende Exit-Codes', () => {
   const f = probe();
