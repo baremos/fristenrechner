@@ -1,6 +1,6 @@
 # Werkzeuge und Versionen
 
-Stand 2026-09-27 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review am 2026-09-27 bestanden. Einrichtung des Projekt-SDK und Beispielbuild stehen aus, siehe Abschnitt „Nachweis".
+Stand 2026-09-28 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review der Festlegung am 2026-09-27 bestanden. Am 2026-09-28 geändert: Kommandozeilenwerkzeuge 22.0 statt 23.0, Revisionsprüfung über `package.xml`, Testgeräte. Das Kreuz-Review dieser Änderungen steht aus.
 
 ## Zweck
 
@@ -126,7 +126,7 @@ Der Ordner ist bewusst nicht der Standardordner von Android Studio. So verwaltet
 
 | Paket für `sdkmanager` | Revision | Gruppe | Geht in die App ein |
 |---|---|---|---|
-| `cmdline-tools;23.0` | 23.0 | Build | nein |
+| `cmdline-tools;22.0` | 22.0 | Build | nein |
 | `platforms;android-36` | 2 | Build | ja |
 | `build-tools;35.0.0` | 35.0.0 | Build | ja |
 | `platform-tools` | 37.0.1 | Build | nein |
@@ -135,12 +135,12 @@ Der Ordner ist bewusst nicht der Standardordner von Android Studio. So verwaltet
 | `system-images;android-30;default;x86_64` | 11 | Test | nein |
 | `system-images;android-24;default;x86_64` | 8 | Test | nein |
 
-Archive und Prüfsummen (SHA-1) aus den Paketlisten von Google, Stand 2026-09-27:
+Archive und Prüfsummen (SHA-1) aus den Paketlisten von Google, Stand 2026-09-27, Kommandozeilenwerkzeuge Stand 2026-09-28:
 
 | Paket | Archiv | SHA-1 |
 |---|---|---|
-| Kommandozeilenwerkzeuge, Windows | `commandlinetools-win-16111833_latest.zip` | `57d04f2d75eb8e8fffc5000a987e5de4b5a63e9d` |
-| Kommandozeilenwerkzeuge, Linux | `commandlinetools-linux-16111833_latest.zip` | `e025545c62a8e64c7559119566a569fb1dec5f60` |
+| Kommandozeilenwerkzeuge 22.0, Windows | `commandlinetools-win-15859902_latest.zip` | `b9862337a13e2809a5159dc3a08d058091bd59f6` |
+| Kommandozeilenwerkzeuge 22.0, Linux | `commandlinetools-linux-15859902_latest.zip` | `040d3996a65543d22ec4bf73e4c37aa37a8d4af4` |
 | Plattform 36 | `platform-36_r02.zip` | `2c1a80dd4d9f7d0e6dd336ec603d9b5c55a6f576` |
 | Build-Tools 35.0.0, Windows | `build-tools_r35_windows.zip` | `af059bb67cf7786f45ee0db85e2d24985df1b4b6` |
 | Build-Tools 35.0.0, Linux | `build-tools_r35_linux.zip` | `2cfaa0bbb2336e9ec18ed3ecea84fa2e2af607bc` |
@@ -154,20 +154,40 @@ Archive und Prüfsummen (SHA-1) aus den Paketlisten von Google, Stand 2026-09-27
 
 Das Einrichtungsskript prüft das Archiv der Kommandozeilenwerkzeuge gegen die Prüfsumme und gibt zusätzlich dessen SHA-256 aus. Die übrigen Archive lädt und prüft `sdkmanager`.
 
+Zu den Kommandozeilenwerkzeugen:
+
+- Festgelegt ist 22.0, die letzte Fassung mit dem Programm `sdkmanager`. Es läuft mit dem festgelegten JDK und lädt selbst nichts nach. Das Einrichtungsskript startet es direkt über das JDK, ohne die Batch-Datei.
+- Die Fassung 23.0 enthält `sdkmanager` nicht mehr. Ihre Datei `sdkmanager.bat` reicht die Aufrufe an das Android-CLI (`android.exe`) weiter. Das Android-CLI ist für dieses Projekt nicht festgelegt. Grund sind drei Beobachtungen vom 2026-09-28 unter Windows, mit dem Starter 1.0.15498356 aus dem Archiv 23.0 und dem nachgeladenen Programm 1.0.16406183:
+
+| Beobachtung | Folge |
+|---|---|
+| Der Starter hat das eigentliche Programm und eine eigene Java-Laufzeit in das Benutzerprofil geladen | Die Prüfsumme des Archivs deckt das ausgeführte Programm nicht ab, seine Version steht nicht fest |
+| Die Nutzungsstatistik war in der Voreinstellung eingeschaltet | Das Skript müsste sie bei jedem Aufruf mit `--no-metrics` abschalten |
+| Der Installationslauf hat auf die Lizenzbedingungen verwiesen, ihre Bestätigung nicht abgefragt und die Zustimmung im SDK abgelegt | Die Bestätigung durch die installierende Person entfällt |
+
+- Das Archiv 22.0 enthält `android.exe` ebenfalls. Die Skripte rufen die Datei nicht auf.
+- Google hat `sdkmanager` abgekündigt, 22.0 gibt dazu eine Warnung aus. Die Festlegung ist deshalb eine Übergangslösung. Die Regelprüfung prüft vierteljährlich, ob sie noch trägt. Der Ersatz wäre ein eigenes Installationsskript, das die hier genannten Archive lädt und gegen ihre Prüfsummen prüft.
+
 So bleiben die Revisionen unter Kontrolle:
 
 - `sdkmanager` liefert zu einem Paketnamen den jeweils aktuellen Stand. Eine spätere Installation kann deshalb eine andere Revision bringen als hier festgelegt.
 - Das Einrichtungsskript vergleicht nach der Installation jede Revision mit `scripts/toolchain.json`, auch die der Kommandozeilenwerkzeuge. Bei einer Abweichung endet es mit einem Fehler.
+- Beide Skripte lesen die Revision aus der Datei `package.xml` des Pakets. `sdkmanager` schreibt sie aus der Paketliste von Google. Die Skripte prüfen dabei die Paketkennung. Fehlt `minor` oder `micro`, gilt 0.
+- Das Einrichtungsskript liest `package.xml` mit dem XML-Leser von .NET. Das Build-Skript nutzt `scripts/paket-revision.mjs`, weil Node keinen XML-Leser mitbringt und die Skripte ohne Fremdbibliothek auskommen. Dieser Leser versteht Elemente, Attribute, Text, Kommentare und Namensräume. Jeden anderen Aufbau lehnt er ab, er ist damit strenger als der Leser von .NET.
+- `scripts/paket-revision.test.mjs` prüft beide Leser gegen dieselben Fälle: `node --test "scripts/*.test.mjs"`.
+- `source.properties` stammt aus dem Archiv und gilt nur, wenn `package.xml` fehlt. Das ist bei den Kommandozeilenwerkzeugen der Fall, die das Einrichtungsskript selbst entpackt. Die Datei kann einen älteren Stand nennen: Das Archiv `x86_64-30_r11.zip` nennt dort Revision 10.
+- Ist eine vorhandene `package.xml` unlesbar oder beschreibt sie ein anderes Paket, gilt das Paket als ungültig. Die Skripte greifen dann nicht auf `source.properties` zurück.
 - Das Build-Skript vergleicht vor jedem Build alle Pakete beider Gruppen:
 
 | Befund | Folge |
 |---|---|
-| Paket der Gruppe „Build" fehlt | Abbruch |
+| Paket der Gruppe „Build" fehlt oder ist ungültig | Abbruch |
 | Paket, das in die App eingeht, weicht ab | Abbruch |
-| Paket der Gruppe „Test" fehlt | Hinweis |
+| Paket der Gruppe „Test" fehlt oder ist ungültig | Hinweis |
 | anderes Paket weicht ab | Hinweis |
 | beliebiger Hinweis bei `--streng` | Abbruch |
 
+- Der Vergleich prüft Revisionen, nicht den Inhalt der installierten Dateien.
 - Eine neue Revision wird erst nach Prüfung übernommen: Eintrag in diesem Dokument und in `scripts/toolchain.json`, Kreuz-Review.
 
 Weitere Angaben:
@@ -175,7 +195,8 @@ Weitere Angaben:
 - `build-tools;35.0.0` ist die Mindest- und Standardversion des Android-Gradle-Plugins 8.13. Das App-Projekt trägt sie ausdrücklich als `buildToolsVersion` ein. `apksigner` und `zipalign` kommen aus diesem Paket, `keytool` aus dem JDK.
 - Die Systemabbilder der Reihe `default` enthalten keine Google-Dienste. Sie decken die Ziel-API (Android 16), eine mittlere Version (API 30, Android 11) und die Mindest-API (Android 7.0) ab.
 - Beide Gruppen werden zusammen eingerichtet. Die Gruppe „Test" umfasst rund 2,3 GB.
-- Das Android SDK steht unter den Lizenzbedingungen von Google. Wer es installiert, bestätigt sie selbst mit `sdkmanager --licenses`.
+- Das Android SDK steht unter den Lizenzbedingungen von Google. Alle festgelegten Pakete nennen die Lizenz `android-sdk-license`. `sdkmanager` zeigt sie vor der Installation an, solange sie im SDK nicht bestätigt ist. Wer installiert, bestätigt sie selbst. Ohne Bestätigung installiert `sdkmanager` nichts.
+- Das Einrichtungsskript ruft `sdkmanager --licenses` nicht auf. Der Aufruf legt auch Bedingungen vor, die die festgelegten Pakete nicht brauchen.
 
 ## Abweichungen von der Capacitor-Vorlage
 
@@ -212,10 +233,32 @@ Offen für Arbeitspaket 2.8: Prüfsummen der Gradle-Abhängigkeiten über `gradl
 | Werkzeuge prüfen | `node scripts/android-build.mjs --nur-pruefen` |
 | Bauen | `node scripts/android-build.mjs` |
 | Bauen für ein Release | `node scripts/android-build.mjs --streng --aufgabe assembleRelease` |
+| Skripte testen | `node --test "scripts/*.test.mjs"` |
 
 - Die Skripte suchen das JDK in dieser Reihenfolge: `JAVA_HOME`, dann die üblichen Installationsordner von Eclipse Temurin, Microsoft Build of OpenJDK und der Android-Komponenten von Visual Studio. Sie nehmen das erste geeignete JDK.
 - Ist kein JDK 21 vorhanden: Eclipse Temurin 21 nach der Anleitung von Adoptium installieren, https://adoptium.net/installation/windows. Die Skripte brauchen keinen Eintrag in `PATH`.
 - Der Emulator braucht unter Windows die Funktion „Windows-Hypervisor-Plattform". Sie wird einmalig mit Administratorrechten eingeschaltet und verlangt einen Neustart: `Enable-WindowsOptionalFeature -Online -FeatureName HypervisorPlatform -All`. `emulator -accel-check` zeigt, ob die Beschleunigung verfügbar ist.
+
+Testgeräte für den Emulator:
+
+| Angabe | Wert |
+|---|---|
+| Ort | `%LOCALAPPDATA%\fristenrechner\avd`, für den Lauf gesetzt über `ANDROID_AVD_HOME` |
+| Namen | `fr-api36`, `fr-api30`, `fr-api24`, je Systemabbild ein Gerät |
+| Geräteprofil | `pixel_6` |
+| Datenbereich | 6 GiB, Eintrag `disk.dataPartition.size=6G` in der Datei `config.ini` des Geräts |
+| Anlegen | `avdmanager create avd -n fr-api36 -k "system-images;android-36;default;x86_64" -d pixel_6` |
+| Start | `emulator -avd fr-api36 -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect` |
+
+- Der Ort liegt neben dem Projekt-SDK. Geräte anderer Werkzeuge bleiben unberührt.
+- `avdmanager` gehört zu den Kommandozeilenwerkzeugen und muss im SDK liegen: Es leitet den Ort des SDK aus seinem eigenen Ort ab.
+- Der Wert für den Datenbereich wird nach dem Anlegen und vor dem ersten Start eingetragen. Ein vorhandenes Gerät schrumpft durch den Eintrag nicht.
+- Ein kleinerer Wert hat sich nicht gehalten: Den Eintrag `2G` hat der Emulator 37.1.11 beim ersten Start auf allen drei Geräten durch 6442450944 Byte ersetzt, das sind 6 GiB. Ob das für jedes Gerät und jedes Abbild gilt, ist nicht geprüft.
+- Der Emulator hat je Gerät eine Datei für den Arbeitsspeicher angelegt, `snapshots\default_boot\ram.img` mit 2 bis 2,5 GiB, auch mit `-no-snapshot`. Nach dem Beenden kann der Ordner `snapshots` gelöscht werden.
+- Die drei Geräte belegten nach einem Lauf und ohne den Ordner `snapshots` zusammen rund 7,6 GiB.
+- `avdmanager` 22.0 meldet beim Anlegen je Systemabbild „Could not load devices from … devices.xml". Die Abbilder der Reihe `default` enthalten diese Datei nicht. Das Gerät entsteht trotzdem, der Rückgabewert ist 0.
+- `-no-metrics` schaltet die Nutzungsstatistik des Emulators ab.
+- Arbeitspaket 2.5 legt fest, wie die Testläufe automatisiert werden.
 
 Ort des SDK, beide Skripte verwenden dieselbe Reihenfolge:
 
@@ -267,7 +310,8 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 
 | Thema | Arbeitspaket |
 |---|---|
-| Build-Ziel des Web-Builds und geprüfte Version der System-WebView. Die Mindest-API allein bestimmt die Fähigkeiten der WebView nicht. | 2.5 |
+| Build-Ziel des Web-Builds und geprüfte Version der System-WebView. Die Mindest-API allein bestimmt die Fähigkeiten der WebView nicht. Dazu gehört das Verhalten bei zu alter WebView: Hinweisseite über `server.errorPath` oder höhere Mindest-API. | 2.5 |
+| Probe auf dem Gerät mit Berechnung in der Oberfläche, einem Aufruf über die Brücke von Capacitor und vollständiger Paketliste des Systemabbilds | 2.5 |
 | Bereitstellung eines Screenreaders auf den Systemabbildern ohne Google-Dienste | 2.5, Testmatrix |
 | Installationsweg und Python-Version für fdroidserver 2.4.5 | 2.8 |
 | Linux-Umgebung für den F-Droid-Nachweis | 2.8 |
@@ -278,9 +322,19 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 1. **npm 10 löst Vitest 4 nicht frisch auf.** `npm install vitest@4.1.11` bricht mit npm 10.9.8 und 10.9.9 ab: `Cannot read properties of null (reading 'edgesOut')`. Der Fehler liegt im Resolver von npm 10 und betrifft auch Vitest 4.1.10. npm 11.19.0 löst denselben Baum fehlerfrei auf. `npm ci` aus einem vorhandenen Lockfile läuft mit npm 10 fehlerfrei. Deshalb ist npm 11.19.0 die Referenzversion.
 2. **npm 11 führt Installationsskripte in der Voreinstellung aus** und weist nur auf ungeprüfte Skripte hin. Im festgelegten Baum hat `esbuild` ein solches Skript. Mit `ignore-scripts=true` läuft keines. Web-Build, Typprüfung und Tests laufen auch so.
 3. **`astro check` unterstützt TypeScript 7 noch nicht.** Deshalb gilt TypeScript 6.0.3. Eine Probe mit TypeScript 7.0.2 hat ein Minimalpaket fehlerfrei übersetzt. Der Wechsel folgt, sobald `astro check` TypeScript 7 unterstützt.
-4. **Betrieb ohne die Berechtigung `INTERNET`.** Capacitor lädt die Oberfläche aus den Dateien der App und nicht aus dem Netz. Dass das ohne die Berechtigung auf den drei Systemabbildern funktioniert, zeigt die Probe dieses Arbeitspakets. Den vollständigen Nachweis führt Arbeitspaket 2.5.
-5. **Version der WebView.** Capacitor 8 verlangt mindestens Version 60 der System-WebView. Der Web-Build kann einen neueren Stand voraussetzen.
+4. **Betrieb ohne die Berechtigung `INTERNET`.** Capacitor lädt die Oberfläche aus den Dateien der App und nicht aus dem Netz. Die Probe dieses Arbeitspakets zeigt: Die App startet ohne die Berechtigung auf den drei Systemabbildern und zeigt ihre Seite an. Die Seite der Probe ist fertiges HTML. Berechnung auf dem Gerät und Plugins prüft Arbeitspaket 2.5 und führt damit den vollständigen Nachweis.
+5. **Version der WebView.** Capacitor 8.5.2 verlangt in der Voreinstellung mindestens Version 60 der System-WebView und lässt als Einstellung frühestens 55 zu. Der Web-Build kann einen neueren Stand voraussetzen. Die Systemabbilder ohne Google-Dienste bringen diese Versionen mit:
+
+   | Systemabbild | System-WebView | Ergebnis der Probe |
+   |---|---|---|
+   | API 36 | 133.0.6943.137 | Seite erscheint |
+   | API 30 | 83.0.4103.120 | Seite erscheint |
+   | API 24 | 52.0.2743.100 | Seite erscheint, Capacitor meldet „System WebView is not supported", das Skript der Brücke bricht mit einem Syntaxfehler ab |
+
+   Auf dem Abbild API 24 wären Plugins nicht nutzbar. API 30 ist das niedrigste geprüfte Abbild mit geeigneter WebView. Für API 25 bis 29 gibt es keinen Nachweis. Auf Geräten hängt die Version der WebView vom Stand ihrer Updates ab, nicht allein von der API-Stufe.
 6. **Der Build lädt Werkzeuge und Abhängigkeiten aus dem Netz.** Das betrifft nur den Build. Die App greift im Betrieb nicht auf das Netzwerk zu.
+7. **`sdkmanager` ist abgekündigt.** Siehe Abschnitt „Android SDK". Die Festlegung auf die Kommandozeilenwerkzeuge 22.0 ist eine Übergangslösung.
+8. **Warnung des Android-Gradle-Plugins zum Format der Paketbeschreibung.** Die installierten Pakete tragen `package.xml` im Format 4. Das Android-Gradle-Plugin 8.13 versteht Format 3 und meldet das beim Build als Warnung. Der Build läuft durch.
 
 ## Pflege der Versionen
 
@@ -303,14 +357,20 @@ Beispielprojekt: eine Astro-Seite mit einem TypeScript-Modul und einem Test, Cap
 | `npm ci`, Web-Build, `astro check`, Vitest mit Node 24.21.0 und npm 11.19.0 | bestanden am 2026-09-27 |
 | `npm ci`, Web-Build, `astro check`, Vitest mit npm 10.9.8 aus dem Lockfile von npm 11.19.0 | bestanden am 2026-09-27 unter Node 22.23.1. Dieser Stand liegt unter der Untergrenze. Die Wiederholung mit einem unterstützten Stand der Reihe 22 ist offen. |
 | Build-Skript gegen ein nachgestelltes SDK: fehlendes Paket, abweichende Revision, strenge Prüfung, widersprüchliche Ortsangaben, ungeeignetes JDK | bestanden am 2026-09-27 |
-| Einrichtungsskript: Syntax und Hilfsfunktionen unter Windows PowerShell 5.1 und PowerShell 7.6 | bestanden am 2026-09-27. Download, Lizenzbestätigung und Installation sind noch nicht gelaufen. |
+| Einrichtungsskript: Syntax und Hilfsfunktionen unter Windows PowerShell 5.1 und PowerShell 7.6 | bestanden am 2026-09-27, wiederholt am 2026-09-28 |
+| Einrichtungsskript gegen ein leeres SDK, Lizenzbedingungen nicht bestätigt | bestanden am 2026-09-28: Archiv der Kommandozeilenwerkzeuge 22.0 mit passender Prüfsumme geladen, `sdkmanager` zeigt die Bedingungen von `android-sdk-license`, installiert nichts und legt keine Zustimmung ab, das Skript endet mit Code 2 |
+| Einrichtungsskript gegen das eingerichtete Projekt-SDK | bestanden am 2026-09-28 unter PowerShell 7.6 und Windows PowerShell 5.1, je Code 0. Der erste Lauf hat das Archiv der Kommandozeilenwerkzeuge 22.0 geladen, geprüft und entpackt. `sdkmanager` hat in beiden Läufen die Paketlisten abgerufen, nicht nach der Lizenz gefragt und kein Paket installiert. Alle acht Pakete wie festgelegt. |
+| Revisionsprüfung beider Skripte mit `scripts/paket-revision.test.mjs`: 48 Fälle mit vollständiger, unvollständiger, ungültiger und fremder Paketbeschreibung | bestanden am 2026-09-28 unter Node 24.21.0. 45 der Fälle laufen auch gegen das Einrichtungsskript, mit gleichem Ergebnis unter Windows PowerShell 5.1 und PowerShell 7.6. Drei Fälle lehnt nur der Leser in Node ab. |
+| `sdkmanager` 22.0 mit dem JDK 21.0.8: Version, Liste der installierten Pakete, unbekanntes Paket | bestanden am 2026-09-28: Code 0, Code 0, Code 1 |
 | Web-Build enthält keine Adresse im Netz | bestanden am 2026-09-27 |
 | Android-Projekt erzeugt, Abweichungen angewendet, keine Fundstelle zu Google-Diensten oder zur Berechtigung `INTERNET` | bestanden am 2026-09-27 |
 | JDK 21 vorhanden | bestanden am 2026-09-27: Microsoft Build of OpenJDK 21.0.8+9 |
 | Gradle-Wrapper lädt Gradle 8.14.5, prüft die Prüfsumme und startet mit dem JDK 21 | bestanden am 2026-09-27 |
-| Projekt-SDK mit den Gruppen „Build" und „Test" eingerichtet, Revisionen wie festgelegt | offen |
-| Beispielprojekt baut eine APK | offen |
-| Emulator startet die drei Systemabbilder, die Probe läuft ohne die Berechtigung `INTERNET` | offen |
+| Projekt-SDK mit den Gruppen „Build" und „Test" eingerichtet, Revisionen wie festgelegt | bestanden am 2026-09-28, alle acht Pakete wie festgelegt. Die Pakete außer den Kommandozeilenwerkzeugen hat an diesem Tag noch das Android-CLI aus der Fassung 23.0 installiert. `sdkmanager` 22.0 erkennt sie vollständig. Die Installation in ein leeres SDK mit `sdkmanager` 22.0 und bestätigter Lizenz ist offen. |
+| Werkzeugprüfung des Build-Skripts gegen das Projekt-SDK | bestanden am 2026-09-28. Einziger Hinweis: JDK 21.0.8 statt 21.0.12. Mit `--streng` bricht der Lauf deshalb ab, wie vorgesehen. |
+| Beispielprojekt baut eine APK | bestanden am 2026-09-28: `assembleDebug` in 171 Sekunden, 4,1 MB. Laut `aapt2`: Mindest-API 24, Ziel-API 36, `allowBackup=false`, keine Berechtigung `INTERNET`. Die einzige Berechtigung ist die interne `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` aus AndroidX. Nach dem Build lagen im SDK dieselben Paketordner wie davor. |
+| Emulator startet die drei Systemabbilder, die Probe läuft ohne die Berechtigung `INTERNET` | bestanden am 2026-09-28 als Start- und Anzeigetest, zwei Durchgänge. `emulator -accel-check` meldet WHPX als nutzbar. Auf API 36, 30 und 24 startet die App und zeigt ihre Seite, belegt durch Bildschirmfotos. Capacitor lädt `https://localhost` aus den Dateien der App. Befund zu API 24 siehe „Bekannte Einschränkungen", Nummer 5. |
+| Pakete der Systemabbilder | geprüft am 2026-09-28 über die vollständige Liste von `pm list packages`: 181 Pakete auf API 36, 163 auf API 30, 79 auf API 24. Kein Paketname enthält `google`, `gms`, `gsf` oder `vending`. |
 
 ## Quellen
 

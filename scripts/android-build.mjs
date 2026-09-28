@@ -21,6 +21,8 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { revision } from './paket-revision.mjs';
+
 const hier = dirname(fileURLToPath(import.meta.url));
 const wurzel = resolve(hier, '..');
 const vorgabe = JSON.parse(readFileSync(join(hier, 'toolchain.json'), 'utf8'));
@@ -124,13 +126,6 @@ function standardSdk() {
   return join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), ...teile);
 }
 
-function revision(ordner) {
-  const datei = join(ordner, 'source.properties');
-  if (!existsSync(datei)) return null;
-  const treffer = /^Pkg\.Revision\s*=\s*(.+?)\s*$/m.exec(readFileSync(datei, 'utf8'));
-  return treffer ? treffer[1] : null;
-}
-
 // Liest sdk.dir so, wie Gradle local.properties liest: Trennzeichen "=", ":" oder
 // Leerraum, Maskierung mit "\". Relative Werte gelten ab dem Projektordner.
 // Fortsetzungszeilen werden abgelehnt, damit kein anderer Wert gilt als gelesen.
@@ -185,10 +180,19 @@ function findeSdk(projekt, angabe) {
     abbruch(`Kein Android SDK unter ${pfad} (${herkunft}). Das Projekt-SDK nach docs/toolchain.md einrichten.`);
   }
 
-  // Fehlt ein Paket der Gruppe "build" oder weicht ein Paket ab, das in die App
-  // eingeht, bricht der Lauf ab. Alles andere wird als Hinweis gemeldet.
+  // Fehlt ein Paket der Gruppe "build", ist seine Beschreibung ungültig oder weicht
+  // ein Paket ab, das in die App eingeht, bricht der Lauf ab. Alles andere wird
+  // als Hinweis gemeldet.
   for (const paket of vorgabe.android.pakete) {
-    const gefunden = revision(join(pfad, ...paket.ordner.split('/')));
+    let gefunden;
+    try {
+      gefunden = revision(join(pfad, ...paket.ordner.split('/')), paket.name);
+    } catch (fehler) {
+      const text = `Die Beschreibung des Pakets ${paket.name} ist ungültig. ${fehler.message}`;
+      if (paket.gruppe === 'build') abbruch(text);
+      hinweise.push(text);
+      continue;
+    }
     if (gefunden === null) {
       const text = `Im SDK unter ${pfad} fehlt das Paket ${paket.name}.`;
       if (paket.gruppe === 'build') abbruch(text);

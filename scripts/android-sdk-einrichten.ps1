@@ -7,10 +7,11 @@
   Werkzeug verwaltet (Visual Studio, Android Studio), bleibt unberuehrt.
 
   Das Skript laedt die Kommandozeilenwerkzeuge von Google, prueft die
-  Pruefsumme, zeigt die Lizenzbedingungen zur Bestaetigung und installiert
-  die Gruppen "Build" und "Test" (Emulator, Systemabbilder). Mit
-  -OhneTestgruppe entfaellt die Gruppe "Test". Am Ende vergleicht es die
-  installierten Revisionen mit scripts/toolchain.json.
+  Pruefsumme und installiert mit sdkmanager die Gruppen "Build" und "Test"
+  (Emulator, Systemabbilder). sdkmanager zeigt vorher die Lizenzbedingungen
+  der Pakete. Die Bestaetigung gibt ein, wer das Skript startet. Mit
+  -OhneTestgruppe entfaellt die Gruppe "Test". Am Ende vergleicht das Skript
+  die installierten Revisionen mit scripts/toolchain.json.
 
   Ort des SDK, in dieser Reihenfolge: -SdkRoot, ANDROID_HOME, Standardordner
   des Projekt-SDK. Das Build-Skript verwendet dieselbe Reihenfolge.
@@ -94,13 +95,59 @@ function Find-Jdk {
     throw "Kein JDK $($vorgabe.jdk.hauptversion) gefunden. Zuerst ein JDK nach docs/toolchain.md installieren oder -JavaHome angeben."
 }
 
-function Get-Revision([string]$Ordner) {
+# Liest ein Zahlenfeld der Revision. Fehlt es, gilt der Ersatzwert.
+function Get-RevisionsFeld($Revision, [string]$Feld, $Ersatz) {
+    $knoten = @($Revision.SelectNodes($Feld))
+    if ($knoten.Count -eq 0) {
+        if ($null -eq $Ersatz) { throw "Feld $Feld fehlt." }
+        return $Ersatz
+    }
+    if ($knoten.Count -gt 1) { throw "Feld $Feld ist mehrfach vorhanden." }
+    $wert = $knoten[0].InnerXml.Trim()
+    if ($wert -notmatch '^[0-9]+$') { throw "Feld $Feld ist keine Zahl." }
+    return $wert
+}
+
+# Liefert die Revision eines installierten Pakets oder $null, wenn es fehlt.
+# package.xml schreibt das Installationswerkzeug aus der Paketliste von Google.
+# source.properties stammt aus dem Archiv und nennt bei einzelnen Paketen
+# einen aelteren Stand. Die Datei gilt deshalb nur, wenn package.xml fehlt.
+# Eine vorhandene Beschreibung, die unlesbar ist oder ein anderes Paket nennt,
+# ist ein Fehler. Es gibt dann keinen Rueckgriff auf die andere Datei.
+function Get-Revision([string]$Ordner, [string]$Name) {
+    $xml = Join-Path $Ordner 'package.xml'
+    if (Test-Path $xml) {
+        try {
+            $dokument = New-Object System.Xml.XmlDocument
+            $dokument.XmlResolver = $null
+            $dokument.Load($xml)
+            $pakete = @($dokument.DocumentElement.SelectNodes('localPackage'))
+            if ($pakete.Count -ne 1) { throw 'Die Datei beschreibt nicht genau ein Paket.' }
+            $pfad = $pakete[0].GetAttribute('path')
+            if ($pfad -cne $Name) { throw "Die Datei beschreibt '$pfad'." }
+            $revisionen = @($pakete[0].SelectNodes('revision'))
+            if ($revisionen.Count -ne 1) { throw 'Die Datei nennt nicht genau eine Revision.' }
+            $text = @(
+                (Get-RevisionsFeld $revisionen[0] 'major' $null),
+                (Get-RevisionsFeld $revisionen[0] 'minor' '0'),
+                (Get-RevisionsFeld $revisionen[0] 'micro' '0')
+            ) -join '.'
+            $vorschau = Get-RevisionsFeld $revisionen[0] 'preview' ''
+            if ($vorschau) { $text += " rc$vorschau" }
+            return $text
+        }
+        catch { throw "${xml}: $($_.Exception.Message)" }
+    }
     $datei = Join-Path $Ordner 'source.properties'
     if (-not (Test-Path $datei)) { return $null }
+    $gefunden = $null
     foreach ($zeile in Get-Content $datei) {
-        if ($zeile -match '^Pkg\.Revision\s*=\s*(.+?)\s*$') { return $Matches[1] }
+        if ($zeile -match '^Pkg\.Path\s*=\s*(.+?)\s*$') {
+            if ($Matches[1] -cne $Name) { throw "${datei}: Die Datei beschreibt '$($Matches[1])'." }
+        }
+        elseif (($null -eq $gefunden) -and ($zeile -match '^Pkg\.Revision\s*=\s*(.+?)\s*$')) { $gefunden = $Matches[1] }
     }
-    return $null
+    return $gefunden
 }
 
 function Test-GleicheRevision([string]$A, [string]$B) {
@@ -123,6 +170,7 @@ function Get-PaketOrdner([string]$Wurzel, $Paket) {
 
 $javaHomeVorher = $env:JAVA_HOME
 $abweichung = $false
+$fehlt = $false
 try {
     # 1. JDK
     $jdk = Find-Jdk
@@ -161,7 +209,10 @@ try {
     # 3. Kommandozeilenwerkzeuge
     $werkzeuge = $vorgabe.android.pakete | Where-Object { $_.name -like 'cmdline-tools;*' } | Select-Object -First 1
     $ziel = Get-PaketOrdner $SdkRoot $werkzeuge
-    $sdkmanager = Join-Path $ziel 'bin\sdkmanager.bat'
+    # sdkmanager laeuft mit dem JDK aus Schritt 1 und wird ohne die Batch-Datei
+    # gestartet. Das Android-CLI (android.exe) aus demselben Archiv wird nicht
+    # verwendet: Es laedt sein Programm und eine eigene Laufzeit nach.
+    $sdkmanager = Join-Path $ziel 'lib\sdkmanager-classpath.jar'
 
     if ((Test-Path $ziel) -and -not (Test-Path $sdkmanager)) {
         throw "Der Ordner $ziel ist vorhanden, aber unvollstaendig. Bitte pruefen und loeschen, dann das Skript erneut starten."
@@ -189,8 +240,8 @@ try {
             $entpackt = Join-Path $arbeit 'entpackt'
             Expand-Archive -Path $archiv -DestinationPath $entpackt
             $inhalt = Join-Path $entpackt 'cmdline-tools'
-            if (-not (Test-Path (Join-Path $inhalt 'bin\sdkmanager.bat'))) {
-                throw 'Das Archiv hat nicht den erwarteten Aufbau: cmdline-tools\bin\sdkmanager.bat fehlt.'
+            if (-not (Test-Path (Join-Path $inhalt 'lib\sdkmanager-classpath.jar'))) {
+                throw 'Das Archiv hat nicht den erwarteten Aufbau: cmdline-tools\lib\sdkmanager-classpath.jar fehlt.'
             }
             New-Item -ItemType Directory -Path (Split-Path $ziel -Parent) -Force | Out-Null
             Move-Item -Path $inhalt -Destination $ziel
@@ -200,34 +251,42 @@ try {
         }
     }
 
-    if (-not (Test-Path $sdkmanager)) { throw "sdkmanager.bat fehlt unter $ziel." }
-    $gefunden = Get-Revision $ziel
+    if (-not (Test-Path $sdkmanager)) { throw "sdkmanager-classpath.jar fehlt unter $ziel." }
+    $gefunden = Get-Revision $ziel $werkzeuge.name
     if ((-not $gefunden) -or -not (Test-GleicheRevision $gefunden $werkzeuge.revision)) {
         throw "Kommandozeilenwerkzeuge unter ${ziel}: Revision '$gefunden' gefunden, festgelegt ist $($werkzeuge.revision)."
     }
     Write-Host "Kommandozeilenwerkzeuge $gefunden sind vorhanden."
+    foreach ($ordner in @(Get-ChildItem -Path (Split-Path $ziel -Parent) -Directory | Where-Object { $_.FullName -ne $ziel })) {
+        Write-Host "Hinweis: $($ordner.FullName) gehoert nicht zur Festlegung."
+    }
 
-    # 4. Lizenzbedingungen: Die Bestaetigung gibt ein, wer das Skript startet.
-    Write-Host ''
-    Write-Host 'Es folgen die Lizenzbedingungen des Android SDK. Bitte lesen und selbst bestaetigen.'
-    & $sdkmanager "--sdk_root=$SdkRoot" --licenses
-    if ($LASTEXITCODE -ne 0) { throw "sdkmanager --licenses endete mit Code $LASTEXITCODE." }
-
-    # 5. Pakete. Die Kommandozeilenwerkzeuge sind schon vorhanden.
+    # 4. Pakete. Die Kommandozeilenwerkzeuge sind schon vorhanden.
+    # sdkmanager zeigt die Lizenzbedingungen der angeforderten Pakete, solange
+    # sie in diesem SDK nicht bestaetigt sind. "sdkmanager --licenses" entfaellt:
+    # Der Aufruf legt auch Bedingungen vor, die diese Pakete nicht brauchen.
     $pakete = @($vorgabe.android.pakete | Where-Object { ($_.gruppe -eq 'build') -or (-not $OhneTestgruppe) })
     $namen = @($pakete | Where-Object { $_.name -ne $werkzeuge.name } | ForEach-Object { $_.name })
     Write-Host ''
     Write-Host "Installiere: $($namen -join ', ')"
-    & $sdkmanager "--sdk_root=$SdkRoot" --install @namen
+    Write-Host 'Zeigt sdkmanager Lizenzbedingungen an: bitte lesen und selbst bestaetigen.'
+    & (Join-Path $jdk 'bin\java.exe') "-Dcom.android.sdklib.toolsdir=$ziel" -classpath $sdkmanager `
+        com.android.sdklib.tool.sdkmanager.SdkManagerCli "--sdk_root=$SdkRoot" --install @namen
     if ($LASTEXITCODE -ne 0) { throw "sdkmanager --install endete mit Code $LASTEXITCODE." }
 
-    # 6. Installierte Revisionen gegen die Festlegung pruefen
+    # 5. Installierte Revisionen gegen die Festlegung pruefen
     Write-Host ''
     foreach ($paket in $pakete) {
-        $gefunden = Get-Revision (Get-PaketOrdner $SdkRoot $paket)
+        try { $gefunden = Get-Revision (Get-PaketOrdner $SdkRoot $paket) $paket.name }
+        catch {
+            Write-Host "UNGUELTIG  $($paket.name)  $($_.Exception.Message)"
+            $abweichung = $true
+            continue
+        }
         if (-not $gefunden) {
             Write-Host "FEHLT      $($paket.name)"
             $abweichung = $true
+            $fehlt = $true
         }
         elseif (Test-GleicheRevision $gefunden $paket.revision) {
             Write-Host "OK         $($paket.name)  $gefunden"
@@ -239,7 +298,10 @@ try {
     }
 
     Write-Host ''
-    if ($abweichung) {
+    if ($fehlt) {
+        Write-Host 'Mindestens ein Paket fehlt. sdkmanager installiert nur Pakete, deren Lizenzbedingungen bestaetigt sind.'
+    }
+    elseif ($abweichung) {
         Write-Host 'Mindestens ein Paket weicht von docs/toolchain.md ab. Die Festlegung pruefen und im Kreuz-Review aktualisieren.'
     }
     elseif ($herkunft -eq 'Standardordner') {
