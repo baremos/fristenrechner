@@ -21,6 +21,8 @@
     "lizenzen": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "astro": "7.3.3",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
   }
