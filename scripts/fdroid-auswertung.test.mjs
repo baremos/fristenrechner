@@ -37,6 +37,8 @@ const BEGINN = '2026-09-28 16:00:00,000 INFO: ...scanning version 1.0\n';
 const ENDE = '2026-09-28 16:00:01,000 INFO: Finished\n';
 const befund = (inhalt) => JSON.stringify({ [APPID]: { 1: { infos: [], warnings: [], errors: [], ...inhalt } } });
 const HINWEISE = befund({ infos: [['Removing gradlew at android/gradlew', 'android/gradlew']] });
+const JAR = '2026-09-28 16:00:00,500 ERROR: Found Java JAR file at a/b.jar\n';
+const summe = (zahl, stand = `${APPID}:1`) => `2026-09-28 16:00:00,600 WARNING: Scanner found ${zahl} problems in ${stand}:\n`;
 
 const faelle = [
   { name: 'leeres JSON, Prüfung vollständig', json: '{}', protokoll: BEGINN + ENDE, code: 0, muster: /keine Beanstandung/ },
@@ -44,11 +46,110 @@ const faelle = [
   {
     name: 'Fehler im JSON, dieselbe Meldung im Protokoll zählt einmal',
     json: befund({ errors: [['Java JAR file', 'a/b.jar']] }),
-    protokoll: `${BEGINN}2026-09-28 16:00:00,500 ERROR: Found Java JAR file at a/b.jar\n2026-09-28 16:00:00,600 WARNING: Scanner found 1 problems in x:1:\n${ENDE}`,
+    protokoll: BEGINN + JAR + summe(1) + ENDE,
     code: 1,
-    muster: /Fehler: Java JAR file \(a\/b\.jar\)\r?\nERGEBNIS: 1 Beanstandungen/,
+    muster: /^Fehler: Java JAR file \(a\/b\.jar\)\r?\nERGEBNIS: 1 Beanstandungen/,
+  },
+  {
+    name: 'derselbe Fehler zweimal im JSON und zweimal im Protokoll zählt zweimal',
+    json: befund({ errors: [['Java JAR file', 'a/b.jar'], ['Java JAR file', 'a/b.jar']] }),
+    protokoll: BEGINN + JAR + JAR + summe(2) + ENDE,
+    code: 1,
+    muster: /^Fehler: Java JAR file \(a\/b\.jar\)\r?\nFehler: Java JAR file \(a\/b\.jar\)\r?\nERGEBNIS: 2 Beanstandungen/,
+  },
+  {
+    name: 'Fehler einmal im JSON, zweimal im Protokoll',
+    json: befund({ errors: [['Java JAR file', 'a/b.jar']] }),
+    protokoll: BEGINN + JAR + JAR + summe(2) + ENDE,
+    code: 1,
+    muster: /^Fehler: Java JAR file \(a\/b\.jar\)\r?\nProtokoll: Found Java JAR file at a\/b\.jar\r?\nERGEBNIS: 2 Beanstandungen/,
+  },
+  {
+    name: 'Zusammenfassung nennt ein Problem, erfasst ist keines',
+    json: '{}',
+    protokoll: BEGINN + summe(1) + ENDE,
+    code: 1,
+    muster: /^Die Zusammenfassung des Scanners nennt 1 Probleme, erfasst sind 0 Fehler\.\r?\nERGEBNIS: 1 Beanstandungen/,
+  },
+  {
+    name: 'Zusammenfassung nennt mehr Probleme als erfasst',
+    json: befund({ errors: [['Java JAR file', 'a/b.jar']] }),
+    protokoll: BEGINN + JAR + summe(3) + ENDE,
+    code: 1,
+    muster: /nennt 3 Probleme, erfasst sind 1 Fehler/,
+  },
+  {
+    name: 'Zusammenfassung fehlt trotz Fehler im JSON',
+    json: befund({ errors: [['Java JAR file', 'a/b.jar']] }),
+    protokoll: BEGINN + JAR + ENDE,
+    code: 1,
+    muster: /nennt 0 Probleme, erfasst sind 1 Fehler/,
+  },
+  {
+    name: 'Zusammenfassung nennt einen anderen Stand',
+    json: befund({ errors: [['Java JAR file', 'a/b.jar']] }),
+    protokoll: BEGINN + JAR + summe(1, 'x:1') + ENDE,
+    code: 1,
+    muster: /nennt einen anderen Stand: x:1\r?\nERGEBNIS: 2 Beanstandungen/,
+  },
+  {
+    name: 'Warnung im JSON zählt nicht zur Zusammenfassung',
+    json: befund({ warnings: [['etwas', 'a/b']] }),
+    protokoll: `${BEGINN}2026-09-28 16:00:00,500 WARNING: Found etwas at a/b\n${ENDE}`,
+    code: 1,
+    muster: /^Warnung: etwas \(a\/b\)\r?\nERGEBNIS: 1 Beanstandungen/,
   },
   { name: 'Warnung im JSON', json: befund({ warnings: [['etwas', 'a/b']] }), protokoll: BEGINN + ENDE, code: 1, muster: /Warnung: etwas/ },
+  {
+    name: 'Stufe im Text einer Meldung ist keine Stufe',
+    json: '{}',
+    versionName: '1.0 WARNING: Beta',
+    protokoll: BEGINN.replace('1.0', '1.0 WARNING: Beta') + ENDE,
+    code: 0,
+    muster: /keine Beanstandung/,
+  },
+  {
+    name: 'Warnung mit Traceback in den Folgezeilen zählt einmal',
+    json: '{}',
+    protokoll: `${BEGINN}2026-09-28 16:00:00,500 WARNING: Could not scan app x due to unknown error: \nTraceback (most recent call last):\n  File "x.py", line 1\nValueError: WARNING: y\n${ENDE}`,
+    code: 1,
+    muster: /^Protokoll: Could not scan app x due to unknown error: \(dazu 3 Folgezeilen\)\r?\nERGEBNIS: 1 Beanstandungen/,
+  },
+  {
+    name: 'Abbruch mit Einzelheiten in den Folgezeilen zählt einmal',
+    json: '{}',
+    protokoll: `${BEGINN}Cloning into 'build/x'...\n2026-09-28 16:00:00,500 WARNING: VCS error while scanning app x: Git checkout of '0' failed\n==== detail begin ====\nerror: pathspec '0' did not match any file(s) known to git\n==== detail end ====\n${ENDE}`,
+    code: 1,
+    muster: /^Protokoll: VCS error while scanning app x: Git checkout of '0' failed \(dazu 3 Folgezeilen\)\r?\nERGEBNIS: 1 Beanstandungen/,
+  },
+  {
+    name: 'Traceback ohne Kopf nach einer Meldung der Stufe INFO',
+    json: '{}',
+    protokoll: `${BEGINN}Traceback (most recent call last):\n  File "x.py", line 1\n${ENDE}`,
+    code: 1,
+    muster: /^Protokoll, Zeile ohne Kopf: Traceback \(most recent call last\):\r?\nERGEBNIS: 1 Beanstandungen/,
+  },
+  {
+    name: 'Traceback vor der ersten Meldung',
+    json: '{}',
+    protokoll: `Traceback (most recent call last):\n  File "x.py", line 1\n${BEGINN}${ENDE}`,
+    code: 1,
+    muster: /Protokoll, Zeile ohne Kopf: Traceback/,
+  },
+  {
+    name: 'Zeile ohne Kopf, die mit einer Stufe beginnt',
+    json: '{}',
+    protokoll: `${BEGINN}ERROR: etwas ohne Zeitangabe\n${ENDE}`,
+    code: 1,
+    muster: /^Protokoll, Zeile ohne Kopf: ERROR: etwas ohne Zeitangabe\r?\nERGEBNIS: 1 Beanstandungen/,
+  },
+  {
+    name: 'Beginn der Prüfung nur in einer Folgezeile',
+    json: '{}',
+    protokoll: `2026-09-28 16:00:00,000 INFO: Processing x\nINFO: ...scanning version 1.0\n${ENDE}`,
+    code: 1,
+    muster: /Beginn der Prüfung/,
+  },
   {
     name: 'abgefangener Abbruch steht nur im Protokoll',
     json: HINWEISE,

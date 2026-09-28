@@ -17,7 +17,9 @@
 #   --unterordner    Ordner des App-Moduls mit build.gradle
 #   --arbeitsordner  Ordner für die Läufe. Je Lauf entsteht darin ein neuer
 #                    Ordner. Vorgabe: $XDG_CACHE_HOME/fristenrechner/fdroid-probe,
-#                    ohne die Variable ~/.cache/fristenrechner/fdroid-probe
+#                    ohne die Variable ~/.cache/fristenrechner/fdroid-probe.
+#                    Die Ordner der Läufe bleiben liegen, auch nach einem
+#                    gescheiterten Lauf. Das Skript räumt nicht auf.
 #   --mit-netz       lässt dem Scanner das Netzwerk. Ohne die Angabe läuft er
 #                    in einem eigenen Namensraum ohne Netzwerk.
 #
@@ -102,7 +104,8 @@ if [ "$(git -C "$repo" rev-parse --show-toplevel 2> /dev/null)" != "$repo" ]; th
   echo "Der Ordner ist nicht die Wurzel eines Git-Repositorys: $repo" >&2
   exit 66
 fi
-if ! commit="$(git -C "$repo" rev-parse --verify --quiet "$stand^{commit}")"; then
+# --end-of-options: Auch ein Name wie "--help" gilt als Stand, nicht als Option.
+if ! commit="$(git -C "$repo" rev-parse --verify --quiet --end-of-options "$stand^{commit}")"; then
   echo "Den Stand gibt es im Repository nicht: $stand" >&2
   exit 66
 fi
