@@ -1,0 +1,19 @@
+{
+  "lizenzen": {
+    "MIT": ["ausgeliefert", "entwicklung"],
+    "Apache-2.0": ["ausgeliefert", "entwicklung"],
+    "ISC": ["ausgeliefert", "entwicklung"],
+    "BSD-3-Clause": ["ausgeliefert", "entwicklung"],
+    "MPL-2.0": ["entwicklung"]
+  },
+  "installationsskripte": ["preinstall", "install", "postinstall"],
+  "vorgebautePakete": [
+    { "muster": "^@rolldown/binding-", "grund": "Native Rolldown-Bindung" },
+    { "muster": "^lightningcss-", "grund": "Native Lightning-CSS-Bindung" },
+    { "muster": "^fsevents$", "grund": "Native macOS-Bindung" },
+    { "muster": "^es-module-lexer$", "grund": "In JavaScript eingebettetes WebAssembly; separat für F-Droid prüfen" }
+  ],
+  "binaerdateien": "\\.(node|wasm|exe|dll|so(?:\\.[0-9]+)*|dylib|a|jar|aar)$",
+  "hinweisdateien": "^(licen[cs]e|notice|copying|third[-_]party)([._-]|$)",
+  "paketHinweise": ["LICENSE", "NOTICE"]
+}
