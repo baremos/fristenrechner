@@ -78,6 +78,7 @@ Alle Versionen und ihre Begründung stehen in [docs/toolchain.md](docs/toolchain
 | Tests | `npm test` | läuft, prüft die Skripte und den Rechenkern |
 | Typprüfung | `npm run check` | läuft für den Rechenkern |
 | Build der Pakete | `npm run build` | läuft für den Rechenkern |
+| Lizenzen der Abhängigkeiten prüfen | `npm run lizenzen` | läuft, siehe [docs/lizenzen.md](docs/lizenzen.md) |
 | Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 | Android-App bauen | `node scripts/android-build.mjs` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 

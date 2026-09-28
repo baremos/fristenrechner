@@ -8,5 +8,9 @@
   "type": "module",
   "engines": {
     "node": "^22.23.2 || ^24.18.1"
-  }
+  },
+  "files": [
+    "LICENSE",
+    "NOTICE"
+  ]
 }

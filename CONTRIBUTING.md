@@ -38,6 +38,8 @@ Bitte ein Issue anlegen. Hilfreich sind:
 
 Die App soll bei F-Droid erscheinen. Jede Abhängigkeit muss frei lizenziert sein und ohne proprietäre Dienste auskommen. Die App greift im Betrieb nicht auf das Netzwerk zu.
 
+Welche Lizenzen zulässig sind, steht in [docs/lizenzen.md](docs/lizenzen.md). `npm run lizenzen` prüft alle Pakete aus dem Lockfile. Wer eine Abhängigkeit hinzufügt, lässt die Prüfung laufen und nennt im Pull Request, wofür das Paket gebraucht wird.
+
 ## Regeln für Texte
 
 Texte beschreiben, was die Software rechnet. Sie versprechen keine Rechtssicherheit und keine Beratung. Die Maintainer prüfen jeden öffentlichen Text vor der Veröffentlichung und passen Formulierungen bei Bedarf an.
@@ -54,6 +56,7 @@ Dateien aus anderen Quellen werden vor dem ersten Einchecken geprüft. Die Prüf
 | Tests | `npm test` | läuft, prüft die Skripte und den Rechenkern |
 | Typprüfung | `npm run check` | läuft für den Rechenkern |
 | Build der Pakete | `npm run build` | läuft für den Rechenkern |
+| Lizenzen der Abhängigkeiten prüfen | `npm run lizenzen` | läuft |
 | Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 
 Die Befehle funktionieren ohne private Dateien. Die Versionen der Werkzeuge stehen in [docs/toolchain.md](docs/toolchain.md).

@@ -38,6 +38,8 @@ Please open an issue. Helpful details are:
 
 The app is meant to be published on F-Droid. Every dependency must be under a free license and work without proprietary services. The app does not access the network during operation.
 
+The permitted licenses are listed in [docs/lizenzen.md](docs/lizenzen.md). `npm run lizenzen` checks all packages from the lockfile. Whoever adds a dependency runs the check and states in the pull request what the package is needed for.
+
 ## Rules for texts
 
 Texts describe what the software calculates. They promise neither legal certainty nor advice. The maintainers check every public text before publication and adjust wordings where needed.
@@ -54,6 +56,7 @@ Files from other sources are checked before they are first committed. The checkp
 | Tests | `npm test` | works, tests the scripts and the calculation core |
 | Type check | `npm run check` | works for the calculation core |
 | Build the packages | `npm run build` | works for the calculation core |
+| Check the licenses of the dependencies | `npm run lizenzen` | works |
 | Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the Android project in `app/android`, which follows with the app |
 
 The commands work without private files. The versions of the tools are in [docs/toolchain.md](docs/toolchain.md).
