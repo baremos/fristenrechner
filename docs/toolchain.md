@@ -33,7 +33,8 @@ Dieses Dokument legt fest, mit welchen Werkzeugen und in welchen Versionen der F
 - Node 24 wird bis 2028-04-30 unterstützt, Node 22 bis 2027-04-30.
 - Änderungen am Lockfile entstehen mit der Referenzversion von npm. Auf einem Rechner mit Node 22 geht das mit `npx npm@11.19.0 install`.
 - Das Build-Skript bricht außerhalb des unterstützten Bereichs ab. Weicht die Version nur von der Referenz ab, meldet es einen Hinweis. Release-Builds laufen mit `--streng` und damit nur auf der Referenzversion.
-- Prüfsumme des Archivs `node-v24.21.0-win-x64.zip`, SHA-256: `158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541`. Die Prüfsumme des Linux-Archivs legt das Build-Rezept in Arbeitspaket 2.8 fest.
+- Prüfsumme des Archivs `node-v24.21.0-win-x64.zip`, SHA-256: `158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541`.
+- Prüfsumme des Archivs `node-v24.21.0-linux-x64.tar.gz`, SHA-256: `6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff`. Festgelegt ist das Archiv mit gzip: Debian 13 unter WSL bringt `xz` nicht mit. Beide Werte stehen in der Datei `SHASUMS256.txt` von nodejs.org, gelesen am 2026-09-28. Die Signatur dieser Datei ist nicht geprüft.
 
 ### JavaScript: Kern, Oberfläche, Web-Build
 

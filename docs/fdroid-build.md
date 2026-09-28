@@ -77,9 +77,19 @@ Nicht geprüft ist, ob der Buildserver von F-Droid heute mit Gradle 8.14.5 baut.
 
 | Datei | SHA-256 | Quelle |
 |---|---|---|
-| `node-v24.21.0-linux-x64.tar.xz` | `fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6` | `SHASUMS256.txt` von nodejs.org, gelesen am 2026-09-28 |
+| `node-v24.21.0-linux-x64.tar.gz` | `6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff` | `SHASUMS256.txt` von nodejs.org, gelesen am 2026-09-28 |
 
-Dieselbe Datei nennt für `node-v24.21.0-win-x64.zip` die Prüfsumme aus `scripts/toolchain.json`. Die Signatur der Datei `SHASUMS256.txt` ist nicht geprüft.
+Dieselbe Datei nennt für `node-v24.21.0-win-x64.zip` die Prüfsumme aus `scripts/toolchain.json`. Die Signatur der Datei `SHASUMS256.txt` ist nicht geprüft. Festgelegt ist das Archiv mit gzip, weil die Distribution `xz` nicht mitbringt. Die Prüfsumme steht auch in `scripts/toolchain.json`.
+
+## Einrichtung unter Linux
+
+| Schritt | Befehl | Stand am 2026-09-28 |
+|---|---|---|
+| Node.js bereitstellen | `scripts/node-einrichten.sh` | geprüft im Probelauf und bei Fehlbedienung. Geladen und entpackt ist noch nichts. |
+| Projekt-SDK einrichten | `scripts/android-sdk-einrichten.sh --ohne-testgruppe` | geprüft mit `--nur-pruefen` an einem leeren und an einem nachgebauten SDK. Geladen und installiert ist noch nichts. |
+| Projekt-SDK prüfen | `scripts/android-sdk-einrichten.sh --nur-pruefen --ohne-testgruppe` | läuft |
+
+Beide Skripte lesen Versionen und Prüfsummen aus `scripts/toolchain.json`. Sie schreiben nur in den Benutzerbereich und installieren nichts im System. `android-sdk-einrichten.sh` entspricht dem Skript für Windows: `sdkmanager` zeigt die Lizenzbedingungen an, wer das Skript startet, bestätigt sie selbst.
 
 ## Offene Festlegungen
 
