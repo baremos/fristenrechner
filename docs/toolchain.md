@@ -283,7 +283,7 @@ F-Droid baut unter Debian. Die Werkzeuge von F-Droid laufen nicht unter Windows.
 | Werkzeug | Version | Hinweis |
 |---|---|---|
 | Debian | 13 (trixie) | Mindeststand für den Buildserver von F-Droid |
-| fdroidserver | 2.4.5 (AGPL-3.0) | Debian 13 liefert 2.4.2. Der Installationsweg für 2.4.5 wird in 2.8 festgelegt, bevor installiert wird. |
+| fdroidserver | 2.4.5 (AGPL-3.0) | Debian 13 liefert 2.4.2. Für die frühe Probe ist am 2026-09-28 die Fassung 2.4.2 aus Debian installiert worden. Die Festlegung der Fassung steht aus, siehe `fdroid-build.md`, Festlegung F1. |
 | OpenJDK | 21.0.12.1+1 aus Debian 13 | Hauptversion 21 wie festgelegt |
 | Node.js | Debian 13 liefert 20.19.2 | zu alt für Astro 7, siehe unten |
 
