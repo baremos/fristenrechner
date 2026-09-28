@@ -17,18 +17,18 @@
 import type { ISODate, Optionen, Verfahrensart, Vergabeordnung } from './api.js';
 
 // Regelversionen:
-// 1.9.0: (D) Meilenstein „Ende Bewerberfragen" im Teilnahmewettbewerb
-// (`bewerberfragenVorTeilnahmeKT`, Default 8); (E) Versand der Aufforderung
-// zur Angebotsabgabe/Teststellung/nächsten Angebotsrunde standardmäßig 1 AT
+// 1.9.0: Meilenstein „Ende Bewerberfragen" im Teilnahmewettbewerb
+// (`bewerberfragenVorTeilnahmeKT`, Default 8). Versand der Aufforderung zur
+// Angebotsabgabe/Teststellung/nächsten Angebotsrunde standardmäßig 1 AT
 // nach dem Bewertungs- bzw. Vorbereitungsende (`aufforderungVersandAT`,
-// bisher 0 bzw. fest 1) — neuer Meilenstein `teilnahme_bewertung_ende`;
-// (G) Verhandlungsverfahren: Einladung zur Bieterverhandlung
+// bisher 0 bzw. fest 1) — neuer Meilenstein `teilnahme_bewertung_ende`.
+// Verhandlungsverfahren: Einladung zur Bieterverhandlung
 // (`einladungVersandAT`, Default 1), Anpassung der Vergabeunterlagen vor
 // jeder weiteren Angebotsrunde (`vuAnpassungRunde1AT`/`vuAnpassungRunde2AT`,
 // Default 2, auch ohne Verhandlungstermin), expliziter Versand der
 // Aufforderung zur nächsten Angebotsrunde, Bewertung vor jeder weiteren
-// Runde; Angebote nach der einzigen weiteren Runde heißen „finale Angebote";
-// (H) Bindefrist im Ergebnis stets als Endtermin UND Dauer
+// Runde; Angebote nach der einzigen weiteren Runde heißen „finale Angebote".
+// Bindefrist im Ergebnis stets als Endtermin UND Dauer
 // (`ScheduleResult.bindefrist`). Projektdateien aus 1.8.0 bleiben lesbar;
 // ihre Terminpläne verschieben sich durch die neuen Defaults (Aufforderung
 // +1 AT, VU-Anpassung +2 AT je Runde).
@@ -54,6 +54,7 @@ import type { ISODate, Optionen, Verfahrensart, Vergabeordnung } from './api.js'
 // Warnung, min-Attribute in der UI.
 // 1.3.1: Vorschlagswerte optimiertes/finales Angebot 20 → 10 KT
 // (reine Default-Änderung, keine Rechenlogik)
+
 /**
  * Regelversion: Stand der Fristenregeln im Rechenkern. Sie steht in jedem
  * Ergebnis und in jeder Projektdatei. Von der Version des Pakets ist sie

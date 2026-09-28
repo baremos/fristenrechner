@@ -291,7 +291,12 @@ export function parseProjektDatei(json: string):
   }
   p.string(roh, '', 'rechenkernVersion', true, 20);
   p.string(roh, '', 'rechtsstand', true, 120);
-  p.datum(roh, '', 'rechtsstandDatum', false);
+  // Das Datum darf fehlen. Ist das Feld vorhanden, muss es ein Datum sein.
+  if (roh.rechtsstandDatum === null) {
+    p.ungueltig('rechtsstandDatum', 'Datum (JJJJ-MM-TT) erwartet');
+  } else {
+    p.datum(roh, '', 'rechtsstandDatum', false);
+  }
   const input = pruefeScheduleInput(roh.input ?? undefined, p);
 
   if (p.fehler.length > 0 || input === undefined) {

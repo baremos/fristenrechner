@@ -81,7 +81,7 @@ All versions and the reasons for them are in [docs/toolchain.md](docs/toolchain.
 | Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the Android project in `app/android`, which follows with the app |
 | Build the Android app | `node scripts/android-build.mjs` | needs the Android project in `app/android`, which follows with the app |
 
-Build and tests need no private files. The build downloads tools and dependencies from the network. The app itself is meant not to access the network during operation.
+Build and tests need no private files. `npm ci` downloads the dependencies from the network; the Android build additionally downloads its tools. The app itself is meant not to access the network during operation.
 
 ## Maintenance of the rules
 

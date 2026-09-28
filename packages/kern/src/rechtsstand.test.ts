@@ -96,8 +96,8 @@ describe('Projektdatei mit Regelversion und Rechtsstand', () => {
     if (gelesen.ok) expect(gelesen.datei.rechtsstandDatum).toBeUndefined();
   });
 
-  it('ein ungültiges Datum wird abgelehnt', () => {
-    for (const wert of ['Juli 2026', '2026-02-30', '17.07.2026', 20260717]) {
+  it('ein ungültiges Datum wird abgelehnt, auch ein leerer Wert', () => {
+    for (const wert of ['Juli 2026', '2026-02-30', '17.07.2026', '', 20260717, null]) {
       const datei = { ...erstelleProjektDatei(eingabe(), ZEIT), rechtsstandDatum: wert };
       const gelesen = parseProjektDatei(JSON.stringify(datei));
       expect(gelesen.ok, String(wert)).toBe(false);

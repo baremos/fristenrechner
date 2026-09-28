@@ -69,10 +69,10 @@ Quelle ist der Rechenkern 1.9.0 des Fristenrechners auf www.baremos.de, Stand de
 |---|---|---|
 | A1 | Die Schwellenwerte sind entfernt: Tabelle, Typ, Export und die zwei Tests dazu. | keine, die Berechnung hat die Tabelle nie verwendet |
 | A2 | Der Anzeigetext zum Rechtsstand endet vor dem Zusatz „; EU-Schwellenwerte 2026/2027". | nur dieser Text |
-| A3 | Neu ist `RECHTSSTAND_DATUM`. Jedes Ergebnis trägt zusätzlich `regelversion` und `rechtsstandDatum`, jede neue Projektdatei zusätzlich `rechtsstandDatum`. Projektdateien ohne dieses Feld bleiben lesbar. | keine, die Felder kommen hinzu |
+| A3 | Neu ist `RECHTSSTAND_DATUM`. Jedes Ergebnis trägt zusätzlich `regelversion` und `rechtsstandDatum`, jede neue Projektdatei zusätzlich `rechtsstandDatum`. Projektdateien ohne dieses Feld bleiben lesbar. Ist das Feld vorhanden, muss es ein gültiges Datum enthalten. | keine, die Felder kommen hinzu |
 | A4 | Neu ist der Name `REGELVERSION`. `RECHENKERN_VERSION` bleibt mit demselben Wert erhalten. | keine |
 | A5 | Importe nennen die Dateiendung `.js`, wie es die Modulauflösung `NodeNext` verlangt. | keine |
-| A6 | Kommentare und Titel von Tests sind von internen Verweisen bereinigt: 95 Kommentarblöcke neu gefasst, 15 weitere Kommentare und 27 Titel angepasst, ein Wert in den Testdaten ersetzt. | keine |
+| A6 | Kommentare und Titel von Tests sind von internen Verweisen bereinigt: 95 Kommentarblöcke neu gefasst, 16 weitere Kommentare und 30 Titel angepasst, ein Wert in den Testdaten ersetzt. | keine |
 
 Der Vergleich beider Stände ohne Kommentare zeigt genau diese Abweichungen und keine weitere. Verglichen wurde die Ausgabe des Syntaxbaums, mit Typen.
 
@@ -97,7 +97,7 @@ Die Referenzprüfung liegt unter `packages/kern/test/referenz`. Sie rechnet ein 
 | Datei | Inhalt |
 |---|---|
 | `referenz-1.9.0.txt` | 1.265 Fälle: jede der 7 Vergabeordnungen mit jeder der 5 Verfahrensarten, 12 Eingabeprofile, je 3 von 8 Startterminen, alle 16 Länder. Je Fall die Termine im Klartext, dazu je ein Fingerabdruck der Struktur und der Texte. |
-| `texte-1.9.0.txt` | alle Texte, die der Rechenkern im Raster ausgibt |
+| `texte-1.9.0.txt` | alle Texte, die der Rechenkern im Raster ausgibt. Meldungen beim Import einer Projektdatei gehören nicht dazu. |
 | `vorgaben-1.9.0.txt` | Vorschlagswerte der Fristen für 210 Kombinationen |
 | `feiertage-1.9.0.txt` | Feiertage der 16 Länder für die Jahre 2026 bis 2030 |
 
@@ -141,6 +141,6 @@ Jede Übernahme erhält eine Zeile. Ein Prüfpunkt, der nicht zutrifft, steht ni
 |---|---|---|---|---|---|
 | 2026-09-28 | 2.2 | `LICENSE` | https://www.apache.org/licenses/LICENSE-2.0.txt, geladen am 2026-09-28, 11.358 Byte, SHA-256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30` | keine, Wortlaut unverändert | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.2 | `package-lock.json` | erzeugt mit npm 11.19.0 unter Node 24.21.0 aus den Manifesten dieses Repositorys | keine. Die Datei nennt nur die eigenen Workspaces, keine fremden Pakete und keine Adressen im Netz. `npm ci` läuft damit unter npm 11.19.0 und npm 10.9.8. | Claude Code, Kreuz-Review Codex |
-| 2026-09-28 | 2.3 | acht Dateien des Rechenkerns unter `packages/kern/src` | Rechenkern 1.9.0 des Fristenrechners auf www.baremos.de, Stand 2026-08-26 | Prüfpunkt 1: Die Schwellenwerte gehören nicht zum Zuschnitt, entfernt (A1, A2). Prüfpunkt 4: interne Verweise in Kommentaren und in Titeln von Tests, bereinigt (A6). Die sichtbaren Texte sind bis auf A2 unverändert, sie stehen in `texte-1.9.0.txt`. | Claude Code, Kreuz-Review Codex |
+| 2026-09-28 | 2.3 | acht Dateien des Rechenkerns unter `packages/kern/src` | Rechenkern 1.9.0 des Fristenrechners auf www.baremos.de, Stand 2026-08-26 | Prüfpunkt 1: Die Schwellenwerte gehören nicht zum Zuschnitt, entfernt (A1, A2). Prüfpunkt 4: interne Verweise in Kommentaren und in Titeln von Tests, bereinigt (A6). Die Texte in den Quelldateien sind bis auf A2 und die neue Meldung aus A3 unverändert. Die Texte, die der Rechenkern im Raster ausgibt, stehen in `texte-1.9.0.txt`. Die Meldungen beim Import einer Projektdatei gehören nicht dazu, sie stehen in `projekt.ts`. | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.3 | vier Referenzdateien unter `packages/kern/test/referenz` | erzeugt aus dem Rechenkern 1.9.0, siehe Abschnitt „Referenzfälle" | Prüfpunkt 10: Die Dateien sind erzeugt. Sie gehören ins Repository, weil die Tests sie brauchen. Raster und Abbild, aus denen sie entstehen, liegen daneben. | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.3 | `package-lock.json` | erzeugt mit npm 11.19.0 unter Node 24.21.0, nach Aufnahme von `typescript` und `vitest` | keine, siehe Abschnitt „Abhängigkeiten für Test und Build" | Claude Code, Kreuz-Review Codex |

@@ -81,7 +81,7 @@ Alle Versionen und ihre Begründung stehen in [docs/toolchain.md](docs/toolchain
 | Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 | Android-App bauen | `node scripts/android-build.mjs` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
 
-Build und Tests brauchen keine privaten Dateien. Der Build lädt Werkzeuge und Abhängigkeiten aus dem Netz. Die App selbst soll im Betrieb nicht auf das Netzwerk zugreifen.
+Build und Tests brauchen keine privaten Dateien. `npm ci` lädt die Abhängigkeiten aus dem Netz, der Android-Build lädt zusätzlich seine Werkzeuge. Die App selbst soll im Betrieb nicht auf das Netzwerk zugreifen.
 
 ## Pflege der Regeln
 

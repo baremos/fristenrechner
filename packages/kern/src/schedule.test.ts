@@ -1060,7 +1060,7 @@ describe('calculateSchedule — Abgabetermine an Heiligabend/Silvester', () => {
 });
 
 describe('calculateSchedule — Kern 1.9.0', () => {
-  it('D: Ende Bewerberfragen 8 KT vor Ablauf der Teilnahmefrist, auf den vorherigen Arbeitstag vorgezogen', () => {
+  it('Ende Bewerberfragen 8 KT vor Ablauf der Teilnahmefrist, auf den vorherigen Arbeitstag vorgezogen', () => {
     const result = calculateSchedule(
       basisInput({ verfahrensart: 'nicht_offen_mit_tnw', bundesland: 'BE', bekanntmachung: '2026-10-02' })
     );
@@ -1079,7 +1079,7 @@ describe('calculateSchedule — Kern 1.9.0', () => {
     expect(datumVon(kurz, 'bewerberfragen_ende')).toBe('2026-10-30'); // 02.11. − 3 = Fr 30.10.
   });
 
-  it('E: Versand der Aufforderung standardmäßig 1 AT nach dem Bewertungsende, 0 = am selben Tag; gilt auch für die Teststellung', () => {
+  it('Versand der Aufforderung standardmäßig 1 AT nach dem Bewertungsende, 0 = am selben Tag; gilt auch für die Teststellung', () => {
     const standard = basisInput({ verfahrensart: 'nicht_offen_mit_tnw' });
     standard.interneFristen.teilnahmeBewertungAT = 5;
     standard.optionen.teststellung = { aktiv: true, dauerAT: 5 };
@@ -1099,7 +1099,7 @@ describe('calculateSchedule — Kern 1.9.0', () => {
     expect(datumVon(r0, 'teststellung_aufforderung')).toBe(datumVon(r0, 'bewertung_ende'));
   });
 
-  it('G: Verhandlungsverfahren mit einer Runde — vollständige Kette (Sachsen, 10:00 Uhr)', () => {
+  it('Verhandlungsverfahren mit einer Runde — vollständige Kette (Sachsen, 10:00 Uhr)', () => {
     const result = calculateSchedule({
       vergabeordnung: 'vgv',
       verfahrensart: 'verhandlung_mit_tnw',
@@ -1172,12 +1172,12 @@ describe('calculateSchedule — Kern 1.9.0', () => {
     expect(abgabe.label).toContain('finalen Angebote');
     expect(abgabe.label).toContain('10:00 Uhr');
     expect(datumVon(result, 'finales_angebot')).toBeUndefined();
-    // H: Bindefrist in beiden Formen
+    // Bindefrist in beiden Formen
     expect(result.bindefrist).toEqual({ termin: '2027-01-05', tage: 28, basis: '2026-12-08' });
     expect(result.konflikte).toEqual([]);
   });
 
-  it('G: finale Angebote ohne optimierte Runde hängen an der Bewertung der Erstangebote; zwei Runden benennen „optimierte" und „finale"', () => {
+  it('finale Angebote ohne optimierte Runde hängen an der Bewertung der Erstangebote; zwei Runden benennen „optimierte" und „finale"', () => {
     const nurFinal = calculateSchedule(
       basisInput({ verfahrensart: 'verhandlung_mit_tnw', fristen: { optimiertesAngebotKT: 0, finalesAngebotKT: 10 } })
     );
@@ -1191,7 +1191,7 @@ describe('calculateSchedule — Kern 1.9.0', () => {
     expect(zwei.meilensteine.find((m) => m.id === 'zwischenbewertung_optimierte')!.abhaengigVon).toEqual(['optimiertes_angebot']);
   });
 
-  it('G: Eingabeweise „optimiert leer, final n" mit Runde 1 — Runde bleibt erhalten, finale Angebote folgen ihr', () => {
+  it('Eingabeweise „optimiert leer, final n" mit Runde 1 — Runde bleibt erhalten, finale Angebote folgen ihr', () => {
     const input = basisInput({
       verfahrensart: 'verhandlung_mit_tnw',
       fristen: { optimiertesAngebotKT: 0, finalesAngebotKT: 10 },
@@ -1216,7 +1216,7 @@ describe('calculateSchedule — Kern 1.9.0', () => {
     expect(zwei.warnungen.join(' ')).toContain('beide Angebotsrunden');
   });
 
-  it('G: ohne festen Verhandlungstermin folgt die Runde auf die Einladung', () => {
+  it('ohne festen Verhandlungstermin folgt die Runde auf die Einladung', () => {
     const input = basisInput({ verfahrensart: 'verhandlung_mit_tnw', fristen: { optimiertesAngebotKT: 10, finalesAngebotKT: 0 } });
     input.optionen.verhandlungRunde1 = { aktiv: true, dauerAT: 3 };
     const result = calculateSchedule(input);
@@ -1232,7 +1232,7 @@ describe('calculateSchedule — Kern 1.9.0', () => {
     expect(ohne.meilensteine.find((m) => m.id === 'optimiertes_angebot_vorbereitung_ende')!.abhaengigVon).toEqual(['zwischenbewertung_erstangebote']);
   });
 
-  it('G: Anpassung vor der zweiten weiteren Angebotsrunde gilt auch ohne Verhandlungsrunde 2', () => {
+  it('Anpassung vor der zweiten weiteren Angebotsrunde gilt auch ohne Verhandlungsrunde 2', () => {
     const input = basisInput({ verfahrensart: 'verhandlung_mit_tnw', fristen: { optimiertesAngebotKT: 10, finalesAngebotKT: 10 } });
     input.optionen.verhandlungRunde1 = { aktiv: true, dauerAT: 2 };
     input.optionen.verhandlungRunde2 = { aktiv: false, dauerAT: 2 };
@@ -1318,7 +1318,7 @@ describe('calculateSchedule — Kern 1.9.0', () => {
     expect(result.bindefrist).toEqual({ termin: '2027-01-05', tage: 42, basis: '2026-11-24' });
   });
 
-  it('H: Bindefrist als Dauer ⇒ Endtermin berechnet; als Endtermin ⇒ Dauer berechnet; Endtermin vor der Abgabe ⇒ Warnung', () => {
+  it('Bindefrist als Dauer ⇒ Endtermin berechnet; als Endtermin ⇒ Dauer berechnet; Endtermin vor der Abgabe ⇒ Warnung', () => {
     const tage = calculateSchedule(basisInput({ fristen: { bindefrist: { tage: 40 } } }));
     expect(tage.bindefrist).toEqual({ termin: '2026-11-10', tage: 40, basis: '2026-10-01' });
     expect(datumVon(tage, 'bindefrist_ende')).toBe('2026-11-10');
