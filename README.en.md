@@ -47,7 +47,7 @@ From the data entered, the software produces a schedule of dates and deadlines f
 
 ## Structure
 
-The folder `packages/kern` contains the calculation core. So far, the folders of the user interface and of the app contain only their manifest; the table states the intended content.
+The folder `packages/kern` contains the calculation core. User interface and app are not yet implemented; the table states the intended content.
 
 | Folder | Content | Package name |
 |---|---|---|

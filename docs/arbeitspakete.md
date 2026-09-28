@@ -51,7 +51,9 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | 2.1 | abgeschlossen am 2026-09-28 | `docs/toolchain.md` mit Nachweis, `scripts/` |
 | 2.2 | abgeschlossen am 2026-09-28 | Projektgerüst mit Workspaces, `LICENSE`, `NOTICE`, README und Beitragsregeln auf Deutsch und Englisch, `docs/uebernahmepruefung.md` |
 | 2.3 | abgeschlossen am 2026-09-28 | Rechenkern 1.9.0 unter `packages/kern` mit Tests und Referenzfällen, Nachweis in `docs/uebernahmepruefung.md` |
-| 2.4 bis 2.10 | offen | – |
+| 2.4 bis 2.6 | offen | – |
+| 2.7 | für den Bestand vom 2026-09-28 abgeschlossen | `scripts/check-licenses.mjs` mit Tests, `docs/lizenzen.md`, `LICENSE` und `NOTICE` in den npm-Paketen. Die Prüfung wiederholt sich mit jeder neuen Abhängigkeit. Der tatsächliche Inhalt der npm-Pakete folgt vor Stufe 3. |
+| 2.8 bis 2.10 | offen | – |
 
 Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt eine System-WebView mit, die Capacitor nicht unterstützt. Paket 2.5 legt fest, wie die App damit umgeht. Einzelheiten in `docs/toolchain.md`, Abschnitt „Bekannte Einschränkungen".
 

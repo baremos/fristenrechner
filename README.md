@@ -47,7 +47,7 @@ Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren.
 
 ## Aufbau
 
-Der Ordner `packages/kern` enthält den Rechenkern. Die Ordner der Oberfläche und der App enthalten bisher nur ihr Manifest, die Tabelle nennt den vorgesehenen Inhalt.
+Der Ordner `packages/kern` enthält den Rechenkern. Oberfläche und App sind noch nicht umgesetzt, die Tabelle nennt den vorgesehenen Inhalt.
 
 | Ordner | Inhalt | Paketname |
 |---|---|---|
