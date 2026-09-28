@@ -1,6 +1,6 @@
 # Werkzeuge und Versionen
 
-Stand 2026-09-28 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review der Festlegung am 2026-09-27 bestanden. Am 2026-09-28 geändert: Kommandozeilenwerkzeuge 22.0 statt 23.0, Revisionsprüfung über `package.xml`, Testgeräte. Das Kreuz-Review dieser Änderungen steht aus.
+Stand 2026-09-28 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review der Festlegung am 2026-09-27 bestanden. Am 2026-09-28 geändert: Kommandozeilenwerkzeuge 22.0 statt 23.0, Prüfung der Pakete mit `scripts/SdkPruefung.java`, Testgeräte. Projekt-SDK eingerichtet, Beispielbuild und Probe im Emulator bestanden, siehe Abschnitt „Nachweis". Kreuz-Review dieser Änderungen am 2026-09-28 bestanden.
 
 ## Zweck
 
