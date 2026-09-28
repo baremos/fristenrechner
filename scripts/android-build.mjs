@@ -21,8 +21,6 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { revision } from './paket-revision.mjs';
-
 const hier = dirname(fileURLToPath(import.meta.url));
 const wurzel = resolve(hier, '..');
 const vorgabe = JSON.parse(readFileSync(join(hier, 'toolchain.json'), 'utf8'));
@@ -56,11 +54,6 @@ function vergleiche(a, b) {
     if (d !== 0) return d;
   }
   return 0;
-}
-
-function gleicheRevision(a, b) {
-  const zahlen = /^[\d.]+$/;
-  return zahlen.test(a) && zahlen.test(b) ? vergleiche(a, b) === 0 : a === b;
 }
 
 function pruefeNode() {
@@ -156,7 +149,23 @@ function entmaskiere(text) {
   });
 }
 
-function findeSdk(projekt, angabe) {
+// Prüft die Pakete mit scripts/SdkPruefung.java. Das Programm läuft mit dem JDK
+// des Builds. Das Einrichtungsskript ruft dasselbe Programm auf.
+function pruefePakete(sdk, javaHome) {
+  const java = join(javaHome, 'bin', windows ? 'java.exe' : 'java');
+  const angaben = vorgabe.android.pakete.flatMap((p) => [p.name, p.ordner, p.revision]);
+  const lauf = spawnSync(java, [join(hier, 'SdkPruefung.java'), sdk, ...angaben], { encoding: 'utf8' });
+  if (lauf.status !== 0) {
+    abbruch(`Die Prüfung der Pakete ist fehlgeschlagen. ${`${lauf.stderr ?? ''}${lauf.error?.message ?? ''}`.trim()}`);
+  }
+  const zeilen = lauf.stdout.split(/\r?\n/).filter((zeile) => zeile !== '').map((zeile) => zeile.split('\t'));
+  if (zeilen.length !== vorgabe.android.pakete.length || zeilen.some((zeile, i) => zeile.length !== 4 || zeile[1] !== vorgabe.android.pakete[i].name)) {
+    abbruch('Die Prüfung der Pakete hat eine unerwartete Ausgabe geliefert.');
+  }
+  return zeilen.map(([status, , gefunden, meldung], i) => ({ paket: vorgabe.android.pakete[i], status, gefunden, meldung }));
+}
+
+function findeSdk(projekt, angabe, javaHome) {
   let pfad = angabe;
   let herkunft = '--sdk';
   const lokal = sdkDir(projekt);
@@ -183,24 +192,22 @@ function findeSdk(projekt, angabe) {
   // Fehlt ein Paket der Gruppe "build", ist seine Beschreibung ungültig oder weicht
   // ein Paket ab, das in die App eingeht, bricht der Lauf ab. Alles andere wird
   // als Hinweis gemeldet.
-  for (const paket of vorgabe.android.pakete) {
-    let gefunden;
-    try {
-      gefunden = revision(join(pfad, ...paket.ordner.split('/')), paket.name);
-    } catch (fehler) {
-      const text = `Die Beschreibung des Pakets ${paket.name} ist ungültig. ${fehler.message}`;
+  for (const { paket, status, gefunden, meldung } of pruefePakete(pfad, javaHome)) {
+    if (status === 'OK') continue;
+    if (status === 'UNGUELTIG') {
+      const text = `Die Beschreibung des Pakets ${paket.name} ist ungültig: ${meldung}`;
       if (paket.gruppe === 'build') abbruch(text);
       hinweise.push(text);
-      continue;
-    }
-    if (gefunden === null) {
+    } else if (status === 'FEHLT') {
       const text = `Im SDK unter ${pfad} fehlt das Paket ${paket.name}.`;
       if (paket.gruppe === 'build') abbruch(text);
       hinweise.push(text);
-    } else if (!gleicheRevision(gefunden, paket.revision)) {
+    } else if (status === 'ABWEICHUNG') {
       const text = `${paket.name}: Revision ${gefunden} gefunden, festgelegt ist ${paket.revision}.`;
       if (paket.gehtInDieApp) abbruch(text);
       hinweise.push(text);
+    } else {
+      abbruch(`Die Prüfung der Pakete meldet den unbekannten Status ${status}.`);
     }
   }
   return pfad;
@@ -237,7 +244,7 @@ if (!existsSync(projekt)) abbruch(`Projektordner nicht gefunden: ${projekt}`);
 
 const node = pruefeNode();
 const jdk = findeJdk();
-const sdk = findeSdk(projekt, werte.sdk ? resolve(werte.sdk) : null);
+const sdk = findeSdk(projekt, werte.sdk ? resolve(werte.sdk) : null, jdk.pfad);
 const gradle = pruefeWrapper(projekt);
 
 console.log(`Node    ${node}`);

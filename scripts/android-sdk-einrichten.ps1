@@ -95,73 +95,21 @@ function Find-Jdk {
     throw "Kein JDK $($vorgabe.jdk.hauptversion) gefunden. Zuerst ein JDK nach docs/toolchain.md installieren oder -JavaHome angeben."
 }
 
-# Liest ein Zahlenfeld der Revision. Fehlt es, gilt der Ersatzwert.
-function Get-RevisionsFeld($Revision, [string]$Feld, $Ersatz) {
-    $knoten = @($Revision.SelectNodes($Feld))
-    if ($knoten.Count -eq 0) {
-        if ($null -eq $Ersatz) { throw "Feld $Feld fehlt." }
-        return $Ersatz
+# Prueft Pakete mit scripts/SdkPruefung.java und liefert je Paket Status, Name,
+# gefundene Revision und Meldung. Das Build-Skript ruft dasselbe Programm auf.
+# Status: OK, ABWEICHUNG, FEHLT oder UNGUELTIG.
+function Test-Pakete([string]$Jdk, [string]$Sdk, $Pakete) {
+    $angaben = @()
+    foreach ($paket in $Pakete) { $angaben += @([string]$paket.name, [string]$paket.ordner, [string]$paket.revision) }
+    $zeilen = @(& (Join-Path $Jdk 'bin\java.exe') (Join-Path $PSScriptRoot 'SdkPruefung.java') $Sdk @angaben)
+    if ($LASTEXITCODE -ne 0) { throw "Die Pruefung der Pakete endete mit Code $LASTEXITCODE." }
+    $zeilen = @($zeilen | Where-Object { $_ })
+    if ($zeilen.Count -ne @($Pakete).Count) { throw 'Die Pruefung der Pakete hat eine unerwartete Ausgabe geliefert.' }
+    foreach ($zeile in $zeilen) {
+        $felder = ([string]$zeile).Split("`t")
+        if ($felder.Count -ne 4) { throw 'Die Pruefung der Pakete hat eine unerwartete Ausgabe geliefert.' }
+        [pscustomobject]@{ Status = $felder[0]; Name = $felder[1]; Gefunden = $felder[2]; Meldung = $felder[3] }
     }
-    if ($knoten.Count -gt 1) { throw "Feld $Feld ist mehrfach vorhanden." }
-    $wert = $knoten[0].InnerXml.Trim()
-    if ($wert -notmatch '^[0-9]+$') { throw "Feld $Feld ist keine Zahl." }
-    return $wert
-}
-
-# Liefert die Revision eines installierten Pakets oder $null, wenn es fehlt.
-# package.xml schreibt das Installationswerkzeug aus der Paketliste von Google.
-# source.properties stammt aus dem Archiv und nennt bei einzelnen Paketen
-# einen aelteren Stand. Die Datei gilt deshalb nur, wenn package.xml fehlt.
-# Eine vorhandene Beschreibung, die unlesbar ist oder ein anderes Paket nennt,
-# ist ein Fehler. Es gibt dann keinen Rueckgriff auf die andere Datei.
-function Get-Revision([string]$Ordner, [string]$Name) {
-    $xml = Join-Path $Ordner 'package.xml'
-    if (Test-Path $xml) {
-        try {
-            $dokument = New-Object System.Xml.XmlDocument
-            $dokument.XmlResolver = $null
-            $dokument.Load($xml)
-            $pakete = @($dokument.DocumentElement.SelectNodes('localPackage'))
-            if ($pakete.Count -ne 1) { throw 'Die Datei beschreibt nicht genau ein Paket.' }
-            $pfad = $pakete[0].GetAttribute('path')
-            if ($pfad -cne $Name) { throw "Die Datei beschreibt '$pfad'." }
-            $revisionen = @($pakete[0].SelectNodes('revision'))
-            if ($revisionen.Count -ne 1) { throw 'Die Datei nennt nicht genau eine Revision.' }
-            $text = @(
-                (Get-RevisionsFeld $revisionen[0] 'major' $null),
-                (Get-RevisionsFeld $revisionen[0] 'minor' '0'),
-                (Get-RevisionsFeld $revisionen[0] 'micro' '0')
-            ) -join '.'
-            $vorschau = Get-RevisionsFeld $revisionen[0] 'preview' ''
-            if ($vorschau) { $text += " rc$vorschau" }
-            return $text
-        }
-        catch { throw "${xml}: $($_.Exception.Message)" }
-    }
-    $datei = Join-Path $Ordner 'source.properties'
-    if (-not (Test-Path $datei)) { return $null }
-    $gefunden = $null
-    foreach ($zeile in Get-Content $datei) {
-        if ($zeile -match '^Pkg\.Path\s*=\s*(.+?)\s*$') {
-            if ($Matches[1] -cne $Name) { throw "${datei}: Die Datei beschreibt '$($Matches[1])'." }
-        }
-        elseif (($null -eq $gefunden) -and ($zeile -match '^Pkg\.Revision\s*=\s*(.+?)\s*$')) { $gefunden = $Matches[1] }
-    }
-    return $gefunden
-}
-
-function Test-GleicheRevision([string]$A, [string]$B) {
-    # Revisionen mit Zusatz wie "36.0.0 rc5" werden als Text verglichen.
-    if (($A -notmatch '^[\d.]+$') -or ($B -notmatch '^[\d.]+$')) { return $A -eq $B }
-    $x = @($A.Split('.') | ForEach-Object { [int]$_ })
-    $y = @($B.Split('.') | ForEach-Object { [int]$_ })
-    $n = [Math]::Max($x.Count, $y.Count)
-    for ($i = 0; $i -lt $n; $i++) {
-        $p = 0; if ($i -lt $x.Count) { $p = $x[$i] }
-        $q = 0; if ($i -lt $y.Count) { $q = $y[$i] }
-        if ($p -ne $q) { return $false }
-    }
-    return $true
 }
 
 function Get-PaketOrdner([string]$Wurzel, $Paket) {
@@ -252,10 +200,11 @@ try {
     }
 
     if (-not (Test-Path $sdkmanager)) { throw "sdkmanager-classpath.jar fehlt unter $ziel." }
-    $gefunden = Get-Revision $ziel $werkzeuge.name
-    if ((-not $gefunden) -or -not (Test-GleicheRevision $gefunden $werkzeuge.revision)) {
-        throw "Kommandozeilenwerkzeuge unter ${ziel}: Revision '$gefunden' gefunden, festgelegt ist $($werkzeuge.revision)."
+    $ergebnis = @(Test-Pakete $jdk $SdkRoot @($werkzeuge))[0]
+    if ($ergebnis.Status -ne 'OK') {
+        throw "Kommandozeilenwerkzeuge unter ${ziel}: $($ergebnis.Status) $($ergebnis.Gefunden) $($ergebnis.Meldung) Festgelegt ist $($werkzeuge.revision)."
     }
+    $gefunden = $ergebnis.Gefunden
     Write-Host "Kommandozeilenwerkzeuge $gefunden sind vorhanden."
     foreach ($ordner in @(Get-ChildItem -Path (Split-Path $ziel -Parent) -Directory | Where-Object { $_.FullName -ne $ziel })) {
         Write-Host "Hinweis: $($ordner.FullName) gehoert nicht zur Festlegung."
@@ -276,24 +225,24 @@ try {
 
     # 5. Installierte Revisionen gegen die Festlegung pruefen
     Write-Host ''
-    foreach ($paket in $pakete) {
-        try { $gefunden = Get-Revision (Get-PaketOrdner $SdkRoot $paket) $paket.name }
-        catch {
-            Write-Host "UNGUELTIG  $($paket.name)  $($_.Exception.Message)"
-            $abweichung = $true
-            continue
-        }
-        if (-not $gefunden) {
-            Write-Host "FEHLT      $($paket.name)"
-            $abweichung = $true
-            $fehlt = $true
-        }
-        elseif (Test-GleicheRevision $gefunden $paket.revision) {
-            Write-Host "OK         $($paket.name)  $gefunden"
-        }
-        else {
-            Write-Host "ABWEICHUNG $($paket.name)  gefunden $gefunden, festgelegt $($paket.revision)"
-            $abweichung = $true
+    foreach ($ergebnis in @(Test-Pakete $jdk $SdkRoot $pakete)) {
+        switch ($ergebnis.Status) {
+            'OK' { Write-Host "OK         $($ergebnis.Name)  $($ergebnis.Gefunden)" }
+            'FEHLT' {
+                Write-Host "FEHLT      $($ergebnis.Name)"
+                $abweichung = $true
+                $fehlt = $true
+            }
+            'ABWEICHUNG' {
+                $soll = @($pakete | Where-Object { $_.name -eq $ergebnis.Name })[0].revision
+                Write-Host "ABWEICHUNG $($ergebnis.Name)  gefunden $($ergebnis.Gefunden), festgelegt $soll"
+                $abweichung = $true
+            }
+            'UNGUELTIG' {
+                Write-Host "UNGUELTIG  $($ergebnis.Name)  $($ergebnis.Meldung)"
+                $abweichung = $true
+            }
+            default { throw "Die Pruefung der Pakete meldet den unbekannten Status $($ergebnis.Status)." }
         }
     }
 
