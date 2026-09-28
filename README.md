@@ -67,6 +67,7 @@ Website und App sollen denselben Rechenkern und dieselbe Oberfläche nutzen.
 | npm | 11.19.0 als Referenz, `npm ci` läuft auch mit npm 10.9 |
 | JDK | 21, eine freie OpenJDK-Distribution, für den Android-Build und die Tests der Skripte |
 | Android SDK | eigenes Projekt-SDK, Einrichtung siehe [docs/toolchain.md](docs/toolchain.md) |
+| Python | 3.9 oder neuer, für die Skripte unter Linux und für einen Teil der Tests der Skripte. Fehlt es, entfallen diese Tests. |
 
 Alle Versionen und ihre Begründung stehen in [docs/toolchain.md](docs/toolchain.md).
 

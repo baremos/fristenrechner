@@ -111,13 +111,47 @@ finde_jdk() {
 }
 
 # Prüft Pakete mit scripts/SdkPruefung.java. Eingabe: Zeilen der Festlegung.
-# Ausgabe je Paket: Status, Name, gefundene Revision, Meldung.
+# Das Ergebnis steht danach in "geprueft": je Paket eine Zeile mit Status,
+# Name, gefundener Revision und Meldung. Die Felder trennt "trenner" statt
+# eines Tabulators, weil bash Tabulatoren beim Lesen zusammenfasst und leere
+# Felder so verloren gingen.
+# Die Funktion bricht ab, wenn das Programm scheitert oder wenn seine Ausgabe
+# nicht zur Anfrage passt: andere Zahl von Zeilen, andere Paketnamen, andere
+# Zahl von Feldern, unbekannter Status.
+trenner=$'\x1f'
+geprueft=""
 pruefe_pakete() {
-  local angaben=() name ordner revision
+  local zeilen="$1" angaben=() erwartet=() name ordner revision ausgabe zeile felder status code=0 nummer=0
   while IFS=$'\t' read -r _ name ordner revision _; do
     angaben+=("$name" "$ordner" "$revision")
-  done
-  "$jdk/bin/java" "$hier/SdkPruefung.java" "$sdk_root" "${angaben[@]}"
+    erwartet+=("$name")
+  done <<< "$zeilen"
+  ausgabe="$("$jdk/bin/java" "$hier/SdkPruefung.java" "$sdk_root" "${angaben[@]}")" || code=$?
+  if [ "$code" -ne 0 ]; then
+    echo "Die Prüfung der Pakete endete mit Code $code." >&2
+    exit 70
+  fi
+  geprueft=""
+  while IFS= read -r zeile; do
+    [ -n "$zeile" ] || continue
+    felder="$(printf '%s\n' "$zeile" | awk -F '\t' '{ print NF }')"
+    status="$(printf '%s\n' "$zeile" | cut -f 1)"
+    name="$(printf '%s\n' "$zeile" | cut -f 2)"
+    if [ "$felder" -ne 4 ] || [ "$nummer" -ge "${#erwartet[@]}" ] || [ "$name" != "${erwartet[$nummer]}" ]; then
+      echo "Die Prüfung der Pakete hat eine unerwartete Ausgabe geliefert." >&2
+      exit 70
+    fi
+    case "$status" in
+      OK | FEHLT | ABWEICHUNG | UNGUELTIG) ;;
+      *) echo "Die Prüfung der Pakete meldet den unbekannten Status $status." >&2; exit 70 ;;
+    esac
+    geprueft+="$(printf '%s' "$zeile" | tr '\t' "$trenner")"$'\n'
+    nummer=$((nummer + 1))
+  done <<< "$ausgabe"
+  if [ "$nummer" -ne "${#erwartet[@]}" ]; then
+    echo "Die Prüfung der Pakete hat eine unerwartete Ausgabe geliefert." >&2
+    exit 70
+  fi
 }
 
 # 1. JDK
@@ -183,12 +217,13 @@ if [ "$nur_pruefen" -eq 0 ]; then
     mv "$arbeit/entpackt/cmdline-tools" "$ziel"
   fi
 
-  ergebnis="$(printf '%s\n' "$werkzeuge" | pruefe_pakete)"
-  if [ "$(printf '%s' "$ergebnis" | cut -f 1)" != "OK" ]; then
-    echo "Kommandozeilenwerkzeuge unter $ziel: $(printf '%s' "$ergebnis" | cut -f 1,3,4 | tr -s '\t' ' ') Festgelegt ist $werkzeuge_revision." >&2
+  pruefe_pakete "$werkzeuge"
+  IFS="$trenner" read -r status _ gefunden meldung <<< "$geprueft"
+  if [ "$status" != "OK" ]; then
+    echo "Kommandozeilenwerkzeuge unter $ziel: $status $gefunden $meldung Festgelegt ist $werkzeuge_revision." >&2
     exit 65
   fi
-  echo "Kommandozeilenwerkzeuge $(printf '%s' "$ergebnis" | cut -f 3) sind vorhanden."
+  echo "Kommandozeilenwerkzeuge $gefunden sind vorhanden."
   while IFS= read -r ordner; do
     [ "$ordner" = "$ziel" ] || echo "Hinweis: $ordner gehört nicht zur Festlegung."
   done < <(find "$(dirname "$ziel")" -mindepth 1 -maxdepth 1 -type d | sort)
@@ -214,13 +249,10 @@ if [ "$nur_pruefen" -eq 0 ]; then
 fi
 
 # 5. Installierte Revisionen gegen die Festlegung prüfen
-# Die Ausgabe trennt Felder mit Tabulatoren, leere Felder kommen vor. bash
-# fasst Tabulatoren beim Lesen zusammen, deshalb vorher ein anderes
-# Trennzeichen einsetzen.
 echo
 abweichung=0
 fehlt=0
-trenner=$'\x1f'
+pruefe_pakete "$pakete"
 while IFS="$trenner" read -r status name gefunden meldung; do
   [ -n "$status" ] || continue
   case "$status" in
@@ -230,9 +262,8 @@ while IFS="$trenner" read -r status name gefunden meldung; do
       soll="$(printf '%s\n' "$pakete" | awk -F '\t' -v name="$name" '$2 == name { print $4; exit }')"
       echo "ABWEICHUNG $name  gefunden $gefunden, festgelegt $soll"; abweichung=1 ;;
     UNGUELTIG) echo "UNGUELTIG  $name  $meldung"; abweichung=1 ;;
-    *) echo "Die Prüfung der Pakete meldet den unbekannten Status $status." >&2; exit 70 ;;
   esac
-done < <(printf '%s\n' "$pakete" | pruefe_pakete | tr '\t' "$trenner")
+done <<< "$geprueft"
 
 echo
 if [ "$fehlt" -eq 1 ]; then

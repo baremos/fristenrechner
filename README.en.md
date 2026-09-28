@@ -67,6 +67,7 @@ Website and app are meant to use the same calculation core and the same user int
 | npm | 11.19.0 as reference; `npm ci` also runs with npm 10.9 |
 | JDK | 21, a free OpenJDK distribution, for the Android build and the tests of the scripts |
 | Android SDK | a project SDK of its own, setup see [docs/toolchain.md](docs/toolchain.md) |
+| Python | 3.9 or later, for the scripts under Linux and for part of the tests of the scripts. Without it, these tests are skipped. |
 
 All versions and the reasons for them are in [docs/toolchain.md](docs/toolchain.md).
 

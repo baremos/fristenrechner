@@ -52,41 +52,59 @@ import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as datei:
-    node = json.load(datei)["node"]
-version = node["referenz"]
+    vorgabe = json.load(datei)
+version = vorgabe["node"]["referenz"]
 archiv = f"node-v{version}-linux-{sys.argv[2]}.tar.gz"
-summe = node["sha256"].get(archiv, "")
 print(version)
 print(archiv)
-print(summe)
+print(vorgabe["node"]["sha256"].get(archiv, ""))
+print(vorgabe["npm"]["referenz"])
 EOF
 )"
 version="$(printf '%s\n' "$angaben" | sed -n 1p)"
 archiv="$(printf '%s\n' "$angaben" | sed -n 2p)"
 summe="$(printf '%s\n' "$angaben" | sed -n 3p)"
+npm_version="$(printf '%s\n' "$angaben" | sed -n 4p)"
+if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || ! printf '%s' "$npm_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+  echo "scripts/toolchain.json nennt keine gültige Version von Node.js oder npm." >&2
+  exit 65
+fi
 if ! printf '%s' "$summe" | grep -Eq '^[0-9a-f]{64}$'; then
   echo "Für $archiv nennt scripts/toolchain.json keine Prüfsumme." >&2
   exit 65
 fi
 
+ziel="$(realpath -m "$ziel")"
 adresse="https://nodejs.org/dist/v$version/$archiv"
 ordner="$ziel/${archiv%.tar.gz}"
 echo "Node.js:    $version"
+echo "npm:        $npm_version"
 echo "Archiv:     $adresse"
 echo "SHA-256:    $summe"
 echo "Ziel:       $ordner"
 
-if [ -x "$ordner/bin/node" ]; then
-  gefunden="$("$ordner/bin/node" --version)"
-  if [ "$gefunden" = "v$version" ]; then
-    echo "Node.js $gefunden ist vorhanden."
+# Prüft Node.js und npm in einem Ordner gegen die Festlegung. Liefert nichts,
+# wenn beides stimmt, sonst den Grund.
+pruefe_einrichtung() {
+  local pfad="$1" gefunden code=0
+  [ -x "$pfad/bin/node" ] || { echo "bin/node fehlt"; return; }
+  gefunden="$("$pfad/bin/node" --version 2> /dev/null)" || code=$?
+  [ "$code" -eq 0 ] || { echo "node --version endet mit Code $code"; return; }
+  [ "$gefunden" = "v$version" ] || { echo "Node.js $gefunden statt v$version"; return; }
+  [ -e "$pfad/bin/npm" ] || { echo "bin/npm fehlt"; return; }
+  gefunden="$(PATH="$pfad/bin:$PATH" "$pfad/bin/npm" --version 2> /dev/null)" || code=$?
+  [ "$code" -eq 0 ] || { echo "npm --version endet mit Code $code"; return; }
+  [ "$gefunden" = "$npm_version" ] || { echo "npm $gefunden statt $npm_version"; return; }
+}
+
+if [ -e "$ordner" ]; then
+  grund="$(pruefe_einrichtung "$ordner")"
+  if [ -z "$grund" ]; then
+    echo "Node.js v$version und npm $npm_version sind vorhanden."
+    echo "Für einen Lauf: export PATH=\"$ordner/bin:\$PATH\""
     exit 0
   fi
-  echo "Der Ordner enthält Node.js $gefunden statt v$version. Bitte prüfen und löschen, dann das Skript erneut starten." >&2
-  exit 65
-fi
-if [ -e "$ordner" ]; then
-  echo "Der Ordner $ordner ist vorhanden, aber unvollständig. Bitte prüfen und löschen, dann das Skript erneut starten." >&2
+  echo "Der Ordner $ordner ist vorhanden, passt aber nicht zur Festlegung: $grund. Bitte prüfen und löschen, dann das Skript erneut starten." >&2
   exit 65
 fi
 
@@ -109,11 +127,12 @@ if [ "$berechnet" != "$summe" ]; then
 fi
 
 tar -xzf "$arbeit/$archiv" -C "$arbeit"
-if [ ! -x "$arbeit/${archiv%.tar.gz}/bin/node" ]; then
-  echo "Das Archiv hat nicht den erwarteten Aufbau: bin/node fehlt." >&2
+grund="$(pruefe_einrichtung "$arbeit/${archiv%.tar.gz}")"
+if [ -n "$grund" ]; then
+  echo "Der Inhalt des Archivs passt nicht zur Festlegung: $grund." >&2
   exit 65
 fi
 mv "$arbeit/${archiv%.tar.gz}" "$ordner"
 
-echo "Node.js $("$ordner/bin/node" --version), npm $(PATH="$ordner/bin:$PATH" npm --version)"
-echo "Fertig. Für einen Lauf: export PATH=\"$ordner/bin:\$PATH\""
+echo "Node.js v$version und npm $npm_version sind eingerichtet."
+echo "Für einen Lauf: export PATH=\"$ordner/bin:\$PATH\""
