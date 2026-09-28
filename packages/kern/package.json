@@ -1,0 +1,9 @@
+{
+  "name": "@baremos/fristenrechner-kern",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Rechenkern des Fristenrechners Vergabe",
+  "license": "Apache-2.0",
+  "author": "BAREMOS IT GmbH",
+  "type": "module"
+}

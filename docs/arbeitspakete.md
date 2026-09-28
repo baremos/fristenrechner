@@ -1,13 +1,13 @@
 # Arbeitspakete
 
-Stand 2026-09-27 · Go von Andreas Schmidt für Stufe 1 und Stufe 2 · nach Kreuz-Review überarbeitet
+Stand 2026-09-28 · Go von Andreas Schmidt für Stufe 1 und Stufe 2 · nach Kreuz-Review überarbeitet
 
 ## Überblick
 
 | Stufe | Inhalt | Status |
 |---|---|---|
 | 1 | Fachlicher Zuschnitt und Pflegekonzept | bestätigt am 2026-09-27 |
-| 2 | Technischer Nachweis: Android, F-Droid, Signierung | freigegeben, begonnen am 2026-09-27 mit Paket 2.1 |
+| 2 | Technischer Nachweis: Android, F-Droid, Signierung | freigegeben, begonnen am 2026-09-27. Paket 2.1 abgeschlossen am 2026-09-28, Paket 2.2 in Arbeit. |
 | 3 | Pakete veröffentlichen, Website bindet sie ein | kein Go |
 | 4 | Google Play: Konto, Store-Material auf Deutsch und Englisch, Einreichung | kein Go |
 | 5 | F-Droid: Einreichung, Metadaten auf Deutsch und Englisch | kein Go |
@@ -43,6 +43,16 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | 2.8 | **F-Droid-Nachweis.** Build-Rezept, zuerst mit einer Minimal-App, am Ende der vollständige, saubere Build unter Linux mit Scanner. Das geschieht lokal, ein öffentliches Repository ist dafür nicht nötig. | Build aus Quellen ohne Beanstandung des Scanners |
 | 2.9 | **Signierung.** Eigener App-Signierschlüssel, getrennter Upload-Schlüssel, Ablage außerhalb des Repositorys, Sicherung. Der App-Signierschlüssel wird später in die App-Signatur von Google Play eingebracht, F-Droid nutzt den reproduzierbaren Build mit Entwicklersignatur. | APK reproduzierbar gebaut; Zertifikat geprüft; Sicherung des Schlüssels testweise wiederhergestellt; Update über eine installierte Version mit höherem Versionscode ohne Datenverlust |
 | 2.10 | **Testmatrix und Bericht.** `docs/testmatrix.md` und `docs/stufe2-nachweis.md` mit Ergebnissen, Restpunkten und Empfehlung für Stufe 3 bis 5. | Bericht an Andreas |
+
+### Stand der Pakete
+
+| Nr. | Stand | Ergebnis |
+|---|---|---|
+| 2.1 | abgeschlossen am 2026-09-28 | `docs/toolchain.md` mit Nachweis, `scripts/` |
+| 2.2 | in Arbeit | Projektgerüst, `docs/uebernahmepruefung.md` |
+| 2.3 bis 2.10 | offen | – |
+
+Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt eine System-WebView mit, die Capacitor nicht unterstützt. Paket 2.5 legt fest, wie die App damit umgeht. Einzelheiten in `docs/toolchain.md`, Abschnitt „Bekannte Einschränkungen".
 
 ### Reihenfolge
 

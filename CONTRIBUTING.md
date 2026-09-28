@@ -2,6 +2,8 @@
 
 Danke für das Interesse am Fristenrechner Vergabe. Diese Seite beschreibt, wie Beiträge ablaufen.
 
+[English version](CONTRIBUTING.en.md)
+
 ## Was das Projekt ist
 
 Eine Rechenhilfe für Fristen in Vergabeverfahren nach deutschem Recht. Die Software ist unverbindlich, ersetzt keine Rechtsberatung, und alle Angaben erfolgen ohne Gewähr. Herausgeber ist die BAREMOS IT GmbH, die Lizenz ist Apache-2.0.
@@ -37,9 +39,25 @@ Die App soll bei F-Droid erscheinen. Jede Abhängigkeit muss frei lizenziert sei
 
 Texte beschreiben, was die Software rechnet. Sie versprechen keine Rechtssicherheit und keine Beratung. Die Maintainer prüfen jeden öffentlichen Text vor der Veröffentlichung und passen Formulierungen bei Bedarf an.
 
+## Regeln für übernommene Dateien
+
+Dateien aus anderen Quellen werden vor dem ersten Einchecken geprüft. Die Prüfpunkte stehen in [docs/uebernahmepruefung.md](docs/uebernahmepruefung.md).
+
 ## Build und Test
 
-Die Befehle für Build und Test folgen mit dem Projektgerüst an dieser Stelle. Sie funktionieren ohne private Dateien.
+| Schritt | Befehl |
+|---|---|
+| Abhängigkeiten installieren | `npm ci` |
+| Tests | `npm test` |
+| Typprüfung | `npm run check` |
+| Build der Pakete | `npm run build` |
+| Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` |
+
+Die Befehle funktionieren ohne private Dateien. Die Versionen der Werkzeuge stehen in [docs/toolchain.md](docs/toolchain.md).
+
+- Abhängigkeiten stehen mit exakter Version in den Manifesten. Änderungen am Lockfile entstehen mit der Referenzversion von npm.
+- Eine neue Version wird erst übernommen, wenn sie mindestens sieben Tage veröffentlicht ist.
+- Installationsskripte von Paketen laufen nicht.
 
 ## Lizenz der Beiträge
 
