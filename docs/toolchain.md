@@ -284,13 +284,13 @@ F-Droid baut unter Debian. Die Werkzeuge von F-Droid laufen nicht unter Windows.
 | Werkzeug | Version | Hinweis |
 |---|---|---|
 | Debian | 13 (trixie) | Mindeststand für den Buildserver von F-Droid |
-| fdroidserver | 2.4.5 (AGPL-3.0) | Debian 13 liefert 2.4.2. Für die frühe Probe ist am 2026-09-28 die Fassung 2.4.2 aus Debian installiert worden. Die Festlegung der Fassung steht aus, siehe `fdroid-build.md`, Festlegung F1. |
+| fdroidserver | 2.4.2 (AGPL-3.0), Paket `fdroidserver` 2.4.2-1 aus Debian 13 | Festgelegt am 2026-09-28 als Stand des lokalen Nachweises, Begründung in `fdroid-build.md`, Festlegung F1. Bis dahin war 2.4.5 genannt. Welchen Stand der Buildserver von F-Droid nutzt, hält der abschließende Nachweis fest. |
 | OpenJDK | 21.0.12.1+1 aus Debian 13 | Hauptversion 21 wie festgelegt |
 | Node.js | Debian 13 liefert 20.19.2 | zu alt für Astro 7, siehe unten |
 
 F-Droid verlangt freie Werkzeuge für den gesamten Build und bevorzugt Pakete aus Debian. Das JDK von Oracle ist ausgeschlossen.
 
-Auf einem Windows-Rechner braucht der Nachweis aus Arbeitspaket 2.8 eine Linux-Umgebung: WSL 2 mit Debian 13 oder einen Container. Die Einrichtung ist ein eigener Schritt und nicht Teil dieses Arbeitspakets.
+Auf einem Windows-Rechner braucht der Nachweis aus Arbeitspaket 2.8 eine Linux-Umgebung: WSL 2 mit Debian 13 oder einen Container. Eingerichtet ist seit dem 2026-09-28 WSL 2 mit Debian 13.5, siehe `fdroid-build.md`.
 
 ### Vorgefertigte Binärdateien
 
@@ -316,8 +316,7 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 | Build-Ziel des Web-Builds und geprüfte Version der System-WebView. Die Mindest-API allein bestimmt die Fähigkeiten der WebView nicht. Dazu gehört das Verhalten bei zu alter WebView: Hinweisseite über `server.errorPath` oder höhere Mindest-API. | 2.5 |
 | Probe auf dem Gerät mit Berechnung in der Oberfläche, einem Aufruf über die Brücke von Capacitor und vollständiger Paketliste des Systemabbilds | 2.5 |
 | Bereitstellung eines Screenreaders auf den Systemabbildern ohne Google-Dienste | 2.5, Testmatrix |
-| Installationsweg und Python-Version für fdroidserver 2.4.5 | 2.8 |
-| Linux-Umgebung für den F-Droid-Nachweis | 2.8 |
+| Gradle im Build für F-Droid, vorgebaute Programme in `node_modules`, Kategorie bei F-Droid: Festlegungen F2, F5 und F6 in `fdroid-build.md` | 2.8 |
 | Prüfsummen der Gradle-Abhängigkeiten | 2.8 |
 
 ## Bekannte Einschränkungen

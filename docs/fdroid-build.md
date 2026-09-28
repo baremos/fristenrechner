@@ -36,7 +36,7 @@ Installiert am 2026-09-28 mit `apt-get install --no-install-recommends fdroidser
 
 Nicht installiert sind das Android SDK, Node.js und Gradle. Die empfohlenen Pakete von `fdroidserver` sind nicht installiert, darunter das Paket `android-sdk` aus Debian.
 
-**Abweichung von `toolchain.md`:** Dort ist fdroidserver 2.4.5 genannt, der Installationsweg sollte vor der Installation feststehen. Für die frühe Probe ist die Fassung 2.4.2 aus Debian installiert worden. Die Festlegung steht aus, siehe „Offene Festlegungen".
+**Zur Fassung von fdroidserver:** `toolchain.md` nannte bis zum 2026-09-28 die Fassung 2.4.5, der Installationsweg sollte vor der Installation feststehen. Installiert worden ist für die frühe Probe die Fassung 2.4.2 aus Debian, also vor der Festlegung. Der fachlich Verantwortliche hat danach am selben Tag 2.4.2 aus Debian festgelegt, siehe F1.
 
 ## Frühe Probe, Schritt 1: Scanner auf dem Quelltext
 
@@ -103,22 +103,22 @@ Dieselbe Datei nennt für `node-v24.21.0-win-x64.zip` die Prüfsumme aus `script
 
 Beide Skripte lesen Versionen und Prüfsummen aus `scripts/toolchain.json`. Sie schreiben nur in den Benutzerbereich und installieren nichts im System. `android-sdk-einrichten.sh` entspricht dem Skript für Windows: `sdkmanager` zeigt die Lizenzbedingungen an, wer das Skript startet, bestätigt sie selbst. `node-einrichten.sh` vergleicht nach dem Entpacken Node.js und npm mit der Festlegung.
 
-## Offene Festlegungen
+## Festlegungen
 
-Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird.
+Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1, F3 und F4 sind getroffen. F2, F5 und F6 sind offen.
 
-| Nr. | Thema | Vorschlag | Begründung |
+| Nr. | Thema | Festlegung oder Vorschlag | Begründung |
 |---|---|---|---|
-| F1 | Fassung von fdroidserver | 2.4.2 aus Debian 13 statt 2.4.5, als Stand der lokalen Probe | Debian liefert signierte Pakete und Sicherheitsaktualisierungen. Die Änderungen bis 2.4.5 betreffen Versionen, die Debian 13 nicht enthält (Befund 6). Eine Installation über PyPI brächte einen zweiten Paketweg. Der abschließende Nachweis hält zusätzlich fest, welchen Stand der Buildserver von F-Droid nutzt. |
+| F1 | Fassung von fdroidserver | **festgelegt am 2026-09-28:** 2.4.2 aus Debian 13, als Stand des lokalen Nachweises | Debian liefert signierte Pakete und Sicherheitsaktualisierungen. Die Änderungen bis 2.4.5 betreffen Versionen, die Debian 13 nicht enthält (Befund 6). Eine Installation über PyPI brächte einen zweiten Paketweg. Der abschließende Nachweis hält zusätzlich fest, welchen Stand der Buildserver von F-Droid nutzt. |
 | F2 | Gradle im Build für F-Droid | Gradle 8.14.5 bleibt. Für die lokale Probe ein festgehaltener Commit des Projekts `gradlew-fdroid`. | Ein Wechsel auf fdroidserver 2.4.5 löst die Frage nicht (Befund 3). Eine ältere Version als 8.14.4 scheidet wegen der Sicherheitsmeldungen aus `toolchain.md` aus. Das Projekt hat keine Marken, festzuhalten ist deshalb ein Commit. |
-| F3 | Node.js unter Linux | Archiv von nodejs.org mit der Prüfsumme oben, abgelegt im Benutzerbereich | wie unter Windows: Referenzversion, keine Installation im System |
-| F4 | Android SDK unter Linux | Kommandozeilenwerkzeuge 22.0 für Linux nach `scripts/toolchain.json`, nur die Gruppe „Build" | Der Emulator läuft unter Windows. Wer installiert, bestätigt die Lizenz selbst. Das `sdkmanager` von F-Droid wird dafür nicht verwendet. |
+| F3 | Node.js unter Linux | **festgelegt am 2026-09-28:** Archiv von nodejs.org mit der Prüfsumme oben, abgelegt im Benutzerbereich | wie unter Windows: Referenzversion, keine Installation im System |
+| F4 | Android SDK unter Linux | **festgelegt am 2026-09-28:** Kommandozeilenwerkzeuge 22.0 für Linux nach `scripts/toolchain.json`, nur die Gruppe „Build" | Der Emulator läuft unter Windows. Wer installiert, bestätigt die Lizenz selbst. Das `sdkmanager` von F-Droid wird dafür nicht verwendet. |
 | F5 | Vorgebaute Programme in `node_modules` | keine pauschale Ausnahme. Zuerst trennen, was der Build der App braucht und was nur die Tests brauchen. Für jede verbleibende Datei Herkunft, Lizenz, Verwendung und Behandlung einzeln festhalten. | Die 28 Einträge aus `lizenzen.md` sind Einträge des Lockfiles für alle Betriebssysteme, nicht 28 Programme im Build unter Linux. Wie andere Rezepte vorgehen, zeigt Befund 7. |
 | F6 | Kategorie bei F-Droid | offen | Die Liste der Kategorien gehört zu den Daten von F-Droid und liegt in der Probe nicht vor. |
 
 ## Nächste Schritte
 
-1. Festlegungen F1, F3 und F4 treffen, danach Node.js und das Android SDK unter Linux einrichten.
+1. Node.js und das Android SDK unter Linux einrichten, nach F3 und F4. Geladen und installiert ist am 2026-09-28 noch nichts.
 2. Minimal-App unter Linux bauen, zuerst ohne die Werkzeuge von F-Droid, um den Weg zu prüfen.
 3. Rezept schreiben und mit `fdroid build` bauen. Dabei F2 und F5 klären.
 4. Scanner nach den Vorbereitungsschritten laufen lassen.
