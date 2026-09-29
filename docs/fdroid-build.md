@@ -34,7 +34,7 @@ Installiert am 2026-09-28 mit `apt-get install --no-install-recommends fdroidser
 | Python | 3.13.5 | `python3` 3.13.5-1 |
 | Git | 2.47.3 | `git` 1:2.47.3-0+deb13u1 |
 
-Nicht installiert sind das Android SDK, Node.js und Gradle. Die empfohlenen Pakete von `fdroidserver` sind nicht installiert, darunter das Paket `android-sdk` aus Debian.
+Nicht installiert sind das Android SDK und Gradle. Node.js ist nicht im System installiert, es liegt seit dem 2026-09-29 als Archiv im Benutzerbereich, siehe „Einrichtung unter Linux“. Die empfohlenen Pakete von `fdroidserver` sind nicht installiert, darunter das Paket `android-sdk` aus Debian.
 
 **Zur Fassung von fdroidserver:** `toolchain.md` nannte bis zum 2026-09-28 die Fassung 2.4.5, der Installationsweg sollte vor der Installation feststehen. Installiert worden ist für die frühe Probe die Fassung 2.4.2 aus Debian, also vor der Festlegung. Der fachlich Verantwortliche hat danach am selben Tag 2.4.2 aus Debian festgelegt, siehe F1.
 
@@ -100,13 +100,35 @@ Dieselbe Datei nennt für `node-v24.21.0-win-x64.zip` die Prüfsumme aus `script
 
 ## Einrichtung unter Linux
 
-| Schritt | Befehl | Stand am 2026-09-28 |
+| Schritt | Befehl | Stand |
 |---|---|---|
-| Node.js bereitstellen | `scripts/node-einrichten.sh` | geprüft ohne Download: Probelauf, Fehlbedienung, vorhandene Ordner mit passendem und mit unpassendem Inhalt. Geladen und entpackt ist noch nichts. |
-| Projekt-SDK einrichten | `scripts/android-sdk-einrichten.sh --ohne-testgruppe` | geprüft ohne Download, siehe nächste Zeile. Geladen und installiert ist noch nichts. |
+| Node.js bereitstellen | `scripts/node-einrichten.sh` | eingerichtet am 2026-09-29 unter `~/.local/share/fristenrechner/node`: Archiv geladen, Prüfsumme stimmt, Node.js 24.21.0 und npm 11.19.0, 4797 Dateien, 208 MiB. Ein zweiter Lauf erkennt die Einrichtung und lädt nichts. Im Suchpfad des Systems liegt kein Node.js. Am 2026-09-28 ohne Download geprüft: Probelauf, Fehlbedienung, vorhandene Ordner mit passendem und mit unpassendem Inhalt. |
+| Projekt-SDK einrichten | `scripts/android-sdk-einrichten.sh --ohne-testgruppe` | am 2026-09-28 geprüft ohne Download, siehe nächste Zeile. Geladen und installiert ist am 2026-09-29 noch nichts. Ungeprüft sind bis zum ersten Lauf: Download und Entpacken des Archivs, der Aufruf von `sdkmanager` mit der Anzeige der Lizenzbedingungen, Download und Installation der Pakete. |
 | Projekt-SDK prüfen | `scripts/android-sdk-einrichten.sh --nur-pruefen --ohne-testgruppe` | geprüft an einem leeren und an einem nachgebauten SDK, auch in einem Ordner mit Leerzeichen und Umlaut. Gegenproben mit einem ersetzten Prüfprogramm: Abbruch, zu wenige Zeilen, vertauschte Namen, fehlendes Feld und unbekannter Status lassen das Skript scheitern. |
 
 Beide Skripte lesen Versionen und Prüfsummen aus `scripts/toolchain.json`. Sie schreiben nur in den Benutzerbereich und installieren nichts im System. `android-sdk-einrichten.sh` entspricht dem Skript für Windows: `sdkmanager` zeigt die Lizenzbedingungen an, wer das Skript startet, bestätigt sie selbst. `node-einrichten.sh` vergleicht nach dem Entpacken Node.js und npm mit der Festlegung.
+
+## Saubere Kopie unter Linux
+
+Geprüft am 2026-09-29 in Debian 13.5 mit Node.js 24.21.0, npm 11.19.0, OpenJDK 21.0.12.1, Python 3.13.5 und Git 2.47.3. Der Stand `main` ist in einen neuen Ordner geklont worden, 61 Dateien, keine davon mit Zeilenenden von Windows.
+
+| Schritt | Ergebnis |
+|---|---|
+| `npm ci` | 48 Pakete installiert. Die Lizenzprüfung zählt 45 der 70 Einträge des Lockfiles als installiert, 25 stehen nur im Lockfile. |
+| `npm test` | Skripte: 221 Tests, 219 bestanden, 2 übersprungen. Die beiden prüfen das Skript für Windows mit PowerShell. Rechenkern: 134 Tests bestanden. |
+| `npm run check` | bestanden |
+| `npm run build` | bestanden, gebaut ist der Rechenkern |
+| `npm run lizenzen` | bestanden |
+| Arbeitsbaum danach | laut Git unverändert |
+
+Vorgebaute Programme nach `npm ci` unter Linux, gesucht nach den Endungen `node`, `wasm`, `so`, `exe`, `dll`, `dylib` und `jar` und nach ELF-Dateien:
+
+| Datei | Größe | Verwendung |
+|---|---|---|
+| `@rolldown/binding-linux-x64-gnu/rolldown-binding.linux-x64-gnu.node` | 19,1 MB | Rolldown, über Vite für die Tests |
+| `lightningcss-linux-x64-gnu/lightningcss.linux-x64-gnu.node` | 10,0 MB | Lightning CSS, über Vite für die Tests |
+
+Dazu kommt `es-module-lexer` mit WebAssembly, das in JavaScript eingebettet ist. Der Build des Rechenkerns ruft nur `tsc` auf. Das gilt für den Stand vom 2026-09-29 ohne die Oberfläche und ohne die App. Mit Astro kommen weitere Pakete hinzu, die Aufstellung ist dann zu wiederholen (F5).
 
 ## Festlegungen
 
@@ -123,7 +145,7 @@ Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1, F3 
 
 ## Nächste Schritte
 
-1. Node.js und das Android SDK unter Linux einrichten, nach F3 und F4. Geladen und installiert ist am 2026-09-28 noch nichts.
+1. Das Android SDK unter Linux einrichten, nach F4. Node.js ist seit dem 2026-09-29 eingerichtet.
 2. Minimal-App unter Linux bauen, zuerst ohne die Werkzeuge von F-Droid, um den Weg zu prüfen.
 3. Rezept schreiben und mit `fdroid build` bauen. Dabei F2 und F5 klären.
 4. Scanner nach den Vorbereitungsschritten laufen lassen.
