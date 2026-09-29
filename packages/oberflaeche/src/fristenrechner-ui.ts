@@ -16,6 +16,7 @@ import {
 } from '@baremos/fristenrechner-kern';
 
 import { regelstandText } from './fristenrechner-export-data';
+import { leerenUndAnhaengen } from './dom';
 
 const STORAGE_KEY = 'baremos-fristenrechner-projekt-v1';
 const KERN_1_9_VERSION = '1.9.0';
@@ -395,7 +396,7 @@ export function initFristenrechner(root: HTMLElement): void {
     const auswahl = field<HTMLSelectElement>(form, 'verfahrensart');
     const vorher = auswahl.value;
     const arten = verfahrenFuer(vergabeordnung);
-    auswahl.replaceChildren(
+    leerenUndAnhaengen(auswahl,
       ...arten.map((art) => {
         const option = document.createElement('option');
         option.value = art;
@@ -548,7 +549,7 @@ export function initFristenrechner(root: HTMLElement): void {
       ...result.warnungen,
       ...result.meilensteine.flatMap((milestone) => milestone.warnungen),
     ].filter((value, index, all) => all.indexOf(value) === index);
-    resultWarnings.replaceChildren();
+    leerenUndAnhaengen(resultWarnings);
     resultWarnings.hidden = warnings.length === 0;
     if (!warnings.length) return;
 
@@ -558,7 +559,7 @@ export function initFristenrechner(root: HTMLElement): void {
   };
 
   const renderTimeline = (result: ScheduleResult): void => {
-    timeline.replaceChildren();
+    leerenUndAnhaengen(timeline);
     if (!result.phasen.length) return;
 
     const milestonesById = new Map(result.meilensteine.map((milestone) => [milestone.id, milestone]));
@@ -609,7 +610,7 @@ export function initFristenrechner(root: HTMLElement): void {
   };
 
   const renderTable = (result: ScheduleResult): void => {
-    tableBody.replaceChildren();
+    leerenUndAnhaengen(tableBody);
     const phaseNames = new Map(result.phasen.map((phase) => [phase.id, phase.label]));
     result.meilensteine.forEach((milestone) => {
       const row = document.createElement('tr');
@@ -670,7 +671,7 @@ export function initFristenrechner(root: HTMLElement): void {
   };
 
   const renderKonflikte = (result: ScheduleResult): boolean => {
-    resultKonflikte.replaceChildren();
+    leerenUndAnhaengen(resultKonflikte);
     resultKonflikte.hidden = result.konflikte.length === 0;
     if (!result.konflikte.length) return false;
     resultKonflikte.append(makeTextElement('p', 'Kein Terminplan berechenbar — bitte die festen Starttermine korrigieren:'));
@@ -695,11 +696,11 @@ export function initFristenrechner(root: HTMLElement): void {
       currentResult = undefined;
       setResultActionsEnabled(false);
       resultWarnings.hidden = true;
-      resultWarnings.replaceChildren();
+      leerenUndAnhaengen(resultWarnings);
       resultBindefrist.hidden = true;
       resultBindefrist.textContent = '';
-      timeline.replaceChildren();
-      tableBody.replaceChildren();
+      leerenUndAnhaengen(timeline);
+      leerenUndAnhaengen(tableBody);
       timelineSection.hidden = true;
       tableSection.hidden = true;
       const projectLabel = input.projekt?.projektname || input.projekt?.vergabenummer || 'Unbenanntes Projekt';
@@ -723,8 +724,8 @@ export function initFristenrechner(root: HTMLElement): void {
       resultBindefrist.hidden = true;
       resultBindefrist.textContent = '';
     }
-    const start = result.phasen.at(0)?.von ?? result.meilensteine.at(0)?.datum;
-    const end = result.phasen.at(-1)?.bis ?? result.meilensteine.at(-1)?.datum;
+    const start = result.phasen[0]?.von ?? result.meilensteine[0]?.datum;
+    const end = result.phasen[result.phasen.length - 1]?.bis ?? result.meilensteine[result.meilensteine.length - 1]?.datum;
     const projectLabel = input.projekt?.projektname || input.projekt?.vergabenummer || 'Unbenanntes Projekt';
     printCustomer.textContent = input.projekt?.kunde?.trim() || '—';
     printProject.textContent = input.projekt?.projektname?.trim() || '—';
@@ -739,7 +740,7 @@ export function initFristenrechner(root: HTMLElement): void {
     projectFileMeta.hidden = false;
     const migrationHint = isVersionBefore(file.rechenkernVersion, KERN_1_9_VERSION);
     projectFileMeta.classList.toggle('project-file-meta--migration', migrationHint);
-    projectFileMeta.replaceChildren(document.createTextNode(
+    leerenUndAnhaengen(projectFileMeta, document.createTextNode(
       `Projektdatei: Rechenkern ${file.rechenkernVersion} · Rechtsstand: ${file.rechtsstand}`,
     ));
     if (migrationHint) {
