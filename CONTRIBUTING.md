@@ -53,8 +53,8 @@ Dateien aus anderen Quellen werden vor dem ersten Einchecken geprüft. Die Prüf
 | Schritt | Befehl | Stand |
 |---|---|---|
 | Abhängigkeiten installieren | `npm ci` | läuft |
-| Tests | `npm test` | läuft, prüft die Skripte und den Rechenkern |
-| Typprüfung | `npm run check` | läuft für den Rechenkern |
+| Tests | `npm test` | läuft, prüft die Skripte, den Rechenkern und die Oberfläche |
+| Typprüfung | `npm run check` | läuft für den Rechenkern und die Oberfläche |
 | Build der Pakete | `npm run build` | läuft für den Rechenkern |
 | Lizenzen der Abhängigkeiten prüfen | `npm run lizenzen` | läuft |
 | Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |

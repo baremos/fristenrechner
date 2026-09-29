@@ -76,8 +76,8 @@ All versions and the reasons for them are in [docs/toolchain.md](docs/toolchain.
 | Step | Command | Status |
 |---|---|---|
 | Install dependencies | `npm ci` | works |
-| Tests | `npm test` | works, tests the scripts and the calculation core |
-| Type check | `npm run check` | works for the calculation core |
+| Tests | `npm test` | works, tests the scripts, the calculation core and the user interface |
+| Type check | `npm run check` | works for the calculation core and the user interface |
 | Build the packages | `npm run build` | works for the calculation core |
 | Check the licenses of the dependencies | `npm run lizenzen` | works, see [docs/lizenzen.md](docs/lizenzen.md) |
 | Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the Android project in `app/android`, which follows with the app |
