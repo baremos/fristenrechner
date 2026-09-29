@@ -1,8 +1,8 @@
 # Signierung
 
-Stand 2026-09-29 · Entwurf, nach zwei Runden des Kreuz-Reviews überarbeitet · es ist kein Schlüssel erzeugt
+Stand 2026-09-29 · Festlegungen S1 bis S12 getroffen am 2026-09-29, S1 unter Vorbehalt · erzeugt ist nur ein Probeschlüssel, kein Schlüssel für eine Veröffentlichung
 
-Dieses Dokument legt fest, wie die App signiert wird. Es steht, bevor der erste Release-Build entsteht. Festlegungen trifft der fachlich Verantwortliche. Bis dahin sind alle Punkte Vorschläge.
+Dieses Dokument legt fest, wie die App signiert wird. Es steht, bevor der erste Release-Build entsteht. Die Festlegungen hat der fachlich Verantwortliche getroffen.
 
 ## Warum das früh feststehen muss
 
@@ -63,14 +63,16 @@ Folgerung für dieses Projekt, noch ohne Nachweis:
 
 Die festgelegten Build-Tools 35.0.0 sind älter als Android 17. Ob `apksigner` aus diesem Paket hybride Signaturen prüfen oder erzeugen kann, ist nicht geprüft.
 
-## Vorschläge zur Festlegung
+## Festlegungen
 
-| Nr. | Thema | Vorschlag | Begründung |
+Getroffen am 2026-09-29.
+
+| Nr. | Thema | Festlegung | Begründung |
 |---|---|---|---|
-| S1 | Zahl der Schlüssel | ein klassischer App-Signierschlüssel für alle Vertriebswege, dazu ein getrennter Upload-Schlüssel für Google Play. **Bedingt:** Die Festlegung gilt erst, wenn der Nachweis N6 erbracht ist. | siehe Ziel. Geht der Upload-Schlüssel verloren, lässt er sich ersetzen, ohne dass sich die Signatur der App ändert. |
+| S1 | Zahl der Schlüssel | ein klassischer App-Signierschlüssel für alle Vertriebswege, dazu ein getrennter Upload-Schlüssel für Google Play. **Unter Vorbehalt:** Die Festlegung gilt erst, wenn der Nachweis N6 erbracht ist. | siehe Ziel. Geht der Upload-Schlüssel verloren, lässt er sich ersetzen, ohne dass sich die Signatur der App ändert. |
 | S2 | Verfahren und Länge | RSA mit 4096 Bit, für beide selbst erzeugten Schlüssel | Google Play verlangt für eigene Schlüssel und für den Upload-Schlüssel RSA mit mindestens 2048 Bit. Die klassischen Schlüssel, die Google erzeugt, haben 4096 Bit. |
 | S3 | Gültigkeit des Zertifikats | 30 Jahre. Das Enddatum wird nach dem Erzeugen geprüft. | Die Dokumentation von Android empfiehlt mindestens 25 Jahre. Google Play verlangt ein Ende nach dem 22. Oktober 2033. |
-| S4 | Angaben im Zertifikat | Name und Ort des Herausgebers, Land DE, nur Angaben, die ohnehin öffentlich sind. Den Wortlaut legt der fachlich Verantwortliche fest. | Das Zertifikat ist öffentlich und soll über die Lebenszeit der App dasselbe bleiben. |
+| S4 | Angaben im Zertifikat | `CN=BAREMOS IT GmbH, O=BAREMOS IT GmbH, L=Berlin, C=DE` | Name und Ort des Herausgebers, nur Angaben, die ohnehin öffentlich sind. Das Zertifikat ist öffentlich und soll über die Lebenszeit der App dasselbe bleiben. |
 | S5 | Format der Schlüsseldatei | PKCS12, je Schlüssel eine eigene Datei. Der Typ wird beim Erzeugen und bei jeder Verwendung ausdrücklich angegeben. | PKCS12 ist die Voreinstellung von `keytool` seit Java 9. Das Skript verlässt sich nicht auf Voreinstellungen. Getrennte Dateien erlauben getrennte Ablage. |
 | S6 | Signaturverfahren der APK | APK Signature Scheme v2 und v3, ausdrücklich eingestellt: v1 aus, v2 an, v3 an, v4 aus | v2 gibt es seit Android 7.0, v3 seit Android 9. Die Mindestversion der App ist Android 7.0, das ältere Verfahren v1 ist dafür nicht nötig. Das gilt für die klassische Signatur des Herausgebers, nicht für hybride Signaturen von Google Play. |
 | S7 | Ort des Signierens | außerhalb des Gradle-Builds. Die APK für F-Droid signiert `apksigner` aus den Build-Tools, das AAB für Google Play `jarsigner` aus dem JDK mit dem Upload-Schlüssel. | Der Build erzeugt unsignierte Dateien. Die Konfiguration des Builds enthält weder Pfad noch Kennwort. F-Droid empfiehlt `apksigner`, weil die Übertragung der Signatur dessen Verhalten nachbildet. `apksigner` signiert keine AAB-Dateien. |
@@ -78,13 +80,13 @@ Die festgelegten Build-Tools 35.0.0 sind älter als Android 17. Ob `apksigner` a
 | S9 | Kennwörter | kennt nur der fachlich Verantwortliche. Sie stehen in keiner Datei des Repositorys, in keinem Protokoll und in keinem Aufruf. Wer signiert, gibt das Kennwort im Dialog ein. | Regel 4 des Projekts |
 | S10 | Sicherung | zwei Kopien auf getrennten Datenträgern an getrennten Orten, verschlüsselt. Die Wiederherstellung des echten Schlüssels wird einmal geprüft, bevor er zum ersten Mal für eine Veröffentlichung verwendet wird. | Abnahmekriterium des Arbeitspakets |
 | S11 | Debug-Builds | tragen den Debug-Schlüssel, den die Build-Werkzeuge von Android auf dem Rechner erzeugen, und werden nicht veröffentlicht | Der Debug-Schlüssel entsteht auf jedem Rechner neu. |
-| S12 | Fassung von `apksigner` zum Signieren | offen, bis der Nachweis N5 vorliegt. Zu prüfen sind die Fassungen aus den Build-Tools 34.0.0 und 35.0.0. | F-Droid dokumentiert: Dateien, die `apksigner` aus den Build-Tools 34 signiert, lassen sich mit `apksigcopier` prüfen, bei neueren Fassungen scheitert das. Das Projekt baut mit den Build-Tools 35.0.0. Gebaut und signiert werden kann mit verschiedenen Fassungen. |
+| S12 | Fassung und Einstellung von `apksigner` | `apksigner` aus den Build-Tools 35.0.0, immer mit `--alignment-preserved true` | F-Droid dokumentiert: Dateien, die `apksigner` aus den Build-Tools 34 signiert, lassen sich mit `apksigcopier` prüfen, bei neueren Fassungen scheitert das. Die Probe vom 2026-09-29 bestätigt das für die Voreinstellung und zeigt, dass es mit dieser Einstellung gelingt, siehe „Ergebnisse der Probe“. Eine zweite Fassung der Build-Tools ist damit nicht nötig. |
 
 ## Probe vor dem echten Schlüssel
 
-Der technische Nachweis in Stufe 2 braucht den echten Schlüssel nicht. Vorschlag: Die Proben laufen mit einem Probeschlüssel, der nur dafür erzeugt wird.
+Der technische Nachweis in Stufe 2 braucht den echten Schlüssel nicht. Die Proben laufen mit einem Probeschlüssel, der nur dafür erzeugt ist. Die Freigabe dafür ist am 2026-09-29 erteilt, erzeugt ist er am selben Tag.
 
-| Punkt | Vorschlag |
+| Punkt | Festlegung |
 |---|---|
 | Kennzeichnung | Das Zertifikat nennt im Namen das Wort „Probe“. |
 | Ablage | in einem Ordner außerhalb des Arbeitsordners |
@@ -92,7 +94,26 @@ Der technische Nachweis in Stufe 2 braucht den echten Schlüssel nicht. Vorschla
 | Verwendung | nur für die Minimal-App und für Testfassungen mit eigener App-ID |
 | Ende | Der Probeschlüssel wird nach dem Nachweis gelöscht. Er signiert nie eine veröffentlichte Datei. |
 
-Auch der Probeschlüssel entsteht erst nach einer Freigabe. Die Probe der Wiederherstellung mit dem Probeschlüssel ersetzt nicht die Prüfung der Sicherung des echten Schlüssels.
+Die Probe der Wiederherstellung mit dem Probeschlüssel ersetzt nicht die Prüfung der Sicherung des echten Schlüssels. Das Kennwort des Probeschlüssels liegt in einer Datei neben ihm, außerhalb des Repositorys. Die Werkzeuge lesen es aus der Datei, es steht in keinem Aufruf und in keinem Protokoll. Für den echten Schlüssel gilt S9.
+
+## Ergebnisse der Probe
+
+Probe vom 2026-09-29 mit dem Probeschlüssel und der Minimal-App, Stand `d27fb91`. Signiert ist die unsignierte Release-Datei aus `fdroid-build.md`, 3 251 043 Bytes.
+
+| Punkt | Ergebnis |
+|---|---|
+| Schlüssel | erzeugt unter Windows mit `keytool` 21.0.8: RSA mit 4096 Bit, PKCS12, gültig vom 2026-09-29 bis zum 2056-09-29. Das Zertifikat signiert `keytool` mit SHA384withRSA. |
+| Probesicherung | Kopie in Debian eingelesen, Prüfsummen gleich, damit signiert. Der Fingerabdruck in der signierten Datei ist der, den `keytool` nennt. |
+| Signaturverfahren | `apksigner verify` meldet: v1 nein, v2 ja, v3 ja, v3.1 nein, v4 nein. Schlüssel RSA mit 4096 Bit. |
+| Zwei Fassungen von `apksigner` | Die Fassung aus den Build-Tools 35.0.0 und die Fassung 35.0.2 aus Debian erzeugen dieselbe signierte Datei, Byte für Byte. |
+| Übertragung der Signatur, Voreinstellung | **gescheitert.** `apksigner` verschiebt beim Signieren 441 der 444 Einträge, die signierte Datei hat 3 263 943 Bytes. Die Funktion `verify_apks` aus fdroidserver 2.4.2 überträgt die Signatur mit `apksigcopier` 1.1.1 auf den zweiten, getrennt erzeugten Build. Die Prüfung danach meldet eine abweichende Prüfsumme. |
+| Übertragung der Signatur, mit `--alignment-preserved true` | **bestanden.** Die signierte Datei hat 3 259 847 Bytes. Die Datei mit der übertragenen Signatur ist bytegleich mit der signierten Datei. |
+| Gegenprobe | zweiter Build mit einer zusätzlichen Datei: Die Prüfung scheitert, wie sie soll. |
+| Ausrichtung | `zipalign -c 4` bestätigt die unsignierte und die signierten Dateien. |
+| Unsignierte Datei | nach dem Signieren unverändert |
+| AAB | `bundleRelease` erzeugt 3 087 892 Bytes. `jarsigner` aus dem JDK 21.0.12.1 signiert mit dem Probeschlüssel für den Upload, `jarsigner -verify` bestätigt. Es warnt, dass das Zertifikat selbst signiert ist. Das ist bei Schlüsseln für Android so vorgesehen. |
+
+Grenzen: Die Minimal-App hat keinen nativen Code. Bei Dateien mit nativem Code richtet `apksigner` in der Voreinstellung die Bibliotheken neu aus, mit `--alignment-preserved true` bleibt die Ausrichtung aus dem Build. Geprüft ist mit fdroidserver 2.4.2, der Buildserver von F-Droid nutzt einen neueren Stand. Auf einem Gerät installiert ist noch nichts.
 
 ## Geplanter Ablauf
 
@@ -103,7 +124,7 @@ Auch der Probeschlüssel entsteht erst nach einer Freigabe. Die Probe der Wieder
 | 3. Sicherung anlegen und Wiederherstellung prüfen | Kopie, Vergleich der Prüfsummen, Probe-Signatur mit der wiederhergestellten Datei | der fachlich Verantwortliche |
 | 4. Unsignierte Release-Dateien erzeugen | `scripts/android-build.mjs`, Aufgabe `assembleRelease` für die APK, Aufgabe `bundleRelease` für das AAB | Skript |
 | 5. Ausrichtung der APK prüfen | `zipalign`. Stimmt die Ausrichtung nicht, wird sie vor dem Signieren hergestellt. | Skript |
-| 6. APK signieren | `apksigner sign` mit dem App-Signierschlüssel, in der Fassung nach S12. Die signierte Datei ist eine eigene Datei, die unsignierte bleibt erhalten. Nach dem Signieren wird die signierte Datei nicht mehr verändert. | der fachlich Verantwortliche, Kennwort im Dialog |
+| 6. APK signieren | `apksigner sign` mit dem App-Signierschlüssel, in der Fassung und mit der Einstellung nach S12. Die signierte Datei ist eine eigene Datei, die unsignierte bleibt erhalten. Nach dem Signieren wird die signierte Datei nicht mehr verändert. | der fachlich Verantwortliche, Kennwort im Dialog |
 | 7. Signatur der APK prüfen | `apksigner verify --verbose --print-certs`, Vergleich der Verfahren und des Fingerabdrucks mit diesem Dokument | Skript |
 | 8. AAB signieren | `jarsigner` mit dem Upload-Schlüssel | der fachlich Verantwortliche, Kennwort im Dialog, erst in Stufe 4 |
 | 9. Schlüssel bei Google Play einbringen | Play Console | der fachlich Verantwortliche, erst in Stufe 4 und vor der ersten Veröffentlichung |
@@ -115,10 +136,10 @@ Die Skripte für die Schritte 4 bis 7 entstehen unter `scripts/signing/`. Sie ne
 | Nr. | Nachweis | Wie | Stand |
 |---|---|---|---|
 | N1 | APK reproduzierbar gebaut | zwei Builds desselben Stands in getrennten Ordnern, danach derselbe Stand unter Windows und unter Linux. Verglichen werden die unsignierten Dateien Byte für Byte. | für die Minimal-App am 2026-09-29 belegt, siehe `fdroid-build.md`. Für die App offen. |
-| N2 | Zertifikat geprüft | Verfahren, Länge, Gültigkeit mit Enddatum und Angaben gegen dieses Dokument | offen |
-| N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | offen |
+| N2 | Zertifikat geprüft | Verfahren, Länge, Gültigkeit mit Enddatum und Angaben gegen dieses Dokument | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
+| N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
 | N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, ein Projekt speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist vorhanden. Gegenprobe: Eine Fassung mit anderer Signatur wird abgelehnt. | offen |
-| N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | offen |
+| N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | für die Minimal-App am 2026-09-29 belegt: `apksigner` 35.0.0 mit `--alignment-preserved true`, `apksigcopier` 1.1.1 aus fdroidserver 2.4.2. Für die App offen. |
 | N6 | Wechsel zwischen den Vertriebswegen | Zertifikate und Folge der Schlüssel in den Dateien, die Google Play tatsächlich ausliefert, mit der Fassung für F-Droid vergleichen. Updates mit steigendem Versionscode in beiden Richtungen, ohne Datenverlust, auch auf Android 17. | offen, erst mit einem Konto bei Google Play möglich, vor der ersten Veröffentlichung |
 
 N1 bis N5 gehören zu Stufe 2 und laufen mit dem Probeschlüssel. N6 gehört zu Stufe 4.
@@ -135,8 +156,8 @@ Der Wechsel eines Schlüssels ist ein Notfall und kein Teil des gewöhnlichen Ab
 
 ## Offene Punkte
 
-1. Festlegungen S1 bis S12 durch den fachlich Verantwortlichen. S1 bleibt bedingt, bis N6 erbracht ist. S12 bleibt offen, bis N5 erbracht ist.
-2. Freigabe für einen Probeschlüssel.
+1. S1 bleibt unter Vorbehalt, bis N6 erbracht ist.
+2. Skripte unter `scripts/signing/` für die Schritte 4 bis 7 und der Nachweis N4 im Emulator.
 3. Klären, ob Google Play bei einem eigenen Schlüssel einen hybriden Block anfügt. Das zeigt sich erst an einer Datei, die Google Play ausliefert. Scheitert N6, sind diese Wege zu prüfen:
    - der Rückweg zur klassischen Signatur über das Recht `ROLLBACK` für K0. Ob Google Play ihn einrichtet und beibehält, ist offen.
    - eine hybride Signatur auch für die Fassung bei F-Droid. Sie braucht passende Schlüssel und einen Nachweis mit den Werkzeugen von F-Droid.
