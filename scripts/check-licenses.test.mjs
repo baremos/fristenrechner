@@ -10,13 +10,19 @@ import { syncBuiltinESMExports } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { menschenlesbar, pruefeAusdruck, pruefePackliste, pruefeProjekt, vorgabe } from './check-licenses.mjs';
+import { menschenlesbar, pruefeAusdruck, pruefePackliste, pruefeProjekt as pruefeProjektMitVorgaben, vorgabe } from './check-licenses.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
 const scratchpad = resolve(hier, '../scratchpad');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'lizenzen-test-'));
 test.after(() => rmSync(arbeit, { recursive: true, force: true }));
+
+// Synthetische Bäume haben eigene Ausnahmen. Die echte Projektfreigabe wird
+// getrennt am unveränderten Baum geprüft, auch mit festem Ablaufdatum.
+function pruefeProjekt(wurzel, optionen = {}) {
+  return pruefeProjektMitVorgaben(wurzel, { ausnahmen: [], ...optionen });
+}
 
 function schreiben(datei, inhalt) {
   mkdirSync(dirname(datei), { recursive: true });
@@ -116,8 +122,42 @@ test('Alle Regeln sind zentral erfasst; Auslieferung ist eine echte Teilmenge', 
   assert.deepEqual(Object.entries(vorgabe.lizenzen).filter(([, b]) => b.includes('ausgeliefert')).map(([id]) => id).sort(),
     ['Apache-2.0', 'BSD-3-Clause', 'ISC', 'MIT', 'Zlib']);
   for (const b of Object.values(vorgabe.lizenzen)) assert.equal(b.includes('entwicklung'), b.includes('bereitgestellt'));
-  assert.deepEqual(vorgabe.einzelausnahmen, []);
+  assert.equal(vorgabe.einzelausnahmen.length, 1);
+  assert.equal(vorgabe.einzelausnahmen[0].paket, 'rgbcolor');
   assert.equal(vorgabe.einzelausnahmenMaxMonate, 12);
+});
+
+test('Echter Baum: rgbcolor wird mit genau belegter MIT-Ausnahme angenommen', () => {
+  const b = pruefeProjektMitVorgaben(resolve(hier, '..'), { stichtag: '2026-09-29' });
+  assert.equal(b.ok, true, b.fehler.join('\n'));
+  assert.equal(b.zusammenfassung.einzelausnahmen, 1);
+  const p = b.pakete.find((p) => p.name === 'rgbcolor');
+  assert.equal(p.version, '1.0.1');
+  assert.equal(p.bereich, 'ausgeliefert');
+  assert.equal(p.lizenz, 'MIT OR SEE LICENSE IN FEEL-FREE.md');
+  assert.equal(p.lizenzInstalliert, p.lizenz);
+  assert.deepEqual(p.auswahl, ['MIT']);
+  assert.equal(p.ausnahme.gueltigBis, '2027-09-29');
+  assert.equal(p.ausnahme.beleg.datei, 'LICENSE.md');
+  assert.equal(p.ausnahme.beleg.quelle, 'https://registry.npmjs.org/rgbcolor/-/rgbcolor-1.0.1.tgz');
+  assert.deepEqual(p.wege.ausgeliefert.map((k) => [k.name, k.art]), [
+    ['jspdf', 'dependencies'], ['canvg', 'optionalDependencies'], ['rgbcolor', 'dependencies'],
+  ]);
+  for (const name of ['exceljs', 'big-integer', 'buffers', 'chainsaw', 'traverse', 'jszip', 'unzipper', 'glob', 'rimraf', 'fstream', 'uuid']) {
+    assert.ok(!b.pakete.some((p) => p.name === name), `${name} ist noch im Baum.`);
+  }
+});
+
+test('Echter Baum: ohne Ausnahme scheitert ausschließlich rgbcolor', () => {
+  const b = pruefeProjekt(resolve(hier, '..'));
+  assert.equal(b.ok, false);
+  assert.deepEqual(b.pakete.filter((p) => p.fehler.length).map((p) => p.name), ['rgbcolor']);
+  assert.equal(b.fehler.length, 2);
+});
+
+test('Echte Ausnahme: Ablaufdatum ist eingeschlossen, der Folgetag scheitert', () => {
+  assert.equal(pruefeProjektMitVorgaben(resolve(hier, '..'), { stichtag: '2027-09-29' }).ok, true);
+  assert.throws(() => pruefeProjektMitVorgaben(resolve(hier, '..'), { stichtag: '2027-09-30' }), /Einzelausnahme abgelaufen: rgbcolor@1\.0\.1/);
 });
 
 for (const bereich of ['ausgeliefert', 'bereitgestellt', 'entwicklung']) {
@@ -737,7 +777,11 @@ test('Fehlende eigene Wurzelhinweise lassen schon die normale Prüfung scheitern
 });
 
 function cli(f, args) {
-  return spawnSync(process.execPath, [join(hier, 'check-licenses.mjs'), '--wurzel', f.wurzel, ...args], {
+  // Derselbe Skriptinhalt mit eigenen Prüfdaten für den synthetischen Baum.
+  const skript = join(f.wurzel, 'scripts/check-licenses.mjs');
+  schreiben(skript, readFileSync(join(hier, 'check-licenses.mjs'), 'utf8'));
+  schreiben(join(f.wurzel, 'scripts/check-licenses.json'), { ...vorgabe, einzelausnahmen: [] });
+  return spawnSync(process.execPath, [skript, '--wurzel', f.wurzel, ...args], {
     encoding: 'utf8', cwd: arbeit, env: { ...process.env, TEMP: arbeit, TMP: arbeit },
   });
 }

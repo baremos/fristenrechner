@@ -35,8 +35,8 @@ Die verbindliche Liste steht in [`scripts/check-licenses.json`](../scripts/check
 | ISC | ja | ja | Permissiv; Urheber- und Erlaubnistext erhalten. [Text](https://spdx.org/licenses/ISC.html). |
 | BSD-3-Clause | ja | ja | Hinweise und Haftungsausschluss erhalten; Namen nicht ohne Erlaubnis für Werbung verwenden. [Text](https://spdx.org/licenses/BSD-3-Clause.html). |
 | MPL-2.0 | ja | nein | Copyleft auf Dateiebene; Weitergabe erfordert unter anderem Quelltextzugang und Hinweise. Für Werkzeuge aufgenommen, für Auslieferung erst nach einem konkreten Plan. [Abschnitt 3](https://www.mozilla.org/en-US/MPL/2.0/). |
-| Zlib | ja | ja | Permissiv; Herkunft nicht falsch darstellen, geänderte Quellen kennzeichnen, Hinweis in Quellweitergaben erhalten. Neu für die Auslieferung zugelassen. [Text](https://spdx.org/licenses/Zlib.html); lokal auch `pako/lib/zlib/deflate.js` in beiden installierten Versionen. |
-| GPL-3.0-or-later | nein, nur bekannt | nein, nur bekannt | Freie Copyleft-Lizenz mit Pflichten insbesondere bei Weitergabe von Quellen und Binärdateien. Die Projektliste erlaubt keinen GPL-Zweig, kennt aber die Kennung zur vollständigen Prüfung von Alternativen. Das ist keine Einstufung als proprietär. [GPL, insbesondere Abschnitte 4–6 und 14](https://spdx.org/licenses/GPL-3.0-or-later.html); lokal `jszip/LICENSE.markdown`. |
+| Zlib | ja | ja | Permissiv; Herkunft nicht falsch darstellen, geänderte Quellen kennzeichnen, Hinweis in Quellweitergaben erhalten. Für die Auslieferung zugelassen. [Text](https://spdx.org/licenses/Zlib.html); lokal auch `pako/lib/zlib/deflate.js`. |
+| GPL-3.0-or-later | nein, nur bekannt | nein, nur bekannt | Freie Copyleft-Lizenz mit Pflichten insbesondere bei Weitergabe von Quellen und Binärdateien. Die Projektliste erlaubt keinen GPL-Zweig, kennt aber die Kennung zur vollständigen Prüfung von Alternativen. Das ist keine Einstufung als proprietär. [GPL, insbesondere Abschnitte 4–6 und 14](https://spdx.org/licenses/GPL-3.0-or-later.html). Im aktuellen Baum kommt die Kennung nicht mehr vor. |
 | BSD-2-Clause | ja | nein | Permissiv; Urheberhinweis, Bedingungen und Haftungsausschluss in Quellen bzw. bei Binärweitergabe in Dokumentation oder Begleitmaterial erhalten. [Text](https://spdx.org/licenses/BSD-2-Clause.html); lokale LICENSE-Dateien der acht Pakete unten. |
 | 0BSD | ja | nein | Erlaubt Nutzung, Änderung und Weitergabe ohne zusätzliche Hinweispflicht im Lizenztext; Haftungsausschluss. Vorhandene Hinweise bleiben erhalten. [Text](https://spdx.org/licenses/0BSD.html); `tslib/LICENSE.txt`. |
 | BlueOak-1.0.0 | ja | nein | Weite Urheber- und Patenterlaubnis; Empfänger müssen Lizenztext oder Lizenzlink erhalten. Bei schriftlich gerügtem Hinweisverstoß nennt der Text eine Heilungsfrist von 30 Tagen. [Text](https://spdx.org/licenses/BlueOak-1.0.0.html); lokale LICENSE.md-Dateien der drei Pakete unten. |
@@ -56,7 +56,7 @@ Fehlende Angaben, unbekannte Kennungen, `UNLICENSED`, Lizenzobjekte und Texte wi
 
 ## Einzelausnahmen
 
-`einzelausnahmen` in den Prüfdaten ist **leer**. Insbesondere ist keine Ausnahme für ausgelieferte Pakete eingetragen. Die Mechanik wird mit eigenen Probedaten getestet.
+`einzelausnahmen` in den Prüfdaten enthält **eine Ausnahme für `rgbcolor` 1.0.1**, im Bereich `ausgeliefert`, als MIT und gültig bis einschließlich **2027-09-29**. Die allgemeinen Lizenzregeln bleiben unverändert. Die Tests prüfen sowohl eigene Probedaten als auch die Ausnahme am echten Baum und ihren Ablauftag.
 
 Eine Ausnahme enthält folgende Pflichtfelder:
 
@@ -76,29 +76,49 @@ Die Prüfung lehnt ungültige, doppelte, abgelaufene und zu weit befristete Ausn
 
 Ohne vorhandenen, nicht leeren Paketbeleg mit passender Prüfsumme gibt es keinen Erfolg durch Ausnahme. Ein Belegpfad darf auch über Verknüpfungen nicht aus dem Paket hinausführen. Name und Version der Installation werden weiterhin geprüft; bei einer Ausnahme müssen Lockfile und installiertes Manifest dieselbe Rohangabe tragen. Ein gültiges installiertes MIT-Feld ersetzt daher nicht still eine abweichende Lockfile-Angabe. Der Originalwortlaut und die angewandte Ausnahme einschließlich Beleg und Befristung stehen im JSON, in der Textausgabe erscheint die Ausnahme ausdrücklich. Die Lizenzwahl ersetzt keine Pflicht zur Mitgabe von Originalhinweisen.
 
-### Vorschläge für einzelne Versionen, noch nicht freigegeben
+### Geprüfte Einzelausnahme vom 2026-09-29
 
-| Paket und Version | Angegebener Wortlaut | Festgestellte Lizenz | Beleg im installierten Paket | Bereich | Vorgeschlagene Befristung |
+| Paket und Version | Angegebener Wortlaut | Festgestellte Lizenz | Beleg im installierten Paket | Bereich | Gültig bis einschließlich |
 |---|---|---|---|---|---|
-| `traverse` 0.3.9 | `MIT/X11` | MIT; vollständiger Text vorhanden | `node_modules/traverse/LICENSE`, SHA-256 `309dff61c243e706fac25101a9bdb585f7e2db45e32915b08cf47518d2075863` | ausgeliefert | 2026-12-31; zusätzlich erneute Sichtung vor Stufe 3 |
-| `rgbcolor` 1.0.1 | `MIT OR SEE LICENSE IN FEEL-FREE.md` | MIT als ausdrücklich wählbare Alternative | `node_modules/rgbcolor/LICENSE.md`, SHA-256 `86045408b01f66f9319a2fe7bc7f7e115f272956ac44d2d840fc00127124a78c`; auch `FEEL-FREE.md` gelesen | ausgeliefert | 2026-12-31; zusätzlich erneute Sichtung vor Stufe 3 |
-| `chainsaw` 0.1.0 | `MIT/X11` | Nicht anhand eines vollständigen Texts im Paket festgestellt | Nur `package.json` nennt MIT/X11; keine Lizenzdatei und kein Lizenztext in README oder den gesichteten Quellen | ausgeliefert | Noch keine Ausnahme vorschlagen; zuerst versionsbezogenen Beleg beschaffen |
-| `buffers` 0.1.1 | keine Angabe | nicht festgestellt | Manifest, README, Quellen und Dateiliste enthalten keinen Lizenzbeleg | ausgeliefert | Keine Ausnahme ohne nachgewiesene Lizenz |
+| `rgbcolor` 1.0.1 | `MIT OR SEE LICENSE IN FEEL-FREE.md` | MIT als ausdrücklich wählbare Alternative | `node_modules/rgbcolor/LICENSE.md`, SHA-256 `86045408b01f66f9319a2fe7bc7f7e115f272956ac44d2d840fc00127124a78c`; auch `FEEL-FREE.md` gelesen | ausgeliefert | 2027-09-29 (UTC) |
 
-Für die beiden belegten Vorschläge kann als öffentlicher, versionsgebundener Quellenverweis das jeweilige npm-Archiv dienen: `https://registry.npmjs.org/traverse/-/traverse-0.3.9.tgz` bzw. `https://registry.npmjs.org/rgbcolor/-/rgbcolor-1.0.1.tgz`. Diese Adressen stehen im Lockfile; die Archive wurden hier nicht erneut geladen. Gelesen wurden ausschließlich die bereits installierten Dateien. Die Befristung betrifft die Projektfreigabe der Metadatenberichtigung, nicht die Laufzeit der fremden Lizenz. Ein früherer Übergang zu Stufe 3 wird nicht automatisch am Datum erkannt.
+`LICENSE.md` enthält den vollständigen MIT-Text samt Urheberhinweis und erlaubt im Abschnitt „Exemptions“ ausdrücklich die Wahl zwischen MIT und `FEEL-FREE.md`. Das trägt die Wahl von MIT. Öffentliche, versionsgebundene Quelle ist das [npm-Archiv von rgbcolor 1.0.1](https://registry.npmjs.org/rgbcolor/-/rgbcolor-1.0.1.tgz), dessen Adresse im Lockfile steht. Das Archiv wurde hier nicht erneut geladen; geprüft wurden die installierten Dateien. Die Befristung betrifft die Projektfreigabe der Metadatenberichtigung, nicht die Laufzeit der fremden Lizenz.
 
 ## Bestandsaufnahme nach der Umstellung
 
-Am 2026-09-29: **509 fremde Lockfile-Orte**, davon **122 ausgeliefert**, **287 bereitgestellt**, **100 für Test und Build**. **414 installierte Manifeste** wurden gelesen, **95 Einträge nur anhand des Lockfiles** geprüft. Die fünf unten genannten Pakete enthalten weiterhin Fehler; bei den übrigen installierten Manifesten stimmen Name, Version und normalisierte Lizenzangabe mit dem Lockfile überein. Eigene Workspaces und deren Links zählen nicht mit.
+Der Lauf am 2026-09-29 erfasst **412 fremde Lockfile-Orte**, davon **24 ausgeliefert**, **288 bereitgestellt**, **100 für Test und Build**. **317 installierte Manifeste** wurden gelesen, **95 Einträge nur anhand des Lockfiles** geprüft. Es gibt **keine Fehler und eine angewandte Einzelausnahme**. Name, Version und Lizenzangaben der Installation bestehen den Gegenvergleich; bei `rgbcolor` wird die identische Rohangabe in Lockfile und Manifest über den geprüften Beleg als MIT eingeordnet. Eigene Workspaces und deren Links zählen nicht mit.
 
-Die vollständige Liste aller npm-Abhängigkeiten samt Transitivabhängigkeiten steht im eingecheckten [`package-lock.json`](../package-lock.json), unter `packages` mit Version, Paketort und Lizenzangabe je Paket, soweit die Metadaten eine solche enthalten. Fehlende oder unbrauchbare Lizenzangaben sind unten ausdrücklich als offene Befunde erfasst. `node scripts/check-licenses.mjs --json` ergänzt die vollständige Liste aus dem aktuellen Baum um die Bereiche, gewählten Lizenzen, Belegpfade unter `wege` und Fehler. Diese beiden Quellen bilden die npm-Liste für Arbeitspaket 2.7; die frühere Tabelle mit 70 Entwicklungsabhängigkeiten ist durch diesen Bestand überholt. Eine zusätzliche erzeugte Liste ist derzeit nicht eingecheckt. Nicht im Lockfile erfasste Bündelinhalte sowie Android- und Gradle-Abhängigkeiten bleiben gesondert zu ergänzen.
+Verteilung der unveränderten Lizenzangaben aus demselben Lauf; zusammengesetzte Angaben zählen je Paketort einmal:
 
-### Angaben, die nach den Entscheidungen zu Peers, Zlib und GPL noch zu behandeln waren
+| Angabe im Lockfile | Ausgeliefert | Bereitgestellt | Test und Build | Gesamt |
+|---|---:|---:|---:|---:|
+| `(MIT AND Zlib)` | 1 | 0 | 0 | 1 |
+| `(MPL-2.0 OR Apache-2.0)` | 1 | 0 | 0 | 1 |
+| `0BSD` | 0 | 1 | 0 | 1 |
+| `Apache-2.0` | 0 | 16 | 2 | 18 |
+| `Apache-2.0 AND LGPL-3.0-or-later` | 0 | 3 | 0 | 3 |
+| `Apache-2.0 AND LGPL-3.0-or-later AND MIT` | 0 | 1 | 0 | 1 |
+| `BSD-2-Clause` | 0 | 8 | 0 | 8 |
+| `BSD-3-Clause` | 0 | 3 | 1 | 4 |
+| `BlueOak-1.0.0` | 0 | 3 | 0 | 3 |
+| `CC0-1.0` | 0 | 2 | 0 | 2 |
+| `ISC` | 0 | 9 | 6 | 15 |
+| `LGPL-3.0-or-later` | 0 | 10 | 0 | 10 |
+| `MIT` | 21 | 219 | 91 | 331 |
+| `MIT OR SEE LICENSE IN FEEL-FREE.md` | 1 | 0 | 0 | 1 |
+| `MPL-2.0` | 0 | 12 | 0 | 12 |
+| `Python-2.0` | 0 | 1 | 0 | 1 |
+| **Gesamt** | **24** | **288** | **100** | **412** |
 
-Jede unterschiedliche verbleibende Lizenzangabe hat eine Zeile. Alle genannten Versionen stammen aus dem aktuellen Lockfile, nicht aus dem ExcelJS-Bündel. Pfadkürzel:
+Für die SEE-LICENSE-Angabe wählt die Einzelausnahme MIT; die Tabelle bewahrt den ursprünglichen Wortlaut. Ebenso bleibt bei DOMPurify die zusammengesetzte Angabe sichtbar, obwohl für die Auslieferung Apache-2.0 gewählt wird.
+
+Die vollständige Liste aller npm-Abhängigkeiten samt Transitivabhängigkeiten steht im eingecheckten [`package-lock.json`](../package-lock.json), unter `packages` mit Version, Paketort und Lizenzangabe je Paket. `node scripts/check-licenses.mjs --json` ergänzt diese Liste aus dem aktuellen Baum um die Bereiche, gewählten Lizenzen, Einzelausnahmen, Belegpfade unter `wege` und Fehler. Diese Quellen bilden die npm-Liste. Eine zusätzliche erzeugte Liste ist derzeit nicht eingecheckt. Nicht im Lockfile erfasste Bündelinhalte sowie Android- und Gradle-Abhängigkeiten bleiben gesondert zu ergänzen.
+
+### Geprüfte Angaben im verbleibenden Baum
+
+Die folgende Auswahl erläutert die Werkzeugkennungen und die verbleibende Einzelausnahme. Die Versionen und Pfade stammen aus dem aktuellen Lauf. Pfadkürzel:
 
 - **A:** Oberfläche → Peer `astro` 7.3.3; zugleich Wurzel → Entwicklungsabhängigkeit `astro` 7.3.3.
-- **E:** Oberfläche → `exceljs` 4.4.0 → `unzipper` 0.10.14.
 - **J:** Oberfläche → `jspdf` 4.2.1. „Optional“ bezeichnet die betreffende Kante; die Pakete bleiben Teil der Prüfung.
 
 | Angabe | Pakete mit Version | Bereich | Weg in den Baum | Vorschlag, Begründung und Quelle; Stand |
@@ -111,34 +131,25 @@ Jede unterschiedliche verbleibende Lizenzangabe hat eine Zeile. Alle genannten V
 | `LGPL-3.0-or-later` | `@img/sharp-libvips-darwin-arm64`, `-darwin-x64`, `-linux-arm`, `-linux-arm64`, `-linux-ppc64`, `-linux-riscv64`, `-linux-s390x`, `-linux-x64`, `-linuxmusl-arm64`, `-linuxmusl-x64`, jeweils 1.3.3 (voller Präfix jeweils `@img/sharp-libvips`) | bereitgestellt | A → optional `sharp` 0.35.4 → optionale Plattformpakete | Werkzeugkennung aufnehmen, Entfernung des optionalen Baums weiter prüfen. [LGPL-Text](https://spdx.org/licenses/LGPL-3.0-or-later.html); diese zehn Pakete sind lokal **nicht installiert**, ihr Inhalt ist nicht gegengeprüft. **Umgesetzt als Metadatenregel**, keine Bestätigung ihrer vollständigen Inhalte. |
 | `Apache-2.0 AND LGPL-3.0-or-later` | `@img/sharp-win32-arm64`, `@img/sharp-win32-ia32`, `@img/sharp-win32-x64`, jeweils 0.35.4 | bereitgestellt | A → optional `sharp` → optionale Plattformpakete | Werkzeugregel aufnehmen. Lokal nur x64: `LICENSE` enthält Apache-2.0, `README.md` nennt libvips und weitere LGPL-Anteile samt „any later version“. [LGPL-Text](https://spdx.org/licenses/LGPL-3.0-or-later.html). **Umgesetzt**, weitere eingebettete Lizenzen bleiben gesondert zu prüfen. |
 | `Apache-2.0 AND LGPL-3.0-or-later AND MIT` | `@img/sharp-wasm32` 0.35.4 | bereitgestellt | A → optional `sharp` → optional `@img/sharp-freebsd-wasm32` bzw. `@img/sharp-webcontainers-wasm32` → `@img/sharp-wasm32` | Zusammengesetzte Werkzeugangabe nach denselben Regeln aufnehmen. Nur Lockfile, kein lokal gelesener Paketinhalt; [LGPL-Text](https://spdx.org/licenses/LGPL-3.0-or-later.html). **Umgesetzt als Metadatenregel**. |
-| `Unlicense` | `big-integer` 1.6.52 | ausgeliefert | E → `big-integer` | **Offen:** Aufnahme von Unlicense für diesen Nutzungszweck vorschlagen. `node_modules/big-integer/LICENSE` enthält die umfassende Nutzungserlaubnis und Gemeinfreiheitserklärung des [Unlicense-Texts](https://spdx.org/licenses/Unlicense.html). Keine neue Kennung eingetragen. |
-| keine Angabe | `buffers` 0.1.1 | ausgeliefert | E → `binary` 0.3.0 → `buffers` | **Offen:** Sperre beibehalten, bis ein versionsbezogener Lizenzbeleg vorliegt oder der Pfad entfällt. In Manifest, README, Quell-/Testdateien und Dateiliste kein Lizenznachweis gefunden. Keine Lizenz aus benachbarten Paketen ableiten. |
-| `MIT/X11` | `chainsaw` 0.1.0; `traverse` 0.3.9 | ausgeliefert | E → `binary` → `chainsaw` → `traverse` | **Offen:** Für `traverse` genaue MIT-Ausnahme vorschlagen: vollständiger Text in `LICENSE`. Für `chainsaw` zuerst einen versionsbezogenen Volltext beschaffen; das Manifest allein trägt nur das alte Kürzel. Kein globaler Alias MIT/X11. [MIT-Vergleichstext](https://spdx.org/licenses/MIT.html). |
-| `MIT OR SEE LICENSE IN FEEL-FREE.md` | `rgbcolor` 1.0.1 | ausgeliefert | J → optional `canvg` 3.0.11 → `rgbcolor` | **Offen:** genaue MIT-Ausnahme vorschlagen; `LICENSE.md` enthält MIT und erlaubt ausdrücklich die Wahl gegenüber `FEEL-FREE.md`. Letztere Datei ist ebenfalls gelesen, wird aber nicht zur allgemeinen Kennung erklärt. [MIT-Vergleichstext](https://spdx.org/licenses/MIT.html). |
+| `MIT OR SEE LICENSE IN FEEL-FREE.md` | `rgbcolor` 1.0.1 | ausgeliefert | J → optional `canvg` 3.0.11 → `rgbcolor` | **Umgesetzt:** genaue MIT-Ausnahme bis einschließlich 2027-09-29; `LICENSE.md` enthält MIT und erlaubt ausdrücklich die Wahl gegenüber `FEEL-FREE.md`. Letztere Datei ist ebenfalls gelesen, wird aber nicht zur allgemeinen Kennung erklärt. [MIT-Vergleichstext](https://spdx.org/licenses/MIT.html). |
 
-**Bereits erledigte Angaben im ausgelieferten Baum:** `jszip` 3.10.2 über `exceljs` besteht mit `(MIT OR GPL-3.0-or-later)` unter MIT; `jszip/LICENSE.markdown` enthält den MIT-Text und die Alternative. `pako` 1.0.11 über `exceljs → jszip` und `pako` 2.2.0 über `jspdf` bestehen mit `(MIT AND Zlib)`; beide Pakete enthalten MIT in `LICENSE` und Zlib-Hinweise in `lib/zlib/deflate.js`. `dompurify` 3.4.15 über die optionale Kante von `jspdf` besteht bereits mit `(MPL-2.0 OR Apache-2.0)` unter Apache-2.0; gelesen sind Manifest, `LICENSE` und `LICENSE-MPL`. Dafür ist keine neue Ausnahme nötig.
+**Weitere Angaben im ausgelieferten Baum:** `pako` 2.2.0 über `jspdf` besteht mit `(MIT AND Zlib)`; das Paket enthält MIT in `LICENSE` und Zlib-Hinweise in `lib/zlib/deflate.js`. `dompurify` 3.4.15 über die optionale Kante von `jspdf` besteht mit `(MPL-2.0 OR Apache-2.0)` unter Apache-2.0. Dafür ist keine Einzelausnahme nötig.
 
 ### Optionaler Baum von sharp und libvips
 
 Im beobachteten Graphen führt der einzige Eingang zu `sharp` 0.35.4 über `astro.optionalDependencies`. Auch dessen Plattformpakete werden optional eingebunden. `@img/sharp-wasm32` folgt als normale Abhängigkeit zweier optionaler Plattformpakete; der gesamte Weg bleibt damit optional. Ohne optionale Kanten ist keines dieser Pakete von den lokalen Manifesten aus erreichbar. Die betreffenden Lockfile-Einträge tragen außerdem `optional: true`.
 
-[toolchain.md](toolchain.md) beschreibt sharp mit libvips als optionale Bildverarbeitung, die von der App nicht genutzt wird, und verlangt, den Baum wenn möglich zu entfernen. Diese Vorgabe bleibt bestehen. Die Aufnahme von LGPL als Werkzeugkennung ersetzt weder diese Prüfung noch die Prüfung vorgebauter Programme für F-Droid. Manifest, Lockfile und Installation wurden hier nicht geändert.
+[toolchain.md](toolchain.md) beschreibt sharp mit libvips als optionale Bildverarbeitung, die von der App nicht genutzt wird, und verlangt, den Baum wenn möglich zu entfernen. Diese Vorgabe bleibt bestehen. Die Aufnahme von LGPL als Werkzeugkennung ersetzt weder diese Prüfung noch die Prüfung vorgebauter Programme für F-Droid. Der optionale sharp-Baum ist im aktuellen Lockfile und in der Installation weiterhin enthalten.
 
 Das installierte `@img/sharp-win32-x64` 0.35.4 zeigt eine weitere Grenze: Seine README nennt zahlreiche eingebettete Bibliotheken und zusätzliche Lizenztexte, unter anderem für fontconfig, FreeType, libpng und mozjpeg sowie eine Patentlizenz für aom. Das äußere SPDX-Feld bildet diese Tabelle nicht vollständig ab. Gelesen wurden hier die README und die Apache-Lizenz des Pakets sowie der LGPL-Vergleichstext; die weiteren eingebetteten Texte und die nicht installierten Plattformpakete sind damit nicht vollständig geprüft.
 
-## ExcelJS: beobachtetes vorgebautes Bündel
+## Ersatz von ExcelJS
 
-**ExcelJS 4.4.0 bleibt für Arbeitspaket 2.4.** Über einen Ersatz wird vor Stufe 3 entschieden. Das ist keine Freigabe der noch offenen Lizenzangaben.
+Am 2026-09-29 nennt das Manifest der Oberfläche `fflate` 0.8.3 als direkte Abhängigkeit für das Packen selbst geschriebener Excel-Dateien. `fflate` trägt MIT, hat keine eigenen Abhängigkeiten und kein Installationsskript. Diese Angaben stammen aus Manifest, Lockfile und installiertem Paket.
 
-Die Auswertung vom 2026-09-28 wurde am 2026-09-29 mit `buendel-inhalt.log`, dem aktuellen Lockfile und der lokal installierten Source-Map abgeglichen:
+`exceljs` und sein bisheriger Abhängigkeitspfad sind aus Manifest, Lockfile und Installation entfernt. Der aktuelle Lauf enthält auch `big-integer`, `buffers`, `chainsaw`, `traverse`, `jszip`, `unzipper`, `glob`, `rimraf`, `fstream` und `uuid` nicht mehr. Für die entfallenen Pakete werden keine Ausnahmen oder zusätzlichen Lizenzkennungen eingetragen.
 
-- Das Paketmanifest benennt für den Browser `dist/exceljs.min.js`. Die Datei ist **947.702 Bytes** groß und trägt den Kopf `ExcelJS 19-10-2023`. Das ist ein Datum im ausgelieferten Dateikopf, kein hier nachgewiesener reproduzierbarer Buildzeitpunkt.
-- `dist/exceljs.min.js.map` enthält **534 Quellen**, davon **145 ohne `node_modules` im Pfad**. Aus den übrigen Pfaden ergeben sich **68 unterschiedliche Paketnamen**, einschließlich verschachtelter Namen. Die lokale Source-Map bestätigt die Namensliste des Protokolls.
-- **39 dieser 68 Namen fehlen im aktuellen Lockfile**, beispielsweise `asn1.js`, `bn.js`, `elliptic` und `crypto-browserify`. Die Lockfile-Prüfung sieht diese eingebetteten Pakete nicht. `core-js` ist dagegen inzwischen als eigener Name im Lockfile enthalten; daraus folgt keine Versionsgleichheit mit dem Bündel.
-- Die Versionen neben einigen Namen im Protokoll wurden aus der damaligen Installation gelesen. Sie belegen **nicht** die Versionen der eingebetteten Quellen. Auch die 29 im Lockfile vorhandenen Namen sind damit nicht als inhalts- oder versionsgleich bestätigt. Die Lizenztexte der 39 nicht erfassten Paketnamen sind noch nicht vollständig geprüft.
-- Im protokollierten Website-Build vom **2026-09-26** wurde `_astro/exceljs.min.*.js` mit **929.905 Bytes** und Anteilen von `elliptic` beobachtet. Dieser Befund spricht dort für die Einbindung des vorgebauten Browser-Bündels. Der Website-Build wurde hier nicht erneut ausgeführt oder vollständig gesichtet. Im Protokoll zur Source-Map fehlen `unzipper`, `buffers`, `big-integer`, `chainsaw` und `traverse` unter den 68 Namen; das hebt deren Einordnung nach dem Lockfile nicht auf.
-
-**Der Build der App mit der Oberfläche ist noch nicht geprüft.** Aus der Website-Beobachtung folgt keine Aussage über den späteren App-Inhalt. Die Prüfung der eingebetteten Anteile und ihres Buildwegs bleibt Teil des offenen Punkts F5 in [fdroid-build.md](fdroid-build.md).
+Damit gehört das vorgebaute Browser-Bündel von ExcelJS nicht mehr zum aktuellen npm-Bestand. Seine frühere Auswertung ist kein Nachweis für den Inhalt eines neuen Website- oder App-Builds. Der eigene Excel-Schreiber und die vollständige Oberfläche sind in diesem Lauf nicht gebaut worden. Die erzeugten Bündel und die Originalhinweise ihrer tatsächlich enthaltenen Fremdanteile bleiben vor der Auslieferung zu prüfen; das gilt auch für die übrigen Exportbibliotheken.
 
 ## Lauf und Befund
 
@@ -157,17 +168,7 @@ Workspaces werden aus konkreten Pfaden und Mustern wie `packages/*` aufgelöst. 
 
 Dateizugriffsfehler nennen eigene Meldungen und Pfade relativ zur geprüften Wurzel, beispielsweise `Beleg der Einzelausnahme fehlt: node_modules/alt/LICENSE`. Betriebssystemmeldungen mit absoluten Pfaden und Ausschnitte fehlerhafter JSON-Inhalte werden nicht ausgegeben. Bei einer Packliste außerhalb der Wurzel erscheint nur `[außerhalb der Wurzel]/Dateiname`.
 
-Der Lauf mit dem beschriebenen Bestand hat **zehn Fehlermeldungen bei fünf Paketen**, jeweils einmal für das Lockfile und einmal für die installierte Angabe:
-
-| Paket | Beide Befunde betreffen |
-|---|---|
-| `big-integer` 1.6.52 | Unlicense noch nicht in den Prüfdaten |
-| `buffers` 0.1.1 | fehlende Lizenzangabe |
-| `chainsaw` 0.1.0 | nicht unterstützte Angabe MIT/X11 |
-| `traverse` 0.3.9 | nicht unterstützte Angabe MIT/X11 |
-| `rgbcolor` 1.0.1 | nicht unterstützter SEE-LICENSE-Zweig |
-
-**Offen ist die Entscheidung über diese Vorschläge.** Bis zur Bearbeitung besteht die Lizenzprüfung nicht; die Manifeste der Oberfläche können diese Voraussetzung für einen Merge noch nicht erfüllen.
+`npm run lizenzen` endet am 2026-09-29 mit **Code 0**, ohne Fehlermeldung. Die einzige Metadatenberichtigung ist die oben belegte MIT-Ausnahme für `rgbcolor` 1.0.1. Ohne diese Ausnahme meldet die Gegenprobe ausschließlich für dieses Paket zwei Fehler: jeweils für Lockfile und installiertes Manifest. Es gibt keinen weiteren offenen Paketbefund aus diesem Metadatenlauf.
 
 ### Installationsskripte und vorgebaute Programme
 
@@ -185,10 +186,10 @@ Die Prüfung liest Lizenz- und Hinweisdateien, bewertet deren Vollständigkeit j
 
 Vor Stufe 3 bleiben:
 
-1. Die fünf offenen Paketbefunde entscheiden und bearbeiten; danach muss die Lizenzprüfung bestehen. Einzelausnahmen benötigen Review, genaue Belege und Befristung.
+1. Die MIT-Ausnahme für `rgbcolor` spätestens zu ihrem Ablauf am 2027-09-29 erneut prüfen; bei Versions- oder Metadatenänderungen muss sie angepasst oder entfernt werden.
 2. Die `files`-Liste der vollständigen Oberfläche ergänzen und beide npm-Packlisten nach dem Build erneut prüfen.
-3. Die erzeugten `.tgz`-Archive sowie Website- und App-Bundles sichten, eingebettete Pakete mit genauen Versionen und Originalhinweisen erfassen; über einen Ersatz für ExcelJS entscheiden.
-4. Den optionalen sharp-Baum und die weiteren vorgebauten Bestandteile im tatsächlichen F-Droid-Build behandeln. Der Befund zu ExcelJS ist bei F5 zu berücksichtigen.
+3. Die erzeugten `.tgz`-Archive sowie Website- und App-Bundles sichten, eingebettete Pakete mit genauen Versionen und Originalhinweisen erfassen.
+4. Den optionalen sharp-Baum und die weiteren vorgebauten Bestandteile im tatsächlichen F-Droid-Build behandeln. Der neue Build-Baum ist Grundlage dieser Prüfung.
 5. Android- und Gradle-Abhängigkeiten ergänzen; diese werden von der npm-Liste nicht erfasst.
 6. Entscheiden, ob zusätzlich zu `package-lock.json` eine erzeugte vollständige Abhängigkeitsliste mit Bereichen und Wegen eingecheckt wird, und ihren Aktualisierungsweg festlegen. Die Entscheidung ist offen; derzeit wird diese Liste mit `node scripts/check-licenses.mjs --json` erzeugt.
 

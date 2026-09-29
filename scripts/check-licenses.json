@@ -14,7 +14,22 @@
     "Python-2.0": ["bereitgestellt", "entwicklung"],
     "LGPL-3.0-or-later": ["bereitgestellt", "entwicklung"]
   },
-  "einzelausnahmen": [],
+  "einzelausnahmen": [
+    {
+      "paket": "rgbcolor",
+      "version": "1.0.1",
+      "angabe": "MIT OR SEE LICENSE IN FEEL-FREE.md",
+      "lizenz": "MIT",
+      "beleg": {
+        "datei": "LICENSE.md",
+        "sha256": "86045408b01f66f9319a2fe7bc7f7e115f272956ac44d2d840fc00127124a78c",
+        "quelle": "https://registry.npmjs.org/rgbcolor/-/rgbcolor-1.0.1.tgz"
+      },
+      "bereich": "ausgeliefert",
+      "gueltigBis": "2027-09-29",
+      "begruendung": "Am 2026-09-29 am installierten Paket geprüft: LICENSE.md enthält den vollständigen MIT-Text und erlaubt ausdrücklich die Wahl zwischen MIT und FEEL-FREE.md. Gewählt ist MIT, ausschließlich für diese Version und Rohangabe; Originalhinweise bleiben zu erhalten."
+    }
+  ],
   "einzelausnahmenMaxMonate": 12,
   "installationsskripte": ["preinstall", "install", "postinstall"],
   "vorgebautePakete": [
