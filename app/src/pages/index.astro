@@ -14,9 +14,10 @@ import herausgeber from '../../../NOTICE?raw';
   <title>Fristenrechner Vergabe</title>
   <script is:inline>
     (function () {
-      // Fehlerfalle: Scheitert ein eigenes Skript, etwa an einer zu alten WebView,
-      // erscheint ein Hinweis statt einer halb bedienbaren Seite. Eigene Skripte
-      // liegen unter derselben Herkunft, kleine Module bettet Astro in die Seite ein.
+      // Fehlerfalle: Scheitert ein eigenes Skript, beim Start etwa an einer zu alten
+      // WebView oder später im Betrieb, erscheint ein Hinweis statt einer stillen
+      // Störung. Eigene Skripte liegen unter derselben Herkunft, kleine Module bettet
+      // Astro in die Seite ein. Abgelehnte Promises ohne Behandlung erfasst sie nicht.
       window.addEventListener('error', function (e) {
         var datei = e && e.filename ? String(e.filename) : '';
         if (datei.indexOf(location.origin + '/') !== 0) return;
@@ -29,7 +30,7 @@ import herausgeber from '../../../NOTICE?raw';
 <body>
   <main class="app-rahmen">
     <h1>Fristenrechner Vergabe</h1>
-    <p id="app-startfehler" class="app-hinweis" role="alert" hidden>Der Fristenrechner konnte nicht vollständig geladen werden. Bitte starten Sie die App neu. Tritt der Fehler erneut auf, ist die Systemkomponente „Android System WebView“ möglicherweise zu alt.</p>
+    <p id="app-startfehler" class="app-hinweis" role="alert" hidden>Im Fristenrechner ist ein Fehler aufgetreten. Bitte starten Sie die App neu. Tritt der Fehler erneut auf, ist die Systemkomponente „Android System WebView“ möglicherweise zu alt.</p>
     <p id="app-rechtsstand-hinweis" class="app-hinweis" role="status" hidden
        data-rechtsstand={RECHTSSTAND_DATUM}>Diese Fassung rechnet mit dem Rechtsstand {RECHTSSTAND}. Seitdem sind mehr als zwölf Monate vergangen. Eine neuere Version des Fristenrechners kann vorliegen. Die Berechnung bleibt möglich.</p>
     <Fristenrechner />

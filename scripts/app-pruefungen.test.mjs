@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, test } from 'node:test';
-import { analysiereSkript, dateistamm, pruefeDist, pruefeKonfiguration, VORGABE } from './app-pruefungen.mjs';
+import { analysiereSkript, attributeVon, dateistamm, pruefeDist, pruefeKonfiguration, skriptArt, VORGABE } from './app-pruefungen.mjs';
 
 const echteKonfiguration = JSON.parse(readFileSync(new URL('../app/capacitor.config.json', import.meta.url), 'utf8'));
 const arbeit = mkdtempSync(join(tmpdir(), 'app-pruefungen-'));
@@ -64,6 +64,30 @@ for (const [pfad, wert] of falsche) {
     const fehler = pruefeKonfiguration(setze(kopie(), pfad, wert), { publicOrdner: pub });
     assert.ok(fehler.length > 0);
     assert.ok(fehler.some((f) => f.includes(pfad.split('.').at(-1)) || f.includes('Fehlerseite')), fehler.join('\n'));
+  });
+}
+
+// Capacitor liest einige Einstellungen auch auf der obersten Ebene und wandelt
+// "true" in true um (CapConfig.java, JSONObject.getBoolean).
+const k1Varianten = [
+  ['Wurzelfeld allowMixedContent', (c) => { c.allowMixedContent = true; }, /^allowMixedContent ist keine erlaubte Einstellung/],
+  ['Wurzelfeld allowMixedContent als Text', (c) => { c.allowMixedContent = 'true'; }, /^allowMixedContent darf nur fehlen oder false sein/],
+  ['android.allowMixedContent als Text', (c) => { c.android.allowMixedContent = 'true'; }, /^android\.allowMixedContent darf nur fehlen oder false sein/],
+  ['android.useLegacyBridge als Text', (c) => { c.android.useLegacyBridge = 'TRUE'; }, /^android\.useLegacyBridge darf nur fehlen oder false sein/],
+  ['CapacitorHttp als Text', (c) => { c.plugins.CapacitorHttp = { enabled: 'true' }; }, /^plugins\.CapacitorHttp\.enabled darf nur fehlen oder false sein/],
+  ['CapacitorCookies als Text', (c) => { c.plugins.CapacitorCookies = { enabled: 'true' }; }, /^plugins\.CapacitorCookies\.enabled darf nur fehlen oder false sein/],
+  ['unbekannter Schlüssel server.appStartPath', (c) => { c.server.appStartPath = 'x.html'; }, /^server\.appStartPath ist keine erlaubte Einstellung/],
+  ['unbekannter Schlüssel zoomEnabled oben', (c) => { c.zoomEnabled = true; }, /^zoomEnabled ist keine erlaubte Einstellung/],
+  ['unbekannter Schlüssel in SystemBars', (c) => { c.plugins.SystemBars.hidden = true; }, /^plugins\.SystemBars\.hidden ist keine erlaubte Einstellung/],
+  ['server als Text', (c) => { c.server = 'x'; }, /^server muss ein Objekt sein/],
+  ['includePlugins mit Zahl', (c) => { c.includePlugins = [1]; }, /^includePlugins muss eine Liste von Paketnamen sein/],
+];
+for (const [titel, aendern, muster] of k1Varianten) {
+  test(`K1 Gegenprobe: ${titel}`, () => {
+    const c = kopie();
+    aendern(c);
+    const fehler = pruefeKonfiguration(c, { publicOrdner: ordner({ 'startfehler.html': 'x' }) });
+    assert.ok(fehler.some((f) => muster.test(f)), `erwartet ${muster}, erhalten:\n${fehler.join('\n')}`);
   });
 }
 
@@ -174,7 +198,77 @@ const k2Gegenproben = [
   ['klassisches Inline-Skript mit Top-Level-await', { 'index.html': '<!doctype html><html><head><script>await x;</script></head><body></body></html>' }, /index\.html: 1 × Top-Level-await/],
   ['eingebettetes Modul mit logischer Zuweisung', { 'index.html': '<!doctype html><html><head></head><body><script type="module">let a; a ??= 1;</script></body></html>' }, /index\.html: 1 × logische Zuweisung/],
   ['eingebettetes Modul mit Laufzeitfunktion', { 'index.html': '<!doctype html><html><head></head><body><script type="module">document.body.replaceChildren();</script></body></html>' }, /index\.html: 1 × replaceChildren/],
+  // Adressen im HTML in allen Schreibweisen
+  ['Zeichenreferenz im Schema', { 'index.html': seite('<img src="https&#58;//example.invalid/a">') }, /src="https&#58;\/\/example\.invalid\/a" verweist nach außen/],
+  ['benannte Zeichenreferenz im Schema', { 'index.html': seite('<a href="https&colon;//example.invalid/">x</a>') }, /href="https&colon;\/\/example\.invalid\/" verweist nach außen/],
+  ['srcset mit zweitem Kandidaten', { 'index.html': seite('<img srcset="/l.png 1x, https://example.invalid/a.png 2x">') }, /srcset="https:\/\/example\.invalid\/a\.png" verweist nach außen/],
+  ['style in einfachen Anführungszeichen', { 'index.html': seite("<p style='background:url(https://example.invalid/a)'>x</p>") }, /style=: url\(https:\/\/example\.invalid\/a\)/],
+  ['Tab im Schema', { 'index.html': seite('<a href="ht\ttps://example.invalid/">x</a>') }, /verweist nach außen/],
+  ['Rückstrich statt Schrägstrich', { 'index.html': seite('<a href="/\\example.invalid/">x</a>') }, /verweist nach außen/],
+  ['data: im src', { 'index.html': seite('<img src="data:image/png;base64,AA==">') }, /src="data:image\/png;base64,AA==" verweist nach außen/],
+  ['unbekannte Zeichenreferenz', { 'index.html': seite('<a href="/x?a=1&foo;">x</a>') }, /Zeichenreferenz &foo; ist nicht auswertbar/],
+  ['ping mit Liste', { 'index.html': seite('<a href="/x" ping="/p https://example.invalid/p">x</a>') }, /ping="https:\/\/example\.invalid\/p" verweist nach außen/],
+  ['Ereignis-Attribut', { 'index.html': seite('<button onclick="f()">x</button>') }, /Ereignis-Attribut onclick ist nicht erlaubt/],
+  ['meta refresh', { 'index.html': '<!doctype html><html><head><meta http-equiv="Refresh" content="0;url=/x"></head><body></body></html>' }, /meta http-equiv="refresh"/],
+  // Skripttypen nach HTML
+  ['Skript mit data-type ist klassisch', { 'index.html': seite('<script data-type="module">export const x = 1;</script>') }, /\(script\): Nicht lesbar/],
+  ['klassisches Skript mit export', { 'index.html': seite('<script>export const x = 1;</script>') }, /\(script\): Nicht lesbar/],
+  ['unbekannter Skripttyp', { 'index.html': seite('<script type="text/plain">x</script>') }, /Skripttyp "text\/plain" ist nicht erlaubt/],
+  ['Typ mit Parameter', { 'index.html': seite('<script type="text/javascript; charset=utf-8">1</script>') }, /Skripttyp "text\/javascript; charset=utf-8" ist nicht erlaubt/],
+  ['language-Attribut', { 'index.html': seite('<script language="vbscript">x</script>') }, /Skripttyp "vbscript" ist nicht erlaubt/],
+  ['Modul mit Großschreibung und Leerraum', { 'index.html': seite('<script type=" MODULE ">let a; a ||= 1;</script>') }, /index\.html: 1 × logische Zuweisung/],
+  ['Datenblock mit Adresse', { 'index.html': seite('<script type="application/json">{"u":"https://example.invalid/"}</script>') }, /index\.html: Adresse ohne Eintrag in app-pruefungen\.json: https:\/\/example\.invalid\//],
+  ['Skript mit src und Inhalt', { 'index.html': seite('<script src="/_astro/x.js">1</script>') }, /Skript mit src und Inhalt/],
+  // konstante Namen und Code aus Zeichenketten
+  ['Template als Eigenschaftsname', { '_astro/haupt.AbCdEfGh.js': 'document.body[`replaceChildren`]();' }, /replaceChildren ohne Eintrag/],
+  ['Reflect.get mit Template', { '_astro/haupt.AbCdEfGh.js': 'Reflect.get(a, `at`);' }, /1 × at ohne Eintrag/],
+  ['eval', { '_astro/haupt.AbCdEfGh.js': 'eval("1");' }, /1 × eval ohne Eintrag in dynamischerCode/],
+  ['window.eval', { '_astro/haupt.AbCdEfGh.js': 'window.eval("1");' }, /1 × eval ohne Eintrag in dynamischerCode/],
+  ['new Function', { '_astro/haupt.AbCdEfGh.js': 'new Function("return 1");' }, /1 × Function ohne Eintrag in dynamischerCode/],
+  ['setTimeout mit Text', { '_astro/haupt.AbCdEfGh.js': 'setTimeout("f()", 1);' }, /1 × setTimeout mit Text ohne Eintrag/],
+  ['Function in index.es über der Höchstzahl', { '_astro/index.es.AbCdEfGh.js': 'Function("return this")(); Function("x")();' }, /2 × Function, erlaubt sind 1/],
+  // CSS
+  ['CSS mit image-set', { '_astro/a.AbCdEfGh.css': '.a{background:image-set("/a.png" 1x)}' }, /image-set\(\) ist nicht erlaubt/],
+  ['CSS mit Escape', { '_astro/a.AbCdEfGh.css': '.a{background:u\\72 l(//example.invalid/a)}' }, /Escapes im CSS sind nicht auswertbar/],
+  ['CSS mit url in einfachen Anführungszeichen', { '_astro/a.AbCdEfGh.css': ".a{background:url('https://example.invalid/b')}" }, /url\(https:\/\/example\.invalid\/b\)/],
 ];
+
+function seite(body) {
+  return `<!doctype html><html><head></head><body>${body}</body></html>`;
+}
+
+test('K2: Modul mit export und Datenblock bestehen', () => {
+  const { fehler } = pruefeDist(ordner({ ...SAUBER, 'index.html': seite('<script type="module">export const x = 1;</script><script type="application/json">{"a":1}</script>') }));
+  assert.deepEqual(fehler, []);
+});
+
+test('K2: Tags in Skripten und Kommentaren zählen nicht als Tags', () => {
+  const { fehler } = pruefeDist(ordner({ ...SAUBER, 'index.html': seite('<!-- <a onclick="x">x</a> --><script>const s = "<a onclick=\\"x\\">";</script>') }));
+  assert.deepEqual(fehler, []);
+});
+
+test('K2: Rückfall von core-js über Function mit Eintrag besteht', () => {
+  const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/index.es.AbCdEfGh.js': 'Function("return this")(); x instanceof Function;' }));
+  assert.deepEqual(fehler, []);
+});
+
+test('Attribute: Namen klein, erstes gewinnt, alle Anführungsarten', () => {
+  const a = attributeVon(' TYPE="module" type="text/plain" data-x=\'1\' src=/a.js defer');
+  assert.deepEqual([...a], [['type', 'module'], ['data-x', '1'], ['src', '/a.js'], ['defer', '']]);
+});
+
+test('Skriptart nach HTML', () => {
+  const art = (text) => skriptArt(attributeVon(text));
+  assert.equal(art(''), 'script');
+  assert.equal(art(' type=""'), 'script');
+  assert.equal(art(' type="Text/JavaScript"'), 'script');
+  assert.equal(art(' type=" module "'), 'module');
+  assert.equal(art(' data-type="module"'), 'script');
+  assert.equal(art(' type="application/json"'), 'daten');
+  assert.equal(art(' type="text/plain"'), 'unbekannt');
+  assert.equal(art(' language="javascript"'), 'script');
+  assert.equal(art(' language="vbscript"'), 'unbekannt');
+});
 for (const [titel, aenderung, muster] of k2Gegenproben) {
   test(`K2 Gegenprobe: ${titel}`, () => {
     const dateien = { ...SAUBER };

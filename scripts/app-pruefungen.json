@@ -1,5 +1,34 @@
 {
   "konfiguration": {
+    "erlaubteSchluessel": {
+      "": [
+        "appId",
+        "appName",
+        "webDir",
+        "loggingBehavior",
+        "includePlugins",
+        "server",
+        "android",
+        "plugins"
+      ],
+      "server": [
+        "hostname",
+        "androidScheme",
+        "errorPath"
+      ],
+      "android": [
+        "minWebViewVersion",
+        "backgroundColor",
+        "zoomEnabled"
+      ],
+      "plugins": [
+        "SystemBars"
+      ],
+      "plugins.SystemBars": [
+        "insetsHandling",
+        "style"
+      ]
+    },
     "werte": {
       "appId": "de.baremos.fristenrechner",
       "webDir": "dist",
@@ -14,7 +43,8 @@
       "android.webContentsDebuggingEnabled",
       "android.buildOptions"
     ],
-    "nichtWahr": [
+    "nurFalse": [
+      "allowMixedContent",
       "android.allowMixedContent",
       "android.useLegacyBridge",
       "plugins.CapacitorHttp.enabled",
@@ -112,6 +142,20 @@
       "name": "hasOwn",
       "hoechstzahl": 1,
       "grund": "core-js über canvg, mit Rückfall auf eine eigene Funktion, wenn Object.hasOwn fehlt."
+    },
+    {
+      "datei": "html2canvas",
+      "name": "at",
+      "hoechstzahl": 1,
+      "grund": "Zeichenkette \"at\" als Fall im Parser für radial-gradient(… at …), ein Vergleich mit einem Wort der CSS-Grammatik, kein Aufruf von Array.prototype.at."
+    }
+  ],
+  "dynamischerCode": [
+    {
+      "datei": "index.es",
+      "name": "Function",
+      "hoechstzahl": 1,
+      "grund": "core-js über canvg: Function(\"return this\")() als Rückfall, wenn globalThis fehlt. Die WebView ab 83 kennt globalThis."
     }
   ],
   "adressen": [

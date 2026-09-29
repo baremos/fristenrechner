@@ -1,9 +1,14 @@
 // Prüfungen der Build-Kette der App, als reine Funktionen.
-// K1: capacitor.config.json gegen die Festlegungen (Herkunft, Fehlerseite, keine
-//     Netzfreigaben, Mindestversion der WebView).
+// K1: capacitor.config.json gegen die Festlegungen: nur bekannte Schlüssel,
+//     Herkunft, Fehlerseite, keine Netzfreigaben, Mindestversion der WebView.
 // K2: der gebaute Ordner dist: Pflichtdateien, keine Source-Maps, keine Syntax und
-//     keine Laufzeitfunktionen über der Mindestversion der WebView, jede Adresse
-//     mit Eintrag in app-pruefungen.json, keine Verweise nach außen im HTML und CSS.
+//     keine Laufzeitfunktionen über der Mindestversion der WebView, kein eval und
+//     kein Function-Konstruktor ohne Eintrag, jede Adresse in Skripten mit Eintrag
+//     in app-pruefungen.json, keine Verweise nach außen in HTML und CSS.
+// K2 ist eine statische Prüfung. Sie sieht keine berechneten Namen (a[x + y]),
+// keinen Code, der erst zur Laufzeit entsteht, und keine Adressen, die aus Teilen
+// zusammengesetzt werden. Dass die App keine Verbindung aufbaut und nicht nach
+// außen navigiert, belegen die Läufe im Emulator mit Netzmelder und Gegenprobe.
 // Aufruf über scripts/app-bauen.mjs. Die Regeln stehen in scripts/app-pruefungen.json.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, extname, join, relative, sep } from 'node:path';
@@ -21,14 +26,29 @@ function wert(objekt, pfad) {
 export function pruefeKonfiguration(config, { publicOrdner, vorgabe = VORGABE } = {}) {
   const fehler = [];
   if (!config || typeof config !== 'object' || Array.isArray(config)) return ['Die Konfiguration ist kein Objekt.'];
+  // Capacitor liest Einstellungen auch auf der obersten Ebene (etwa allowMixedContent)
+  // und wandelt "true" in true um (JSONObject.getBoolean). Deshalb gilt eine
+  // Liste erlaubter Schlüssel je Ebene, alles andere ist ein Fehler.
+  for (const [ebene, erlaubt] of Object.entries(vorgabe.konfiguration.erlaubteSchluessel)) {
+    const objekt = ebene ? wert(config, ebene) : config;
+    if (objekt === undefined) continue;
+    if (!objekt || typeof objekt !== 'object' || Array.isArray(objekt)) {
+      fehler.push(`${ebene} muss ein Objekt sein.`);
+      continue;
+    }
+    for (const schluessel of Object.keys(objekt)) {
+      if (!erlaubt.includes(schluessel)) fehler.push(`${ebene ? `${ebene}.` : ''}${schluessel} ist keine erlaubte Einstellung.`);
+    }
+  }
   for (const [pfad, soll] of Object.entries(vorgabe.konfiguration.werte)) {
     if (wert(config, pfad) !== soll) fehler.push(`${pfad} muss ${JSON.stringify(soll)} sein, ist ${JSON.stringify(wert(config, pfad))}.`);
   }
   for (const pfad of vorgabe.konfiguration.verboten) {
     if (wert(config, pfad) !== undefined) fehler.push(`${pfad} ist nicht erlaubt.`);
   }
-  for (const pfad of vorgabe.konfiguration.nichtWahr) {
-    if (wert(config, pfad) === true) fehler.push(`${pfad} darf nicht true sein.`);
+  for (const pfad of vorgabe.konfiguration.nurFalse) {
+    const w = wert(config, pfad);
+    if (w !== undefined && w !== false) fehler.push(`${pfad} darf nur fehlen oder false sein, ist ${JSON.stringify(w)}.`);
   }
   for (const pfad of ['loggingBehavior', 'android.loggingBehavior']) {
     const w = wert(config, pfad);
@@ -36,7 +56,9 @@ export function pruefeKonfiguration(config, { publicOrdner, vorgabe = VORGABE } 
       fehler.push(`${pfad} muss ${JSON.stringify(vorgabe.konfiguration.loggingBehavior)} sein, ist ${JSON.stringify(w)}.`);
     }
   }
-  if (!Array.isArray(config.includePlugins)) fehler.push('includePlugins muss eine Liste sein.');
+  if (!Array.isArray(config.includePlugins) || !config.includePlugins.every((p) => typeof p === 'string')) {
+    fehler.push('includePlugins muss eine Liste von Paketnamen sein.');
+  }
   const version = wert(config, 'android.minWebViewVersion');
   if (!Number.isInteger(version) || version < vorgabe.konfiguration.minWebViewVersion) {
     fehler.push(`android.minWebViewVersion muss eine ganze Zahl ab ${vorgabe.konfiguration.minWebViewVersion} sein, ist ${JSON.stringify(version)}.`);
@@ -80,6 +102,19 @@ function besuche(knoten, rueckruf, eltern = null, inFunktion = false) {
   }
 }
 
+/** Text einer Zeichenkette oder eines Templates ohne Ausdrücke, sonst null. */
+function konstanterText(k) {
+  if (k?.type === 'StringLiteral') return k.value;
+  if (k?.type === 'TemplateLiteral' && k.expressions.length === 0) return k.quasis[0].value.cooked ?? null;
+  return null;
+}
+
+/** Name der Eigenschaft bei a.b, a["b"] und a[`b`], sonst null. */
+function eigenschaftsname(k) {
+  if (!k.computed) return k.property?.type === 'Identifier' ? k.property.name : null;
+  return konstanterText(k.property);
+}
+
 function adressenIn(text) {
   const treffer = [...text.matchAll(ADRESSE)].map((m) => m[0]);
   const rest = text.replace(ADRESSE, ' ');
@@ -88,10 +123,11 @@ function adressenIn(text) {
 
 /**
  * Wertet ein Skript aus. art: "module" oder "script".
- * Ergebnis: { syntax: {Merkmal: Anzahl}, laufzeit: {Name: Anzahl}, adressen: [Wortlaut], fehler }
+ * Ergebnis: { syntax: {Merkmal: Anzahl}, laufzeit: {Name: Anzahl}, dynamisch: {Name: Anzahl},
+ *            adressen: [Wortlaut], fehler }
  */
 export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufzeitNamen } = {}) {
-  const ergebnis = { syntax: {}, laufzeit: {}, adressen: [], fehler: [] };
+  const ergebnis = { syntax: {}, laufzeit: {}, dynamisch: {}, adressen: [], fehler: [] };
   let ast;
   try {
     ast = parse(quelltext, {
@@ -140,8 +176,19 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
         if (k.options) zaehle('syntax', 'Import-Attribute');
         break;
       case 'CallExpression':
+      case 'NewExpression': {
         if (k.callee?.type === 'Import' && k.arguments.length > 1) zaehle('syntax', 'Import-Attribute');
+        // Code aus Zeichenketten: eval, Function, setTimeout und setInterval mit Text.
+        const c = k.callee;
+        const name = c?.type === 'Identifier' ? c.name
+          : (c?.type === 'MemberExpression' || c?.type === 'OptionalMemberExpression') ? eigenschaftsname(c) : null;
+        if (name === 'eval' || name === 'Function') zaehle('dynamisch', name);
+        if ((name === 'setTimeout' || name === 'setInterval') && k.arguments[0]
+          && (k.arguments[0].type === 'StringLiteral' || k.arguments[0].type === 'TemplateLiteral' || k.arguments[0].type === 'BinaryExpression')) {
+          zaehle('dynamisch', `${name} mit Text`);
+        }
         break;
+      }
       case 'ImportSpecifier':
         if (k.imported?.type === 'StringLiteral') zaehle('syntax', 'Modulname als Zeichenkette');
         break;
@@ -151,8 +198,7 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
         break;
       case 'MemberExpression':
       case 'OptionalMemberExpression': {
-        const p = k.property;
-        const name = !k.computed && p?.type === 'Identifier' ? p.name : k.computed && p?.type === 'StringLiteral' ? p.value : null;
+        const name = eigenschaftsname(k);
         if (name && alleNamen.has(name)) zaehle('laufzeit', name);
         break;
       }
@@ -163,9 +209,14 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
         break;
       }
       case 'StringLiteral':
-        if (alleNamen.has(k.value) && !(eltern?.type === 'MemberExpression' || eltern?.type === 'OptionalMemberExpression')) zaehle('laufzeit', k.value);
-        ergebnis.adressen.push(...adressenIn(k.value));
+      case 'TemplateLiteral': {
+        // Konstante Namen zählen auch außerhalb eines Zugriffs, etwa Reflect.get(o, "at").
+        const text = konstanterText(k);
+        const alsEigenschaft = (eltern?.type === 'MemberExpression' || eltern?.type === 'OptionalMemberExpression') && eltern.property === k;
+        if (text !== null && alleNamen.has(text) && !alsEigenschaft) zaehle('laufzeit', text);
+        if (k.type === 'StringLiteral') ergebnis.adressen.push(...adressenIn(k.value));
         break;
+      }
       case 'TemplateElement':
         ergebnis.adressen.push(...adressenIn(k.value.cooked ?? k.value.raw));
         break;
@@ -176,16 +227,114 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
   return ergebnis;
 }
 
-const ATTRIBUT = /\s(href|src|action|srcset|formaction|poster|data|xlink:href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
-const NACH_AUSSEN = /^\s*(?:https?:|\/\/|mailto:|tel:|intent:|javascript:|file:|content:|ftp:|wss?:)/i;
-const SKRIPT = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
-const STIL = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
+// HTML: Tags mit Attributen, auch wenn ein Wert ">" enthält.
+const ATTRIBUTE_TEIL = String.raw`(?:[^>"']|"[^"]*"|'[^']*')*`;
+const TAG = new RegExp(String.raw`<([a-zA-Z][a-zA-Z0-9:-]*)(${ATTRIBUTE_TEIL})>`, 'g');
+const ATTRIBUT = /([^\s"'>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+const SKRIPT = new RegExp(String.raw`<script\b(${ATTRIBUTE_TEIL})>([\s\S]*?)<\/script\s*>`, 'gi');
+const STIL = new RegExp(String.raw`<style\b${ATTRIBUTE_TEIL}>([\s\S]*?)<\/style\s*>`, 'gi');
+// Attribute, deren Wert eine Adresse ist oder Adressen enthält.
+const ADRESS_ATTRIBUTE = new Set(['href', 'src', 'action', 'formaction', 'poster', 'data', 'xlink:href', 'background', 'cite', 'longdesc', 'manifest', 'icon', 'codebase']);
+const LISTEN_ATTRIBUTE = new Set(['ping', 'archive']);
+const KANDIDATEN_ATTRIBUTE = new Set(['srcset', 'imagesrcset']);
+const ZEICHENREFERENZEN = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", colon: ':', sol: '/', bsol: '\\', period: '.', num: '#', Tab: '\t', NewLine: '\n', nbsp: ' ' };
+// Nach HTML ist ein Skript ohne type oder mit einem dieser Typen klassisches JavaScript.
+const JS_TYPEN = new Set(['', 'application/ecmascript', 'application/javascript', 'application/x-ecmascript', 'application/x-javascript',
+  'text/ecmascript', 'text/javascript', 'text/javascript1.0', 'text/javascript1.1', 'text/javascript1.2', 'text/javascript1.3',
+  'text/javascript1.4', 'text/javascript1.5', 'text/jscript', 'text/livescript', 'text/x-ecmascript', 'text/x-javascript']);
+const DATEN_TYPEN = new Set(['application/json', 'application/ld+json']);
+
+/** Attribute eines Tags; Namen klein, bei doppelten gilt wie in HTML das erste. */
+export function attributeVon(text) {
+  const attribute = new Map();
+  for (const m of text.matchAll(ATTRIBUT)) {
+    const name = m[1].toLowerCase();
+    if (!attribute.has(name)) attribute.set(name, m[2] ?? m[3] ?? m[4] ?? '');
+  }
+  return attribute;
+}
+
+function dekodiere(wert, ort, fehler) {
+  return wert.replace(/&(#[xX][0-9a-fA-F]+|#[0-9]+|[A-Za-z][A-Za-z0-9]*);?/g, (ganz, ref) => {
+    if (ref[0] === '#') {
+      const n = /^#[xX]/.test(ref) ? parseInt(ref.slice(2), 16) : parseInt(ref.slice(1), 10);
+      return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : '�';
+    }
+    if (Object.hasOwn(ZEICHENREFERENZEN, ref)) return ZEICHENREFERENZEN[ref];
+    fehler.push(`${ort}: Zeichenreferenz &${ref}; ist nicht auswertbar.`);
+    return ganz;
+  });
+}
+
+/** Eine Adresse im HTML darf nur ein Pfad in der App sein: kein Schema, nicht // und nicht /\. */
+function pruefeAdresseImHtml(roh, name, ort, fehler) {
+  // Wie der URL-Parser: Tab und Zeilenumbruch fallen weg, Steuerzeichen und Leerzeichen am Rand auch.
+  const wert = dekodiere(roh, ort, fehler).replace(/[\t\n\r]/g, '').replace(/^[\u0000- ]+|[\u0000- ]+$/g, '');
+  if (/^[a-z][a-z0-9+.-]*:/i.test(wert) || /^[\\/]{2}/.test(wert)) fehler.push(`${ort}: ${name}="${roh}" verweist nach außen oder nutzt ein Schema.`);
+}
 
 function pruefeCss(css, ort, fehler) {
-  for (const m of css.matchAll(/url\(\s*(['"]?)([^'")]*)\1\s*\)/gi)) {
-    if (!/^data:/i.test(m[2])) fehler.push(`${ort}: url(${m[2]}) ist nicht erlaubt, nur data:.`);
+  if (css.includes('\\')) fehler.push(`${ort}: Escapes im CSS sind nicht auswertbar.`);
+  for (const m of css.matchAll(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/gi)) {
+    const w = (m[1] ?? m[2] ?? m[3] ?? '').trim();
+    if (!/^data:/i.test(w)) fehler.push(`${ort}: url(${w}) ist nicht erlaubt, nur data:.`);
   }
   if (/@import\b/i.test(css)) fehler.push(`${ort}: @import ist nicht erlaubt.`);
+  if (/image-set\(/i.test(css)) fehler.push(`${ort}: image-set() ist nicht erlaubt.`);
+  if (/[a-z][a-z0-9+.-]*:\/\//i.test(css.replace(/url\(\s*["']?data:[^)]*\)/gi, ''))) fehler.push(`${ort}: Adresse im CSS.`);
+}
+
+/** Art eines Skript-Elements nach HTML: script, module, daten oder unbekannt. */
+export function skriptArt(attribute) {
+  let typ = attribute.get('type');
+  if ((typ === undefined || typ.trim() === '') && attribute.get('language')) typ = `text/${attribute.get('language')}`;
+  typ = (typ ?? '').trim().toLowerCase();
+  if (JS_TYPEN.has(typ)) return 'script';
+  if (typ === 'module') return 'module';
+  if (DATEN_TYPEN.has(typ)) return 'daten';
+  return 'unbekannt';
+}
+
+function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
+  const ohneKommentare = html.replace(/<!--[\s\S]*?-->/g, ' ');
+  // Inhalt von script und style leeren, damit darin keine Tags erkannt werden.
+  const nurTags = ohneKommentare
+    .replace(new RegExp(String.raw`(<script\b${ATTRIBUTE_TEIL}>)[\s\S]*?(<\/script\s*>)`, 'gi'), '$1$2')
+    .replace(new RegExp(String.raw`(<style\b${ATTRIBUTE_TEIL}>)[\s\S]*?(<\/style\s*>)`, 'gi'), '$1$2');
+  for (const tag of nurTags.matchAll(TAG)) {
+    const tagName = tag[1].toLowerCase();
+    const attribute = attributeVon(tag[2]);
+    for (const [name, wert] of attribute) {
+      const ort = `${datei} <${tagName}>`;
+      if (name.startsWith('on')) fehler.push(`${ort}: Ereignis-Attribut ${name} ist nicht erlaubt.`);
+      else if (ADRESS_ATTRIBUTE.has(name)) pruefeAdresseImHtml(wert, name, ort, fehler);
+      else if (LISTEN_ATTRIBUTE.has(name)) for (const teil of wert.split(/\s+/).filter(Boolean)) pruefeAdresseImHtml(teil, name, ort, fehler);
+      else if (KANDIDATEN_ATTRIBUTE.has(name)) {
+        for (const kandidat of dekodiere(wert, ort, fehler).split(',')) {
+          const adresse = kandidat.trim().split(/\s+/)[0];
+          if (adresse) pruefeAdresseImHtml(adresse, name, ort, fehler);
+        }
+      } else if (name === 'style') pruefeCss(dekodiere(wert, ort, fehler), `${ort} style=`, fehler);
+    }
+    if (tagName === 'meta' && (attribute.get('http-equiv') ?? '').trim().toLowerCase() === 'refresh') {
+      fehler.push(`${datei}: <meta http-equiv="refresh"> ist nicht erlaubt.`);
+    }
+  }
+  for (const m of ohneKommentare.matchAll(STIL)) pruefeCss(m[1], `${datei} <style>`, fehler);
+  let nummer = 0;
+  for (const m of ohneKommentare.matchAll(SKRIPT)) {
+    nummer++;
+    const attribute = attributeVon(m[1]);
+    const art = skriptArt(attribute);
+    const ort = `${datei} Skript ${nummer} (${art})`;
+    if (art === 'unbekannt') { fehler.push(`${ort}: Skripttyp ${JSON.stringify(attribute.get('type') ?? attribute.get('language'))} ist nicht erlaubt.`); continue; }
+    if (art === 'daten') { for (const a of adressenIn(m[2])) zaehleAdresse(a); continue; }
+    if (attribute.has('src')) {
+      if (m[2].trim()) fehler.push(`${ort}: Skript mit src und Inhalt.`);
+      continue;
+    }
+    if (m[2].trim()) werteSkriptAus(m[2], art, datei, ort);
+  }
 }
 
 // K2 -------------------------------------------------------------------------
@@ -196,7 +345,7 @@ function pruefeCss(css, ort, fehler) {
  */
 export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorgabe = VORGABE, quellOrdner = [] } = {}) {
   const fehler = [];
-  const bericht = { dateien: 0, syntax: {}, laufzeit: {}, adressen: {} };
+  const bericht = { dateien: 0, syntax: {}, laufzeit: {}, dynamisch: {}, adressen: {} };
   if (!existsSync(distOrdner) || !statSync(distOrdner).isDirectory()) return { fehler: [`Der Ordner ${distOrdner} fehlt.`], bericht };
   const dateien = alleDateien(distOrdner);
   bericht.dateien = dateien.length;
@@ -212,6 +361,7 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
     for (const f of a.fehler) fehler.push(`${ort}: ${f}`);
     for (const [name, n] of Object.entries(a.syntax)) zaehle('syntax', stamm, name, n);
     for (const [name, n] of Object.entries(a.laufzeit)) zaehle('laufzeit', stamm, name, n);
+    for (const [name, n] of Object.entries(a.dynamisch)) zaehle('dynamisch', stamm, name, n);
     for (const adresse of a.adressen) zaehle('adressen', stamm, adresse, 1);
   };
   for (const datei of dateien) {
@@ -226,19 +376,15 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
       const html = readFileSync(pfad, 'utf8');
       if (!/<head[\s>]/i.test(html)) fehler.push(`${datei}: <head> fehlt; Capacitor fügt seine Brücke dort ein.`);
       if (datei === fehlerseite && /<script\b/i.test(html)) fehler.push(`${datei}: Die Fehlerseite darf kein Skript enthalten.`);
-      for (const m of html.matchAll(ATTRIBUT)) {
-        const w = m[2] ?? m[3] ?? m[4] ?? '';
-        if (NACH_AUSSEN.test(w)) fehler.push(`${datei}: ${m[1]}="${w}" verweist nach außen.`);
-      }
-      for (const m of html.matchAll(STIL)) pruefeCss(m[1], `${datei} <style>`, fehler);
-      for (const m of html.matchAll(/\sstyle\s*=\s*"([^"]*)"/gi)) pruefeCss(m[1], `${datei} style=`, fehler);
-      let nummer = 0;
-      for (const m of html.matchAll(SKRIPT)) {
-        nummer++;
-        if (/\ssrc\s*=/i.test(m[1]) || !m[2].trim()) continue;
-        const art = /\btype\s*=\s*["']?module\b/i.test(m[1]) ? 'module' : 'script';
-        werteSkriptAus(m[2], art, datei, `${datei} Skript ${nummer} (${art})`);
-      }
+      pruefeHtml(html, datei, fehler, werteSkriptAus, (adresse) => zaehle('adressen', datei, adresse, 1));
+    }
+  }
+  // Code aus Zeichenketten: nur mit Eintrag und bis zur Höchstzahl.
+  for (const [stamm, namen] of Object.entries(bericht.dynamisch)) {
+    for (const [name, n] of Object.entries(namen)) {
+      const ausnahme = vorgabe.dynamischerCode.find((a) => a.datei === stamm && a.name === name);
+      if (!ausnahme) fehler.push(`${stamm}: ${n} × ${name} ohne Eintrag in dynamischerCode.`);
+      else if (n > ausnahme.hoechstzahl) fehler.push(`${stamm}: ${n} × ${name}, erlaubt sind ${ausnahme.hoechstzahl}.`);
     }
   }
   // Syntax: jeder Fund ist ein Fehler.
