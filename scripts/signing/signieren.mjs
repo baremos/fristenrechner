@@ -2,10 +2,17 @@
 // Festlegungen: docs/signierung.md, S5 bis S7, S9 und S12.
 // Alle Aufrufe fremder Programme laufen über die Funktion "ausfuehren", damit
 // Tests Ausgaben und gleichzeitige Änderungen nachstellen können.
+//
+// Schutzgrenze, siehe docs/signierung.md, Abschnitt „Was das Skript absichert“:
+// Das Skript fängt Versehen ab und Änderungen, die zwischen zwei Prüfsummen
+// sichtbar werden. Gegen einen Vorgang mit den Rechten desselben Benutzers, der
+// Dateien gezielt im Takt der Prüfung tauscht, schützt es nicht. Ein solcher
+// Vorgang könnte auch die Schlüsseldatei lesen oder die Werkzeuge ersetzen.
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { constants, copyFileSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findeJdk, standardSdk, vorgabe, windows } from '../werkzeuge.mjs';
@@ -24,7 +31,29 @@ export class Abbruch extends Error {
   }
 }
 
-export const summe = (pfad) => createHash('sha256').update(readFileSync(pfad)).digest('hex');
+const summeVon = (inhalt) => createHash('sha256').update(inhalt).digest('hex');
+export const summe = (pfad) => summeVon(readFileSync(pfad));
+
+// Liest eine Datei. Fehlt sie oder lässt sie sich nicht lesen, endet der Lauf mit 66.
+function gelesen(pfad, bezeichnung) {
+  try {
+    return readFileSync(pfad);
+  } catch (fehler) {
+    throw new Abbruch(66, `${bezeichnung} lässt sich nicht lesen (${fehler.code ?? 'Fehler'}).`);
+  }
+}
+
+// Meldung eines Werkzeugs ohne Stacktrace und ohne die Orte privater Dateien.
+// ersatz: Paare aus Pfad und Platzhalter.
+export function werkzeugmeldung(lauf, ersatz = []) {
+  let text = `${lauf.stderr ?? ''}\n${lauf.stdout ?? ''}`;
+  for (const [pfad, platzhalter] of ersatz) {
+    if (pfad) text = text.replaceAll(pfad, platzhalter);
+  }
+  return text.split(/\r?\n/).map((z) => z.trim())
+    .filter((z) => z !== '' && !/^at\s/.test(z) && !/^\.\.\. \d+ more$/.test(z))
+    .slice(0, 3);
+}
 
 function aufgeloest(pfad, bezeichnung) {
   try {
@@ -60,7 +89,11 @@ export function geschuetzteOrdner(ausfuehren = spawnSync, start = wurzel) {
 
 // Wertet die Ausgabe von "apksigner verify --verbose --print-certs" aus.
 // Jede Angabe muss genau einmal vorkommen und den erwarteten Wert haben.
-export function pruefeAusgabe(ausgabe, fingerabdruck) {
+// Im Gutfall schreibt apksigner nichts auf die Fehlerausgabe. Steht dort
+// etwas, scheitert die Prüfung.
+export function pruefeAusgabe(ausgabe, fingerabdruck, fehlerausgabe = '') {
+  const daneben = `${fehlerausgabe}`.split(/\r?\n/).map((z) => z.trim()).find((z) => z !== '');
+  if (daneben) throw new Abbruch(1, `apksigner verify schreibt auf die Fehlerausgabe: ${daneben}`);
   const zeilen = ausgabe.split(/\r?\n/).map((z) => z.trimEnd()).filter((z) => z !== '');
   const meldung = zeilen.find((z) => /^(WARNING|ERROR)\b/.test(z));
   if (meldung) throw new Abbruch(1, `apksigner verify meldet: ${meldung}`);
@@ -113,7 +146,8 @@ function datei(pfad, bezeichnung) {
 }
 
 // Signiert, prüft und veröffentlicht. Wirft Abbruch mit dem Rückgabewert.
-export function signiere(werte, { ausfuehren = spawnSync, melde = console.log, umgebung = process.env } = {}) {
+// temp: Ordner, in dem der Arbeitsordner des Laufs entsteht.
+export function signiere(werte, { ausfuehren = spawnSync, melde = console.log, umgebung = process.env, temp = tmpdir() } = {}) {
   const fingerabdruck = String(werte.fingerabdruck).replaceAll(':', '').toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(fingerabdruck)) throw new Abbruch(64, '--fingerabdruck ist kein SHA-256 aus 64 Hexadezimalziffern.');
   if (!/^[A-Za-z0-9._-]+$/.test(werte.alias)) throw new Abbruch(64, '--alias enthält Zeichen, die das Skript nicht zulässt.');
@@ -134,7 +168,9 @@ export function signiere(werte, { ausfuehren = spawnSync, melde = console.log, u
   const aus = resolve(werte.aus);
   if (aus === apk) throw new Abbruch(64, '--aus nennt die unsignierte Datei. Die signierte Datei ist eine eigene Datei.');
   if (existsSync(aus)) throw new Abbruch(64, 'Die Ausgabedatei besteht schon, das Skript überschreibt nichts.');
-  if (!existsSync(dirname(aus))) throw new Abbruch(66, 'Der Ordner für die signierte Datei fehlt.');
+  if (!statSync(dirname(aus), { throwIfNoEntry: false })?.isDirectory()) {
+    throw new Abbruch(66, 'Der Ordner für die signierte Datei fehlt oder ist kein Ordner.');
+  }
 
   const jdk = findeJdk(umgebung);
   if (!jdk.pfad) throw new Abbruch(69, `Kein JDK ${vorgabe.jdk.hauptversion} gefunden. JAVA_HOME setzen oder ein JDK nach docs/toolchain.md installieren.`);
@@ -157,46 +193,82 @@ export function signiere(werte, { ausfuehren = spawnSync, melde = console.log, u
   for (const h of jdk.hinweise) melde(`Hinweis: ${h}`);
   if (!schutz.mitGit) melde('Hinweis: Git gibt keine Auskunft über weitere Arbeitsordner. Geprüft ist nur der Ordner des Skripts.');
 
-  const vorher = summe(apk);
+  const vorher = summeVon(gelesen(apk, 'Die unsignierte Datei'));
   if (!ausgerichtet(apk)) {
     throw new Abbruch(1, 'Die Ausrichtung der unsignierten Datei stimmt nicht. Das Skript richtet nicht selbst aus, das ist ein eigener Schritt mit zipalign vor dem Signieren.');
   }
 
-  // Eigener Ordner für diesen Lauf. Niemand sonst kennt seinen Namen.
-  const arbeit = mkdtempSync(join(dirname(aus), '.signieren-'));
+  // Eigener Ordner für diesen Lauf im Temp-Ordner des Benutzers. Unter Linux und
+  // macOS legt mkdtemp ihn nur für den Benutzer an, das prüft das Skript nach.
+  // Unter Windows gelten die Rechte des Temp-Ordners, das Skript prüft sie nicht.
+  let arbeit;
+  try {
+    arbeit = mkdtempSync(join(temp, 'fristenrechner-signieren-'));
+  } catch (fehler) {
+    throw new Abbruch(1, `Der Arbeitsordner lässt sich nicht anlegen (${fehler.code ?? 'Fehler'}).`);
+  }
+  if (!windows && (statSync(arbeit).mode & 0o077) !== 0) {
+    rmSync(arbeit, { recursive: true, force: true });
+    throw new Abbruch(1, 'Der Arbeitsordner ist nicht nur für den Benutzer zugänglich.');
+  }
   const vorlaeufig = join(arbeit, `${basename(aus)}.ungeprueft`);
-  const gescheitert = (text) => new Abbruch(1, `${text} Die ungeprüfte Datei bleibt liegen: ${vorlaeufig}`);
+  const gescheitert = (text, code = 1) => new Abbruch(code, `${text} Die ungeprüfte Datei bleibt liegen: ${vorlaeufig}`);
+  const privat = [[schluessel, '<Schlüsseldatei>'], [kennwortDatei, '<Kennwortdatei>']];
 
+  // Mit Kennwortdatei fängt das Skript die Ausgabe von apksigner ab und gibt sie
+  // gekürzt weiter. Ohne Kennwortdatei fragt apksigner im Dialog, dafür braucht
+  // es die Konsole, und seine Meldungen erscheinen unverändert.
   const signieren = apksigner(['sign',
     '--ks', schluessel, '--ks-type', 'PKCS12', '--ks-key-alias', werte.alias,
     ...(kennwortDatei ? ['--ks-pass', `file:${kennwortDatei}`] : []),
     '--v1-signing-enabled', String(VERFAHREN.v1), '--v2-signing-enabled', String(VERFAHREN.v2),
     '--v3-signing-enabled', String(VERFAHREN.v3), '--v4-signing-enabled', String(VERFAHREN.v4),
-    '--alignment-preserved', 'true', '--out', vorlaeufig, apk], { stdio: 'inherit' });
+    '--alignment-preserved', 'true', '--out', vorlaeufig, apk],
+  kennwortDatei ? { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] } : { stdio: 'inherit' });
+  const gemeldet = kennwortDatei ? werkzeugmeldung(signieren, privat) : [];
   if (signieren.status !== 0 || !existsSync(vorlaeufig)) {
     rmSync(arbeit, { recursive: true, force: true });
-    throw new Abbruch(1, 'apksigner hat nicht signiert.');
+    throw new Abbruch(1, ['apksigner hat nicht signiert.', ...gemeldet.map((z) => `  apksigner: ${z}`)].join('\n'));
   }
+  for (const zeile of gemeldet) melde(`Hinweis von apksigner: ${zeile}`);
 
-  const signiert = summe(vorlaeufig);
-  const pruefung = apksigner(['verify', '--verbose', '--print-certs', vorlaeufig], { encoding: 'utf8' });
+  // Die signierte Datei ist keine Eingabe: Lässt sie sich nicht lesen, endet der Lauf mit 1.
+  const lies = () => {
+    try {
+      return gelesen(vorlaeufig, 'Die signierte Datei');
+    } catch (fehler) {
+      throw gescheitert(fehler.message);
+    }
+  };
+  const signiert = summeVon(lies());
+  // -Werr: Warnungen lassen die Prüfung scheitern.
+  const pruefung = apksigner(['verify', '--verbose', '--print-certs', '-Werr', vorlaeufig], { encoding: 'utf8' });
   if (pruefung.status !== 0) {
-    const erste = `${pruefung.stdout ?? ''}${pruefung.stderr ?? ''}`.trim().split(/\r?\n/)[0];
+    const zeilen = werkzeugmeldung(pruefung, privat);
+    const erste = zeilen.find((z) => /^(WARNING|ERROR)\b/.test(z)) ?? zeilen[0] ?? 'ohne Meldung';
     throw gescheitert(`apksigner verify scheitert: ${erste}`);
   }
   let ergebnis;
   try {
-    ergebnis = pruefeAusgabe(pruefung.stdout, fingerabdruck);
+    ergebnis = pruefeAusgabe(`${pruefung.stdout ?? ''}`, fingerabdruck, `${pruefung.stderr ?? ''}`);
   } catch (fehler) {
     throw fehler instanceof Abbruch ? gescheitert(fehler.message) : fehler;
   }
   if (!ausgerichtet(vorlaeufig)) throw gescheitert('Die Ausrichtung der signierten Datei stimmt nicht.');
-  if (summe(apk) !== vorher) throw gescheitert('Die unsignierte Datei hat sich verändert.');
-  if (summe(vorlaeufig) !== signiert) throw gescheitert('Die signierte Datei hat sich während der Prüfung verändert.');
-
-  // Veröffentlichen, ohne etwas zu ersetzen: Besteht das Ziel inzwischen, scheitert die Kopie.
+  let eingabe;
   try {
-    copyFileSync(vorlaeufig, aus, constants.COPYFILE_EXCL);
+    eingabe = gelesen(apk, 'Die unsignierte Datei');
+  } catch (fehler) {
+    throw gescheitert(fehler.message, fehler.code);
+  }
+  if (summeVon(eingabe) !== vorher) throw gescheitert('Die unsignierte Datei hat sich verändert.');
+
+  // Veröffentlicht wird aus dem Speicher: genau die Bytes, deren Prüfsumme vor und
+  // nach der Prüfung gleich ist. Besteht das Ziel inzwischen, scheitert das Anlegen.
+  const inhalt = lies();
+  if (summeVon(inhalt) !== signiert) throw gescheitert('Die signierte Datei hat sich während der Prüfung verändert.');
+  try {
+    writeFileSync(aus, inhalt, { flag: 'wx' });
   } catch (fehler) {
     throw gescheitert(`Die Ausgabedatei lässt sich nicht anlegen (${fehler.code ?? 'Fehler'}), das Skript überschreibt nichts.`);
   }

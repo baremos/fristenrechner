@@ -1,6 +1,6 @@
 # Arbeitspakete
 
-Stand 2026-09-28 · Go von Andreas Schmidt für Stufe 1 und Stufe 2 · nach Kreuz-Review überarbeitet
+Stand 2026-09-29 · Go von Andreas Schmidt für Stufe 1 und Stufe 2 · nach Kreuz-Review überarbeitet
 
 ## Überblick
 
@@ -51,9 +51,12 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | 2.1 | abgeschlossen am 2026-09-28 | `docs/toolchain.md` mit Nachweis, `scripts/` |
 | 2.2 | abgeschlossen am 2026-09-28 | Projektgerüst mit Workspaces, `LICENSE`, `NOTICE`, README und Beitragsregeln auf Deutsch und Englisch, `docs/uebernahmepruefung.md` |
 | 2.3 | abgeschlossen am 2026-09-28 | Rechenkern 1.9.0 unter `packages/kern` mit Tests und Referenzfällen, Nachweis in `docs/uebernahmepruefung.md` |
-| 2.4 bis 2.6 | offen | – |
+| 2.4 | begonnen am 2026-09-29 | Abhängigkeiten der Oberfläche und Regeln der Lizenzprüfung in Arbeit |
+| 2.5 und 2.6 | offen | – |
 | 2.7 | für den Bestand vom 2026-09-28 abgeschlossen | `scripts/check-licenses.mjs` mit Tests, `docs/lizenzen.md`, `LICENSE` und `NOTICE` in den npm-Paketen. Die Prüfung wiederholt sich mit jeder neuen Abhängigkeit. Der tatsächliche Inhalt der npm-Pakete folgt vor Stufe 3. |
-| 2.8 bis 2.10 | offen | – |
+| 2.8 | frühe Probe mit der Minimal-App am 2026-09-29 abgeschlossen | `docs/fdroid-build.md`, `scripts/fdroid/`: Prüfung mit dem Scanner, Build unter Linux, erste Probe zur Reproduzierbarkeit. Offen sind das Rezept und der vollständige Build der App. |
+| 2.9 | begonnen am 2026-09-29 | `docs/signierung.md`, `scripts/signing/`. Nachweise N1 bis N5 mit einem Probeschlüssel für die Minimal-App erbracht. Offen sind die Nachweise für die App und der echte Schlüssel. |
+| 2.10 | offen | – |
 
 Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt eine System-WebView mit, die Capacitor nicht unterstützt. Paket 2.5 legt fest, wie die App damit umgeht. Einzelheiten in `docs/toolchain.md`, Abschnitt „Bekannte Einschränkungen".
 

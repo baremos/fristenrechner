@@ -113,7 +113,22 @@ Probe vom 2026-09-29 mit dem Probeschlüssel und der Minimal-App, Stand `d27fb91
 | Unsignierte Datei | nach dem Signieren unverändert |
 | AAB | `bundleRelease` erzeugt 3 087 892 Bytes. `jarsigner` aus dem JDK 21.0.12.1 signiert mit dem Probeschlüssel für den Upload, `jarsigner -verify` bestätigt. Es warnt, dass das Zertifikat selbst signiert ist. Das ist bei Schlüsseln für Android so vorgesehen. |
 
-Grenzen: Die Minimal-App hat keinen nativen Code. Bei Dateien mit nativem Code richtet `apksigner` in der Voreinstellung die Bibliotheken neu aus, mit `--alignment-preserved true` bleibt die Ausrichtung aus dem Build. Geprüft ist mit fdroidserver 2.4.2, der Buildserver von F-Droid nutzt einen neueren Stand. Auf einem Gerät installiert ist noch nichts.
+Grenzen: Die Minimal-App hat keinen nativen Code. Bei Dateien mit nativem Code richtet `apksigner` in der Voreinstellung die Bibliotheken neu aus, mit `--alignment-preserved true` bleibt die Ausrichtung aus dem Build. Geprüft ist mit fdroidserver 2.4.2, der Buildserver von F-Droid nutzt einen neueren Stand. Auf einem echten Gerät installiert ist noch nichts.
+
+### Update im Emulator (N4)
+
+Probe vom 2026-09-29 mit dem Probeschlüssel. Zwei Fassungen der Minimal-App mit derselben App-ID: Fassung 1 mit Versionscode 1, Fassung 2 mit Versionscode 2. Beim ersten Start legt die Seite ein Probeprojekt an, einmal im Speicher der WebView (`localStorage`) und einmal als Datei im Datenbereich der App über das Dateisystem-Plugin von Capacitor. Bei jedem weiteren Start liest sie beides und meldet, was sie gefunden hat. Signiert hat `scripts/signing/apk-signieren.mjs`, installiert ist mit `adb install -r` auf den drei Systemabbildern ohne Google-Dienste.
+
+| Schritt | API 36, WebView 133 | API 30, WebView 83 | API 24, WebView 52 |
+|---|---|---|---|
+| Fassung 1 installiert und gestartet | Speicher und Datei angelegt | Speicher angelegt, Datei nicht | Speicher angelegt, Datei nicht |
+| Fassung 2 mit anderer Signatur | abgelehnt, `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | ebenso | ebenso |
+| Fassung 2 mit derselben Signatur | installiert, Versionscode 2, Zeit der ersten Installation unverändert | ebenso | ebenso |
+| Fassung 2 liest, was Fassung 1 angelegt hat | Speicher und Datei, Inhalt mit Zeitstempel gleich. Prüfsumme und Änderungszeit der Datei gleich. | Speicher, Inhalt mit Zeitstempel gleich | Speicher, Inhalt mit Zeitstempel gleich |
+| Rückschritt auf Fassung 1 | abgelehnt, `INSTALL_FAILED_VERSION_DOWNGRADE` | ebenso | ebenso |
+| Daten nach beiden abgelehnten Installationen | unverändert lesbar | Speicher unverändert lesbar | Speicher unverändert lesbar |
+
+Grenzen: Geprüft ist die Minimal-App im Emulator, nicht die App, kein echtes Gerät und keine Installation über einen Vertriebsweg. Die Datei über das Plugin ist nur auf API 36 geprüft. Auf API 30 bricht die WebView das gebündelte Skript der Seite mit einem Syntaxfehler ab, auf API 24 läuft die Brücke von Capacitor nicht. Beides betrifft den Web-Build und die Mindestversion der WebView, nicht die Signatur, siehe `toolchain.md`, „Bekannte Einschränkungen“, Nummer 5.
 
 ## Geplanter Ablauf
 
@@ -129,7 +144,7 @@ Grenzen: Die Minimal-App hat keinen nativen Code. Bei Dateien mit nativem Code r
 | 8. AAB signieren | `jarsigner` mit dem Upload-Schlüssel | der fachlich Verantwortliche, Kennwort im Dialog, erst in Stufe 4 |
 | 9. Schlüssel bei Google Play einbringen | Play Console | der fachlich Verantwortliche, erst in Stufe 4 und vor der ersten Veröffentlichung |
 
-Schritt 4 übernimmt `scripts/android-build.mjs`, die Schritte 5 bis 7 `scripts/signing/apk-signieren.mjs`. Das Skript nimmt den Ort der Schlüsseldatei als Angabe entgegen, speichert ihn nicht und nennt ihn in keiner Meldung.
+Schritt 4 übernimmt `scripts/android-build.mjs`, die Schritte 5 bis 7 `scripts/signing/apk-signieren.mjs`. Das Skript nimmt den Ort der Schlüsseldatei als Angabe entgegen, speichert ihn nicht und nennt ihn in keiner eigenen Meldung. Für Meldungen von `apksigner` gilt die Zeile „Meldungen der Werkzeuge“ in der Tabelle.
 
 ```text
 node scripts/signing/apk-signieren.mjs --apk <unsignierte.apk> --aus <signierte.apk> --schluessel <Datei.p12> --alias <Alias> --fingerabdruck <SHA-256 des Zertifikats>
@@ -140,12 +155,32 @@ node scripts/signing/apk-signieren.mjs --apk <unsignierte.apk> --aus <signierte.
 | Kennwort | fragt `apksigner` im Dialog ab. Für Proben gibt es `--kennwort-datei`. Ein Kennwort als Argument gibt es nicht. Meldungen zu einem falschen Aufruf nennen nie den Wert eines Arguments. |
 | Schlüssel im Repository | Eine Schlüssel- oder Kennwortdatei, die in einem Arbeitsordner des Repositorys liegt, lehnt das Skript ab. Dazu zählen der Hauptordner und jeder Worktree, die Liste liefert `git worktree list`. Gibt Git keine Auskunft, etwa in einer Kopie ohne `.git`, prüft das Skript nur den eigenen Ordner und sagt das. |
 | Vorhandene Dateien | Das Skript überschreibt nichts. Die unsignierte Datei bleibt unverändert, das prüft es am Ende. Es löscht nur, was es im selben Lauf selbst angelegt hat. |
-| Prüfung vor der Ausgabe | Das Skript arbeitet in einem eigenen Ordner neben der Ausgabe, der für jeden Lauf neu entsteht. Die Ausgabe legt es erst an, wenn Verfahren, Zahl der Signaturen, Schlüssel, Fingerabdruck und Ausrichtung stimmen und sich die signierte Datei seit der Prüfung nicht verändert hat. Besteht die Ausgabe inzwischen, scheitert das Anlegen. Scheitert die Prüfung, bleibt der Ordner mit der ungeprüften Datei liegen. |
-| Auswertung der Prüfung | Jedes Signaturverfahren, das `apksigner verify` nennt, muss bekannt sein und den festgelegten Wert haben: v1 nein, v2 ja, v3 ja, v3.1 nein, v4 nein. Ein weiteres Verfahren, eine doppelte oder eine nicht lesbare Angabe und jede Warnung lassen das Skript scheitern. |
+| Prüfung vor der Ausgabe | Das Skript arbeitet in einem eigenen Ordner, der für jeden Lauf neu im Temp-Ordner des Benutzers entsteht. Die Ausgabe legt es erst an, wenn Verfahren, Zahl der Signaturen, Schlüssel, Fingerabdruck und Ausrichtung stimmen. Es schreibt sie aus dem Speicher: genau die Bytes, deren Prüfsumme vor und nach der Prüfung gleich ist. Besteht die Ausgabe inzwischen, scheitert das Anlegen. Scheitert die Prüfung, bleibt der Ordner mit der ungeprüften Datei liegen, die Meldung nennt ihn. |
+| Auswertung der Prüfung | Jedes Signaturverfahren, das `apksigner verify` nennt, muss bekannt sein und den festgelegten Wert haben: v1 nein, v2 ja, v3 ja, v3.1 nein, v4 nein. Ein weiteres Verfahren, eine doppelte oder eine nicht lesbare Angabe und jede Warnung lassen das Skript scheitern. Die Prüfung läuft mit `-Werr`, damit endet `apksigner verify` bei einer Warnung mit einem Fehler. Schreibt es bei bestandener Prüfung etwas auf die Fehlerausgabe, scheitert das Skript ebenfalls. |
+| Meldungen der Werkzeuge | Mit `--kennwort-datei` fängt das Skript die Ausgabe von `apksigner sign` ab und gibt höchstens drei Zeilen weiter, ohne Stacktrace. Den Ort der Schlüsseldatei und der Kennwortdatei ersetzt es durch einen Platzhalter. Ohne `--kennwort-datei` fragt `apksigner` das Kennwort im Dialog ab und braucht dafür die Konsole. Seine Meldungen erscheinen dann unverändert und können den Ort der Schlüsseldatei nennen. |
+| Rückgabewert | 0: signiert und geprüft. 64: falscher Aufruf, auch wenn die Ausgabe schon besteht oder ein Schlüssel im Arbeitsordner liegt. 66: Die unsignierte Datei, die Schlüsseldatei, die Kennwortdatei oder der Ordner der Ausgabe fehlt, ist von falscher Art oder lässt sich nicht lesen, auch wenn das erst während des Laufs eintritt. 69: JDK oder Werkzeug fehlt. 1: alles andere, auch eine Änderung während des Laufs und jeder unerwartete Fehler. Das Skript gibt selbst keinen Stacktrace aus. |
 | Werkzeuge | `apksigner` und `zipalign` aus den festgelegten Build-Tools, JDK nach denselben Regeln wie beim Build. Die Suche liegt in `scripts/werkzeuge.mjs`, beide Skripte nutzen sie. Das Skript ruft `apksigner.jar` direkt auf, mit denselben Angaben zum Speicher wie die Hülle aus den Build-Tools. |
-| Tests | `scripts/signing.test.mjs`, 58 Fälle. 36 laufen immer: die Auswertung der Prüfung, die Prüfung der Pfade und der Aufruf. 22 signieren eine kleine echte APK und brauchen ein JDK 21, die Build-Tools und die Plattform aus dem Projekt-SDK, sonst entfallen sie. Sechs davon stellen Änderungen nach, die ein anderer Vorgang während des Laufs vornimmt. Der Schlüssel der Tests entsteht in einem temporären Ordner. |
+| Tests | `scripts/signing.test.mjs`, 74 Fälle. 38 laufen immer: die Auswertung der Prüfung, die Kürzung der Meldungen, die Prüfung der Pfade und der Aufruf. 36 brauchen ein JDK 21, die Build-Tools und die Plattform aus dem Projekt-SDK, sonst entfallen sie. Sie arbeiten mit einer kleinen echten APK. Fünf davon ändern oder entfernen Dateien während des Laufs, sieben prüfen den Umgang mit der Ausgabe von `apksigner`, einer hält das Verhalten von `apksigner verify -Werr` fest, einer ist ein Kontrolllauf ohne Eingriff, einer prüft Ort und Rechte des Arbeitsordners, und einer belegt die Grenze aus dem nächsten Abschnitt. Der Schlüssel der Tests entsteht in einem temporären Ordner. |
 
 Die Übertragung der Signatur auf einen zweiten Build (N5) ist kein Teil dieses Skripts. Sie braucht fdroidserver und läuft unter Linux.
+
+### Was das Skript absichert
+
+Das Skript fängt Versehen ab. Es ist kein Schutz gegen einen Angreifer, der auf dem Rechner mit den Rechten des Benutzers arbeitet, der signiert.
+
+| Fall | Verhalten |
+|---|---|
+| Die Ausgabe besteht schon oder entsteht während des Laufs | Das Skript überschreibt nichts und scheitert. |
+| Die Prüfung scheitert | Unter dem Namen der Ausgabe entsteht keine Datei. |
+| Die unsignierte oder die signierte Datei ändert sich während des Laufs, und die Änderung ist beim nächsten Vergleich der Prüfsummen noch da | Das Skript scheitert. |
+| Ein Schlüssel oder ein Kennwort liegt in einem Arbeitsordner des Repositorys | Das Skript lehnt den Aufruf ab. |
+| Vorgänge anderer Benutzer | Unter Linux und macOS ist der Arbeitsordner nur für den Benutzer zugänglich, das Skript prüft die Rechte nach dem Anlegen. Unter Windows gelten die Rechte des Temp-Ordners, das Skript prüft sie nicht. Für die Ordner der Eingabe und der Ausgabe sorgt, wer das Skript aufruft. |
+| Ein Vorgang mit den Rechten desselben Benutzers tauscht die signierte Datei gezielt im Takt der Prüfung: vor der Prüfung die unsignierte, während der Prüfung die signierte, danach wieder die unsignierte | **Nicht erkannt.** Das Skript meldet Erfolg und veröffentlicht die unsignierte Datei. Der Test „Grenze“ in `scripts/signing.test.mjs` stellt den Fall nach. |
+| Ausgetauschte Werkzeuge: JDK, Build-Tools, die Skripte selbst | nicht geprüft. Die Prüfsummen der Werkzeuge stehen in `docs/toolchain.md`, ihre Prüfung gehört zur Einrichtung. |
+
+Die Grenze ist gewollt. `apksigner verify` liest eine Datei von der Platte, und wer dort mit denselben Rechten schreibt, bestimmt, was es zu lesen bekommt. Weitere Prüfsummen zu anderen Zeitpunkten ändern daran nichts. Derselbe Vorgang könnte auch die Schlüsseldatei lesen. Dagegen hilft nur die Umgebung: Signiert wird auf einem Rechner und unter einem Benutzerkonto, die der fachlich Verantwortliche kontrolliert.
+
+Für den Ablauf folgt daraus: Die Prüfsumme aus der Meldung des Skripts wird festgehalten. Vor jeder Veröffentlichung wird die Datei, die hochgeladen wird, noch einmal mit `apksigner verify` geprüft und ihre Prüfsumme mit der festgehaltenen verglichen.
 
 ## Nachweise für die Abnahme
 
@@ -154,7 +189,7 @@ Die Übertragung der Signatur auf einen zweiten Build (N5) ist kein Teil dieses 
 | N1 | APK reproduzierbar gebaut | zwei Builds desselben Stands in getrennten Ordnern, danach derselbe Stand unter Windows und unter Linux. Verglichen werden die unsignierten Dateien Byte für Byte. | für die Minimal-App am 2026-09-29 belegt, siehe `fdroid-build.md`. Für die App offen. |
 | N2 | Zertifikat geprüft | Verfahren, Länge, Gültigkeit mit Enddatum und Angaben gegen dieses Dokument | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
 | N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
-| N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, ein Projekt speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist vorhanden. Gegenprobe: Eine Fassung mit anderer Signatur wird abgelehnt. | offen |
+| N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, ein Projekt speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist vorhanden. Gegenprobe: Eine Fassung mit anderer Signatur wird abgelehnt. | für die Minimal-App am 2026-09-29 im Emulator belegt, siehe „Update im Emulator (N4)“. Für die App offen. |
 | N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | für die Minimal-App am 2026-09-29 belegt: `apksigner` 35.0.0 mit `--alignment-preserved true`, `apksigcopier` 1.1.1 aus fdroidserver 2.4.2. Für die App offen. |
 | N6 | Wechsel zwischen den Vertriebswegen | Zertifikate und Folge der Schlüssel in den Dateien, die Google Play tatsächlich ausliefert, mit der Fassung für F-Droid vergleichen. Updates mit steigendem Versionscode in beiden Richtungen, ohne Datenverlust, auch auf Android 17. | offen, erst mit einem Konto bei Google Play möglich, vor der ersten Veröffentlichung |
 
@@ -173,7 +208,7 @@ Der Wechsel eines Schlüssels ist ein Notfall und kein Teil des gewöhnlichen Ab
 ## Offene Punkte
 
 1. S1 bleibt unter Vorbehalt, bis N6 erbracht ist.
-2. Nachweis N4 im Emulator.
+2. Nachweis N4 mit der App wiederholen, sobald die Dateiabläufe aus Arbeitspaket 2.6 stehen. Dazu gehört die Datei im Datenbereich auf dem niedrigsten unterstützten Systemabbild.
 3. Klären, ob Google Play bei einem eigenen Schlüssel einen hybriden Block anfügt. Das zeigt sich erst an einer Datei, die Google Play ausliefert. Scheitert N6, sind diese Wege zu prüfen:
    - der Rückweg zur klassischen Signatur über das Recht `ROLLBACK` für K0. Ob Google Play ihn einrichtet und beibehält, ist offen.
    - eine hybride Signatur auch für die Fassung bei F-Droid. Sie braucht passende Schlüssel und einen Nachweis mit den Werkzeugen von F-Droid.

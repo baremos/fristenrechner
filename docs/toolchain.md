@@ -334,6 +334,8 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
    | API 24 | 52.0.2743.100 | Seite erscheint, Capacitor meldet „System WebView is not supported", das Skript der Brücke bricht mit einem Syntaxfehler ab |
 
    Auf dem Abbild API 24 wären Plugins nicht nutzbar. API 30 ist das niedrigste geprüfte Abbild mit geeigneter WebView. Für API 25 bis 29 gibt es keinen Nachweis. Auf Geräten hängt die Version der WebView vom Stand ihrer Updates ab, nicht allein von der API-Stufe.
+
+   Beobachtet am 2026-09-29 in der Probe zum Update (`signierung.md`), mit Astro 7.3.3 und Vite 8.3.0: Ein Skript der Seite, das Astro bündelt, enthält nach dem Build die Schreibweise `||=`. Die WebView 83 des Abbilds API 30 bricht dieses Skript mit `Uncaught SyntaxError: Unexpected token '='` ab, der Aufruf des Plugins über die Brücke findet nicht statt. Ein Skript, das unverändert in der Seite steht, läuft dort. Die Angabe `vite.build.target: 'chrome60'` in `astro.config.mjs` hat das Ergebnis des Builds nicht verändert, die unsignierte Datei war bytegleich. Das Build-Ziel ist damit nicht gelöst und bleibt Aufgabe von Arbeitspaket 2.5.
 6. **Der Build lädt Werkzeuge und Abhängigkeiten aus dem Netz.** Das betrifft nur den Build. Die App greift im Betrieb nicht auf das Netzwerk zu.
 7. **`sdkmanager` ist abgekündigt.** Siehe Abschnitt „Android SDK". Die Festlegung auf die Kommandozeilenwerkzeuge 22.0 ist eine Übergangslösung.
 8. **Warnung des Android-Gradle-Plugins zum Format der Paketbeschreibung.** Die installierten Pakete tragen `package.xml` im Format 4. Das Android-Gradle-Plugin 8.13 versteht Format 3 und meldet das beim Build als Warnung. Der Build läuft durch.

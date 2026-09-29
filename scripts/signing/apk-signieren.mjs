@@ -16,12 +16,24 @@
 //   Repositorys liegen, auch im Hauptordner und in anderen Worktrees,
 // - überschreibt nichts und lässt die unsignierte Datei unverändert,
 // - signiert mit v2 und v3, ohne v1 und v4, und erhält die Ausrichtung,
-// - arbeitet in einem eigenen Ordner neben der Ausgabe und legt die Ausgabe
-//   erst nach bestandener Prüfung an. Scheitert die Prüfung, bleibt der Ordner
-//   mit der ungeprüften Datei liegen.
+// - arbeitet in einem eigenen Ordner im Temp-Ordner des Benutzers und legt die
+//   Ausgabe erst nach bestandener Prüfung an. Scheitert die Prüfung, bleibt der
+//   Ordner mit der ungeprüften Datei liegen, die Meldung nennt ihn.
 //
-// Rückgabewert: 0 bei Erfolg, 64 bei falschem Aufruf, 66 bei fehlender Eingabe,
-// 69 bei fehlendem Werkzeug, 1 bei gescheitertem Signieren oder Prüfen.
+// Mit --kennwort-datei gibt das Skript Meldungen von apksigner gekürzt weiter,
+// ohne Stacktrace und ohne die Orte der Schlüssel- und der Kennwortdatei. Ohne
+// die Angabe braucht apksigner die Konsole, seine Meldungen erscheinen unverändert.
+//
+// Was das Skript absichert und was nicht, steht in docs/signierung.md.
+//
+// Rückgabewert:
+//    0  signiert und geprüft
+//   64  falscher Aufruf, auch: Ausgabe besteht schon, Schlüssel im Arbeitsordner
+//   66  die unsignierte Datei, die Schlüsseldatei, die Kennwortdatei oder der
+//       Ordner der Ausgabe fehlt, ist von falscher Art oder lässt sich nicht lesen
+//   69  JDK oder Werkzeug aus dem SDK fehlt
+//    1  alles andere: Signieren oder Prüfen gescheitert, Änderung während des
+//       Laufs, Ausgabe lässt sich nicht anlegen, unerwarteter Fehler
 
 import { Abbruch, signiere } from './signieren.mjs';
 

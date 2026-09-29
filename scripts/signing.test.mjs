@@ -7,12 +7,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { Abbruch, geschuetzteOrdner, liegtIn, pruefeAusgabe, signiere as kern } from './signing/signieren.mjs';
+import { Abbruch, geschuetzteOrdner, liegtIn, pruefeAusgabe, signiere as kern, werkzeugmeldung } from './signing/signieren.mjs';
 import { findeJdk, standardSdk, vergleiche, vorgabe, windows } from './werkzeuge.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
@@ -145,8 +145,41 @@ for (const [name, aendern, muster] of [
   });
 }
 
-function aufruf(argumente) {
-  const lauf = spawnSync(process.execPath, [skript, ...argumente], { encoding: 'utf8' });
+test('pruefeAusgabe scheitert: Text auf der Fehlerausgabe', () => {
+  for (const daneben of ['WARNING: etwas', 'ERROR: etwas', 'irgendein Hinweis', '\n\n  spät  \n']) {
+    assert.throws(() => pruefeAusgabe(AUSGABE.join('\n'), FINGER, daneben),
+      (fehler) => fehler instanceof Abbruch && fehler.code === 1 && /schreibt auf die Fehlerausgabe/.test(fehler.message), daneben);
+  }
+  assert.equal(pruefeAusgabe(AUSGABE.join('\n'), FINGER, '\r\n  \n').zertifikat, FINGER);
+});
+
+test('werkzeugmeldung: ohne Stacktrace, ohne private Pfade, höchstens drei Zeilen', () => {
+  const ort = join(tmpdir(), 'privat', 'kennwort.txt');
+  const zeilen = werkzeugmeldung({
+    stdout: 'Zeile auf der Ausgabe\n',
+    stderr: ['Failed to load signer "signer #1"',
+      `java.io.IOException: Failed to read Keystore password for signer #1 : end of file reached in ${ort}`,
+      '\tat com.android.apksigner.PasswordRetriever.getPasswords(PasswordRetriever.java:175)',
+      '\tat com.android.apksigner.ApkSignerTool.main(ApkSignerTool.java:94)',
+      'Caused by: java.lang.Exception: Grund', '\t... 9 more', 'vierte Zeile'].join('\r\n'),
+  }, [[ort, '<Kennwortdatei>'], [null, '<fehlt>']]);
+  assert.deepEqual(zeilen, ['Failed to load signer "signer #1"',
+    'java.io.IOException: Failed to read Keystore password for signer #1 : end of file reached in <Kennwortdatei>',
+    'Caused by: java.lang.Exception: Grund']);
+  assert.deepEqual(werkzeugmeldung({ stdout: null, stderr: undefined }), []);
+});
+
+// Der Arbeitsordner eines Laufs entsteht im Temp-Ordner. Die Tests geben dem Skript
+// einen eigenen vor, damit sich prüfen lässt, was liegen bleibt.
+const tempFuer = (name) => {
+  const ordner = join(arbeit, `temp-${name}`);
+  mkdirSync(ordner, { recursive: true });
+  return ordner;
+};
+const reste = (temp) => readdirSync(temp).filter((n) => n.startsWith('fristenrechner-signieren-')).map((n) => join(temp, n));
+
+function aufruf(argumente, temp = tempFuer('allgemein')) {
+  const lauf = spawnSync(process.execPath, [skript, ...argumente], { encoding: 'utf8', env: { ...process.env, TEMP: temp, TMP: temp, TMPDIR: temp } });
   return { code: lauf.status, text: `${lauf.stdout}${lauf.stderr}` };
 }
 
@@ -231,50 +264,59 @@ function vorbereiten() {
 }
 
 // Über die Befehlszeile, wie ein Mensch das Skript aufruft.
-function signiere(angaben, { ohne = [] } = {}) {
+function signiere(angaben, { ohne = [], temp } = {}) {
   vorbereiten();
   const vorgaben = { '--apk': apk, '--schluessel': schluessel, '--alias': 'test', '--fingerabdruck': fingerabdruck,
     '--kennwort-datei': kennwort, '--sdk': sdk, ...angaben };
-  return aufruf(Object.entries(vorgaben).filter(([name]) => !ohne.includes(name)).flat());
+  return aufruf(Object.entries(vorgaben).filter(([name]) => !ohne.includes(name)).flat(), temp);
 }
 
-// Über den Kern, mit einem Eingriff nach jedem Aufruf eines Werkzeugs. So lassen sich
-// Änderungen nachstellen, die ein anderer Vorgang während des Laufs vornimmt.
-function mitEingriff(angaben, eingriff) {
+// Über den Kern, mit einem Eingriff vor und nach jedem Aufruf eines Werkzeugs. So lassen
+// sich Änderungen nachstellen, die ein anderer Vorgang während des Laufs vornimmt.
+function mitEingriff(angaben, eingriff, { davor = () => undefined, temp = tempFuer('kern') } = {}) {
   vorbereiten();
   const meldungen = [];
+  const aufrufe = [];
   const ausfuehren = (programm, argumente, optionen) => {
+    aufrufe.push({ programm, argumente, optionen });
+    davor(programm, argumente);
     const lauf = spawnSync(programm, argumente, { ...optionen, stdio: 'pipe', encoding: 'utf8' });
     return eingriff(programm, argumente, lauf) ?? lauf;
   };
   try {
     const ergebnis = kern({ apk, schluessel, alias: 'test', fingerabdruck, kennwortDatei: kennwort, sdk, ...angaben },
-      { ausfuehren, melde: (text) => meldungen.push(text) });
-    return { ergebnis, meldungen };
+      { ausfuehren, melde: (text) => meldungen.push(text), temp });
+    return { ergebnis, meldungen, aufrufe };
   } catch (fehler) {
-    return { fehler, meldungen };
+    return { fehler, meldungen, aufrufe };
   }
 }
-const arbeitsordner = (aus) => readdirSync(dirname(aus)).filter((n) => n.startsWith('.signieren-')).map((n) => join(dirname(aus), n));
 const eigenerOrdner = (name) => {
   const ordner = join(arbeit, name);
   mkdirSync(ordner);
   return ordner;
 };
+const ohneStacktrace = (text) => !/^\s+at\s/m.test(text) && !/\.java:\d+\)/.test(text);
 
 test('Signieren: Gutfall', nurMitWerkzeug, () => {
   vorbereiten();
   const aus = join(eigenerOrdner('gut'), 'gut.apk');
+  const temp = tempFuer('gut');
   const vorher = summe(apk);
-  const { code, text } = signiere({ '--aus': aus });
+  const { code, text } = signiere({ '--aus': aus }, { temp });
   assert.equal(code, 0, text);
   assert.match(text, /Verfahren {2}v1 false, v2 true, v3 true, v3\.1 false, v4 false, Ausrichtung erhalten/);
   assert.match(text, new RegExp(`Fingerabdruck ${fingerabdruck.replaceAll(':', '').toLowerCase()}`));
   assert.match(text, /ERGEBNIS: signiert und geprüft\s*$/);
   assert.deepEqual(readdirSync(dirname(aus)), ['gut.apk']);
+  assert.deepEqual(reste(temp), []);
   assert.equal(summe(apk), vorher);
   assert.ok(!text.includes(readFileSync(kennwort, 'utf8')), 'Das Kennwort steht in der Ausgabe.');
   assert.ok(!text.includes(schluessel), 'Der Ort der Schlüsseldatei steht in der Ausgabe.');
+  assert.ok(!text.includes(kennwort), 'Der Ort der Kennwortdatei steht in der Ausgabe.');
+  // Unabhängig vom Skript: apksigner prüft die veröffentlichte Datei.
+  const lauf = spawnSync(join(jdk.pfad, 'bin', `java${endung}`), ['-jar', join(werkzeuge, 'lib', 'apksigner.jar'), 'verify', '-Werr', aus], { encoding: 'utf8' });
+  assert.equal(lauf.status, 0, `${lauf.stdout}${lauf.stderr}`);
 });
 
 test('Signieren: Fingerabdruck ohne Doppelpunkte und in kleinen Buchstaben', nurMitWerkzeug, () => {
@@ -295,23 +337,27 @@ test('Signieren: zwei Läufe ergeben dieselbe Datei', nurMitWerkzeug, () => {
 
 test('Signieren: falscher Fingerabdruck, die ungeprüfte Datei bleibt im eigenen Ordner liegen', nurMitWerkzeug, () => {
   const aus = join(eigenerOrdner('falsch'), 'falsch.apk');
-  const { code, text } = signiere({ '--aus': aus, '--fingerabdruck': '0'.repeat(64) });
+  const temp = tempFuer('falsch');
+  const { code, text } = signiere({ '--aus': aus, '--fingerabdruck': '0'.repeat(64) }, { temp });
   assert.equal(code, 1, text);
   assert.match(text, /Der Fingerabdruck des Zertifikats weicht ab/);
-  assert.ok(!existsSync(aus));
-  const ordner = arbeitsordner(aus);
+  assert.deepEqual(readdirSync(dirname(aus)), []);
+  const ordner = reste(temp);
   assert.equal(ordner.length, 1);
   assert.deepEqual(readdirSync(ordner[0]), ['falsch.apk.ungeprueft']);
+  assert.ok(text.includes(join(ordner[0], 'falsch.apk.ungeprueft')), text);
 });
 
 test('Signieren: vorhandene Ausgabe wird nicht überschrieben', nurMitWerkzeug, () => {
   const aus = join(eigenerOrdner('besteht'), 'besteht.apk');
+  const temp = tempFuer('besteht');
   writeFileSync(aus, 'schon da');
-  const { code, text } = signiere({ '--aus': aus });
+  const { code, text } = signiere({ '--aus': aus }, { temp });
   assert.equal(code, 64, text);
   assert.match(text, /besteht schon/);
   assert.equal(readFileSync(aus, 'utf8'), 'schon da');
   assert.deepEqual(readdirSync(dirname(aus)), ['besteht.apk']);
+  assert.deepEqual(reste(temp), []);
 });
 
 test('Signieren: eine fremde Datei mit der Endung .ungeprueft bleibt unberührt', nurMitWerkzeug, () => {
@@ -323,11 +369,42 @@ test('Signieren: eine fremde Datei mit der Endung .ungeprueft bleibt unberührt'
   assert.deepEqual(readdirSync(dirname(aus)).sort(), ['rest.apk', 'rest.apk.ungeprueft']);
 });
 
-test('Signieren: falscher Alias, es bleibt nichts liegen', nurMitWerkzeug, () => {
+test('Signieren: falscher Alias, es bleibt nichts liegen, die Meldung nennt den Ort des Schlüssels nicht', nurMitWerkzeug, () => {
   const aus = join(eigenerOrdner('alias'), 'alias.apk');
-  const { code, text } = signiere({ '--aus': aus, '--alias': 'gibtesnicht' });
+  const temp = tempFuer('alias');
+  const { code, text } = signiere({ '--aus': aus, '--alias': 'gibtesnicht' }, { temp });
   assert.equal(code, 1, text);
+  assert.match(text, /apksigner hat nicht signiert\./);
+  assert.match(text, /apksigner: Failed to load signer "signer #1": <Schlüsseldatei> entry "gibtesnicht" does not contain a key/);
+  assert.ok(!text.includes(schluessel), text);
+  assert.ok(ohneStacktrace(text), text);
   assert.deepEqual(readdirSync(dirname(aus)), []);
+  assert.deepEqual(reste(temp), []);
+});
+
+test('Signieren: leere Kennwortdatei, die Meldung nennt ihren Ort nicht und enthält keinen Stacktrace', nurMitWerkzeug, () => {
+  const leer = join(eigenerOrdner('leer'), 'leeres-kennwort.txt');
+  writeFileSync(leer, '');
+  const aus = join(dirname(leer), 'leer.apk');
+  const { code, text } = signiere({ '--aus': aus, '--kennwort-datei': leer });
+  assert.equal(code, 1, text);
+  assert.match(text, /apksigner hat nicht signiert\./);
+  assert.match(text, /end of file reached in <Kennwortdatei>/);
+  assert.ok(!text.includes(leer) && !text.includes('leeres-kennwort'), text);
+  assert.ok(ohneStacktrace(text), text);
+  assert.ok(!existsSync(aus));
+});
+
+test('Signieren: falsches Kennwort, die Meldung enthält keinen Stacktrace', nurMitWerkzeug, () => {
+  const falsch = join(eigenerOrdner('kennwort'), 'falsches-kennwort.txt');
+  writeFileSync(falsch, 'ein-anderes-kennwort-5678');
+  const aus = join(dirname(falsch), 'kennwort.apk');
+  const { code, text } = signiere({ '--aus': aus, '--kennwort-datei': falsch });
+  assert.equal(code, 1, text);
+  assert.match(text, /keystore password was incorrect/);
+  assert.ok(!text.includes('ein-anderes-kennwort-5678') && !text.includes(falsch) && !text.includes(schluessel), text);
+  assert.ok(ohneStacktrace(text), text);
+  assert.ok(!existsSync(aus));
 });
 
 test('Signieren: Ausgabe gleich Eingabe', nurMitWerkzeug, () => {
@@ -403,6 +480,29 @@ test('Signieren: fehlende Eingabe', nurMitWerkzeug, () => {
   assert.equal(code, 66, text);
 });
 
+test('Signieren: Der Ordner der Ausgabe fehlt oder ist eine Datei', nurMitWerkzeug, () => {
+  const ordner = eigenerOrdner('zielordner');
+  const temp = tempFuer('zielordner');
+  const stattOrdner = join(ordner, 'eine-datei');
+  writeFileSync(stattOrdner, 'kein Ordner');
+  for (const aus of [join(stattOrdner, 'aus.apk'), join(ordner, 'gibt-es-nicht', 'aus.apk')]) {
+    const { code, text } = signiere({ '--aus': aus }, { temp });
+    assert.equal(code, 66, text);
+    assert.match(text, /^Fehler: Der Ordner für die signierte Datei fehlt oder ist kein Ordner\.\s*$/);
+  }
+  assert.deepEqual(readdirSync(ordner), ['eine-datei']);
+  assert.deepEqual(reste(temp), []);
+});
+
+test('Signieren: Der Arbeitsordner lässt sich nicht anlegen', nurMitWerkzeug, () => {
+  const aus = join(eigenerOrdner('ohne-temp'), 'aus.apk');
+  const { fehler } = mitEingriff({ aus }, () => undefined, { temp: join(arbeit, 'diesen-temp-gibt-es-nicht') });
+  assert.ok(fehler instanceof Abbruch, String(fehler));
+  assert.equal(fehler.code, 1);
+  assert.match(fehler.message, /^Der Arbeitsordner lässt sich nicht anlegen \(ENOENT\)\.$/);
+  assert.deepEqual(readdirSync(dirname(aus)), []);
+});
+
 test('Signieren: fehlendes SDK', nurMitWerkzeug, () => {
   const { code, text } = signiere({ '--aus': join(arbeit, 'sdk.apk'), '--sdk': join(arbeit, 'kein-sdk') });
   assert.equal(code, 69, text);
@@ -413,14 +513,15 @@ test('Signieren: fehlendes SDK', nurMitWerkzeug, () => {
 
 test('Eingriff: Die Ausgabe entsteht während der Prüfung, sie wird nicht überschrieben', nurMitWerkzeug, () => {
   const aus = join(eigenerOrdner('wettlauf-ziel'), 'ziel.apk');
+  const temp = tempFuer('wettlauf-ziel');
   const { fehler } = mitEingriff({ aus }, (programm, argumente) => {
     if (argumente.includes('verify')) writeFileSync(aus, 'von jemand anderem');
-  });
+  }, { temp });
   assert.ok(fehler instanceof Abbruch, String(fehler));
   assert.equal(fehler.code, 1);
   assert.match(fehler.message, /lässt sich nicht anlegen \(EEXIST\)/);
   assert.equal(readFileSync(aus, 'utf8'), 'von jemand anderem');
-  assert.equal(arbeitsordner(aus).length, 1);
+  assert.equal(reste(temp).length, 1);
 });
 
 test('Eingriff: Die signierte Datei wird nach der Prüfung ausgetauscht', nurMitWerkzeug, () => {
@@ -456,7 +557,23 @@ test('Eingriff: Die unsignierte Datei ändert sich während des Laufs', nurMitWe
   assert.ok(!existsSync(aus));
 });
 
-test('Eingriff: apksigner nennt ein weiteres Verfahren', nurMitWerkzeug, () => {
+test('Eingriff: Die unsignierte Datei verschwindet während des Laufs', nurMitWerkzeug, () => {
+  vorbereiten();
+  const eingabe = join(eigenerOrdner('wettlauf-weg'), 'eingabe.apk');
+  copyFileSync(apk, eingabe);
+  const aus = join(dirname(eingabe), 'aus.apk');
+  const { fehler } = mitEingriff({ apk: eingabe, aus }, (programm, argumente) => {
+    if (argumente.includes('verify')) rmSync(eingabe);
+  });
+  assert.ok(fehler instanceof Abbruch, String(fehler));
+  assert.equal(fehler.code, 66);
+  assert.match(fehler.message, /^Die unsignierte Datei lässt sich nicht lesen \(ENOENT\)\. Die ungeprüfte Datei bleibt liegen: /);
+  assert.ok(!existsSync(aus));
+});
+
+// ---------- Ausgaben der Werkzeuge ----------
+
+test('Ausgabe: apksigner nennt ein weiteres Verfahren', nurMitWerkzeug, () => {
   const aus = join(eigenerOrdner('verfahren'), 'verfahren.apk');
   const { fehler } = mitEingriff({ aus }, (programm, argumente, lauf) => (argumente.includes('verify')
     ? { ...lauf, stdout: lauf.stdout.replace('Verified using v4', 'Verified using v3.2 scheme (APK Signature Scheme v3.2): true\nVerified using v4') } : undefined));
@@ -465,10 +582,134 @@ test('Eingriff: apksigner nennt ein weiteres Verfahren', nurMitWerkzeug, () => {
   assert.ok(!existsSync(aus));
 });
 
-test('Eingriff: ohne Eingriff besteht der Lauf über den Kern', nurMitWerkzeug, () => {
+for (const zeile of ['WARNING: etwas ist ungeschützt', 'ERROR: etwas ist falsch']) {
+  test(`Ausgabe: apksigner verify endet mit 0 und schreibt „${zeile}“ auf die Fehlerausgabe`, nurMitWerkzeug, () => {
+    const aus = join(eigenerOrdner(`stderr-${zeile.slice(0, 4).toLowerCase()}`), 'aus.apk');
+    const { fehler } = mitEingriff({ aus }, (programm, argumente, lauf) => (argumente.includes('verify') ? { ...lauf, stderr: `${zeile}\n` } : undefined));
+    assert.ok(fehler instanceof Abbruch, String(fehler));
+    assert.equal(fehler.code, 1);
+    assert.ok(fehler.message.startsWith(`apksigner verify schreibt auf die Fehlerausgabe: ${zeile}`), fehler.message);
+    assert.ok(!existsSync(aus));
+  });
+}
+
+test('Ausgabe: apksigner verify endet mit 1, die Meldung nennt den Grund', nurMitWerkzeug, () => {
+  const aus = join(eigenerOrdner('verify-1'), 'aus.apk');
+  const { fehler } = mitEingriff({ aus }, (programm, argumente, lauf) => (argumente.includes('verify')
+    ? { ...lauf, status: 1, stderr: 'WARNING: META-INF/x not protected by signature.\n' } : undefined));
+  assert.ok(fehler instanceof Abbruch, String(fehler));
+  assert.ok(fehler.message.startsWith('apksigner verify scheitert: WARNING: META-INF/x not protected by signature.'), fehler.message);
+  assert.ok(!existsSync(aus));
+});
+
+test('Ausgabe: apksigner verify lehnt die Datei ab, die Meldung nennt den Fehler', nurMitWerkzeug, () => {
+  vorbereiten();
+  const aus = join(eigenerOrdner('verify-unsigniert'), 'aus.apk');
+  // Nach dem Signieren liegt die unsignierte Datei an der Stelle der signierten und bleibt dort.
+  const { fehler } = mitEingriff({ aus }, (programm, argumente) => {
+    if (argumente.includes('sign')) copyFileSync(apk, argumente.at(-2));
+  });
+  assert.ok(fehler instanceof Abbruch, String(fehler));
+  assert.equal(fehler.code, 1);
+  assert.ok(fehler.message.startsWith('apksigner verify scheitert: ERROR: '), fehler.message);
+  assert.ok(!existsSync(aus));
+});
+
+test('Ausgabe: Das Skript ruft apksigner verify mit -Werr auf, für die Datei, die es signiert hat', nurMitWerkzeug, () => {
+  const aus = join(eigenerOrdner('werr'), 'aus.apk');
+  const { fehler, aufrufe } = mitEingriff({ aus }, () => undefined);
+  assert.equal(fehler, undefined, String(fehler));
+  const pruefungen = aufrufe.filter((a) => a.argumente.includes('verify'));
+  assert.equal(pruefungen.length, 1);
+  assert.ok(pruefungen[0].argumente.includes('-Werr'));
+  assert.equal(pruefungen[0].argumente.at(-1), aufrufe.find((a) => a.argumente.includes('sign')).argumente.at(-2));
+});
+
+// Hält fest, worauf sich das Skript verlässt: Mit -Werr endet apksigner verify bei
+// einer Warnung mit 1 und schreibt sie auf die Fehlerausgabe. Die Warnung entsteht
+// hier durch einen Eintrag unter META-INF, den die Signatur v1 nicht schützt.
+test('Werkzeug: apksigner verify -Werr endet bei einer Warnung mit 1', nurMitWerkzeug, () => {
+  vorbereiten();
+  const ordner = eigenerOrdner('werkzeug-werr');
+  const java = join(jdk.pfad, 'bin', `java${endung}`);
+  const jar = join(werkzeuge, 'lib', 'apksigner.jar');
+  const v1 = join(ordner, 'v1.apk');
+  let lauf = spawnSync(java, ['-jar', jar, 'sign', '--ks', schluessel, '--ks-type', 'PKCS12', '--ks-key-alias', 'test', '--ks-pass', `file:${kennwort}`,
+    '--v1-signing-enabled', 'true', '--v2-signing-enabled', 'false', '--v3-signing-enabled', 'false', '--min-sdk-version', '21', '--out', v1, apk], { encoding: 'utf8' });
+  assert.equal(lauf.status, 0, `${lauf.stdout}${lauf.stderr}`);
+  mkdirSync(join(ordner, 'zusatz', 'META-INF'), { recursive: true });
+  writeFileSync(join(ordner, 'zusatz', 'META-INF', 'zusatz.txt'), 'ungeschützt\n');
+  lauf = spawnSync(join(jdk.pfad, 'bin', `jar${endung}`), ['--update', '--file', v1, '-C', join(ordner, 'zusatz'), 'META-INF/zusatz.txt'], { encoding: 'utf8' });
+  assert.equal(lauf.status, 0, `${lauf.stdout}${lauf.stderr}`);
+  const pruefe = (weitere) => spawnSync(java, ['-jar', jar, 'verify', '--verbose', '--min-sdk-version', '21', '--max-sdk-version', '23', ...weitere, v1], { encoding: 'utf8' });
+  const ohne = pruefe([]);
+  assert.equal(ohne.status, 0, ohne.stderr);
+  assert.match(ohne.stdout, /^WARNING: META-INF\/zusatz\.txt not protected by signature/m);
+  const mitWerr = pruefe(['-Werr']);
+  assert.equal(mitWerr.status, 1);
+  assert.match(mitWerr.stderr, /^WARNING: META-INF\/zusatz\.txt not protected by signature/m);
+});
+
+test('Ausgabe: Hinweise von apksigner beim Signieren erscheinen gekürzt', nurMitWerkzeug, () => {
+  const aus = join(eigenerOrdner('hinweis'), 'aus.apk');
+  const { fehler, meldungen } = mitEingriff({ aus }, (programm, argumente, lauf) => (argumente.includes('sign')
+    ? { ...lauf, stderr: `Hinweis zu ${schluessel}\n\tat irgendwo.Klasse.methode(Klasse.java:1)\n` } : undefined));
+  assert.equal(fehler, undefined, String(fehler));
+  assert.ok(meldungen.includes('Hinweis von apksigner: Hinweis zu <Schlüsseldatei>'), meldungen.join('\n'));
+  assert.ok(ohneStacktrace(meldungen.join('\n')));
+});
+
+// ---------- Kontrolle und Grenze ----------
+
+test('Kontrolle: ohne Eingriff besteht der Lauf über den Kern', nurMitWerkzeug, () => {
   const aus = join(eigenerOrdner('kern'), 'kern.apk');
-  const { ergebnis, fehler } = mitEingriff({ aus }, () => undefined);
+  const temp = tempFuer('kontrolle');
+  const { ergebnis, fehler } = mitEingriff({ aus }, () => undefined, { temp });
   assert.equal(fehler, undefined, String(fehler));
   assert.equal(ergebnis.summe, summe(aus));
   assert.deepEqual(readdirSync(dirname(aus)), ['kern.apk']);
+  assert.deepEqual(reste(temp), []);
+});
+
+test('Arbeitsordner: liegt im Temp-Ordner und ist unter Linux und macOS nur für den Benutzer zugänglich', nurMitWerkzeug, () => {
+  const aus = join(eigenerOrdner('rechte'), 'aus.apk');
+  const temp = tempFuer('rechte');
+  let ordner;
+  let rechte;
+  const { fehler } = mitEingriff({ aus }, () => undefined, { temp,
+    davor: (programm, argumente) => {
+      if (!argumente.includes('verify')) return;
+      ordner = dirname(argumente.at(-1));
+      rechte = statSync(ordner).mode & 0o777;
+    } });
+  assert.equal(fehler, undefined, String(fehler));
+  assert.equal(dirname(ordner), temp);
+  assert.notEqual(dirname(ordner), dirname(aus));
+  if (!windows) assert.equal(rechte, 0o700);
+});
+
+// Das Skript erkennt diesen Fall nicht. Der Test hält die Grenze fest, die
+// docs/signierung.md beschreibt: Ein Vorgang mit den Rechten desselben Benutzers
+// legt die unsignierte Datei an die Stelle der signierten, setzt nur für die Dauer
+// der Prüfung die signierte ein und danach wieder die unsignierte.
+test('Grenze: Ein Doppelwechsel im Takt der Prüfung bleibt unerkannt', nurMitWerkzeug, () => {
+  vorbereiten();
+  const aus = join(eigenerOrdner('grenze'), 'aus.apk');
+  let signiert;
+  const { ergebnis, fehler } = mitEingriff({ aus }, (programm, argumente) => {
+    const ziel = argumente.at(-1);
+    if (argumente.includes('sign')) {
+      const vorlaeufig = argumente.at(-2);
+      signiert = readFileSync(vorlaeufig);
+      copyFileSync(apk, vorlaeufig);
+    }
+    if (argumente.includes('verify')) copyFileSync(apk, ziel);
+  }, { davor: (programm, argumente) => {
+    if (argumente.includes('verify')) writeFileSync(argumente.at(-1), signiert);
+  } });
+  assert.equal(fehler, undefined, String(fehler));
+  assert.equal(ergebnis.summe, summe(apk), 'Veröffentlicht ist die unsignierte Datei.');
+  assert.equal(summe(aus), summe(apk));
+  const lauf = spawnSync(join(jdk.pfad, 'bin', `java${endung}`), ['-jar', join(werkzeuge, 'lib', 'apksigner.jar'), 'verify', aus], { encoding: 'utf8' });
+  assert.notEqual(lauf.status, 0, 'Eine unabhängige Prüfung der Ausgabe scheitert.');
 });
