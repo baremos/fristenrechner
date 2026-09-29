@@ -6,13 +6,16 @@
 //     kein Function-Konstruktor ohne Eintrag, jede Adresse in Skripten mit Eintrag
 //     in app-pruefungen.json, keine Verweise nach außen in HTML und CSS.
 // K2 ist eine statische Prüfung. Sie sieht keine berechneten Namen (a[x + y]),
-// keinen Code, der erst zur Laufzeit entsteht, keinen Alias des Function-Konstruktors
-// und keine Adressen, die aus Teilen zusammengesetzt werden. Das HTML liest sie mit
-// regulären Ausdrücken, nicht mit dem vollständigen Tokenizer eines Browsers: dessen
-// Fehlerkorrekturen, Zeichenreferenzen in Attributnamen und die Sonderzustände eines
-// Skripts, das "<!--" und "<script" enthält, bildet sie nicht nach. Dass die App keine
-// Verbindung aufbaut und nicht nach außen navigiert, belegen die Läufe im Emulator
-// mit Netzmelder und Gegenprobe.
+// keinen Code, der erst zur Laufzeit entsteht, keinen Alias oder Reflexionszugriff
+// auf den Function-Konstruktor und keine Adressen, die aus Teilen zusammengesetzt
+// werden. eval zählt sie bei jeder Erwähnung, auch als Schlüssel und als Zeichenkette.
+// Das HTML liest sie mit regulären Ausdrücken, nicht mit dem vollständigen Tokenizer
+// eines Browsers: dessen Fehlerkorrekturen (etwa "<!-->" oder "--!>"), Zeichenreferenzen
+// in Attributnamen und die Sonderzustände eines Skripts, das "<!--" und "<script"
+// enthält, bildet sie nicht nach. SVG, MathML, CDATA und srcdoc lehnt sie ab; den
+// Inhalt von title, textarea, noscript, iframe, xmp, noembed und noframes liest sie
+// als Text. Dass die App keine Verbindung aufbaut und nicht nach außen navigiert,
+// belegen die Läufe im Emulator mit Netzmelder und Gegenprobe.
 // Aufruf über scripts/app-bauen.mjs. Die Regeln stehen in scripts/app-pruefungen.json.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, extname, join, relative, sep } from 'node:path';
@@ -214,7 +217,8 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
         const alsEigenschaft = (eltern?.type === 'MemberExpression' || eltern?.type === 'OptionalMemberExpression') && eltern.property === k && !eltern.computed;
         const alsSchluessel = (eltern?.type === 'ObjectProperty' || eltern?.type === 'ObjectMethod' || eltern?.type === 'ClassMethod' || eltern?.type === 'ClassProperty') && eltern.key === k && !eltern.computed;
         if (globale.has(k.name) && !alsEigenschaft && !alsSchluessel) zaehle('laufzeit', k.name);
-        if (k.name === 'eval' && !alsEigenschaft && !alsSchluessel) zaehle('dynamisch', 'eval');
+        // eval zählt auch als Schlüssel, etwa in const { eval: e } = globalThis.
+        if (k.name === 'eval' && !alsEigenschaft) zaehle('dynamisch', 'eval');
         break;
       }
       case 'StringLiteral':
@@ -223,6 +227,8 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
         const text = konstanterText(k);
         const alsEigenschaft = (eltern?.type === 'MemberExpression' || eltern?.type === 'OptionalMemberExpression') && eltern.property === k;
         if (text !== null && alleNamen.has(text) && !alsEigenschaft) zaehle('laufzeit', text);
+        // "eval" als Zeichenkette: Reflect.get(globalThis, "eval"), { ["eval"]: e } = …
+        if (text === 'eval' && !alsEigenschaft) zaehle('dynamisch', 'eval');
         if (k.type === 'StringLiteral') ergebnis.adressen.push(...adressenIn(k.value));
         break;
       }
@@ -246,6 +252,10 @@ const HTML_TEILE = new RegExp(
   String.raw`(<!--[\s\S]*?(?:-->|$))`
   + String.raw`|<script(?=[\t\n\f\r />])(${ATTRIBUTE_TEIL})>([\s\S]*?)(?:${ENDE('script')}|$)`
   + String.raw`|<style(?=[\t\n\f\r />])(${ATTRIBUTE_TEIL})>([\s\S]*?)(?:${ENDE('style')}|$)`
+  // Inhalt dieser Elemente ist für den Browser Text (RCDATA, RAWTEXT; noscript bei
+  // eingeschalteten Skripten). Ein "<!--" darin beginnt keinen Kommentar.
+  + String.raw`|<(title|textarea|xmp|iframe|noembed|noframes|noscript)(?=[\t\n\f\r />])(${ATTRIBUTE_TEIL})>([\s\S]*?)(?:<\/\6(?=[\t\n\f\r />])[^>]*>|$)`
+  + String.raw`|(<!\[CDATA\[)`
   + String.raw`|<([a-zA-Z][a-zA-Z0-9:-]*)(${ATTRIBUTE_TEIL})>`,
   'gi',
 );
@@ -318,6 +328,7 @@ function pruefeTag(tagName, attribute, datei, fehler) {
   const ort = `${datei} <${tagName}>`;
   for (const [name, wert] of attribute) {
     if (name.startsWith('on')) fehler.push(`${ort}: Ereignis-Attribut ${name} ist nicht erlaubt.`);
+    else if (name === 'srcdoc') fehler.push(`${ort}: srcdoc ist nicht erlaubt, es enthält ein eigenes Dokument.`);
     else if (ADRESS_ATTRIBUTE.has(name)) pruefeAdresseImHtml(wert, name, ort, fehler);
     else if (LISTEN_ATTRIBUTE.has(name)) {
       for (const teil of dekodiere(wert, ort, fehler).split(/[\t\n\f\r ]+/).filter(Boolean)) pruefeAdresseImHtml(teil, name, ort, fehler, true);
@@ -354,8 +365,16 @@ function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
     } else if (m[4] !== undefined) {
       pruefeTag('style', attributeVon(m[4]), datei, fehler);
       pruefeCss(m[5] ?? '', `${datei} <style>`, fehler);
-    } else {
+    } else if (m[6] !== undefined) {
       pruefeTag(m[6].toLowerCase(), attributeVon(m[7]), datei, fehler);
+    } else if (m[9] !== undefined) {
+      fehler.push(`${datei}: CDATA ist im HTML der App nicht erlaubt.`);
+    } else {
+      const tagName = m[10].toLowerCase();
+      // SVG und MathML folgen eigenen Regeln für Skripte, Stile und CDATA. Die App
+      // braucht sie im HTML nicht, K2 lehnt sie deshalb ab, statt sie nachzubilden.
+      if (tagName === 'svg' || tagName === 'math') fehler.push(`${datei}: <${tagName}> ist im HTML der App nicht erlaubt.`);
+      pruefeTag(tagName, attributeVon(m[11]), datei, fehler);
     }
   }
 }
@@ -372,10 +391,11 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
   // Jeder Eintrag der Regeldatei braucht Datei, eine Höchstzahl ab 1 und einen Grund.
   for (const liste of ['laufzeitAusnahmen', 'dynamischerCode', 'adressen']) {
     if (!Array.isArray(vorgabe[liste])) { fehler.push(`app-pruefungen.json: ${liste} fehlt oder ist keine Liste.`); continue; }
+    const namensfeld = liste === 'adressen' ? 'wortlaut' : 'name';
+    const text = (w) => typeof w === 'string' && w.trim() !== '';
     for (const e of vorgabe[liste]) {
-      if (typeof e?.datei !== 'string' || !e.datei || !Number.isInteger(e.hoechstzahl) || e.hoechstzahl < 1
-        || typeof e.grund !== 'string' || !e.grund.trim() || typeof (e.name ?? e.wortlaut) !== 'string') {
-        fehler.push(`app-pruefungen.json: Eintrag in ${liste} ohne Datei, Name, gültige Höchstzahl oder Grund: ${JSON.stringify(e)}`);
+      if (!text(e?.datei) || !text(e[namensfeld]) || !Number.isInteger(e.hoechstzahl) || e.hoechstzahl < 1 || !text(e.grund)) {
+        fehler.push(`app-pruefungen.json: Eintrag in ${liste} ohne Datei, ${namensfeld}, gültige Höchstzahl oder Grund: ${JSON.stringify(e)}`);
       }
     }
   }

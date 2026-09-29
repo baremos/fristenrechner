@@ -241,6 +241,18 @@ const k2Gegenproben = [
   ['eval mit ?.()', { '_astro/haupt.AbCdEfGh.js': 'eval?.("1");' }, /1 × eval ohne Eintrag/],
   ['Function im Kommaausdruck', { '_astro/haupt.AbCdEfGh.js': '(0, Function)("x");' }, /1 × Function ohne Eintrag/],
   ['Stil-Element mit Ereignis-Attribut', { 'index.html': '<!doctype html><html><head><style onload="x()">a{}</style></head><body></body></html>' }, /Ereignis-Attribut onload/],
+  // Befunde aus Runde 3: Textinhalt, fremde Namensräume, eingebettete Dokumente, eval
+  ['<!-- im Titel', { 'index.html': '<!doctype html><html><head><title><!--</title></head><body><script>eval("1")</script></body></html>' }, /1 × eval ohne Eintrag/],
+  ['<!-- in noscript', { 'index.html': seite('<noscript><!--</noscript><script>eval("1")</script>') }, /1 × eval ohne Eintrag/],
+  ['<!-- in textarea', { 'index.html': seite('<textarea><!--</textarea><script>eval("1")</script>') }, /1 × eval ohne Eintrag/],
+  ['SVG im HTML', { 'index.html': seite('<svg><style><script>eval("1")</script></style></svg>') }, /<svg> ist im HTML der App nicht erlaubt/],
+  ['MathML im HTML', { 'index.html': seite('<math><mi>x</mi></math>') }, /<math> ist im HTML der App nicht erlaubt/],
+  ['CDATA im HTML', { 'index.html': seite('<![CDATA[<!--]]><script>eval("1")</script>') }, /CDATA ist im HTML der App nicht erlaubt/],
+  ['srcdoc mit Skript', { 'index.html': seite('<iframe srcdoc="&lt;script>eval(\'1\')&lt;/script>"></iframe>') }, /srcdoc ist nicht erlaubt/],
+  ['iframe mit Adresse', { 'index.html': seite('<iframe src="https://example.invalid/"></iframe>') }, /src="https:\/\/example\.invalid\/" verweist nach außen/],
+  ['eval über Destrukturierung', { '_astro/haupt.AbCdEfGh.js': 'const { eval: e } = globalThis; e("1");' }, /1 × eval ohne Eintrag/],
+  ['eval über berechnete Destrukturierung', { '_astro/haupt.AbCdEfGh.js': 'const { ["eval"]: e } = globalThis; e("1");' }, /1 × eval ohne Eintrag/],
+  ['eval über Reflect.get', { '_astro/haupt.AbCdEfGh.js': 'const e = Reflect.get(globalThis, "eval"); e("1");' }, /1 × eval ohne Eintrag/],
   // CSS
   ['CSS mit image-set', { '_astro/a.AbCdEfGh.css': '.a{background:image-set("/a.png" 1x)}' }, /image-set\(\) ist nicht erlaubt/],
   ['CSS mit Escape', { '_astro/a.AbCdEfGh.css': '.a{background:u\\72 l(//example.invalid/a)}' }, /Escapes im CSS sind nicht auswertbar/],
@@ -256,6 +268,10 @@ for (const [liste, aendern] of [
   ['laufzeitAusnahmen mit Höchstzahl 0', (v) => { v.laufzeitAusnahmen[0].hoechstzahl = 0; }],
   ['adressen ohne Grund', (v) => { v.adressen[0].grund = ' '; }],
   ['dynamischerCode fehlt', (v) => { delete v.dynamischerCode; }],
+  ['dynamischerCode mit wortlaut statt name', (v) => { v.dynamischerCode[0].wortlaut = v.dynamischerCode[0].name; delete v.dynamischerCode[0].name; }],
+  ['adressen mit name statt wortlaut', (v) => { v.adressen[0].name = v.adressen[0].wortlaut; delete v.adressen[0].wortlaut; }],
+  ['laufzeitAusnahmen mit leerem Namen', (v) => { v.laufzeitAusnahmen[0].name = ''; }],
+  ['adressen mit leerer Datei', (v) => { v.adressen[0].datei = ' '; }],
 ]) {
   test(`K2 Gegenprobe Regeldatei: ${liste}`, () => {
     const vorgabe = structuredClone(VORGABE);
