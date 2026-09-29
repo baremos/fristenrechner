@@ -6,9 +6,13 @@
 //     kein Function-Konstruktor ohne Eintrag, jede Adresse in Skripten mit Eintrag
 //     in app-pruefungen.json, keine Verweise nach außen in HTML und CSS.
 // K2 ist eine statische Prüfung. Sie sieht keine berechneten Namen (a[x + y]),
-// keinen Code, der erst zur Laufzeit entsteht, und keine Adressen, die aus Teilen
-// zusammengesetzt werden. Dass die App keine Verbindung aufbaut und nicht nach
-// außen navigiert, belegen die Läufe im Emulator mit Netzmelder und Gegenprobe.
+// keinen Code, der erst zur Laufzeit entsteht, keinen Alias des Function-Konstruktors
+// und keine Adressen, die aus Teilen zusammengesetzt werden. Das HTML liest sie mit
+// regulären Ausdrücken, nicht mit dem vollständigen Tokenizer eines Browsers: dessen
+// Fehlerkorrekturen, Zeichenreferenzen in Attributnamen und die Sonderzustände eines
+// Skripts, das "<!--" und "<script" enthält, bildet sie nicht nach. Dass die App keine
+// Verbindung aufbaut und nicht nach außen navigiert, belegen die Läufe im Emulator
+// mit Netzmelder und Gegenprobe.
 // Aufruf über scripts/app-bauen.mjs. Die Regeln stehen in scripts/app-pruefungen.json.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, extname, join, relative, sep } from 'node:path';
@@ -176,13 +180,16 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
         if (k.options) zaehle('syntax', 'Import-Attribute');
         break;
       case 'CallExpression':
+      case 'OptionalCallExpression':
       case 'NewExpression': {
         if (k.callee?.type === 'Import' && k.arguments.length > 1) zaehle('syntax', 'Import-Attribute');
-        // Code aus Zeichenketten: eval, Function, setTimeout und setInterval mit Text.
-        const c = k.callee;
+        // Code aus Zeichenketten: Function, setTimeout und setInterval mit Text. eval
+        // zählt schon jede Erwähnung (unten), auch als Alias oder in (0, eval)(…).
+        let c = k.callee;
+        if (c?.type === 'SequenceExpression') c = c.expressions.at(-1);
         const name = c?.type === 'Identifier' ? c.name
           : (c?.type === 'MemberExpression' || c?.type === 'OptionalMemberExpression') ? eigenschaftsname(c) : null;
-        if (name === 'eval' || name === 'Function') zaehle('dynamisch', name);
+        if (name === 'Function') zaehle('dynamisch', name);
         if ((name === 'setTimeout' || name === 'setInterval') && k.arguments[0]
           && (k.arguments[0].type === 'StringLiteral' || k.arguments[0].type === 'TemplateLiteral' || k.arguments[0].type === 'BinaryExpression')) {
           zaehle('dynamisch', `${name} mit Text`);
@@ -200,12 +207,14 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
       case 'OptionalMemberExpression': {
         const name = eigenschaftsname(k);
         if (name && alleNamen.has(name)) zaehle('laufzeit', name);
+        if (name === 'eval') zaehle('dynamisch', 'eval');
         break;
       }
       case 'Identifier': {
         const alsEigenschaft = (eltern?.type === 'MemberExpression' || eltern?.type === 'OptionalMemberExpression') && eltern.property === k && !eltern.computed;
         const alsSchluessel = (eltern?.type === 'ObjectProperty' || eltern?.type === 'ObjectMethod' || eltern?.type === 'ClassMethod' || eltern?.type === 'ClassProperty') && eltern.key === k && !eltern.computed;
         if (globale.has(k.name) && !alsEigenschaft && !alsSchluessel) zaehle('laufzeit', k.name);
+        if (k.name === 'eval' && !alsEigenschaft && !alsSchluessel) zaehle('dynamisch', 'eval');
         break;
       }
       case 'StringLiteral':
@@ -227,22 +236,32 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
   return ergebnis;
 }
 
-// HTML: Tags mit Attributen, auch wenn ein Wert ">" enthält.
+// HTML in einem Durchlauf von links nach rechts, wie ein Browser: Kommentar, Skript,
+// Stil oder Tag, je nachdem, was zuerst beginnt. Ein "<!--" in einem Skript bleibt
+// so Teil des Skripts. Leerraum im Sinn von HTML ist nur Tab, LF, FF, CR und Leerzeichen.
+const WS = String.raw`[\t\n\f\r ]`;
 const ATTRIBUTE_TEIL = String.raw`(?:[^>"']|"[^"]*"|'[^']*')*`;
-const TAG = new RegExp(String.raw`<([a-zA-Z][a-zA-Z0-9:-]*)(${ATTRIBUTE_TEIL})>`, 'g');
-const ATTRIBUT = /([^\s"'>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
-const SKRIPT = new RegExp(String.raw`<script\b(${ATTRIBUTE_TEIL})>([\s\S]*?)<\/script\s*>`, 'gi');
-const STIL = new RegExp(String.raw`<style\b${ATTRIBUTE_TEIL}>([\s\S]*?)<\/style\s*>`, 'gi');
+const ENDE = (name) => String.raw`<\/${name}(?=[\t\n\f\r />])[^>]*>`;
+const HTML_TEILE = new RegExp(
+  String.raw`(<!--[\s\S]*?(?:-->|$))`
+  + String.raw`|<script(?=[\t\n\f\r />])(${ATTRIBUTE_TEIL})>([\s\S]*?)(?:${ENDE('script')}|$)`
+  + String.raw`|<style(?=[\t\n\f\r />])(${ATTRIBUTE_TEIL})>([\s\S]*?)(?:${ENDE('style')}|$)`
+  + String.raw`|<([a-zA-Z][a-zA-Z0-9:-]*)(${ATTRIBUTE_TEIL})>`,
+  'gi',
+);
+const ATTRIBUT = new RegExp(String.raw`([^\t\n\f\r "'>\/=]+)(?:${WS}*=${WS}*(?:"([^"]*)"|'([^']*)'|([^\t\n\f\r "'=<>\x60]+)))?`, 'g');
 // Attribute, deren Wert eine Adresse ist oder Adressen enthält.
 const ADRESS_ATTRIBUTE = new Set(['href', 'src', 'action', 'formaction', 'poster', 'data', 'xlink:href', 'background', 'cite', 'longdesc', 'manifest', 'icon', 'codebase']);
 const LISTEN_ATTRIBUTE = new Set(['ping', 'archive']);
 const KANDIDATEN_ATTRIBUTE = new Set(['srcset', 'imagesrcset']);
-const ZEICHENREFERENZEN = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", colon: ':', sol: '/', bsol: '\\', period: '.', num: '#', Tab: '\t', NewLine: '\n', nbsp: ' ' };
+const ZEICHENREFERENZEN = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", colon: ':', sol: '/', bsol: '\\', period: '.', num: '#', Tab: '\t', NewLine: '\n', nbsp: '\xa0' };
+const ERSATZZEICHEN = String.fromCodePoint(0xfffd);
 // Nach HTML ist ein Skript ohne type oder mit einem dieser Typen klassisches JavaScript.
 const JS_TYPEN = new Set(['', 'application/ecmascript', 'application/javascript', 'application/x-ecmascript', 'application/x-javascript',
   'text/ecmascript', 'text/javascript', 'text/javascript1.0', 'text/javascript1.1', 'text/javascript1.2', 'text/javascript1.3',
   'text/javascript1.4', 'text/javascript1.5', 'text/jscript', 'text/livescript', 'text/x-ecmascript', 'text/x-javascript']);
 const DATEN_TYPEN = new Set(['application/json', 'application/ld+json']);
+const html_trim = (s) => s.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');
 
 /** Attribute eines Tags; Namen klein, bei doppelten gilt wie in HTML das erste. */
 export function attributeVon(text) {
@@ -258,7 +277,7 @@ function dekodiere(wert, ort, fehler) {
   return wert.replace(/&(#[xX][0-9a-fA-F]+|#[0-9]+|[A-Za-z][A-Za-z0-9]*);?/g, (ganz, ref) => {
     if (ref[0] === '#') {
       const n = /^#[xX]/.test(ref) ? parseInt(ref.slice(2), 16) : parseInt(ref.slice(1), 10);
-      return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : '�';
+      return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : ERSATZZEICHEN;
     }
     if (Object.hasOwn(ZEICHENREFERENZEN, ref)) return ZEICHENREFERENZEN[ref];
     fehler.push(`${ort}: Zeichenreferenz &${ref}; ist nicht auswertbar.`);
@@ -267,9 +286,9 @@ function dekodiere(wert, ort, fehler) {
 }
 
 /** Eine Adresse im HTML darf nur ein Pfad in der App sein: kein Schema, nicht // und nicht /\. */
-function pruefeAdresseImHtml(roh, name, ort, fehler) {
+function pruefeAdresseImHtml(roh, name, ort, fehler, schonDekodiert = false) {
   // Wie der URL-Parser: Tab und Zeilenumbruch fallen weg, Steuerzeichen und Leerzeichen am Rand auch.
-  const wert = dekodiere(roh, ort, fehler).replace(/[\t\n\r]/g, '').replace(/^[\u0000- ]+|[\u0000- ]+$/g, '');
+  const wert = (schonDekodiert ? roh : dekodiere(roh, ort, fehler)).replace(/[\t\n\r]/g, '').replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, '');
   if (/^[a-z][a-z0-9+.-]*:/i.test(wert) || /^[\\/]{2}/.test(wert)) fehler.push(`${ort}: ${name}="${roh}" verweist nach außen oder nutzt ein Schema.`);
 }
 
@@ -287,53 +306,57 @@ function pruefeCss(css, ort, fehler) {
 /** Art eines Skript-Elements nach HTML: script, module, daten oder unbekannt. */
 export function skriptArt(attribute) {
   let typ = attribute.get('type');
-  if ((typ === undefined || typ.trim() === '') && attribute.get('language')) typ = `text/${attribute.get('language')}`;
-  typ = (typ ?? '').trim().toLowerCase();
+  if ((typ === undefined || typ === '') && attribute.get('language')) typ = `text/${attribute.get('language')}`;
+  typ = html_trim(typ ?? '').toLowerCase();
   if (JS_TYPEN.has(typ)) return 'script';
   if (typ === 'module') return 'module';
   if (DATEN_TYPEN.has(typ)) return 'daten';
   return 'unbekannt';
 }
 
-function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
-  const ohneKommentare = html.replace(/<!--[\s\S]*?-->/g, ' ');
-  // Inhalt von script und style leeren, damit darin keine Tags erkannt werden.
-  const nurTags = ohneKommentare
-    .replace(new RegExp(String.raw`(<script\b${ATTRIBUTE_TEIL}>)[\s\S]*?(<\/script\s*>)`, 'gi'), '$1$2')
-    .replace(new RegExp(String.raw`(<style\b${ATTRIBUTE_TEIL}>)[\s\S]*?(<\/style\s*>)`, 'gi'), '$1$2');
-  for (const tag of nurTags.matchAll(TAG)) {
-    const tagName = tag[1].toLowerCase();
-    const attribute = attributeVon(tag[2]);
-    for (const [name, wert] of attribute) {
-      const ort = `${datei} <${tagName}>`;
-      if (name.startsWith('on')) fehler.push(`${ort}: Ereignis-Attribut ${name} ist nicht erlaubt.`);
-      else if (ADRESS_ATTRIBUTE.has(name)) pruefeAdresseImHtml(wert, name, ort, fehler);
-      else if (LISTEN_ATTRIBUTE.has(name)) for (const teil of wert.split(/\s+/).filter(Boolean)) pruefeAdresseImHtml(teil, name, ort, fehler);
-      else if (KANDIDATEN_ATTRIBUTE.has(name)) {
-        for (const kandidat of dekodiere(wert, ort, fehler).split(',')) {
-          const adresse = kandidat.trim().split(/\s+/)[0];
-          if (adresse) pruefeAdresseImHtml(adresse, name, ort, fehler);
-        }
-      } else if (name === 'style') pruefeCss(dekodiere(wert, ort, fehler), `${ort} style=`, fehler);
-    }
-    if (tagName === 'meta' && (attribute.get('http-equiv') ?? '').trim().toLowerCase() === 'refresh') {
-      fehler.push(`${datei}: <meta http-equiv="refresh"> ist nicht erlaubt.`);
-    }
+function pruefeTag(tagName, attribute, datei, fehler) {
+  const ort = `${datei} <${tagName}>`;
+  for (const [name, wert] of attribute) {
+    if (name.startsWith('on')) fehler.push(`${ort}: Ereignis-Attribut ${name} ist nicht erlaubt.`);
+    else if (ADRESS_ATTRIBUTE.has(name)) pruefeAdresseImHtml(wert, name, ort, fehler);
+    else if (LISTEN_ATTRIBUTE.has(name)) {
+      for (const teil of dekodiere(wert, ort, fehler).split(/[\t\n\f\r ]+/).filter(Boolean)) pruefeAdresseImHtml(teil, name, ort, fehler, true);
+    } else if (KANDIDATEN_ATTRIBUTE.has(name)) {
+      for (const kandidat of dekodiere(wert, ort, fehler).split(',')) {
+        const adresse = html_trim(kandidat).split(/[\t\n\f\r ]+/)[0];
+        if (adresse) pruefeAdresseImHtml(adresse, name, ort, fehler, true);
+      }
+    } else if (name === 'style') pruefeCss(dekodiere(wert, ort, fehler), `${ort} style=`, fehler);
   }
-  for (const m of ohneKommentare.matchAll(STIL)) pruefeCss(m[1], `${datei} <style>`, fehler);
+  if (tagName === 'meta' && html_trim(dekodiere(attribute.get('http-equiv') ?? '', ort, fehler)).toLowerCase() === 'refresh') {
+    fehler.push(`${datei}: <meta http-equiv="refresh"> ist nicht erlaubt.`);
+  }
+}
+
+function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
   let nummer = 0;
-  for (const m of ohneKommentare.matchAll(SKRIPT)) {
-    nummer++;
-    const attribute = attributeVon(m[1]);
-    const art = skriptArt(attribute);
-    const ort = `${datei} Skript ${nummer} (${art})`;
-    if (art === 'unbekannt') { fehler.push(`${ort}: Skripttyp ${JSON.stringify(attribute.get('type') ?? attribute.get('language'))} ist nicht erlaubt.`); continue; }
-    if (art === 'daten') { for (const a of adressenIn(m[2])) zaehleAdresse(a); continue; }
-    if (attribute.has('src')) {
-      if (m[2].trim()) fehler.push(`${ort}: Skript mit src und Inhalt.`);
-      continue;
+  for (const m of html.matchAll(HTML_TEILE)) {
+    if (m[1] !== undefined) continue;
+    if (m[2] !== undefined) {
+      nummer++;
+      const attribute = attributeVon(m[2]);
+      pruefeTag('script', attribute, datei, fehler);
+      const inhalt = m[3] ?? '';
+      const art = skriptArt(attribute);
+      const ort = `${datei} Skript ${nummer} (${art})`;
+      if (art === 'unbekannt') { fehler.push(`${ort}: Skripttyp ${JSON.stringify(attribute.get('type') ?? attribute.get('language'))} ist nicht erlaubt.`); continue; }
+      if (art === 'daten') { for (const a of adressenIn(inhalt)) zaehleAdresse(a); continue; }
+      if (attribute.has('src')) {
+        if (inhalt.trim()) fehler.push(`${ort}: Skript mit src und Inhalt.`);
+        continue;
+      }
+      if (inhalt.trim()) werteSkriptAus(inhalt, art, datei, ort);
+    } else if (m[4] !== undefined) {
+      pruefeTag('style', attributeVon(m[4]), datei, fehler);
+      pruefeCss(m[5] ?? '', `${datei} <style>`, fehler);
+    } else {
+      pruefeTag(m[6].toLowerCase(), attributeVon(m[7]), datei, fehler);
     }
-    if (m[2].trim()) werteSkriptAus(m[2], art, datei, ort);
   }
 }
 
@@ -346,6 +369,17 @@ function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
 export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorgabe = VORGABE, quellOrdner = [] } = {}) {
   const fehler = [];
   const bericht = { dateien: 0, syntax: {}, laufzeit: {}, dynamisch: {}, adressen: {} };
+  // Jeder Eintrag der Regeldatei braucht Datei, eine Höchstzahl ab 1 und einen Grund.
+  for (const liste of ['laufzeitAusnahmen', 'dynamischerCode', 'adressen']) {
+    if (!Array.isArray(vorgabe[liste])) { fehler.push(`app-pruefungen.json: ${liste} fehlt oder ist keine Liste.`); continue; }
+    for (const e of vorgabe[liste]) {
+      if (typeof e?.datei !== 'string' || !e.datei || !Number.isInteger(e.hoechstzahl) || e.hoechstzahl < 1
+        || typeof e.grund !== 'string' || !e.grund.trim() || typeof (e.name ?? e.wortlaut) !== 'string') {
+        fehler.push(`app-pruefungen.json: Eintrag in ${liste} ohne Datei, Name, gültige Höchstzahl oder Grund: ${JSON.stringify(e)}`);
+      }
+    }
+  }
+  if (fehler.length) return { fehler, bericht };
   if (!existsSync(distOrdner) || !statSync(distOrdner).isDirectory()) return { fehler: [`Der Ordner ${distOrdner} fehlt.`], bericht };
   const dateien = alleDateien(distOrdner);
   bericht.dateien = dateien.length;

@@ -227,6 +227,20 @@ const k2Gegenproben = [
   ['new Function', { '_astro/haupt.AbCdEfGh.js': 'new Function("return 1");' }, /1 × Function ohne Eintrag in dynamischerCode/],
   ['setTimeout mit Text', { '_astro/haupt.AbCdEfGh.js': 'setTimeout("f()", 1);' }, /1 × setTimeout mit Text ohne Eintrag/],
   ['Function in index.es über der Höchstzahl', { '_astro/index.es.AbCdEfGh.js': 'Function("return this")(); Function("x")();' }, /2 × Function, erlaubt sind 1/],
+  // Befunde aus Runde 2: Kommentarzeichen in Skript und Stil, Endtag mit Attribut,
+  // kodierte Werte, Leerraum außerhalb von HTML, indirektes eval
+  ['<!-- in einer Zeichenkette im Skript', { 'index.html': seite('<script>const x="<!--";a.replaceChildren();const y="-->";</script>') }, /index\.html: 1 × replaceChildren/],
+  ['Skript im Kommentar-Mantel', { 'index.html': seite('<script><!--\nlet a; a ||= 1;\n//--></script>') }, /index\.html: 1 × logische Zuweisung/],
+  ['Stil mit Kommentarzeichen', { 'index.html': '<!doctype html><html><head><style>/*<!--*/body{background:url(https://example.invalid/a)}/*-->*/</style></head><body></body></html>' }, /url\(https:\/\/example\.invalid\/a\)/],
+  ['Endtag mit Attribut', { 'index.html': seite('<script>eval("1")</script x>') }, /1 × eval ohne Eintrag/],
+  ['http-equiv kodiert', { 'index.html': '<!doctype html><html><head><meta http-equiv="re&#102;resh" content="0"></head><body></body></html>' }, /meta http-equiv="refresh"/],
+  ['ping mit kodiertem Leerzeichen', { 'index.html': seite('<a href="/x" ping="/lokal&#32;https://example.invalid/p">x</a>') }, /ping="https:\/\/example\.invalid\/p" verweist nach außen/],
+  ['geschütztes Leerzeichen vor =', { 'index.html': seite(`<script type${String.fromCharCode(0xa0)}="application/json">eval("1")</script>`) }, /1 × eval ohne Eintrag/],
+  ['eval als Alias', { '_astro/haupt.AbCdEfGh.js': 'const e = eval; e("1");' }, /1 × eval ohne Eintrag/],
+  ['eval im Kommaausdruck', { '_astro/haupt.AbCdEfGh.js': '(0, eval)("1");' }, /1 × eval ohne Eintrag/],
+  ['eval mit ?.()', { '_astro/haupt.AbCdEfGh.js': 'eval?.("1");' }, /1 × eval ohne Eintrag/],
+  ['Function im Kommaausdruck', { '_astro/haupt.AbCdEfGh.js': '(0, Function)("x");' }, /1 × Function ohne Eintrag/],
+  ['Stil-Element mit Ereignis-Attribut', { 'index.html': '<!doctype html><html><head><style onload="x()">a{}</style></head><body></body></html>' }, /Ereignis-Attribut onload/],
   // CSS
   ['CSS mit image-set', { '_astro/a.AbCdEfGh.css': '.a{background:image-set("/a.png" 1x)}' }, /image-set\(\) ist nicht erlaubt/],
   ['CSS mit Escape', { '_astro/a.AbCdEfGh.css': '.a{background:u\\72 l(//example.invalid/a)}' }, /Escapes im CSS sind nicht auswertbar/],
@@ -235,6 +249,20 @@ const k2Gegenproben = [
 
 function seite(body) {
   return `<!doctype html><html><head></head><body>${body}</body></html>`;
+}
+
+for (const [liste, aendern] of [
+  ['dynamischerCode ohne Höchstzahl', (v) => { delete v.dynamischerCode[0].hoechstzahl; }],
+  ['laufzeitAusnahmen mit Höchstzahl 0', (v) => { v.laufzeitAusnahmen[0].hoechstzahl = 0; }],
+  ['adressen ohne Grund', (v) => { v.adressen[0].grund = ' '; }],
+  ['dynamischerCode fehlt', (v) => { delete v.dynamischerCode; }],
+]) {
+  test(`K2 Gegenprobe Regeldatei: ${liste}`, () => {
+    const vorgabe = structuredClone(VORGABE);
+    aendern(vorgabe);
+    const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/index.es.AbCdEfGh.js': 'Function("a")(); Function("b")();' }), { vorgabe });
+    assert.ok(fehler.some((f) => /^app-pruefungen\.json: /.test(f)), fehler.join('\n'));
+  });
 }
 
 test('K2: Modul mit export und Datenblock bestehen', () => {
@@ -298,7 +326,7 @@ test('K2: fehlender Ordner', () => {
 });
 
 test('Regeldatei: jede Ausnahme und jede Adresse hat Datei, Höchstzahl und Grund', () => {
-  for (const a of [...VORGABE.laufzeitAusnahmen, ...VORGABE.adressen]) {
+  for (const a of [...VORGABE.laufzeitAusnahmen, ...VORGABE.dynamischerCode, ...VORGABE.adressen]) {
     assert.equal(typeof a.datei, 'string');
     assert.ok(Number.isInteger(a.hoechstzahl) && a.hoechstzahl > 0);
     assert.ok(typeof a.grund === 'string' && a.grund.length > 10);
