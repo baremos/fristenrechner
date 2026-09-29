@@ -42,10 +42,23 @@ art = d["art"]
 aufrufe = []
 gradle_quelle = 'applicationId "' + b.APPID + '"\nversionName "1.0"\nversionCode 1\n'
 wrapper_quelle = 'distributionUrl=https\\://services.gradle.org/distributions/gradle-' + vorgabe["gradle"]["version"] + '-all.zip\ndistributionSha256Sum=' + vorgabe["gradle"]["sha256"]["all"] + '\n'
+eingecheckt = []
 def git(befehl, **kwargs):
     aufrufe.append(befehl)
-    assert befehl[:3] == ["git", "-C", str(repo)]
-    if befehl[3:] == ["rev-parse", "--show-toplevel"]:
+    assert befehl[:2] == ["git", "-C"]
+    if befehl[2] != str(repo):
+        # Das Rezept wird nur im neuen Laufordner eingecheckt, mit dem Zeitpunkt der Quelle.
+        assert Path(befehl[2]).parent == andere
+        assert befehl[3] in ("init", "add", "commit")
+        assert kwargs["env"]["GIT_AUTHOR_DATE"] == "@1700000000 +0000"
+        assert kwargs["env"]["GIT_COMMITTER_DATE"] == "@1700000000 +0000"
+        assert kwargs["env"]["GIT_CONFIG_GLOBAL"] == "/dev/null"
+        eingecheckt.append(befehl[3:])
+        return subprocess.CompletedProcess(befehl, 0, "", "")
+    if befehl[3] == "log":
+        assert befehl[4:] == ["-1", "--format=%ct", commit]
+        text = "gestern" if gegen and art == "maineinchecken" else "1700000000"
+    elif befehl[3:] == ["rev-parse", "--show-toplevel"]:
         text = str(repo)
     elif befehl[3] == "rev-parse":
         assert befehl[4:7] == ["--verify", "--quiet", "--end-of-options"]
@@ -182,7 +195,7 @@ def run():
         finally:
             assert sorted(str(p.relative_to(w)) for p in w.rglob("*")) == vorher
             assert not andere.exists()
-    elif art in ("mainbuild", "mainsignal", "mainauswertung", "mainarchiv", "mainjdkjava", "mainjdkjavac"):
+    elif art in ("mainbuild", "mainsignal", "mainauswertung", "mainarchiv", "mainjdkjava", "mainjdkjavac", "maineinchecken"):
         h = w / "skripte/fdroid"
         h.mkdir(parents=True)
         b.HIER = h
@@ -246,7 +259,16 @@ def run():
                 assert aufrufarten == []
                 assert not andere.exists()
                 assert jdk_aufrufe == (["java"] if art == "mainjdkjava" else ["java", "javac"])
+            if gegen and art == "maineinchecken":
+                # Ohne lesbaren Zeitpunkt wird nichts eingecheckt und nichts gebaut.
+                assert eingecheckt == []
+                assert aufrufarten == ["sdk"]
         assert aufrufarten == ["sdk", "build", "auswertung"]
+        lauf = next(andere.glob("lauf-*"))
+        assert eingecheckt == [["init", "--quiet", "--initial-branch=probe"],
+                               ["add", "--", "metadata/" + b.REZEPT.name],
+                               ["commit", "--quiet", "--message", "Rezept der lokalen Probe"]]
+        assert json.loads((lauf / "lauf.json").read_text(encoding="utf-8"))["zeitpunktDesRezepts"] == 1700000000
         assert jdk_aufrufe == ["java", "javac"]
         assert repo.is_dir()
         assert len(list(andere.glob("lauf-*"))) == 1
@@ -292,6 +314,7 @@ for (const [art, name, fehler] of [
   ['mainprobelauf', 'Probelauf liest nur Git und schreibt nichts; Gegenprobe relatives XDG_DATA_HOME', /absoluter Pfad/],
   ['mainjdkjava', 'Build mit OpenJDK 21; Gegenprobe Java 17 stoppt vor SDK und Build', /java.*OpenJDK 21/],
   ['mainjdkjavac', 'Build mit javac 21; Gegenprobe javac 17 stoppt vor SDK und Build', /javac.*OpenJDK 21/],
+  ['maineinchecken', 'Rezept im Laufordner eingecheckt, mit dem Zeitpunkt der Quelle; Gegenprobe Zeitpunkt nicht lesbar', /Zeitpunkt des Commits ist nicht lesbar/],
   ['mainbuild', 'Vollständiger nachgestellter Lauf; Gegenprobe fdroid scheitert', /meldet Fehler/],
   ['mainsignal', 'Vollständiger nachgestellter Lauf; Gegenprobe Signal -9 wird als 137 ausgewertet', /meldet Fehler/],
   ['mainauswertung', 'Vollständiger nachgestellter Lauf; Gegenprobe Auswertung scheitert', /meldet Fehler/],
