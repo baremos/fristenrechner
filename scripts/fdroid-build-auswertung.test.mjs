@@ -593,10 +593,16 @@ for (const [name, alphabet] of andereZiffern) {
   paar(`ASCII im Protokollkopf; Gegenprobe ${name}`, ({ lauf }) => {
     writeFileSync(join(lauf, 'build.log'), LOG.replace('2026-09-29', ziffernErsetzen('2026-09-29', alphabet)));
   }, /Beginn genau einmal.*0/);
-  paar(`ASCII im Build-Marker; Gegenprobe ${name}`, ({ lauf }) => {
+  paar(`Regressionsschutz: Zusammenfassung mit fremder Ziffer bleibt unerwartet (${name})`, ({ lauf }) => {
     writeFileSync(join(lauf, 'build.log'), LOG.replace('1 build succeeded', `${alphabet[1]} build succeeded`));
   }, /Unerwartete Build-Meldung/);
 }
+test('Build-Auswertung: Zusammenfassung mit Zahl; Gegenprobe zusätzlicher Marker x build succeeded', optionen, () => {
+  positiv();
+  const fall = vorbereiten(LOG.replace(SCANNER, SCANNER + kopf('x build succeeded')));
+  negativ(fall, /Unerwartete Build-Meldung: INFO: x build succeeded/);
+  assert.equal(bericht(fall).beanstandungen.length, 1);
+});
 
 test('Build-Auswertung: Inventarzeile und Gegenprobe mit 64.000 wiederholten Trennern unter Zeitgrenze', optionen, () => {
   // Der frühere offene Pfad konnte jeden Trenner wieder verschlucken. 1,9 MB
@@ -669,6 +675,120 @@ test('Build-Auswertung: Beanstandung zeigt Rand-Leerraum und Steuerzeichen in Te
   const kopfFall = vorbereiten(LOG.replace(SCANNER, kopf('Warnung\x1b[8m verborgen\x1b[28m\t', 'WARNING') + SCANNER));
   const kopfErgebnis = negativ(kopfFall, /WARNING: Warnung\\x1b\[8m verborgen\\x1b\[28m\\t/);
   assert.doesNotMatch(kopfErgebnis.text, /\x1b/);
+});
+
+const trennzeichen = [
+  ['CR', '\r', '\\r'], ['VT', '\x0b', '\\x0b'], ['FF', '\x0c', '\\x0c'],
+  ['FS', '\x1c', '\\x1c'], ['GS', '\x1d', '\\x1d'], ['RS', '\x1e', '\\x1e'],
+  ['NEL', '\x85', '\\x85'], ['LS', '\u2028', '\\u2028'], ['PS', '\u2029', '\\u2029'],
+];
+for (const stufe of ['INFO', 'DEBUG']) {
+  test(`Build-Auswertung: druckbarer ${stufe}-Kopf; Gegenproben mit Trenner und WARNING-Kopf`, optionen, () => {
+    positiv(vorbereiten(LOG.replace(SCANNER, kopf('Details', stufe) + SCANNER)));
+    for (const [name, roh, sichtbar] of [...trennzeichen, ['ESC[2K', '\x1b[2K', '\\x1b[2K']]) {
+      const text = `Details${roh}${kopf('Neue Warnung', 'WARNING').trimEnd()}`;
+      const fall = vorbereiten(LOG.replace(SCANNER, kopf(text, stufe) + SCANNER));
+      const ergebnis = negativ(fall, new RegExp(`Protokoll, ${stufe} mit Steuer- oder Trennzeichen:`));
+      const meldungen = bericht(fall).beanstandungen;
+      assert.equal(meldungen.length, 1, name);
+      const erwartet = `Details${sichtbar}2026-09-29 16:00:00,000 WARNING: Neue Warnung`;
+      assert.ok(meldungen[0].includes(erwartet), meldungen[0]);
+      assert.ok(ergebnis.text.includes(erwartet), ergebnis.text);
+      assert.equal(meldungen[0].includes(roh), false, name);
+      assert.equal(ergebnis.text.replaceAll('\r\n', '\n').includes(roh), false, name);
+    }
+  });
+}
+
+test('Build-Auswertung: LF und CRLF trennen Gradle-Zeilen; andere Trenner bleiben sichtbar in einer Zeile', optionen, () => {
+  const task = '> Task :app:assembleRelease';
+  positiv(vorbereiten(zeilenProtokoll(task, gradleKontext)));
+  positiv(vorbereiten(zeilenProtokoll(`${task}\r`, gradleKontext)));
+  positiv(vorbereiten(zeilenProtokoll(task, gradleKontext).replaceAll('\n', '\r\n')));
+  for (const [name, roh, sichtbar] of trennzeichen) {
+    const fall = vorbereiten(zeilenProtokoll(`${task}${roh}> Task :app:preBuild`, gradleKontext));
+    const ergebnis = negativ(fall, /Protokoll, Zeile ohne Kopf/);
+    const erwartet = `Protokoll, Zeile ohne Kopf: ${task}${sichtbar}> Task :app:preBuild (Zeile 3)`;
+    assert.deepEqual(bericht(fall).beanstandungen, [erwartet], name);
+    assert.ok(ergebnis.text.includes(erwartet), ergebnis.text);
+  }
+});
+
+test('Build-Auswertung: Schluss ohne LF bleibt gültig; Gegenprobe einzelnes CR am Dateiende', optionen, () => {
+  const abschluss = LOG + kopf('skip deploying full build logs: not enabled in config', 'DEBUG').trimEnd();
+  positiv(vorbereiten(abschluss));
+  const fall = vorbereiten(`${abschluss}\r`);
+  const ergebnis = negativ(fall, /DEBUG mit Steuer- oder Trennzeichen: .*config\\r/);
+  const meldungen = bericht(fall).beanstandungen;
+  assert.equal(meldungen.length, 2);
+  assert.ok(meldungen.some((text) => text.includes('config\\r')));
+  assert.ok(meldungen.some((text) => text.startsWith('Nach dem Ende')));
+  assert.equal(ergebnis.text.replaceAll('\r\n', '\n').includes('\r'), false);
+});
+
+test('Build-Auswertung: bekannte Unicode-Zeichen bleiben lesbar; verwechselbare Zeichen werden escaped', optionen, () => {
+  const capacitor = '\u2714 copy android in 724.58\u03bcs';
+  positiv(vorbereiten(zeilenProtokoll(capacitor)));
+  const faelle = [
+    [capacitor.replace('\u03bc', '\u00b5'), '\u00b5', '\u2714 copy android in 724.58\\xb5s', prebuild],
+    ...[
+      ['\u2800', '\\u2800'], ['\u3164', '\\u3164'], ['\u115f', '\\u115f'],
+      ['\u034f', '\\u034f'], ['\ufe0f', '\\ufe0f'], ['\u0338', '\\u0338'], ['\u0421', '\\u0421'],
+    ].map(([roh, sichtbar]) => [`BUILD SUCCESSFUL in 5s${roh}`, roh, `BUILD SUCCESSFUL in 5s${sichtbar}`, gradleKontext]),
+    [`${capacitor} Zusatz`, null, `${capacitor} Zusatz`, prebuild],
+  ];
+  for (const [zeile, roh, sichtbar, kontext] of faelle) {
+    const fall = vorbereiten(zeilenProtokoll(zeile, kontext));
+    const ergebnis = negativ(fall, /Protokoll, Zeile ohne Kopf/);
+    const meldungen = bericht(fall).beanstandungen;
+    assert.equal(meldungen.length, 1);
+    assert.ok(meldungen[0].includes(sichtbar), meldungen[0]);
+    assert.ok(ergebnis.text.includes(sichtbar), ergebnis.text);
+    if (roh) {
+      assert.equal(meldungen[0].includes(roh), false);
+      assert.equal(ergebnis.text.includes(roh), false);
+    }
+  }
+});
+
+const leerraumZeilen = [
+  ['   ', '\\x20\\x20\\x20'], ['\t', '\\t'], ['\x0b\x0c', '\\x0b\\x0c'],
+  ['\x1f\x1e', '\\x1f\\x1e'], ['\x1b[8m\x85', '\\x1b[8m\\x85'],
+  ['\u2028\u3000', '\\u2028\\u3000'], ['\r\r', '\\r'],
+];
+for (const [name, protokoll, nachEnde] of [
+  ['Vorspann', (zeile) => `${zeile}\n${LOG}`, false],
+  ['Gradle-Folgezeile', (zeile) => zeilenProtokoll(zeile, gradleKontext), false],
+  ['nach Finished', (zeile) => LOG.replace(ENDE, `${ENDE}${zeile}\n`), true],
+  ['nach Zusammenfassung', (zeile) => `${LOG}${zeile}\n`, true],
+  ['nach Abschluss-DEBUG', (zeile) => LOG + kopf('skip deploying full build logs: not enabled in config', 'DEBUG') + `${zeile}\n`, true],
+]) {
+  test(`Build-Auswertung: leere Zeile ${name} erlaubt; reiner Leer- und Steuerraum wird beanstandet`, optionen, () => {
+    positiv(vorbereiten(protokoll('')));
+    if (name === 'Gradle-Folgezeile') positiv(vorbereiten(protokoll('\x1b[31m\x1b[0m')));
+    for (const [roh, sichtbar] of leerraumZeilen) {
+      const fall = vorbereiten(protokoll(roh));
+      const ergebnis = negativ(fall, /Protokoll, Zeile ohne Kopf/);
+      const meldungen = bericht(fall).beanstandungen;
+      assert.equal(meldungen.length, nachEnde ? 2 : 1, JSON.stringify(roh));
+      assert.ok(meldungen[0].includes(sichtbar), meldungen[0]);
+      assert.ok(ergebnis.text.includes(sichtbar), ergebnis.text);
+      assert.equal(meldungen.some((text) => text.startsWith('Nach dem Ende')), nachEnde);
+    }
+  });
+}
+
+test('Build-Auswertung: leere DEBUG-Folgezeile vor Quelle erlaubt; Leerraum hebt NoSuchPath-Ausnahme auf', optionen, () => {
+  const protokoll = (zeile) => mitNopath.replace(QUELLE, kopf('Details', 'DEBUG') + `${zeile}\n` + QUELLE);
+  positiv(vorbereiten(protokoll('')));
+  for (const [roh, sichtbar] of leerraumZeilen) {
+    const fall = vorbereiten(protokoll(roh));
+    const ergebnis = negativ(fall, /Protokoll, WARNING: NoSuchPathError/);
+    const meldungen = bericht(fall).beanstandungen;
+    assert.equal(meldungen.length, 2);
+    assert.ok(meldungen.some((text) => text.startsWith('Protokoll, Zeile ohne Kopf:') && text.includes(sichtbar)));
+    assert.ok(ergebnis.text.includes(sichtbar), ergebnis.text);
+  }
 });
 
 test('Build-Auswertung: Lauf 3 mit scandelete und Gegenprobe ohne Kennzeichnung', optionen, () => {

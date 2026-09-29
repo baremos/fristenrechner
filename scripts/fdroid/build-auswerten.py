@@ -151,12 +151,14 @@ def lies_meldungen(zeilen):
 
 
 def sichtbar(text):
-    """Erhält den Wortlaut; Rand-Leerraum und Steuerzeichen werden sichtbar."""
+    """Zeigt nur druckbares ASCII und Nicht-ASCII aus bekannten Ausgabeformen roh."""
     anfang = len(text) - len(text.lstrip(" "))
     ende = len(text.rstrip(" "))
     return "".join(
         r"\x20" if zeichen == " " and (index < anfang or index >= ende)
-        else ascii(zeichen)[1:-1] if (not zeichen.isprintable() or zeichen == "\\")
+        else ascii(zeichen)[1:-1] if (zeichen == "\\" or not (
+            zeichen.isascii() and zeichen.isprintable() or zeichen in "ä✓✔├─μ"
+        ))
         else zeichen
         for index, zeichen in enumerate(text)
     )
@@ -198,7 +200,7 @@ def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandele
         # Nur LF/CRLF trennen Zeilen. Sonstige Steuerzeichen müssen als Teil
         # der Rohzeile erhalten bleiben und in der Beanstandung sichtbar sein.
         with pfad.open(encoding="utf-8", newline="") as datei:
-            zeilen = [zeile.removesuffix("\r") for zeile in datei.read().split("\n")]
+            zeilen = datei.read().replace("\r\n", "\n").split("\n")
     except (OSError, ValueError) as fehler:
         probleme.append(f"Das Build-Protokoll ist nicht lesbar: {fehler}")
         zeilen = []
@@ -232,11 +234,11 @@ def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandele
     no_such_erlaubt = (
         len(no_such_stellen) == len(quellen_stellen) == len(beginn_stellen) == 1
         and beginn_stellen[0] < no_such_stellen[0] < quellen_stellen[0]
-        and all(m[0] == "DEBUG" and not any(z.strip() for _, z in m[2])
+        and all(m[0] == "DEBUG" and not any(z for _, z in m[2])
                 for m in meldungen[no_such_stellen[0] + 1:quellen_stellen[0]])
     )
     for zeile_nr, zeile in vorspann:
-        if zeile.strip():
+        if zeile:
             probleme.append(f"Protokoll, Zeile ohne Kopf: {sichtbar(zeile)} (Zeile {zeile_nr})")
     for nummer, (stufe, text, folgezeilen, zeile_nr) in enumerate(meldungen):
         bekannte_warnung = (stufe == "WARNING" and bekannte_meldung(
@@ -249,6 +251,8 @@ def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandele
             probleme.append(f"Protokoll, {stufe}: {sichtbar(text)}{zusatz} (Zeile {zeile_nr})")
         elif OHNE_KOPF.match(text):
             probleme.append(f"Protokoll, {stufe}: {sichtbar(text)} (Zeile {zeile_nr})")
+        elif stufe in ("INFO", "DEBUG") and not text.isprintable():
+            probleme.append(f"Protokoll, {stufe} mit Steuer- oder Trennzeichen: {sichtbar(text)} (Zeile {zeile_nr})")
 
         kontext, phase = None, None
         if stufe == "DEBUG" and re.fullmatch(rf"> /{PFAD}/gradlew\.py (clean|assembleRelease)", text):
@@ -268,7 +272,7 @@ def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandele
             # Astro färbt seine Ausgabe auch im gespeicherten Protokoll. Nur
             # SGR-Darstellungscodes entfernen, andere Steuerzeichen nie tilgen.
             zeile = ANSI_SGR.sub("", rohzeile)
-            if not zeile.strip():
+            if not zeile:
                 continue
             projekt = (vorzeile.removeprefix("> Configure project :")
                        if vorzeile and vorzeile.startswith("> Configure project :") else None)
@@ -331,9 +335,9 @@ def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandele
             probleme.append("Die Reihenfolge von Beginn, Scanner-Beginn, Erfolg, App-Erfolg, Ende und Zusammenfassung stimmt nicht.")
         ende, zusammenfassung = reihenfolge[-2:]
         if zusammenfassung != ende + 1 or any(
-            stufe != "DEBUG" or text != ABSCHLUSS_DEBUG or any(z.strip() for _, z in folge)
+            stufe != "DEBUG" or text != ABSCHLUSS_DEBUG or any(z for _, z in folge)
             for stufe, text, folge, _ in meldungen[zusammenfassung + 1:]
-        ) or any(z.strip() for _, z in meldungen[ende][2] + meldungen[zusammenfassung][2]):
+        ) or any(z for _, z in meldungen[ende][2] + meldungen[zusammenfassung][2]):
             probleme.append("Nach dem Ende stehen weitere Meldungen im Protokoll.")
     return bekannt, entfernt
 
