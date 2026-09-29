@@ -1,0 +1,20 @@
+{
+  "appId": "de.baremos.fristenrechner",
+  "appName": "Fristenrechner Vergabe",
+  "webDir": "dist",
+  "loggingBehavior": "debug",
+  "includePlugins": [],
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "errorPath": "startfehler.html"
+  },
+  "android": {
+    "minWebViewVersion": 83,
+    "backgroundColor": "#ffffff",
+    "zoomEnabled": true
+  },
+  "plugins": {
+    "SystemBars": { "insetsHandling": "native", "style": "LIGHT" }
+  }
+}

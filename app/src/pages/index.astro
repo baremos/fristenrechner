@@ -1,0 +1,63 @@
+---
+import Fristenrechner from '@baremos/fristenrechner-ui';
+import { RECHTSSTAND, RECHTSSTAND_DATUM, REGELVERSION } from '@baremos/fristenrechner-kern';
+import app from '../../package.json';
+import lizenz from '../../../LICENSE?raw';
+import herausgeber from '../../../NOTICE?raw';
+---
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Fristenrechner Vergabe</title>
+  <script is:inline>
+    (function () {
+      // Fehlerfalle: Scheitert ein eigenes Skript, etwa an einer zu alten WebView,
+      // erscheint ein Hinweis statt einer halb bedienbaren Seite. Eigene Skripte
+      // liegen unter derselben Herkunft, kleine Module bettet Astro in die Seite ein.
+      window.addEventListener('error', function (e) {
+        var datei = e && e.filename ? String(e.filename) : '';
+        if (datei.indexOf(location.origin + '/') !== 0) return;
+        var el = document.getElementById('app-startfehler');
+        if (el) el.hidden = false;
+      });
+    })();
+  </script>
+</head>
+<body>
+  <main class="app-rahmen">
+    <h1>Fristenrechner Vergabe</h1>
+    <p id="app-startfehler" class="app-hinweis" role="alert" hidden>Der Fristenrechner konnte nicht vollständig geladen werden. Bitte starten Sie die App neu. Tritt der Fehler erneut auf, ist die Systemkomponente „Android System WebView“ möglicherweise zu alt.</p>
+    <p id="app-rechtsstand-hinweis" class="app-hinweis" role="status" hidden
+       data-rechtsstand={RECHTSSTAND_DATUM}>Diese Fassung rechnet mit dem Rechtsstand {RECHTSSTAND}. Seitdem sind mehr als zwölf Monate vergangen. Eine neuere Version des Fristenrechners kann vorliegen. Die Berechnung bleibt möglich.</p>
+    <Fristenrechner />
+    <details class="app-abschnitt">
+      <summary>Über diese App</summary>
+      <p>Fristenrechner Vergabe, Version {app.version}</p>
+      <p>Regelversion {REGELVERSION} · Rechtsstand {RECHTSSTAND} ({RECHTSSTAND_DATUM})</p>
+      <p>Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.</p>
+      <p>Herausgeber: BAREMOS IT GmbH, Berlin</p>
+    </details>
+    <details class="app-abschnitt">
+      <summary>Lizenzen</summary>
+      <pre>{lizenz}</pre>
+      <pre>{herausgeber}</pre>
+    </details>
+  </main>
+  <script>import '../rechtsstand-anzeige';</script>
+</body>
+</html>
+<style is:global>
+  :root { color-scheme: light; --color-accent: #a7303c; --color-accent-deep: #931834;
+          --color-text: #333333; --color-border: #dddddd;
+          font-family: system-ui, sans-serif; line-height: 1.5; color: var(--color-text); background: #fff; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; min-width: 20rem; }
+  button, input, select, textarea { font: inherit; }
+  .app-rahmen { max-width: 64rem; margin: 0 auto; padding: 1rem; }
+  .app-hinweis { border: 1px solid var(--color-accent); padding: 0.75rem; }
+  .app-abschnitt { margin-top: 1rem; }
+  .app-abschnitt pre { white-space: pre-wrap; }
+</style>

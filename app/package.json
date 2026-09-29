@@ -9,6 +9,11 @@
   "engines": {
     "node": "^22.23.2 || ^24.18.1"
   },
+  "scripts": {
+    "build": "node ../scripts/app-bauen.mjs --web",
+    "check": "node ../scripts/app-bauen.mjs --check",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@baremos/fristenrechner-kern": "0.0.0",
     "@baremos/fristenrechner-ui": "0.0.0",

@@ -1,0 +1,245 @@
+{
+  "konfiguration": {
+    "werte": {
+      "appId": "de.baremos.fristenrechner",
+      "webDir": "dist",
+      "server.hostname": "localhost",
+      "server.androidScheme": "https",
+      "server.errorPath": "startfehler.html"
+    },
+    "verboten": [
+      "server.url",
+      "server.cleartext",
+      "server.allowNavigation",
+      "android.webContentsDebuggingEnabled",
+      "android.buildOptions"
+    ],
+    "nichtWahr": [
+      "android.allowMixedContent",
+      "android.useLegacyBridge",
+      "plugins.CapacitorHttp.enabled",
+      "plugins.CapacitorCookies.enabled"
+    ],
+    "loggingBehavior": "debug",
+    "minWebViewVersion": 83
+  },
+  "laufzeitNamen": [
+    {
+      "name": "replaceChildren",
+      "art": "methode",
+      "ab": 86
+    },
+    {
+      "name": "at",
+      "art": "methode",
+      "ab": 92
+    },
+    {
+      "name": "findLast",
+      "art": "methode",
+      "ab": 97
+    },
+    {
+      "name": "findLastIndex",
+      "art": "methode",
+      "ab": 97
+    },
+    {
+      "name": "replaceAll",
+      "art": "methode",
+      "ab": 85
+    },
+    {
+      "name": "hasOwn",
+      "art": "methode",
+      "ab": 93
+    },
+    {
+      "name": "toSorted",
+      "art": "methode",
+      "ab": 110
+    },
+    {
+      "name": "toReversed",
+      "art": "methode",
+      "ab": 110
+    },
+    {
+      "name": "toSpliced",
+      "art": "methode",
+      "ab": 110
+    },
+    {
+      "name": "withResolvers",
+      "art": "methode",
+      "ab": 119
+    },
+    {
+      "name": "randomUUID",
+      "art": "methode",
+      "ab": 92
+    },
+    {
+      "name": "structuredClone",
+      "art": "global",
+      "ab": 98
+    },
+    {
+      "name": "WeakRef",
+      "art": "global",
+      "ab": 84
+    },
+    {
+      "name": "FinalizationRegistry",
+      "art": "global",
+      "ab": 84
+    },
+    {
+      "name": "AggregateError",
+      "art": "global",
+      "ab": 85
+    }
+  ],
+  "laufzeitAusnahmen": [
+    {
+      "datei": "jspdf.es.min",
+      "name": "at",
+      "hoechstzahl": 4,
+      "grund": "fast-png in jsPDF, nur beim Dekodieren von PNG-Bildern; die Oberfläche fügt keine Bilder in das PDF ein."
+    },
+    {
+      "datei": "index.es",
+      "name": "hasOwn",
+      "hoechstzahl": 1,
+      "grund": "core-js über canvg, mit Rückfall auf eine eigene Funktion, wenn Object.hasOwn fehlt."
+    }
+  ],
+  "adressen": [
+    {
+      "datei": "Fristenrechner.astro_astro_type_script_index_0_lang",
+      "wortlaut": "www.baremos.de/de/vergabe/fristenrechner/",
+      "hoechstzahl": 1,
+      "grund": "EXPORT_URL der Oberfläche (fristenrechner-export-data.ts): Adresse der Rechnerseite als Text in den Exporten, kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://schemas.openxmlformats.org/package/2006/relationships",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://schemas.openxmlformats.org/package/2006/content-types",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://purl.org/dc/elements/1.1/",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://purl.org/dc/terms/",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "http://www.w3.org/2001/XMLSchema-instance",
+      "hoechstzahl": 1,
+      "grund": "Namensraum im XML der Excel-Datei (xlsx-schreiber.ts der Oberfläche), kein Abruf."
+    },
+    {
+      "datei": "fristenrechner-export-excel",
+      "wortlaut": "https://",
+      "hoechstzahl": 1,
+      "grund": "Vorsatz vor EXPORT_URL für den Hyperlink in der Excel-Datei (fristenrechner-export-excel.ts). Den Link öffnet die Tabellen-App, nicht die App."
+    },
+    {
+      "datei": "html2canvas",
+      "wortlaut": "http://www.w3.org/2000/svg",
+      "hoechstzahl": 2,
+      "grund": "Namensraum des W3C in html2canvas (createElementNS), kein Abruf."
+    },
+    {
+      "datei": "index.es",
+      "wortlaut": "https://github.com/zloirock/core-js",
+      "hoechstzahl": 1,
+      "grund": "Herkunftsangabe von core-js im gemeinsamen Speicher der Bibliothek, kein Abruf."
+    },
+    {
+      "datei": "index.es",
+      "wortlaut": "https://github.com/zloirock/core-js/blob/v3.50.0/LICENSE",
+      "hoechstzahl": 1,
+      "grund": "Lizenzangabe von core-js im gemeinsamen Speicher der Bibliothek, kein Abruf."
+    },
+    {
+      "datei": "jspdf.es.min",
+      "wortlaut": "https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js",
+      "hoechstzahl": 1,
+      "grund": "Zweig pdfobjectnewwindow von jsPDF. Die Oberfläche ruft ihn nicht auf, sie erzeugt das PDF mit output('blob')."
+    },
+    {
+      "datei": "jspdf.es.min",
+      "wortlaut": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "hoechstzahl": 1,
+      "grund": "RDF-Namensraum der XMP-Metadaten im PDF, kein Abruf."
+    },
+    {
+      "datei": "jspdf.es.min",
+      "wortlaut": "http://jspdf.default.namespaceuri/",
+      "hoechstzahl": 1,
+      "grund": "Interner Namensraum von jsPDF für Metadaten, kein Abruf."
+    },
+    {
+      "datei": "purify.es",
+      "wortlaut": "http://www.w3.org/1998/Math/MathML",
+      "hoechstzahl": 1,
+      "grund": "Namensraum des W3C in DOMPurify, kein Abruf."
+    },
+    {
+      "datei": "purify.es",
+      "wortlaut": "http://www.w3.org/2000/svg",
+      "hoechstzahl": 1,
+      "grund": "Namensraum des W3C in DOMPurify, kein Abruf."
+    },
+    {
+      "datei": "purify.es",
+      "wortlaut": "http://www.w3.org/1999/xhtml",
+      "hoechstzahl": 2,
+      "grund": "Namensraum des W3C in DOMPurify, kein Abruf."
+    }
+  ]
+}
