@@ -41,8 +41,20 @@ test('starte reicht Argumente, Umgebung und Rückgabewert durch', () => {
   assert.deepEqual(JSON.parse(readFileSync(bericht, 'utf8')), { argumente: ['check', '--root', 'packages/oberflaeche'], aus: '1' });
 });
 
-test('starte meldet 1, wenn Astro fehlt', () => {
-  assert.equal(starte(['check'], { astro: join(arbeit, 'gibt-es-nicht.mjs'), stdio: 'ignore' }), 1);
+test('starte meldet 1 mit kurzer Meldung, wenn Astro fehlt, und startet nichts', (t) => {
+  const meldungen = [];
+  t.mock.method(console, 'error', (text) => meldungen.push(String(text)));
+  assert.equal(starte(['check'], { astro: join(arbeit, 'gibt-es-nicht.mjs') }), 1);
+  assert.deepEqual(meldungen, ['Fehler: Astro ist nicht installiert. Zuerst npm ci in der Wurzel des Repositorys.']);
+});
+
+const astroDa = { skip: existsSync(ASTRO) ? false : 'braucht die installierten Pakete, zuerst npm ci' };
+
+test('Aufruf als Programm startet Astro, der Import in diesem Test nicht', astroDa, () => {
+  const lauf = spawnSync(process.execPath, [join(hier, 'astro.mjs'), '--version'], { encoding: 'utf8' });
+  assert.equal(lauf.status, 0, `${lauf.stdout}${lauf.stderr}`);
+  assert.match(lauf.stdout, /7\.3\.3/);
+  assert.ok(!/\n\s+at /.test(lauf.stderr), lauf.stderr);
 });
 
 // Lädt die Telemetrie von Astro und lässt sie ein Ereignis aufzeichnen.
