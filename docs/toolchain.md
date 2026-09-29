@@ -1,6 +1,6 @@
 # Werkzeuge und Versionen
 
-Stand 2026-09-28 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review der Festlegung am 2026-09-27 bestanden. Am 2026-09-28 geändert: Kommandozeilenwerkzeuge 22.0 statt 23.0, Prüfung der Pakete mit `scripts/SdkPruefung.java`, Testgeräte. Projekt-SDK eingerichtet, Beispielbuild und Probe im Emulator bestanden, siehe Abschnitt „Nachweis". Kreuz-Review dieser Änderungen am 2026-09-28 bestanden.
+Stand 2026-09-28 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review der Festlegung am 2026-09-27 bestanden. Am 2026-09-28 geändert: Kommandozeilenwerkzeuge 22.0 statt 23.0, Prüfung der Pakete mit `scripts/SdkPruefung.java`, Testgeräte. Projekt-SDK eingerichtet, Beispielbuild und Probe im Emulator bestanden, siehe Abschnitt „Nachweis". Kreuz-Review dieser Änderungen am 2026-09-28 bestanden. Am 2026-09-29 ergänzt: Unter Linux wird nur die Gruppe „Build" eingerichtet.
 
 ## Zweck
 
@@ -197,7 +197,7 @@ Weitere Angaben:
 
 - `build-tools;35.0.0` ist die Mindest- und Standardversion des Android-Gradle-Plugins 8.13. Das App-Projekt trägt sie ausdrücklich als `buildToolsVersion` ein. `apksigner` und `zipalign` kommen aus diesem Paket, `keytool` aus dem JDK.
 - Die Systemabbilder der Reihe `default` enthalten keine Google-Dienste. Sie decken die Ziel-API (Android 16), eine mittlere Version (API 30, Android 11) und die Mindest-API (Android 7.0) ab.
-- Beide Gruppen werden zusammen eingerichtet. Die Gruppe „Test" umfasst rund 2,3 GB.
+- Unter Windows werden beide Gruppen zusammen eingerichtet. Die Gruppe „Test" umfasst rund 2,3 GB. Für die Probe unter Linux richtet `--ohne-testgruppe` nur die Gruppe „Build" ein, der Emulator läuft unter Windows. Siehe F4 in `fdroid-build.md`.
 - Das Android SDK steht unter den Lizenzbedingungen von Google. Alle festgelegten Pakete nennen die Lizenz `android-sdk-license`. `sdkmanager` zeigt sie vor der Installation an, solange sie im SDK nicht bestätigt ist. Wer installiert, bestätigt sie selbst. Ohne Bestätigung installiert `sdkmanager` nichts.
 - Das Einrichtungsskript ruft `sdkmanager --licenses` nicht auf. Der Aufruf legt auch Bedingungen vor, die die festgelegten Pakete nicht brauchen.
 

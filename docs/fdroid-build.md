@@ -1,6 +1,6 @@
 # Build für F-Droid
 
-Stand 2026-09-28 · Arbeitspaket 2.8, frühe Probe
+Stand 2026-09-29 · Arbeitspaket 2.8, frühe Probe
 
 ## Zweck
 
@@ -185,9 +185,10 @@ Was das belegt und was nicht:
 
 1. Alle Builds liefen am selben Tag auf demselben Rechner. Unter Linux teilten sich beide Builds den Zwischenspeicher von Gradle.
 2. Die Minimal-App hat eine Seite, keine Bilder aus eigenen Quellen und keinen nativen Code. Die Zeilenenden der Quellen erreichen bei ihr das Ergebnis nicht. Bei der App kann das anders sein.
-3. Verglichen ist die unsignierte Datei. Signiert ist nichts.
-4. Das ist kein Build mit den Werkzeugen von F-Droid und kein Build auf dem Buildserver von F-Droid.
-5. Das Build-Skript meldet unter Windows, dass das JDK 21.0.8 vom Stand für Release-Builds abweicht. Auf das Ergebnis hatte das hier keinen Einfluss.
+3. Belegt ist die Gleichheit der Datei nach dem ganzen Ablauf, nicht die Gleichheit aller Eingabedateien. In der Gegenprobe hatten nach dem Klonen 37 Dateien Zeilenenden von Windows. `cap sync` schreibt zwei davon neu, `android/app/capacitor.build.gradle` und `android/capacitor.settings.gradle`, mit Zeilenenden von Linux. Git meldet sie danach als geändert, ihr Inhalt ist sonst gleich. Im Lauf ohne Umwandlung hat eine Datei Zeilenenden von Windows, `android/gradlew.bat`. Sie ist so eingecheckt.
+4. Verglichen ist die unsignierte Datei. Signiert ist nichts.
+5. Das ist kein Build mit den Werkzeugen von F-Droid und kein Build auf dem Buildserver von F-Droid.
+6. Das Build-Skript meldet unter Windows, dass das JDK 21.0.8 vom Stand für Release-Builds abweicht. Auf das Ergebnis hatte das hier keinen Einfluss.
 
 ## Festlegungen
 
