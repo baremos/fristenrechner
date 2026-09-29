@@ -11,7 +11,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,7 +34,8 @@ export class Abbruch extends Error {
 const summeVon = (inhalt) => createHash('sha256').update(inhalt).digest('hex');
 export const summe = (pfad) => summeVon(readFileSync(pfad));
 
-// Liest eine Datei. Fehlt sie oder lässt sie sich nicht lesen, endet der Lauf mit 66.
+// Eigene Leseprüfung der unsignierten APK: Lesefehler ergeben 66.
+// Für die vorläufig signierte Datei setzt der Aufrufer den Fehler auf 1 um.
 function gelesen(pfad, bezeichnung) {
   try {
     return readFileSync(pfad);
@@ -145,7 +146,8 @@ function datei(pfad, bezeichnung) {
   return voll;
 }
 
-// Signiert, prüft und veröffentlicht. Wirft Abbruch mit dem Rückgabewert.
+// Signiert, prüft und veröffentlicht. Erkannte Fehler werfen Abbruch mit dem
+// Rückgabewert; unerwartete Dateisystemfehler bildet die CLI auf 1 ab.
 // temp: Ordner, in dem der Arbeitsordner des Laufs entsteht.
 export function signiere(werte, { ausfuehren = spawnSync, melde = console.log, umgebung = process.env, temp = tmpdir() } = {}) {
   const fingerabdruck = String(werte.fingerabdruck).replaceAll(':', '').toLowerCase();
@@ -267,15 +269,30 @@ export function signiere(werte, { ausfuehren = spawnSync, melde = console.log, u
   // nach der Prüfung gleich ist. Besteht das Ziel inzwischen, scheitert das Anlegen.
   const inhalt = lies();
   if (summeVon(inhalt) !== signiert) throw gescheitert('Die signierte Datei hat sich während der Prüfung verändert.');
+  let ausgabe;
   try {
-    writeFileSync(aus, inhalt, { flag: 'wx' });
+    ausgabe = openSync(aus, 'wx');
   } catch (fehler) {
     throw gescheitert(`Die Ausgabedatei lässt sich nicht anlegen (${fehler.code ?? 'Fehler'}), das Skript überschreibt nichts.`);
   }
-  if (summe(aus) !== signiert) {
-    // Die Datei hat dieser Lauf selbst angelegt. Unter dem endgültigen Namen bleibt nichts Ungeprüftes liegen.
-    rmSync(aus, { force: true });
-    throw gescheitert('Die Ausgabedatei war nicht die geprüfte Datei und ist wieder entfernt.');
+  // Erst nach erfolgreichem exklusivem Öffnen gehört das Ziel diesem Lauf.
+  // Auch ein Teil-Schreibfehler oder eine fehlgeschlagene Leseprüfung räumt es auf.
+  try {
+    try {
+      writeFileSync(ausgabe, inhalt);
+    } finally {
+      closeSync(ausgabe);
+    }
+    if (summe(aus) !== signiert) throw new Abbruch(1, 'Die Ausgabedatei war nicht die geprüfte Datei.');
+  } catch (fehler) {
+    const grund = fehler instanceof Abbruch ? fehler.message
+      : `Schreiben oder Prüfen der Ausgabedatei gescheitert (${fehler.code ?? 'Fehler'}).`;
+    try {
+      rmSync(aus, { force: true });
+    } catch (aufraeumfehler) {
+      throw gescheitert(`${grund} Die eigene unvollständige Ausgabe lässt sich nicht entfernen (${aufraeumfehler.code ?? 'Fehler'}): ${aus}.`);
+    }
+    throw gescheitert(`${grund} Die eigene Ausgabedatei ist wieder entfernt.`);
   }
   rmSync(arbeit, { recursive: true, force: true });
 

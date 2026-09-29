@@ -7,19 +7,33 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
-import { Abbruch, geschuetzteOrdner, liegtIn, pruefeAusgabe, signiere as kern, werkzeugmeldung } from './signing/signieren.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { findeJdk, standardSdk, vergleiche, vorgabe, windows } from './werkzeuge.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
-const wurzel = resolve(hier, '..');
-const skript = join(hier, 'signing', 'apk-signieren.mjs');
 const endung = windows ? '.exe' : '';
-const arbeit = mkdtempSync(join(tmpdir(), 'signieren-'));
+const scratchpad = resolve(hier, '../scratchpad');
+mkdirSync(scratchpad, { recursive: true });
+const arbeit = mkdtempSync(join(scratchpad, 'signieren-'));
+// Unveränderte Skriptkopien in einer eigenen Testwurzel: So bleiben alle Proben
+// unter scratchpad und die Testschlüssel außerhalb des geschützten Testprojekts.
+// Die Git-Suche endet vor dem umgebenden Repository; es entstehen keine Git-Daten.
+const wurzel = join(arbeit, 'projekt');
+for (const datei of ['signing/signieren.mjs', 'signing/apk-signieren.mjs', 'werkzeuge.mjs', 'toolchain.json']) {
+  const ziel = join(wurzel, 'scripts', datei);
+  mkdirSync(dirname(ziel), { recursive: true });
+  copyFileSync(join(hier, datei), ziel);
+}
+const skript = join(wurzel, 'scripts/signing/apk-signieren.mjs');
+const { Abbruch, geschuetzteOrdner, liegtIn, pruefeAusgabe, signiere: kern, werkzeugmeldung } =
+  await import(pathToFileURL(join(wurzel, 'scripts/signing/signieren.mjs')).href);
+const testUmgebung = { ...process.env, GIT_CEILING_DIRECTORIES: arbeit };
 const imRepo = join(wurzel, 'scratchpad', `signieren-test-${process.pid}`);
 const inDerWurzel = join(wurzel, `..signieren-test-${process.pid}.p12`);
 test.after(() => {
@@ -179,7 +193,8 @@ const tempFuer = (name) => {
 const reste = (temp) => readdirSync(temp).filter((n) => n.startsWith('fristenrechner-signieren-')).map((n) => join(temp, n));
 
 function aufruf(argumente, temp = tempFuer('allgemein')) {
-  const lauf = spawnSync(process.execPath, [skript, ...argumente], { encoding: 'utf8', env: { ...process.env, TEMP: temp, TMP: temp, TMPDIR: temp } });
+  const lauf = spawnSync(process.execPath, [skript, ...argumente], { encoding: 'utf8', cwd: wurzel,
+    env: { ...testUmgebung, TEMP: temp, TMP: temp, TMPDIR: temp } });
   return { code: lauf.status, text: `${lauf.stdout}${lauf.stderr}` };
 }
 
@@ -280,7 +295,7 @@ function mitEingriff(angaben, eingriff, { davor = () => undefined, temp = tempFu
   const ausfuehren = (programm, argumente, optionen) => {
     aufrufe.push({ programm, argumente, optionen });
     davor(programm, argumente);
-    const lauf = spawnSync(programm, argumente, { ...optionen, stdio: 'pipe', encoding: 'utf8' });
+    const lauf = spawnSync(programm, argumente, { ...optionen, env: testUmgebung, stdio: 'pipe', encoding: 'utf8' });
     return eingriff(programm, argumente, lauf) ?? lauf;
   };
   try {
@@ -510,6 +525,137 @@ test('Signieren: fehlendes SDK', nurMitWerkzeug, () => {
 });
 
 // ---------- Änderungen während des Laufs ----------
+
+test('Vorprüfung: fehlende Schlüssel- und Kennwortdatei ergeben 66', nurMitWerkzeug, () => {
+  for (const name of ['--schluessel', '--kennwort-datei']) {
+    const aus = join(arbeit, `fehlt-${name}.apk`);
+    const { code, text } = signiere({ '--aus': aus, [name]: join(arbeit, 'fehlt') });
+    assert.equal(code, 66, text);
+    assert.ok(!existsSync(aus));
+  }
+});
+
+for (const feld of ['apk', 'schluessel', 'kennwortDatei']) {
+  test(`Werkzeugfehler: ${feld} verschwindet unmittelbar vor sign, Code 1`, nurMitWerkzeug, () => {
+    vorbereiten();
+    const eingabe = join(eigenerOrdner(`vor-sign-${feld}`), 'eingabe');
+    copyFileSync({ apk, schluessel, kennwortDatei: kennwort }[feld], eingabe);
+    const aus = join(dirname(eingabe), 'aus.apk');
+    let entfernt = false;
+    const { fehler } = mitEingriff({ [feld]: eingabe, aus }, () => undefined, {
+      davor: (_programm, argumente) => {
+        if (argumente.includes('sign')) { rmSync(eingabe); entfernt = true; }
+      },
+    });
+    assert.ok(entfernt);
+    assert.ok(fehler instanceof Abbruch, String(fehler));
+    assert.equal(fehler.code, 1);
+    assert.match(fehler.message, /apksigner hat nicht signiert/);
+    assert.ok(!existsSync(aus));
+  });
+}
+
+for (const feld of ['schluessel', 'kennwortDatei']) {
+  test(`Werkzeugfehler: simulierte Lesesperre für ${feld} ergibt 1`, nurMitWerkzeug, () => {
+    vorbereiten();
+    const aus = join(arbeit, `gesperrt-${feld}.apk`);
+    const pfad = feld === 'schluessel' ? schluessel : kennwort;
+    let simuliert = false;
+    const { fehler } = mitEingriff({ aus }, (_programm, argumente) => {
+      if (!argumente.includes('sign')) return;
+      simuliert = true;
+      return { status: 1, stdout: '', stderr: `java.io.FileNotFoundException: ${pfad} (Access is denied)` };
+    });
+    assert.ok(simuliert);
+    assert.equal(fehler.code, 1);
+    assert.match(fehler.message, /apksigner hat nicht signiert/);
+    assert.ok(!fehler.message.includes(pfad));
+    assert.ok(!existsSync(aus));
+  });
+}
+
+for (const ersetzen of [false, true]) {
+  test(`Ausgabeordner nach Vorprüfung ${ersetzen ? 'ersetzt' : 'entfernt'}: Code 1`, nurMitWerkzeug, () => {
+    const ordner = eigenerOrdner(`ordner-spaet-${ersetzen}`);
+    const aus = join(ordner, 'aus.apk');
+    const { fehler } = mitEingriff({ aus }, (_programm, argumente) => {
+      if (!argumente.includes('verify')) return;
+      rmSync(ordner, { recursive: true });
+      if (ersetzen) writeFileSync(ordner, 'fremde Datei');
+    });
+    assert.ok(fehler instanceof Abbruch, String(fehler));
+    assert.equal(fehler.code, 1);
+    assert.match(fehler.message, /Ausgabedatei lässt sich nicht anlegen/);
+    assert.ok(!existsSync(aus));
+    if (ersetzen) assert.equal(readFileSync(ordner, 'utf8'), 'fremde Datei');
+  });
+}
+
+function dateisystemEingriff(t, methode, eingriff) {
+  const original = fs[methode];
+  t.mock.method(fs, methode, (...args) => eingriff(original, ...args));
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+}
+
+for (const fall of ['Teilschreiben', 'Leseprüfung', 'Prüfsumme']) {
+  test(`Eigene Ausgabe bei Fehler entfernen: ${fall}`, nurMitWerkzeug, (t) => {
+    const aus = join(eigenerOrdner(`schreibfehler-${fall}`), 'aus.apk');
+    const temp = tempFuer(`schreibfehler-${fall}`);
+    let fd;
+    let teilGeschrieben = false;
+    let ausgeloest = false;
+    dateisystemEingriff(t, 'openSync', (original, pfad, ...args) => {
+      const offen = original(pfad, ...args);
+      if (pfad === aus) fd = offen;
+      return offen;
+    });
+    if (fall === 'Teilschreiben') {
+      dateisystemEingriff(t, 'writeSync', (original, datei, buffer, offset, laenge, position) => {
+        if (datei !== fd) return original(datei, buffer, offset, laenge, position);
+        if (!teilGeschrieben) {
+          const geschrieben = original(datei, buffer, offset, 16, position);
+          assert.equal(statSync(aus).size, 16);
+          teilGeschrieben = true;
+          return geschrieben;
+        }
+        ausgeloest = true;
+        throw Object.assign(new Error('Simulierter voller Datenträger'), { code: 'ENOSPC' });
+      });
+    } else {
+      dateisystemEingriff(t, 'readFileSync', (original, pfad, ...args) => {
+        if (pfad !== aus) return original(pfad, ...args);
+        ausgeloest = true;
+        if (fall === 'Prüfsumme') return Buffer.from('abweichender Inhalt');
+        throw Object.assign(new Error('Simulierter Lesefehler'), { code: 'EIO' });
+      });
+    }
+    const { fehler } = mitEingriff({ aus }, () => undefined, { temp });
+    assert.ok(ausgeloest);
+    assert.ok(fehler instanceof Abbruch, String(fehler));
+    assert.equal(fehler.code, 1);
+    assert.match(fehler.message, /eigene Ausgabedatei ist wieder entfernt/);
+    if (fall === 'Teilschreiben') assert.match(fehler.message, /ENOSPC/);
+    assert.ok(!existsSync(aus));
+    assert.throws(() => fs.fstatSync(fd), { code: 'EBADF' });
+    assert.equal(reste(temp).length, 1);
+  });
+}
+
+test('Scheitert das Entfernen der eigenen Ausgabe, nennt der Fehler ihren Ort', nurMitWerkzeug, (t) => {
+  const aus = join(eigenerOrdner('aufraeumfehler'), 'aus.apk');
+  dateisystemEingriff(t, 'readFileSync', (original, pfad, ...args) => pfad === aus
+    ? Buffer.from('abweichender Inhalt') : original(pfad, ...args));
+  dateisystemEingriff(t, 'rmSync', (original, pfad, ...args) => {
+    if (pfad === aus) throw Object.assign(new Error('Simulierte Sperre'), { code: 'EACCES' });
+    return original(pfad, ...args);
+  });
+  const { fehler } = mitEingriff({ aus }, () => undefined);
+  assert.equal(fehler.code, 1);
+  assert.match(fehler.message, /unvollständige Ausgabe lässt sich nicht entfernen \(EACCES\)/);
+  assert.ok(fehler.message.includes(aus));
+  assert.ok(existsSync(aus));
+});
 
 test('Eingriff: Die Ausgabe entsteht während der Prüfung, sie wird nicht überschrieben', nurMitWerkzeug, () => {
   const aus = join(eigenerOrdner('wettlauf-ziel'), 'ziel.apk');

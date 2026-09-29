@@ -19,6 +19,8 @@
 // - arbeitet in einem eigenen Ordner im Temp-Ordner des Benutzers und legt die
 //   Ausgabe erst nach bestandener Prüfung an. Scheitert die Prüfung, bleibt der
 //   Ordner mit der ungeprüften Datei liegen, die Meldung nennt ihn.
+// - entfernt eine selbst neu angelegte Ausgabe bei einem Schreib-, Schließ- oder Prüffehler;
+//   scheitert auch das Entfernen, nennt die Fehlermeldung die verbliebene Datei.
 //
 // Mit --kennwort-datei gibt das Skript Meldungen von apksigner gekürzt weiter,
 // ohne Stacktrace und ohne die Orte der Schlüssel- und der Kennwortdatei. Ohne
@@ -29,11 +31,13 @@
 // Rückgabewert:
 //    0  signiert und geprüft
 //   64  falscher Aufruf, auch: Ausgabe besteht schon, Schlüssel im Arbeitsordner
-//   66  die unsignierte Datei, die Schlüsseldatei, die Kennwortdatei oder der
-//       Ordner der Ausgabe fehlt, ist von falscher Art oder lässt sich nicht lesen
+//   66  eigene Vorprüfung erkennt fehlende/falsche Eingabedatei oder Ausgabeordner;
+//       eigene Pfadauflösung scheitert oder eigenes Lesen der unsignierten APK scheitert
 //   69  JDK oder Werkzeug aus dem SDK fehlt
 //    1  alles andere: Signieren oder Prüfen gescheitert, Änderung während des
-//       Laufs, Ausgabe lässt sich nicht anlegen, unerwarteter Fehler
+//       Laufs, Ausgabe lässt sich nicht anlegen/schreiben/prüfen, unerwarteter Fehler.
+//       Erst von Werkzeugen bemerkte fehlende/gesperrte Eingaben und ein nach der
+//       Vorprüfung entfernter/ersetzter Ausgabeordner ergeben ebenfalls 1.
 
 import { Abbruch, signiere } from './signieren.mjs';
 
