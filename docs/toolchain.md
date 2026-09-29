@@ -287,6 +287,7 @@ F-Droid baut unter Debian. Die Werkzeuge von F-Droid laufen nicht unter Windows.
 |---|---|---|
 | Debian | 13 (trixie) | Mindeststand für den Buildserver von F-Droid |
 | fdroidserver | 2.4.2 (AGPL-3.0), Paket `fdroidserver` 2.4.2-1 aus Debian 13 | Festgelegt am 2026-09-28 als Stand des lokalen Nachweises, Begründung in `fdroid-build.md`, Festlegung F1. Bis dahin war 2.4.5 genannt. Welchen Stand der Buildserver von F-Droid nutzt, hält der abschließende Nachweis fest. |
+| gradlew-fdroid | Commit `c7227d147483979bb5c408048cee3533a8814fb0` (AGPL-3.0-only) | F2 festgelegt am 2026-09-29; Gradle 8.14.5 bleibt. Quelle, SHA-256, Benutzerablage und Laufzeitdownloads: [fdroid-build.md, F2](fdroid-build.md#f2-festgehaltenes-buildwerkzeug); Werte in `scripts/toolchain.json`. |
 | OpenJDK | 21.0.12.1+1 aus Debian 13 | Hauptversion 21 wie festgelegt |
 | Node.js | Debian 13 liefert 20.19.2 | zu alt für Astro 7, siehe unten |
 

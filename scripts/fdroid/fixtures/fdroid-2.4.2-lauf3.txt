@@ -1,0 +1,394 @@
+2026-09-29 15:37:37,256 DEBUG: Reading 'config.yml'
+2026-09-29 15:37:37,257 INFO: Creating log directory
+2026-09-29 15:37:37,257 INFO: Creating output directory
+2026-09-29 15:37:37,260 DEBUG: Popen(['git', 'diff', '--cached', '--abbrev=40', '--full-index', '--raw'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:37:37,262 DEBUG: Popen(['git', 'diff', '--abbrev=40', '--full-index', '--raw'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:37:37,263 DEBUG: Popen(['git', 'ls-files', '--modified'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:37:37,264 DEBUG: Popen(['git', 'status', '--porcelain', '--untracked-files'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:37:37,266 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:37:37,266 INFO: Creating build directory
+2026-09-29 15:37:37,269 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:37:37,269 DEBUG: Getting git vcs interface for file:///opt/probe/minimal-app
+2026-09-29 15:37:37,270 DEBUG: Checking de.baremos.fristenrechner.probe:1
+2026-09-29 15:37:37,270 INFO: Building version 1.0 (1) of de.baremos.fristenrechner.probe
+2026-09-29 15:37:37,270 WARNING: NoSuchPathError: build/de.baremos.fristenrechner.probe
+2026-09-29 15:37:37,270 DEBUG: Popen(['git', 'log', '-n1', '--pretty=%ct', '--', 'metadata/de.baremos.fristenrechner.probe.yml'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:37:37,272 INFO: Getting source for revision d27fb91d6584822b4803ac30cf79f9e1049e9a38
+2026-09-29 15:37:37,272 DEBUG: > git -c core.askpass=/bin/true -c core.sshCommand=/bin/false -c url.https://.insteadOf=ssh:// -c url.https://u:p@bitbucket.org/.insteadOf=git@bitbucket.org: -c url.https://u:p@bitbucket.org.insteadOf=git://bitbucket.org -c url.https://u:p@bitbucket.org.insteadOf=https://bitbucket.org -c url.https://u:p@github.com/.insteadOf=git@github.com: -c url.https://u:p@github.com.insteadOf=git://github.com -c url.https://u:p@github.com.insteadOf=https://github.com -c url.https://u:p@gitlab.com/.insteadOf=git@gitlab.com: -c url.https://u:p@gitlab.com.insteadOf=git://gitlab.com -c url.https://u:p@gitlab.com.insteadOf=https://gitlab.com -c url.https://u:p@codeberg.org/.insteadOf=git@codeberg.org: -c url.https://u:p@codeberg.org.insteadOf=git://codeberg.org -c url.https://u:p@codeberg.org.insteadOf=https://codeberg.org clone -- file:///opt/probe/minimal-app build/de.baremos.fristenrechner.probe
+Cloning into 'build/de.baremos.fristenrechner.probe'...
+2026-09-29 15:37:37,473 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:37:37,473 DEBUG: > git rev-parse --show-toplevel
+2026-09-29 15:37:37,676 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:37:37,676 DEBUG: > git checkout -f d27fb91d6584822b4803ac30cf79f9e1049e9a38
+2026-09-29 15:37:37,878 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:37:37,878 DEBUG: > git clean -dffx
+2026-09-29 15:37:37,980 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:37:37,981 DEBUG: > git rev-parse --show-toplevel
+2026-09-29 15:37:38,183 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:37:38,183 DEBUG: > git submodule deinit --all --force
+2026-09-29 15:37:38,286 INFO: Creating local.properties file at build/de.baremos.fristenrechner.probe/local.properties
+2026-09-29 15:37:38,287 INFO: Creating local.properties file at build/de.baremos.fristenrechner.probe/android/local.properties
+2026-09-29 15:37:38,287 INFO: Creating local.properties file at build/de.baremos.fristenrechner.probe/android/app/local.properties
+2026-09-29 15:37:38,287 DEBUG: Removing debuggable flags from build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:37:38,291 INFO: Running 'prebuild' commands in build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:37:38,291 DEBUG: Directory: build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:37:38,291 DEBUG: > bash -e -u -o pipefail -x -c -- cd ../..; npm ci --ignore-scripts --no-audit --no-fund; cp package-lock.json "$FR_FDROID_LAUF/package-lock-minimal-app.json"; python3 "$FR_FDROID_INVENTAR" node_modules "$FR_FDROID_LAUF/npm-vorgebaut-vor-web.json"; npm run build; ./node_modules/.bin/cap sync android; python3 "$FR_FDROID_INVENTAR" node_modules "$FR_FDROID_LAUF/npm-vorgebaut-nach-web.json"
++ cd ../..
++ npm ci --ignore-scripts --no-audit --no-fund
+npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 394 packages in 9s
++ cp package-lock.json /opt/probe/lauf/package-lock-minimal-app.json
++ python3 /opt/probe/lauf/npm-inventar.py node_modules /opt/probe/lauf/npm-vorgebaut-vor-web.json
+Inventar vor dem Scanner: 10 Dateien; eingebettetes WASM nicht vollständig erfasst.
++ npm run build
+
+> beispiel-2-1@0.0.0 build
+> astro build
+
+[2m15:37:49[22m [34m[types][39m Generated [2m133ms[22m
+[2m15:37:49[22m [34m[build][39m output: [34m"static"[39m
+[2m15:37:49[22m [34m[build][39m mode: [34m"static"[39m
+[2m15:37:49[22m [34m[build][39m directory: [34m/opt/probe/lauf/build/de.baremos.fristenrechner.probe/dist/[39m
+[2m15:37:49[22m [34m[build][39m Collecting build info...
+[2m15:37:49[22m [34m[build][39m [32m✓ Completed in 160ms.[39m
+[2m15:37:49[22m [34m[build][39m Building static entrypoints...
+[2m15:37:49[22m [34m[vite][39m [32m✓ built in 142ms[39m
+[2m15:37:49[22m [34m[vite][39m [32m✓ built in 23ms[39m
+[2m15:37:49[22m [34m[build][39m Rearranging server assets...
+
+[42m[30m generating static routes [39m[49m
+[2m15:37:49[22m   [34m├─[39m [2m/index.html[22m [2m(+12ms)[22m 
+[2m15:37:49[22m [32m✓ Completed in 22ms.
+[39m
+[2m15:37:49[22m [34m[build][39m [32m✓ Completed in 235ms.[39m
+[2m15:37:49[22m [34m[build][39m 1 page(s) built in [1m398ms[22m
+[2m15:37:49[22m [34m[build][39m [1mComplete![22m
++ ./node_modules/.bin/cap sync android
+✔ Copying web assets from dist to android/app/src/main/assets/public in 4.43ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 724.58μs
+✔ copy android in 20.91ms
+✔ Updating Android plugins in 3.23ms
+[info] Found 2 Capacitor plugins for android:
+       @capacitor/filesystem@8.1.3
+       @capacitor/share@8.0.2
+✔ update android in 35.51ms
+[info] Sync finished in 0.077s
++ python3 /opt/probe/lauf/npm-inventar.py node_modules /opt/probe/lauf/npm-vorgebaut-nach-web.json
+Inventar vor dem Scanner: 10 Dateien; eingebettetes WASM nicht vollständig erfasst.
+2026-09-29 15:37:50,814 INFO: Cleaning Gradle project...
+2026-09-29 15:37:50,814 DEBUG: Directory: build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:37:50,814 DEBUG: > /opt/gradlew-fdroid/c7227d147483979bb5c408048cee3533a8814fb0/gradlew.py clean
+CACHEDIR set to /opt/probe/lauf/fdroid-cache
+Update checksum from gradle-transparency-log
+Found 8.14.5 via distributionUrl
+Downloading missing gradle version 8.14.5
+Using cache directory /opt/probe/lauf/fdroid-cache
+Running /opt/probe/lauf/fdroid-cache/versions/8.14.5/bin/gradle clean
+
+Welcome to Gradle 8.14.5!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.5/release-notes.html
+
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Task :app:clean UP-TO-DATE
+
+BUILD SUCCESSFUL in 44s
+1 actionable task: 1 up-to-date
+2026-09-29 15:38:41,376 INFO: Scanning source for common problems...
+2026-09-29 15:38:41,539 INFO: Removing shared library at node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.6
+2026-09-29 15:38:41,551 INFO: Removing WebAssembly binary file at node_modules/shiki/dist/onig.wasm
+2026-09-29 15:38:41,578 INFO: Removing WebAssembly binary file at node_modules/@astrojs/astro2tsx/astro2tsx.wasm32-wasi.wasm
+2026-09-29 15:38:41,736 INFO: Removing binary at node_modules/@esbuild/linux-x64/bin/esbuild
+2026-09-29 15:38:41,764 DEBUG: scanner is configured to use signature data from: 'suss'
+2026-09-29 15:38:41,815 INFO: Removing gzip file archive at node_modules/@capacitor/cli/assets/ios-pods-template.tar.gz
+2026-09-29 15:38:41,815 INFO: Removing gzip file archive at node_modules/@capacitor/cli/assets/capacitor-cordova-android-plugins.tar.gz
+2026-09-29 15:38:41,816 INFO: Removing gzip file archive at node_modules/@capacitor/cli/assets/capacitor-cordova-ios-plugins.tar.gz
+2026-09-29 15:38:41,816 INFO: Removing gzip file archive at node_modules/@capacitor/cli/assets/ios-spm-template.tar.gz
+2026-09-29 15:38:41,816 INFO: Removing gzip file archive at node_modules/@capacitor/cli/assets/android-template.tar.gz
+2026-09-29 15:38:41,838 INFO: Removing WebAssembly binary file at node_modules/xxhash-wasm/workerd/xxhash.wasm
+2026-09-29 15:38:41,863 INFO: Removing gradle-wrapper.jar at android/gradle/wrapper/gradle-wrapper.jar
+2026-09-29 15:38:41,863 INFO: Creating source tarball...
+2026-09-29 15:39:01,570 INFO: Running 'build' commands in build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:39:01,571 DEBUG: Directory: build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:39:01,571 DEBUG: > bash -e -u -o pipefail -x -c test -f ../../node_modules/@capacitor/android/capacitor/build.gradle; test -f ../../node_modules/@capacitor/filesystem/android/build.gradle; test -f ../../node_modules/@capacitor/share/android/build.gradle
++ test -f ../../node_modules/@capacitor/android/capacitor/build.gradle
++ test -f ../../node_modules/@capacitor/filesystem/android/build.gradle
++ test -f ../../node_modules/@capacitor/share/android/build.gradle
+2026-09-29 15:39:01,774 INFO: Building Gradle project...
+2026-09-29 15:39:01,774 DEBUG: Directory: build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:39:01,774 DEBUG: > /opt/gradlew-fdroid/c7227d147483979bb5c408048cee3533a8814fb0/gradlew.py assembleRelease
+CACHEDIR set to /opt/probe/lauf/fdroid-cache
+Remote gradle-transparency-log not changed, reusing cache
+Update checksum from gradle-transparency-log
+Found 8.14.5 via distributionUrl
+Running /opt/probe/lauf/fdroid-cache/versions/8.14.5/bin/gradle assembleRelease
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-android:preReleaseBuild UP-TO-DATE
+> Task :capacitor-android:mergeReleaseJniLibFolders
+> Task :capacitor-android:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preReleaseBuild UP-TO-DATE
+> Task :capacitor-android:copyReleaseJniLibsProjectOnly
+> Task :capacitor-cordova-android-plugins:mergeReleaseJniLibFolders
+> Task :capacitor-cordova-android-plugins:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-filesystem:preBuild UP-TO-DATE
+> Task :capacitor-filesystem:preReleaseBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:copyReleaseJniLibsProjectOnly
+> Task :capacitor-filesystem:mergeReleaseJniLibFolders
+> Task :capacitor-filesystem:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-share:preBuild UP-TO-DATE
+> Task :capacitor-share:preReleaseBuild UP-TO-DATE
+> Task :capacitor-filesystem:copyReleaseJniLibsProjectOnly
+> Task :capacitor-share:mergeReleaseJniLibFolders
+> Task :capacitor-share:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-share:copyReleaseJniLibsProjectOnly
+> Task :capacitor-android:generateReleaseResValues
+> Task :app:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:stripReleaseDebugSymbols NO-SOURCE
+> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :capacitor-android:generateReleaseResources
+> Task :capacitor-android:packageReleaseResources
+> Task :capacitor-android:processReleaseNavigationResources
+> Task :capacitor-filesystem:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :capacitor-filesystem:generateReleaseResValues
+> Task :capacitor-android:javaPreCompileRelease
+> Task :capacitor-filesystem:generateReleaseResources
+> Task :capacitor-filesystem:packageReleaseResources
+> Task :capacitor-filesystem:processReleaseNavigationResources
+> Task :capacitor-share:generateReleaseResValues
+> Task :capacitor-filesystem:javaPreCompileRelease
+> Task :capacitor-share:generateReleaseResources
+> Task :capacitor-filesystem:parseReleaseLocalResources
+> Task :capacitor-android:parseReleaseLocalResources
+> Task :capacitor-share:packageReleaseResources
+> Task :capacitor-share:processReleaseNavigationResources
+> Task :capacitor-filesystem:generateReleaseRFile
+> Task :capacitor-share:javaPreCompileRelease
+> Task :capacitor-android:generateReleaseRFile
+> Task :capacitor-cordova-android-plugins:generateReleaseResValues
+> Task :capacitor-share:parseReleaseLocalResources
+
+> Task :capacitor-android:compileReleaseJavaWithJavac
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :capacitor-share:generateReleaseRFile
+> Task :capacitor-cordova-android-plugins:generateReleaseResources
+> Task :capacitor-android:bundleLibCompileToJarRelease
+> Task :capacitor-cordova-android-plugins:packageReleaseResources
+> Task :capacitor-android:bundleLibRuntimeToDirRelease
+> Task :capacitor-share:compileReleaseJavaWithJavac
+> Task :capacitor-cordova-android-plugins:processReleaseNavigationResources
+> Task :capacitor-share:bundleLibRuntimeToDirRelease
+> Task :capacitor-cordova-android-plugins:javaPreCompileRelease
+> Task :capacitor-cordova-android-plugins:parseReleaseLocalResources
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:javaPreCompileRelease
+> Task :capacitor-cordova-android-plugins:generateReleaseRFile
+> Task :capacitor-cordova-android-plugins:compileReleaseJavaWithJavac NO-SOURCE
+> Task :capacitor-android:writeReleaseAarMetadata
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToDirRelease
+> Task :capacitor-cordova-android-plugins:writeReleaseAarMetadata
+> Task :capacitor-filesystem:writeReleaseAarMetadata
+> Task :capacitor-share:writeReleaseAarMetadata
+> Task :app:processReleaseNavigationResources
+> Task :app:checkReleaseAarMetadata
+> Task :app:generateReleaseResValues
+> Task :app:compileReleaseNavigationResources
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources
+> Task :app:packageReleaseResources
+> Task :app:parseReleaseLocalResources
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease
+> Task :capacitor-android:extractDeepLinksRelease
+> Task :capacitor-cordova-android-plugins:extractDeepLinksRelease
+> Task :capacitor-filesystem:extractDeepLinksRelease
+> Task :capacitor-share:extractDeepLinksRelease
+> Task :capacitor-filesystem:processReleaseManifest
+> Task :capacitor-android:processReleaseManifest
+> Task :capacitor-cordova-android-plugins:processReleaseManifest
+> Task :capacitor-share:processReleaseManifest
+> Task :capacitor-android:compileReleaseLibraryResources
+> Task :app:mergeReleaseResources
+> Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
+> Task :capacitor-cordova-android-plugins:compileReleaseLibraryResources
+> Task :app:processReleaseManifestForPackage
+> Task :capacitor-filesystem:compileReleaseLibraryResources
+> Task :capacitor-share:compileReleaseLibraryResources
+> Task :capacitor-cordova-android-plugins:bundleLibCompileToJarRelease
+> Task :capacitor-share:bundleLibCompileToJarRelease
+> Task :app:desugarReleaseFileDependencies
+> Task :app:mergeReleaseStartupProfile
+> Task :app:processReleaseResources
+> Task :capacitor-filesystem:compileReleaseKotlin
+w: file:///opt/probe/lauf/build/de.baremos.fristenrechner.probe/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/FilesystemPlugin.kt:335:31 'fun downloadFile(call: PluginCall): Unit' is deprecated. Use @capacitor/file-transfer plugin instead.
+w: file:///opt/probe/lauf/build/de.baremos.fristenrechner.probe/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/LegacyFilesystemImplementation.kt:66:29 Java type mismatch: inferred type is 'String?', but 'String' was expected.
+
+> Task :capacitor-filesystem:compileReleaseJavaWithJavac NO-SOURCE
+> Task :capacitor-android:prepareReleaseArtProfile
+> Task :capacitor-filesystem:bundleLibCompileToJarRelease
+> Task :capacitor-filesystem:bundleLibRuntimeToDirRelease
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:dexBuilderRelease
+> Task :capacitor-cordova-android-plugins:prepareReleaseArtProfile
+> Task :capacitor-filesystem:prepareReleaseArtProfile
+> Task :capacitor-share:prepareReleaseArtProfile
+> Task :app:mergeReleaseArtProfile
+> Task :capacitor-filesystem:bundleLibRuntimeToJarRelease
+> Task :capacitor-share:bundleLibRuntimeToJarRelease
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarRelease
+> Task :capacitor-android:bundleLibRuntimeToJarRelease
+> Task :app:mergeReleaseShaders
+> Task :app:compileReleaseShaders NO-SOURCE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-android:mergeReleaseShaders
+> Task :capacitor-android:compileReleaseShaders NO-SOURCE
+> Task :capacitor-android:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-android:mergeReleaseAssets
+> Task :capacitor-cordova-android-plugins:mergeReleaseShaders
+> Task :capacitor-cordova-android-plugins:compileReleaseShaders NO-SOURCE
+> Task :capacitor-cordova-android-plugins:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeReleaseAssets
+> Task :capacitor-filesystem:mergeReleaseShaders
+> Task :capacitor-filesystem:compileReleaseShaders NO-SOURCE
+> Task :capacitor-filesystem:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-filesystem:mergeReleaseAssets
+> Task :capacitor-share:mergeReleaseShaders
+> Task :capacitor-share:compileReleaseShaders NO-SOURCE
+> Task :capacitor-share:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-share:mergeReleaseAssets
+> Task :app:mergeReleaseAssets
+> Task :app:compressReleaseAssets
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:extractProguardFiles
+> Task :capacitor-android:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-android:createFullJarRelease
+> Task :capacitor-android:extractProguardFiles
+> Task :app:mergeExtDexRelease
+> Task :capacitor-android:generateReleaseLintModel
+> Task :app:mergeReleaseGlobalSynthetics
+> Task :capacitor-cordova-android-plugins:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-android:prepareLintJarForPublish
+> Task :capacitor-cordova-android-plugins:createFullJarRelease
+> Task :capacitor-cordova-android-plugins:extractProguardFiles
+> Task :app:mergeDexRelease
+> Task :capacitor-cordova-android-plugins:generateReleaseLintModel
+> Task :capacitor-cordova-android-plugins:prepareLintJarForPublish
+> Task :capacitor-filesystem:processReleaseJavaRes
+> Task :capacitor-filesystem:createFullJarRelease
+> Task :capacitor-filesystem:extractProguardFiles
+> Task :capacitor-filesystem:generateReleaseLintModel
+> Task :capacitor-filesystem:prepareLintJarForPublish
+> Task :capacitor-share:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-share:createFullJarRelease
+> Task :capacitor-share:extractProguardFiles
+> Task :capacitor-share:generateReleaseLintModel
+> Task :capacitor-share:prepareLintJarForPublish
+> Task :capacitor-filesystem:checkReleaseAarMetadata
+> Task :app:generateReleaseLintVitalReportModel
+> Task :capacitor-filesystem:stripReleaseDebugSymbols NO-SOURCE
+> Task :capacitor-filesystem:copyReleaseJniLibsProjectAndLocalJars
+> Task :capacitor-filesystem:extractDeepLinksForAarRelease
+> Task :app:compileReleaseArtProfile
+> Task :capacitor-filesystem:extractReleaseAnnotations
+> Task :capacitor-filesystem:mergeReleaseGeneratedProguardFiles
+> Task :capacitor-filesystem:mergeReleaseConsumerProguardFiles
+> Task :capacitor-share:stripReleaseDebugSymbols NO-SOURCE
+> Task :capacitor-share:checkReleaseAarMetadata
+> Task :capacitor-share:copyReleaseJniLibsProjectAndLocalJars
+> Task :capacitor-share:extractDeepLinksForAarRelease
+> Task :capacitor-share:extractReleaseAnnotations
+> Task :capacitor-share:mergeReleaseGeneratedProguardFiles
+> Task :capacitor-share:mergeReleaseConsumerProguardFiles
+> Task :capacitor-android:stripReleaseDebugSymbols NO-SOURCE
+> Task :capacitor-android:checkReleaseAarMetadata
+> Task :capacitor-share:mergeReleaseJavaResource
+> Task :capacitor-android:copyReleaseJniLibsProjectAndLocalJars
+> Task :capacitor-filesystem:mergeReleaseJavaResource
+> Task :capacitor-share:syncReleaseLibJars
+> Task :capacitor-filesystem:syncReleaseLibJars
+> Task :capacitor-filesystem:bundleReleaseLocalLintAar
+> Task :capacitor-share:bundleReleaseLocalLintAar
+> Task :capacitor-android:extractDeepLinksForAarRelease
+> Task :capacitor-android:extractReleaseAnnotations
+> Task :capacitor-android:mergeReleaseGeneratedProguardFiles
+> Task :capacitor-android:mergeReleaseConsumerProguardFiles
+> Task :capacitor-android:mergeReleaseJavaResource
+> Task :capacitor-cordova-android-plugins:checkReleaseAarMetadata
+> Task :capacitor-android:syncReleaseLibJars
+> Task :capacitor-android:bundleReleaseLocalLintAar
+> Task :capacitor-cordova-android-plugins:stripReleaseDebugSymbols NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyReleaseJniLibsProjectAndLocalJars
+> Task :capacitor-cordova-android-plugins:extractDeepLinksForAarRelease
+> Task :capacitor-cordova-android-plugins:extractReleaseAnnotations
+> Task :capacitor-cordova-android-plugins:mergeReleaseGeneratedProguardFiles
+> Task :capacitor-cordova-android-plugins:mergeReleaseConsumerProguardFiles
+> Task :capacitor-cordova-android-plugins:mergeReleaseJavaResource
+> Task :capacitor-cordova-android-plugins:syncReleaseLibJars
+> Task :capacitor-cordova-android-plugins:bundleReleaseLocalLintAar
+> Task :capacitor-android:writeReleaseLintModelMetadata
+> Task :capacitor-cordova-android-plugins:writeReleaseLintModelMetadata
+> Task :capacitor-filesystem:writeReleaseLintModelMetadata
+> Task :capacitor-share:writeReleaseLintModelMetadata
+> Task :capacitor-android:generateReleaseLintVitalModel
+> Task :capacitor-cordova-android-plugins:generateReleaseLintVitalModel
+> Task :capacitor-filesystem:generateReleaseLintVitalModel
+> Task :capacitor-share:generateReleaseLintVitalModel
+> Task :app:processReleaseJavaRes NO-SOURCE
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+> Task :app:optimizeReleaseResources
+> Task :app:mergeReleaseJavaResource
+> Task :capacitor-cordova-android-plugins:lintVitalAnalyzeRelease
+> Task :capacitor-android:lintVitalAnalyzeRelease
+> Task :capacitor-share:lintVitalAnalyzeRelease
+> Task :capacitor-filesystem:lintVitalAnalyzeRelease
+> Task :app:lintVitalAnalyzeRelease
+> Task :app:lintVitalReportRelease
+> Task :app:lintVitalRelease
+> Task :app:packageRelease
+> Task :app:createReleaseApkListingFileRedirect
+> Task :app:assembleRelease
+
+[Incubating] Problems report is available at: file:///opt/probe/lauf/build/de.baremos.fristenrechner.probe/android/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 1m 32s
+188 actionable tasks: 188 executed
+2026-09-29 15:40:34,694 INFO: Successfully built version 1.0 of de.baremos.fristenrechner.probe from d27fb91d6584822b4803ac30cf79f9e1049e9a38
+2026-09-29 15:40:34,828 DEBUG: Checking build/de.baremos.fristenrechner.probe/android/app/build/outputs/apk/release/app-release-unsigned.apk
+2026-09-29 15:40:34,833 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:40:34,833 INFO: success: de.baremos.fristenrechner.probe
+2026-09-29 15:40:34,833 INFO: Finished
+2026-09-29 15:40:34,833 INFO: 1 build succeeded
+2026-09-29 15:40:34,833 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:40:34,833 DEBUG: skip deploying full build logs: not enabled in config

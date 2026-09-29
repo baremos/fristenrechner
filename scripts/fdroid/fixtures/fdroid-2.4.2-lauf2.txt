@@ -1,0 +1,130 @@
+2026-09-29 15:35:57,961 DEBUG: Reading 'config.yml'
+2026-09-29 15:35:57,962 INFO: Creating log directory
+2026-09-29 15:35:57,962 INFO: Creating output directory
+2026-09-29 15:35:57,964 DEBUG: Popen(['git', 'diff', '--cached', '--abbrev=40', '--full-index', '--raw'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:35:57,966 DEBUG: Popen(['git', 'diff', '--abbrev=40', '--full-index', '--raw'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:35:57,968 DEBUG: Popen(['git', 'ls-files', '--modified'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:35:57,969 DEBUG: Popen(['git', 'status', '--porcelain', '--untracked-files'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:35:57,972 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:35:57,972 INFO: Creating build directory
+2026-09-29 15:35:57,975 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:35:57,975 DEBUG: Getting git vcs interface for file:///opt/probe/minimal-app
+2026-09-29 15:35:57,976 DEBUG: Checking de.baremos.fristenrechner.probe:1
+2026-09-29 15:35:57,976 INFO: Building version 1.0 (1) of de.baremos.fristenrechner.probe
+2026-09-29 15:35:57,976 WARNING: NoSuchPathError: build/de.baremos.fristenrechner.probe
+2026-09-29 15:35:57,976 DEBUG: Popen(['git', 'log', '-n1', '--pretty=%ct', '--', 'metadata/de.baremos.fristenrechner.probe.yml'], cwd=/opt/probe/lauf, stdin=None, shell=False, universal_newlines=False)
+2026-09-29 15:35:57,978 INFO: Getting source for revision d27fb91d6584822b4803ac30cf79f9e1049e9a38
+2026-09-29 15:35:57,978 DEBUG: > git -c core.askpass=/bin/true -c core.sshCommand=/bin/false -c url.https://.insteadOf=ssh:// -c url.https://u:p@bitbucket.org/.insteadOf=git@bitbucket.org: -c url.https://u:p@bitbucket.org.insteadOf=git://bitbucket.org -c url.https://u:p@bitbucket.org.insteadOf=https://bitbucket.org -c url.https://u:p@github.com/.insteadOf=git@github.com: -c url.https://u:p@github.com.insteadOf=git://github.com -c url.https://u:p@github.com.insteadOf=https://github.com -c url.https://u:p@gitlab.com/.insteadOf=git@gitlab.com: -c url.https://u:p@gitlab.com.insteadOf=git://gitlab.com -c url.https://u:p@gitlab.com.insteadOf=https://gitlab.com -c url.https://u:p@codeberg.org/.insteadOf=git@codeberg.org: -c url.https://u:p@codeberg.org.insteadOf=git://codeberg.org -c url.https://u:p@codeberg.org.insteadOf=https://codeberg.org clone -- file:///opt/probe/minimal-app build/de.baremos.fristenrechner.probe
+Cloning into 'build/de.baremos.fristenrechner.probe'...
+2026-09-29 15:35:58,180 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:35:58,180 DEBUG: > git rev-parse --show-toplevel
+2026-09-29 15:35:58,382 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:35:58,382 DEBUG: > git checkout -f d27fb91d6584822b4803ac30cf79f9e1049e9a38
+2026-09-29 15:35:58,585 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:35:58,585 DEBUG: > git clean -dffx
+2026-09-29 15:35:58,688 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:35:58,688 DEBUG: > git rev-parse --show-toplevel
+2026-09-29 15:35:58,891 DEBUG: Directory: build/de.baremos.fristenrechner.probe
+2026-09-29 15:35:58,891 DEBUG: > git submodule deinit --all --force
+2026-09-29 15:35:58,994 INFO: Creating local.properties file at build/de.baremos.fristenrechner.probe/local.properties
+2026-09-29 15:35:58,995 INFO: Creating local.properties file at build/de.baremos.fristenrechner.probe/android/local.properties
+2026-09-29 15:35:58,995 INFO: Creating local.properties file at build/de.baremos.fristenrechner.probe/android/app/local.properties
+2026-09-29 15:35:58,996 DEBUG: Removing debuggable flags from build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:35:59,000 INFO: Running 'prebuild' commands in build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:35:59,000 DEBUG: Directory: build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:35:59,000 DEBUG: > bash -e -u -o pipefail -x -c -- cd ../..; npm ci --ignore-scripts --no-audit --no-fund; cp package-lock.json "$FR_FDROID_LAUF/package-lock-minimal-app.json"; python3 "$FR_FDROID_INVENTAR" node_modules "$FR_FDROID_LAUF/npm-vorgebaut-vor-web.json"; npm run build; ./node_modules/.bin/cap sync android; python3 "$FR_FDROID_INVENTAR" node_modules "$FR_FDROID_LAUF/npm-vorgebaut-nach-web.json"
++ cd ../..
++ npm ci --ignore-scripts --no-audit --no-fund
+npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 394 packages in 10s
++ cp package-lock.json /opt/probe/lauf/package-lock-minimal-app.json
++ python3 /opt/probe/lauf/npm-inventar.py node_modules /opt/probe/lauf/npm-vorgebaut-vor-web.json
+Inventar vor dem Scanner: 10 Dateien; eingebettetes WASM nicht vollständig erfasst.
++ npm run build
+
+> beispiel-2-1@0.0.0 build
+> astro build
+
+[2m15:36:10[22m [34m[types][39m Generated [2m151ms[22m
+[2m15:36:10[22m [34m[build][39m output: [34m"static"[39m
+[2m15:36:10[22m [34m[build][39m mode: [34m"static"[39m
+[2m15:36:10[22m [34m[build][39m directory: [34m/opt/probe/lauf/build/de.baremos.fristenrechner.probe/dist/[39m
+[2m15:36:10[22m [34m[build][39m Collecting build info...
+[2m15:36:10[22m [34m[build][39m [32m✓ Completed in 186ms.[39m
+[2m15:36:10[22m [34m[build][39m Building static entrypoints...
+[2m15:36:10[22m [34m[vite][39m [32m✓ built in 153ms[39m
+[2m15:36:10[22m [34m[vite][39m [32m✓ built in 22ms[39m
+[2m15:36:10[22m [34m[build][39m Rearranging server assets...
+
+[42m[30m generating static routes [39m[49m
+[2m15:36:10[22m   [34m├─[39m [2m/index.html[22m [2m(+16ms)[22m 
+[2m15:36:10[22m [32m✓ Completed in 27ms.
+[39m
+[2m15:36:10[22m [34m[build][39m [32m✓ Completed in 246ms.[39m
+[2m15:36:10[22m [34m[build][39m 1 page(s) built in [1m434ms[22m
+[2m15:36:10[22m [34m[build][39m [1mComplete![22m
++ ./node_modules/.bin/cap sync android
+✔ Copying web assets from dist to android/app/src/main/assets/public in 5.45ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 864.25μs
+✔ copy android in 23.81ms
+✔ Updating Android plugins in 1.98ms
+[info] Found 2 Capacitor plugins for android:
+       @capacitor/filesystem@8.1.3
+       @capacitor/share@8.0.2
+✔ update android in 45.20ms
+[info] Sync finished in 0.087s
++ python3 /opt/probe/lauf/npm-inventar.py node_modules /opt/probe/lauf/npm-vorgebaut-nach-web.json
+Inventar vor dem Scanner: 10 Dateien; eingebettetes WASM nicht vollständig erfasst.
+2026-09-29 15:36:11,742 INFO: Cleaning Gradle project...
+2026-09-29 15:36:11,742 DEBUG: Directory: build/de.baremos.fristenrechner.probe/android/app
+2026-09-29 15:36:11,742 DEBUG: > /opt/gradlew-fdroid/c7227d147483979bb5c408048cee3533a8814fb0/gradlew.py clean
+CACHEDIR set to /opt/probe/lauf/fdroid-cache
+Update checksum from gradle-transparency-log
+Found 8.14.5 via distributionUrl
+Downloading missing gradle version 8.14.5
+Using cache directory /opt/probe/lauf/fdroid-cache
+Running /opt/probe/lauf/fdroid-cache/versions/8.14.5/bin/gradle clean
+
+Welcome to Gradle 8.14.5!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.5/release-notes.html
+
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Task :app:clean UP-TO-DATE
+
+BUILD SUCCESSFUL in 42s
+1 actionable task: 1 up-to-date
+2026-09-29 15:37:00,061 INFO: Scanning source for common problems...
+2026-09-29 15:37:00,125 ERROR: Found shared library at node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.6
+2026-09-29 15:37:00,130 ERROR: Found WebAssembly binary file at node_modules/shiki/dist/onig.wasm
+2026-09-29 15:37:00,146 ERROR: Found WebAssembly binary file at node_modules/@astrojs/astro2tsx/astro2tsx.wasm32-wasi.wasm
+2026-09-29 15:37:00,291 ERROR: Found binary at node_modules/@esbuild/linux-x64/bin/esbuild
+2026-09-29 15:37:00,316 DEBUG: scanner is configured to use signature data from: 'suss'
+2026-09-29 15:37:00,353 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/ios-pods-template.tar.gz
+2026-09-29 15:37:00,353 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/capacitor-cordova-android-plugins.tar.gz
+2026-09-29 15:37:00,353 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/capacitor-cordova-ios-plugins.tar.gz
+2026-09-29 15:37:00,353 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/ios-spm-template.tar.gz
+2026-09-29 15:37:00,353 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/android-template.tar.gz
+2026-09-29 15:37:00,372 ERROR: Found WebAssembly binary file at node_modules/xxhash-wasm/workerd/xxhash.wasm
+2026-09-29 15:37:00,394 INFO: Removing gradle-wrapper.jar at android/gradle/wrapper/gradle-wrapper.jar
+2026-09-29 15:37:00,394 ERROR: Could not build app de.baremos.fristenrechner.probe: Can't build due to 10 errors while scanning
+2026-09-29 15:37:00,399 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:37:00,399 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:37:00,400 INFO: Finished
+2026-09-29 15:37:00,400 INFO: 1 build failed
+2026-09-29 15:37:00,400 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:37:00,401 DEBUG: skip deploying full build logs: not enabled in config

@@ -28,6 +28,15 @@
       "wrapperJar": "7d3a4ac4de1c32b59bc6a4eb8ecb8e612ccd0cf1ae1e99f66902da64df296172"
     }
   },
+  "gradlewFdroid": {
+    "quelle": "https://gitlab.com/fdroid/gradlew-fdroid",
+    "commit": "c7227d147483979bb5c408048cee3533a8814fb0",
+    "datei": "gradlew.py",
+    "sha256": "a6e2366c3499f9ba92b4a6f52883d2d0db24b38b4523b186d4ae5e4a69a607ea",
+    "lizenz": "AGPL-3.0-only",
+    "pythonMindestens": "3.9",
+    "benutzerOrdner": "fristenrechner/gradlew-fdroid"
+  },
   "androidGradlePlugin": "8.13.0",
   "android": {
     "minSdk": 24,
