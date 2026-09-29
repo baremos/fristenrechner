@@ -3,9 +3,10 @@
 // Astro 7.3.3 meldet bei build und bei sync Nutzungsdaten an
 // https://telemetry.astro.build, bei check nur nach bestimmten Fehlern
 // (@astrojs/telemetry 3.3.3, dist/index.js und dist/post.js). Kein Versand,
-// wenn ASTRO_TELEMETRY_DISABLED einen Wert hat. Das Skript setzt die Variable
-// für jeden Lauf und schreibt selbst nichts in das Benutzerprofil. Befehle wie
-// "astro telemetry" ändern das Profil trotzdem.
+// wenn ASTRO_TELEMETRY_DISABLED oder TELEMETRY_DISABLED einen Wert hat oder im
+// Benutzerprofil "enabled: false" steht. Das Skript setzt ASTRO_TELEMETRY_DISABLED
+// für jeden Lauf und schreibt selbst nichts in das Profil. Durchgereichte Befehle
+// wie "astro telemetry" ändern das Profil trotzdem.
 //
 // Aufruf: node scripts/astro.mjs <Befehl von Astro> [...]
 // Rückgabewert: der von Astro, 1 wenn Astro fehlt oder nicht startet.
