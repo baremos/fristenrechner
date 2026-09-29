@@ -21,6 +21,7 @@ HIER = Path(__file__).resolve().parent
 REZEPT = HIER / "de.baremos.fristenrechner.probe.yml"
 APPID = REZEPT.stem
 SYSTEMPFAD = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+FDROID_CACHE = "fdroid-cache"
 
 
 def ausgabe(befehl, **kwargs):
@@ -89,7 +90,6 @@ def lauf_umgebung(lauf, node, jdk, sdk):
     env.update({"PATH": f"{node / 'bin'}:{jdk / 'bin'}:{SYSTEMPFAD}",
                 "LC_ALL": "C.UTF-8", "LANG": "C.UTF-8", "CI": "true",
                 "JAVA_HOME": str(jdk), "ANDROID_HOME": str(sdk), "ANDROID_SDK_ROOT": str(sdk),
-                "CACHEDIR": str(lauf / "gradlew-cache"),
                 "GRADLE_USER_HOME": str(lauf / "gradle-home"),
                 "XDG_CACHE_HOME": str(lauf / "cache"),
                 "npm_config_cache": str(lauf / "npm-cache"),
@@ -98,6 +98,8 @@ def lauf_umgebung(lauf, node, jdk, sdk):
                 "ASTRO_TELEMETRY_DISABLED": "1", "PYTHONDONTWRITEBYTECODE": "1",
                 "TMPDIR": str(lauf / "tmp"), "TEMP": str(lauf / "tmp"), "TMP": str(lauf / "tmp"),
                 "FR_FDROID_LAUF": str(lauf), "FR_FDROID_INVENTAR": str(lauf / "npm-inventar.py")})
+    # fdroidserver 2.4.2 setzt CACHEDIR für seine Kindprozesse selbst aus
+    # config.yml/cachedir. Kein zweiter, wirkungsloser Gradle-Cache daneben.
     return env
 
 
@@ -126,14 +128,17 @@ def rezept_einchecken(lauf, repo, commit, env):
 
 def pruefe_gradle_archiv(lauf, vorgabe):
     gradle = vorgabe["gradle"]
-    archiv = lauf / "gradlew-cache" / f'gradle-{gradle["version"]}-bin.zip'
+    # gradlew-fdroid c7227d1 liest CACHEDIR und legt das bin-Archiv direkt
+    # dort ab. F-Droid übergibt dafür den konfigurierten eigenen cachedir.
+    archiv = lauf / FDROID_CACHE / f'gradle-{gradle["version"]}-bin.zip'
     if archiv.is_symlink() or not archiv.is_file():
         raise ValueError("Das Gradle-Archiv fehlt im eigenen Cache")
     with archiv.open("rb") as datei:
         summe = hashlib.file_digest(datei, "sha256").hexdigest()
     if summe != gradle["sha256"]["bin"]:
         raise ValueError("Das geladene Gradle-Archiv weicht von toolchain.json ab")
-    return {"datei": archiv.name, "sha256": summe, "bytes": archiv.stat().st_size}
+    return {"datei": archiv.name, "pfad": archiv.relative_to(lauf).as_posix(),
+            "sha256": summe, "bytes": archiv.stat().st_size}
 
 
 def main(argv=None):
@@ -201,7 +206,7 @@ def main(argv=None):
     shutil.copyfile(HIER.parent / "toolchain.json", lauf / "toolchain.json")
     neue_json(lauf / "metadata" / REZEPT.name, rezept)
     neue_json(lauf / "config.yml", {"sdk_path": str(sdk), "gradle": str(wrapper),
-                                   "java_paths": {"21": str(jdk)}, "cachedir": str(lauf / "fdroid-cache")})
+                                   "java_paths": {"21": str(jdk)}, "cachedir": str(lauf / FDROID_CACHE)})
     befehl = ["fdroid", "build", "--verbose", f"{APPID}:1"]
     env = lauf_umgebung(lauf, node, jdk, sdk)
     zeit = rezept_einchecken(lauf, repo, commit, env)

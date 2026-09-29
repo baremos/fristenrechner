@@ -1,6 +1,6 @@
 # Build für F-Droid
 
-Stand 2026-09-29 · Arbeitspaket 2.8, frühe Probe und Entwurf des lokalen Rezepts
+Stand 2026-09-29 · Arbeitspaket 2.8, drei lokale Läufe mit der Minimal-App
 
 ## Zweck
 
@@ -200,12 +200,12 @@ Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1 bis 
 | F2 | Gradle im Build für F-Droid | **festgelegt am 2026-09-29:** Gradle 8.14.5 bleibt; lokal gilt `gradlew-fdroid` mit Commit `c7227d147483979bb5c408048cee3533a8814fb0`. Quelle, SHA-256 und Ablage stehen im folgenden Abschnitt und in `scripts/toolchain.json`. | Ein Wechsel auf fdroidserver 2.4.5 löst die Frage nicht (Befund 3). Das Projekt hat laut dem gelesenen Stand keine Marken. Die Festlegung fixiert das Programm, nicht die nachgeladenen Prüfsummendaten. |
 | F3 | Node.js unter Linux | **festgelegt am 2026-09-28:** Archiv von nodejs.org mit der Prüfsumme oben, abgelegt im Benutzerbereich | wie unter Windows: Referenzversion, keine Installation im System |
 | F4 | Android SDK unter Linux | **festgelegt am 2026-09-28:** Kommandozeilenwerkzeuge 22.0 für Linux nach `scripts/toolchain.json`, nur die Gruppe „Build" | Der Emulator läuft unter Windows. Wer installiert, bestätigt die Lizenz selbst. Das `sdkmanager` von F-Droid wird dafür nicht verwendet. |
-| F5 | Vorgebaute Programme in `node_modules` | keine pauschale Ausnahme. Zuerst trennen, was der Build der App braucht und was nur die Tests brauchen. Für jede verbleibende Datei Herkunft, Lizenz, Verwendung und Behandlung einzeln festhalten. | Die 28 Einträge aus `lizenzen.md` sind Einträge des Lockfiles für alle Betriebssysteme, nicht 28 Programme im Build unter Linux. Wie andere Rezepte vorgehen, zeigt Befund 7. |
+| F5 | Vorgebaute Programme in `node_modules` | **Vorschlag, nicht entschieden:** entbehrliche Buildwerkzeuge nach Web-Build und `cap sync` gezielt entfernen; `scandelete` ergänzend erproben. Für jede verbleibende Datei Herkunft, Lizenz, Verwendung und Behandlung einzeln festhalten. | Lauf 2 stoppt an zehn Dateien; Lauf 3 entfernt sie mit `scandelete` und baut die Minimal-App bytegleich. Die Inventare zeigen zugleich fünf weitere native Dateien, die der Scanner nicht zur Entfernung meldet. Einzelheiten und Grenzen stehen unter F5. |
 | F6 | Kategorie bei F-Droid | offen | Die Liste der Kategorien gehört zu den Daten von F-Droid und liegt in der Probe nicht vor. |
 
 ## F2: festgehaltenes Buildwerkzeug
 
-Am 2026-09-29 wurden die folgenden Dateien nur gelesen; das Programm wurde dabei weder unter Debian eingerichtet noch ausgeführt.
+Am 2026-09-29 wurden zunächst die folgenden Dateien gelesen. Anschließend wurde der festgehaltene Stand unter Debian eingerichtet und in den unten beschriebenen Läufen ausgeführt.
 
 | Angabe | Festlegung |
 |---|---|
@@ -229,7 +229,9 @@ Die Lizenz betrifft hier ein Werkzeug des Builds, nichts Ausgeliefertes: Der gel
 5. Geladen wird `https://downloads.gradle.org/distributions/gradle-<Version>-bin.zip`, für diese Probe also `gradle-8.14.5-bin.zip`. Vor dem Entpacken wird SHA-256 mit dem ermittelten Wert verglichen, auch bei einem bereits zwischengespeicherten ZIP. `distributionSha256Sum` aus den Wrapper-Properties wertet das Programm nicht aus.
 6. Ablage ist `CACHEDIR`, sonst der von `platformdirs` ermittelte Benutzer-Cache, ohne dieses Modul `~/.cache/gradlew-fdroid`. ZIP und Prüfsummendaten bleiben dort; entpackt wird nach `versions/<Version>`. Ein bereits vorhandener Versionsordner wird ohne erneute Archiv- oder Inhaltsprüfung verwendet.
 
-Der lokale Ablauf setzt deshalb einen neuen `CACHEDIR` je Lauf und bewahrt ihn auf. Nach dem Build vergleicht er außerdem das geladene Gradle-ZIP mit der schon festgelegten `bin`-Prüfsumme in `toolchain.json`. Das ist ein zusätzlicher Nachweis nach der Ausführung, keine vorgeschaltete Prüfung durch `gradlew.py`. Innerhalb eines Laufs kann Gradle mehrfach gestartet und der entpackte Stand wiederverwendet werden. Die Gradle-Abhängigkeiten liegen getrennt unter `gradle-home`; deren Prüfsummenfestlegung bleibt offen.
+Der lokale Ablauf setzt `cachedir` in `config.yml` auf den neuen Ordner `fdroid-cache` des jeweiligen Laufs. fdroidserver 2.4.2 übergibt diesen Wert als `CACHEDIR` an seine Unterprozesse; `gradlew.py` übernimmt ihn. Die Protokolle von Lauf 2 und 3 nennen genau diesen Cache und starten daraus `versions/8.14.5/bin/gradle`. Eine zusätzlich gesetzte Umgebungsvariable für `gradlew-cache` wird deshalb entfernt: Sie hatte in diesen Aufrufen keine Wirkung und ließ die nachträgliche Archivprüfung am falschen Ort suchen.
+
+Nach dem Build vergleicht das Skript `fdroid-cache/gradle-8.14.5-bin.zip` mit der festgelegten `bin`-Prüfsumme in `toolchain.json` und schreibt Pfad, Größe und SHA-256 nach `gradle-archiv.json`. Das ist ein zusätzlicher Nachweis nach der Ausführung, keine vorgeschaltete Prüfung durch `gradlew.py`. Innerhalb eines Laufs kann Gradle mehrfach gestartet und der entpackte Stand wiederverwendet werden. `gradle_checksums.json` und gegebenenfalls `etag` liegen ebenfalls unter `fdroid-cache`. Die Gradle-Abhängigkeiten liegen getrennt unter `gradle-home`; deren Prüfsummenfestlegung bleibt offen.
 
 ### Einrichtung und Prüfung
 
@@ -239,7 +241,7 @@ Der lokale Ablauf setzt deshalb einen neuen `CACHEDIR` je Lauf und bewahrt ihn a
 | `bash scripts/gradlew-fdroid-einrichten.sh` | Lädt ausschließlich die festgehaltene `gradlew.py` über HTTPS, prüft SHA-256, legt sie ausführbar im Benutzerbereich ab. Installiert nichts im System und startet das Programm nicht. |
 | `bash scripts/gradlew-fdroid-einrichten.sh --nur-pruefen` | Prüft Bestand, reguläre Datei, Prüfsumme und unter Linux das Ausführungsrecht. Fehlender oder abweichender Stand scheitert ohne Download. |
 
-Die Werte liest der Python-Kern aus `scripts/toolchain.json`. Eine vorhandene Datei oder ein vorhandener Commit-Ordner wird nie ersetzt, auch kein leerer Ordner. Der eigene Ordner `einrichten-*` bleibt nach Erfolg oder Fehler erhalten. Ein Probelauf bestätigt keinen tatsächlichen HTTPS-Download. Die Bash-Hülle und der echte Transport sind erst in Debian zu prüfen.
+Die Werte liest der Python-Kern aus `scripts/toolchain.json`. Eine vorhandene Datei oder ein vorhandener Commit-Ordner wird nie ersetzt, auch kein leerer Ordner. Der eigene Ordner `einrichten-*` bleibt nach Erfolg oder Fehler erhalten. Am 2026-09-29 lief die Einrichtung unter Debian erfolgreich: 23 977 Bytes, SHA-256 wie oben, Rückgabewert 0. Der anschließende Aufruf mit `--nur-pruefen` bestätigte den Bestand ohne Download, ebenfalls mit Rückgabewert 0 (`linux-28-lauf1.log`).
 
 ## Lokales Rezept für die Minimal-App
 
@@ -249,17 +251,95 @@ Aufruf unter Debian: `bash scripts/fdroid/minimal-app-bauen.sh --repo "$HOME/fdr
 
 Jeder echte Lauf bekommt einen neuen Ordner `lauf-*`, neue npm-, Gradle- und F-Droid-Caches, eine eigene Konfiguration und ein zusammengeführtes `build.log`. Die Konfiguration setzt `gradle` auf die geprüfte `gradlew.py`. Die Versionen von fdroidserver, Node und npm, das gewählte JDK und das vorhandene SDK werden vorab geprüft. Es gibt keine Installation im System, keine automatische SDK-Einrichtung und keine Bereinigung alter Läufe. Auch die Skripte löschen keine angegebenen Ordner. F-Droid darf seinen eigenen neuen Klon bearbeiten; dort entfernt sein Scanner beispielsweise den eingecheckten Gradle-Wrapper.
 
+Der Laufordner wird außerdem zu einem eigenen Git-Repository; nur das Rezept unter `metadata/<App-ID>.yml` wird dort eingecheckt. Autor- und Commitzeit entsprechen dem Commit der gebauten App, hier Unix-Zeit `1790607692`. Das ist für fdroidserver 2.4.2 vor dem ersten Holen der Quelle nötig: `common.get_source_date_epoch` findet den Bauordner noch nicht und greift auf den letzten Commit des Rezepts zurück. Ohne dieses Repository liefert die Funktion keinen Zeitwert; `set_FDroidPopen_env` bricht dann beim Setzen von `SOURCE_DATE_EPOCH` ab. Der Quelltextauszug in `fdroid-quelle-lesen.log` und der Übergang von Lauf 1 zu Lauf 2 belegen diesen Ablauf.
+
 Die Vorbereitung läuft wie bei den am 2026-09-28 gelesenen Capacitor-Rezepten vor dem Scanner: `npm ci --ignore-scripts --no-audit --no-fund`, Web-Build, lokales `cap sync android`. Es wird kein `npx` verwendet. `npm ci` lädt und installiert Pakete ausschließlich in diesen Build-Klon; Installationsskripte bleiben abgeschaltet. Tests werden hier nicht ausgeführt. Das Lockfile und zwei Dateiinventare vor und nach dem Web-Build werden im Lauf aufbewahrt. Die Inventur sucht Endungen sowie ELF und WASM am Dateianfang, hält Größe und SHA-256 fest und scheitert bei Lesefehlern. Sie ist keine vollständige Erkennung eingebetteten WASM in JavaScript.
 
-Der erste Lauf hat weder `scanignore` noch `scandelete`. Vorgebaute npm-Dateien können ihn erwartungsgemäß stoppen. Für den ausdrücklich bezeichneten Vergleich gibt es `--versuch-scandelete`: Nur dessen erzeugtes Rezept erhält `scandelete: [node_modules]`, entsprechend dem Muster der gelesenen Capacitor-Rezepte. Das ist ein Versuch zur offenen F5, keine freigegebene Regel für die App. Der Scanner entfernt dabei nur erkannte beanstandete Dateien, nicht den ganzen Ordner. Eingebettetes WASM kann übrig bleiben. Die drei Gradle-Dateien von Capacitor Android, Filesystem und Share müssen nach dem Scanner noch vorhanden sein; sonst bricht der Build ab. Die vollständigen Android-Quellen werden weiterhin vom Scanner erfasst.
+Der normale Aufruf hat weder `scanignore` noch `scandelete`. Für den ausdrücklich bezeichneten Vergleich gibt es `--versuch-scandelete`: Nur dessen erzeugtes Rezept erhält `scandelete: [node_modules]`, entsprechend dem Muster der gelesenen Capacitor-Rezepte. Das ist ein Versuch zur offenen F5, keine freigegebene Regel für die App. Der Scanner entfernt dabei nur erkannte beanstandete Dateien, nicht den ganzen Ordner. Eingebettetes WASM kann übrig bleiben. Die drei Gradle-Dateien von Capacitor Android, Filesystem und Share müssen nach dem Scanner noch vorhanden sein; sonst bricht der Build ab. Die vollständigen Android-Quellen werden weiterhin vom Scanner erfasst.
 
 ### Auswertung und Grenzen
 
-`build-auswerten.py` liest den Rückgabewert, `build.log` und `unsigned/de.baremos.fristenrechner.probe_1.apk`. Rückgabe 0 allein reicht nicht. Erwartet werden jeweils genau einmal und in Reihenfolge: Beginn für die richtige Version/App-ID, Scanner-Beginn, Build-Erfolg und Ende. Warnungen, Fehler, Tracebacks und `BUILD FAILED` führen zu Beanstandungen; nach dem Ende darf kein weiterer Text folgen. Die Stufe wird nur aus dem Kopf einer Protokollmeldung gelesen. Die APK muss regulär, nicht leer und ein konsistentes ZIP mit `AndroidManifest.xml` und `classes.dex` sein. Größe und SHA-256 stehen zusammen mit Beanstandungen in `auswertung.json`; vorhandene Berichte werden nicht überschrieben.
+`build-auswerten.py` liest den Rückgabewert, `lauf.json`, `build.log` und `unsigned/de.baremos.fristenrechner.probe_1.apk`. Rückgabe 0 allein reicht nicht. Der erwartete Commit und die Kennzeichnung `scandeleteVersuch` stammen aus `lauf.json`. Die Erfolgsmeldung muss neben App-ID und Version genau diesen vollen Commit nennen. Auch Scanner-Beginn, `success: <App-ID>`, `Finished` und `1 build succeeded` gehören zum vollständigen Nachweis; sie müssen in der erwarteten Reihenfolge stehen. Nach dem Abschluss sind nur die beobachteten DEBUG-Meldungen zum deaktivierten Bereitstellen der Buildprotokolle zulässig.
 
-**Noch nicht durch einen echten Build belegt:** Die vier genauen INFO-Texte im Auswerter sind vorläufig. Der erste Debian-Lauf muss sie an fdroidserver 2.4.2 bestätigen. Ein anderer Wortlaut wird als unvollständiger Nachweis abgelehnt. Die ZIP-Prüfung ersetzt weder die Android-Prüfung von F-Droid noch Signaturprüfung, Vergleich der APK oder Reproduzierbarkeitsnachweis. Die Pfadprüfungen schützen vor Versehen, nicht vor einem gleichzeitigen Austausch durch Prozesse desselben Benutzers.
+Die bekannten Meldungen stehen einzeln in [`scripts/fdroid/bekannte-meldungen.json`](../scripts/fdroid/bekannte-meldungen.json) neben der Auswertung. Diese eigene Datendatei hält für jeden Meldungstyp das vollständige Muster, die Höchstzahl je Lauf, den Kontext, die Herkunft, den Grund und das Beobachtungsdatum fest. Die Auswertung verwendet die Muster als vollständigen Zeilenvergleich; zusätzliche Kontextprüfungen bleiben im Skript. Die Liste ist bei jeder Änderung an Abhängigkeiten zu prüfen.
+
+| Bekannte Meldung / enges Muster | Höchstens je Lauf | Herkunft | Grund | Beobachtet |
+|---|---|---|---|---|
+| `NoSuchPathError: build/<App-ID>`; nur vor dem ersten Holen des erwarteten Commits, ohne Folgezeilen | 1 | fdroidserver 2.4.2, Ermittlung von `SOURCE_DATE_EPOCH` | Der Bauordner fehlt noch; der Rezept-Commit liefert den Zeitpunkt. | 2026-09-29 |
+| `WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.` | 4; je einmal für `:app` und `:capacitor-cordova-android-plugins` in `clean` und `assembleRelease` | Gradle, Android-Vorlage von Capacitor 8.5.2 | Die Vorlage verwendet `flatDir`; die fehlenden Metadaten verhindern den beobachteten Build nicht. | 2026-09-29 |
+| `npm warn deprecated uuid@7.0.3: …`; kompletter Wortlaut einschließlich Jahreszahl 2028 festgelegt | 1, nur im `prebuild` | npm, Abhängigkeit `uuid` 7.0.3 der Minimal-App | Veraltet-Markierung genau dieser Paketversion; Installation und Build laufen damit durch. | 2026-09-29 |
+| `Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. …`; kompletter Wortlaut festgelegt | 1, nur in `assembleRelease` | Android-Gradle-Plugin 8.13.0; bekannte Einschränkung 8 in [toolchain.md](toolchain.md#bekannte-einschränkungen) | Paketbeschreibungen in Format 4 treffen auf einen Leser bis Format 3; der Build läuft durch. | 2026-09-29 |
+| `FilesystemPlugin.kt:335:31 'fun downloadFile(call: PluginCall): Unit' is deprecated. Use @capacitor/file-transfer plugin instead.` | 1, nur im Task `:capacitor-filesystem:compileReleaseKotlin` in `assembleRelease` | Plugin-Quelltext `@capacitor/filesystem` 8.1.3 | Das Plugin verwendet seine veraltete Methode; die Stelle gehört nicht zum Projektcode. | 2026-09-29 |
+| `LegacyFilesystemImplementation.kt:66:29 Java type mismatch: inferred type is 'String?', but 'String' was expected.` | 1, nur im Task `:capacitor-filesystem:compileReleaseKotlin` in `assembleRelease` | Plugin-Quelltext `@capacitor/filesystem` 8.1.3 | Der Compiler meldet im Plugin einen Typ, der leer sein kann, wo ein fester erwartet ist; die Stelle gehört nicht zum Projektcode. | 2026-09-29 |
+
+Bei Kotlin ist der vollständige Dateipfad ab `node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/` festgelegt; nur der absolute Pfadanfang darf wechseln. Außerdem muss `prebuild` die Plugin-Version 8.1.3 ausweisen. Andere Dateien, Zeilen, Spalten, Versionen und Wortlaute erhalten keine Ausnahme.
+
+JSON-Bericht und Konsolenausgabe nennen jeden bekannten Meldungstyp mit seiner Zahl, auch mit 0. Einzelne Fundstellen behalten Zeile und Kontext. Fehlende bekannte Meldungen sind zulässig; jede Überschreitung der Höchstzahl ist eine Beanstandung und bleibt vollständig gezählt. Andere Warnungen, Fehler, Tracebacks, `BUILD FAILED` und unbekannte Zeilen ohne Kopf bleiben Beanstandungen. Das gilt auch für andere veraltete npm-Pakete und andere Kotlin-Warnungen. Entfernte Dateien werden mit Ort aufgeführt; ein Lauf mit Scanner-Löschungen kann nur als ausdrücklich gekennzeichneter `scandelete`-Versuch bestehen.
+
+Die APK muss regulär, nicht leer und ein konsistentes ZIP mit `AndroidManifest.xml` und `classes.dex` sein. Größe und SHA-256 stehen mit Beanstandungen, bekannten Meldungen und entfernten Dateien in `auswertung.json`; vorhandene Berichte werden nicht überschrieben. Das Protokollformat ist an den drei Läufen vom 2026-09-29 mit fdroidserver 2.4.2 geprüft. Die ZIP-Prüfung ersetzt weder die Android-Prüfung von F-Droid noch Signaturprüfung, Vergleich der APK oder Reproduzierbarkeitsnachweis. Die Pfadprüfungen schützen vor Versehen, nicht vor einem gleichzeitigen Austausch durch Prozesse desselben Benutzers.
 
 Zu sichern sind der ganze Laufordner, `lauf.json`, Rezept, Konfiguration, `rueckgabe.json`, `build.log`, `auswertung.json`, Lockfile, beide npm-Inventare, Gradle-Prüfsummendaten samt ETag und `gradle-archiv.json`. Ein fehlgeschlagener Lauf bleibt genauso erhalten. Die vollständige Umgebung und der Programmstand der Skripte gehören in das Begleitprotokoll. Als Vergleichswert aus dem Build ohne F-Droid dient die oben genannte unsignierte APK mit SHA-256 `a491907e4b44ba1306bf67651e9d36d363b717bf1a7f760ebe481bf9fccf9350`.
+
+## Drei lokale Läufe am 2026-09-29
+
+Die Läufe erfolgten in Debian 13.5 unter WSL 2 mit fdroidserver 2.4.2-1, Python 3.13.5, Node.js 24.21.0, npm 11.19.0, OpenJDK 21.0.12.1, Gradle 8.14.5, Android-Gradle-Plugin 8.13.0 und den Build-Tools 35.0.0. Gebaut wurde ausschließlich die Minimal-App `de.baremos.fristenrechner.probe`, Version 1.0 (1), Commit `d27fb91d6584822b4803ac30cf79f9e1049e9a38`. Ihr Lockfile nennt Astro 7.3.3, Capacitor 8.5.2, Filesystem 8.1.3 und Share 8.0.2.
+
+| Lauf | Ablauf und beobachtetes Ergebnis | Rückgabewert von `fdroid build` |
+|---|---|---|
+| 1, `lauf-j3yi1ch9` | Kein Git-Repository im Laufordner. Vor dem Holen der Quelle Abbruch in `set_FDroidPopen_env`: `TypeError: str expected, not NoneType`. Scanner nicht erreicht, keine APK. | 0 |
+| 2, `lauf-zoz605j4` | Rezept im Laufordner eingecheckt. Quelle geholt, `prebuild` und `Cleaning Gradle project` mit `BUILD SUCCESSFUL`; anschließend zehn Scannerfehler unter `node_modules`, `1 build failed`, keine APK. | 0 |
+| 3, `lauf-05pd1ynl` | Als `--versuch-scandelete` gekennzeichnet. Scanner entfernt die zehn beanstandeten Dateien und `android/gradle/wrapper/gradle-wrapper.jar`. Android-Build endet erfolgreich; die unsignierte APK ist bytegleich zu den Vergleichsbuilds ohne F-Droid unter Linux und Windows. | 0 |
+
+Der erfolgreiche Abschluss von Lauf 3 lautet in `build.log`:
+
+```text
+INFO: Successfully built version 1.0 of de.baremos.fristenrechner.probe from d27fb91d6584822b4803ac30cf79f9e1049e9a38
+INFO: success: de.baremos.fristenrechner.probe
+INFO: Finished
+INFO: 1 build succeeded
+```
+
+Damit ist auch für `fdroid build` in 2.4.2 belegt: Rückgabewert 0 unterscheidet diese Erfolge und Fehlschläge nicht. `BUILD SUCCESSFUL` beim Bereinigen in Lauf 2 ist ebenfalls kein Erfolg des App-Builds.
+
+| Nachweis | Größe / SHA-256 |
+|---|---|
+| APK aus Lauf 3, `unsigned/de.baremos.fristenrechner.probe_1.apk` | 3 251 043 Bytes; `a491907e4b44ba1306bf67651e9d36d363b717bf1a7f760ebe481bf9fccf9350` |
+| Gradle-Archiv unter `fdroid-cache/gradle-8.14.5-bin.zip` | `6f74b601422d6d6fc4e1f9a1ab6522f642c2fdcbc15ae33ebd30ba3d7198e854`, gleich `bin` in `scripts/toolchain.json` |
+| Lockfile der Minimal-App, in Lauf 2 und 3 bytegleich | `ebb1c446a701eef0f560cb1682ced382d4a6bb0925361b4edfe9dd6b0b897ed9` |
+| Jeweils beide npm-Inventare aus Lauf 2 und 3, alle vier bytegleich | `0990feb942ca3a534c8b81ac16d5761de9cda18e0ac5f3fde522802b0993eb7c` |
+
+Die Archivprüfung des damaligen Ablaufskripts suchte unter `gradlew-cache`; deshalb meldete sie „Gradle-Nachweis fehlt“ und erzeugte kein `gradle-archiv.json`. Der tatsächliche Cacheort steht in `config.yml` und in den Ausgaben von `gradlew.py` in beiden Buildprotokollen. Der oben genannte Archivhash stammt aus der anschließenden Prüfung des Debian-Laufordners; das Archiv selbst gehört nicht zur hier ausgewerteten Kopie der Textnachweise. Die korrigierte Archivprüfung ist noch in einem erneuten echten Debian-Lauf zu belegen.
+
+Die damalige `auswertung.json` aus Lauf 3 enthält sieben Beanstandungen: die Warnung zum noch fehlenden Bauordner, viermal `flatDir`, den damals nicht erkannten Erfolgstext und den dadurch fehlenden Erfolgsmarker. Diese historischen Berichte bleiben unverändert. Die erneute Prüfung berücksichtigt zusätzlich die Warnungen ohne F-Droid-Kopf: npm meldet `uuid@7.0.3` als veraltet; das SDK meldet XML-Version 4 bei einem Leser bis Version 3; Kotlin meldet in Capacitor Filesystem die veraltete Methode `downloadFile` und eine Typabweichung `String?` gegenüber `String`. Die oben aufgeführte Liste begrenzt die bekannten Meldungen auf ihre genaue Herkunft und ihren Wortlaut.
+
+Die erneute Auswertung der drei Originalprotokolle am 2026-09-29 endet für Lauf 1 mit 31 Beanstandungen und für Lauf 2 mit 17 Beanstandungen, darunter dessen zehn Scannerfehler. Lauf 3 besteht mit Kennzeichnung `scandelete` ohne Beanstandung. Ohne Kennzeichnung scheitert er mit einer Beanstandung, wegen der elf Entfernungen durch den Scanner.
+
+Lauf 3 weist neun bekannte Meldungen aus: einmal `NoSuchPathError`, viermal `flatDir`, einmal `uuid@7.0.3`, einmal die SDK-XML-Warnung, einmal `downloadFile` aus `FilesystemPlugin.kt:335:31` und einmal die Typabweichung aus `LegacyFilesystemImplementation.kt:66:29`. Die beiden Warnungen von Kotlin sind zwei verschiedene Meldungen an zwei Stellen desselben Plugins und stehen einzeln in der Liste. Gegenproben mit anderer Zeile, anderer Datei, anderem Wortlaut und mit einer Meldung zu oft scheitern.
+
+Die echte APK aus Lauf 3 wurde zusammen mit dem vollständigen Originalprotokoll erneut geprüft: konsistentes ZIP mit `AndroidManifest.xml` und `classes.dex`, 3 251 043 Bytes, SHA-256 `a491907e4b44ba1306bf67651e9d36d363b717bf1a7f760ebe481bf9fccf9350`. Der Wert entspricht dem bisherigen Vergleichswert. Die Originalnachweise wurden nur gelesen, neue Berichte liegen im ausgeschlossenen lokalen Probeordner. Die APK wird nicht in das Repository übernommen. Automatische Tests erzeugen weiterhin kleine ZIP-Dateien und benötigen keine privaten Nachweise.
+
+Beleggrundlage sind `linux-28-vorbereitung.log`, `linux-28-lauf1.log` bis `linux-28-lauf3.log`, die zugehörigen `build.log`, `lauf.json`, `rueckgabe.json`, Rezepte, Konfigurationen, Inventare und Lockfiles sowie `fdroid-quelle-lesen.log`. Die Vorbereitung der Skripte in Debian auf Stand `660bd70` meldet 524 bestandene und sechs übersprungene Tests bei Rückgabewert 0; beide Probeläufe waren erfolgreich. Das ist der damalige Prüfstand, kein Testlauf der jetzt angepassten Skripte.
+
+**Grenzen:** Minimal-App mit einer Seite, ein Rechner und ein Tag, lokale Builds mit fdroidserver 2.4.2 aus Debian. Kein Lauf auf dem Buildserver von F-Droid, keine Annahme durch F-Droid und kein Nachweis für das Rezept der späteren App. Der bytegleiche APK-Vergleich gilt nur für die genannten Eingaben und Umgebungen. Die Fassung des aktuellen Buildservers und seine Scanregeln sind damit nicht geprüft.
+
+### Die zehn Scannerdateien als Beleg zu F5
+
+Alle Pfade in der Tabelle liegen unter `node_modules/`. Lauf 2 meldet sie als Fehler, Lauf 3 als entfernt. Die Reihenfolge entspricht den Protokollen.
+
+| Datei | Meldung des Scanners / Paketversion laut Lockfile |
+|---|---|
+| `@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.6` | `shared library`; Paket 1.3.3 |
+| `shiki/dist/onig.wasm` | `WebAssembly binary file`; Shiki 4.4.3 |
+| `@astrojs/astro2tsx/astro2tsx.wasm32-wasi.wasm` | `WebAssembly binary file`; astro2tsx 0.1.0 |
+| `@esbuild/linux-x64/bin/esbuild` | `binary`; esbuild 0.28.2 |
+| `@capacitor/cli/assets/ios-pods-template.tar.gz` | `gzip file archive`; Capacitor CLI 8.5.2 |
+| `@capacitor/cli/assets/capacitor-cordova-android-plugins.tar.gz` | `gzip file archive`; Capacitor CLI 8.5.2 |
+| `@capacitor/cli/assets/capacitor-cordova-ios-plugins.tar.gz` | `gzip file archive`; Capacitor CLI 8.5.2 |
+| `@capacitor/cli/assets/ios-spm-template.tar.gz` | `gzip file archive`; Capacitor CLI 8.5.2 |
+| `@capacitor/cli/assets/android-template.tar.gz` | `gzip file archive`; Capacitor CLI 8.5.2 |
+| `xxhash-wasm/workerd/xxhash.wasm` | `WebAssembly binary file`; xxhash-wasm 1.1.0 |
+
+Die zusätzliche Entfernung von `android/gradle/wrapper/gradle-wrapper.jar` gehört zur Behandlung des Gradle-Wrappers durch F-Droid; sie ist keiner der zehn npm-Funde.
 
 ## F5: Trennung nach dem aktuellen Lockfile, Vorschlag
 
@@ -279,22 +359,55 @@ Gelesen am 2026-09-29: Lockfile und installierte Quellen zum Stand `908821a`. Mi
 | `@astrojs/astro2tsx` 0.1.1 | MIT | `@astrojs/check` → language-server; WASM | Nur Typprüfung; getrennt vom App-Build behandeln |
 | Vitest 4.1.11 und eigene Testpakete | MIT | Tests; die nativen Vite-Werkzeuge werden auch von Astro genutzt | Tests gesondert ausführen; Vitest allein zu entfernen beseitigt die geteilten Programme nicht |
 
-**Empfehlung, noch nicht entschieden:** Den Web-Build mit dokumentierten freien Werkzeugen ausführen, danach die entbehrlichen npm-Werkzeuge einschließlich eingebettetem WASM gezielt entfernen und erst dann Scanner und Android-Build laufen lassen. Die Java-/Kotlin-Quellen und Gradle-Dateien von `@capacitor/android`, `@capacitor/filesystem` und `@capacitor/share` bleiben erhalten. Keine pauschale `scanignore`-Ausnahme. Der breite `scandelete`-Vergleich allein belegt weder vollständige Entfernung noch die Annahme durch F-Droid.
+### Was die Inventare der Minimal-App zeigen
+
+In Lauf 2 und 3 enthalten die Inventare vor dem Web-Build und nach Web-Build plus `cap sync` jeweils dieselben zehn Dateien mit gleicher Größe und SHA-256. Fünf davon sind die oben aufgeführten Scannerfunde libvips, esbuild und die drei WASM-Dateien. Die übrigen fünf sind native Node-Bindungen:
+
+| Datei unter `node_modules/` | Paketversion laut Lockfile |
+|---|---|
+| `@astrojs/compiler-binding-linux-x64-gnu/astro.linux-x64-gnu.node` | 0.4.1 |
+| `@bruits/satteri-linux-x64-gnu/satteri_napi.linux-x64-gnu.node` | 0.10.5 |
+| `@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.4.node` | 0.35.4 |
+| `@rolldown/binding-linux-x64-gnu/rolldown-binding.linux-x64-gnu.node` | 1.2.9 |
+| `lightningcss-linux-x64-gnu/lightningcss.linux-x64-gnu.node` | 1.33.0 |
+
+Für diese fünf `.node`-Dateien enthält Lauf 3 keine Entfernungsmeldung. Umgekehrt erfasst die Inventur die fünf `.tar.gz`-Archive nicht, die der Scanner beanstandet. Die Zahl zehn ist daher bei Scanner und Inventar zufällig gleich; die Mengen sind verschieden. Ein Inventar nach dem Scanner liegt nicht vor. Ebenso wenig beweist das unveränderte Inventar, welche Programme der Web-Build tatsächlich ausgeführt hat. Es belegt aber, dass Web-Build und `cap sync` die erfassten Werkzeuge nicht selbst wegräumen. Die Inventur erfasst außerdem nicht vollständig WASM, das in JavaScript eingebettet ist.
+
+### Vorschlag für das spätere Rezept, keine Festlegung
+
+**Empfehlung zur Erprobung: beides mit getrennten Aufgaben.** Im `prebuild` nach Web-Build **und** `cap sync android` die entbehrlichen npm-Werkzeuge anhand einer geprüften Paketliste gezielt entfernen. Das umfasst auch ganze entbehrliche Pakete mit eingebettetem WASM, native `.node`-Dateien sowie CLI-Vorlagen. Die Java-/Kotlin-Quellen und Gradle-Dateien von `@capacitor/android`, `@capacitor/filesystem` und `@capacitor/share` bleiben erhalten. Dass die zehn Scannerdateien nach `cap sync` für den Android-Build der Minimal-App entbehrlich sind, ist durch Lauf 3 belegt. Für die fünf `.node`-Dateien und weitere Pakete ist der entsprechend bereinigte Build erst noch nachzuweisen.
+
+Ergänzend `scandelete` für die untersuchten npm-Bereiche erproben und jede dadurch entfernte Datei im Bericht behalten. Es soll neu hinzugekommene Scannerfunde sichtbar machen, aber nicht die gezielte Bereinigung ersetzen: Der beobachtete Scanner entfernt die fünf `.node`-Dateien nicht und bietet keinen Vollständigkeitsnachweis für eingebettetes WASM. Unerwartete Löschungen müssen ins Review des Rezepts; eine pauschale `scanignore`-Ausnahme wird nicht vorgeschlagen.
+
+| Variante | Bewertung anhand von Lauf 2 und 3 |
+|---|---|
+| Nur `scandelete: [node_modules]` | Der Android-Build der Minimal-App gelingt; die Bereinigung erfasst aber nur die vom Scanner erkannten Dateien. |
+| Nur gezieltes Löschen nach Web-Build und `cap sync` | Macht die Trennung der Werkzeuge von den Android-Quellen überprüfbar und kann auch `.node` sowie eingebettetes WASM erfassen; Liste und Build müssen bei Änderungen der Pakete erneut geprüft werden. |
+| Gezielt löschen, ergänzend `scandelete` | Vorschlag für den nächsten Versuch: bewusste Paketbereinigung plus ausgewiesene Scanner-Löschungen; kein Ersatz für Inventar, Lizenzen und Prüfung des ausgelieferten Inhalts. |
+
+Vor einer Entscheidung zu F5 fehlen ein zusätzlicher Vergleich des Inventars nach der gezielten Bereinigung, nach dem Scanner und mit dem Inhalt der APK sowie ein erfolgreicher Build der späteren App. Die breite `scandelete`-Probe allein belegt weder die vollständige Entfernung vorgebauter Programme noch die Annahme durch F-Droid.
 
 `--omit=dev` trennt diese Rollen nicht zuverlässig. `--omit=optional` entfernt auch benötigte Compiler- und Bundler-Pakete. Plattformpakete für macOS, Windows, musl und WASM-Ausweichpakete sind von tatsächlich unter Debian x64 verwendeten Programmen zu unterscheiden.
 
-Die Minimal-App `d27fb91` hat ein anderes Lockfile: Im vorhandenen Nachweis stehen 488 Einträge mit `resolved`, nach `npm ci` 394 installierte Pakete. Eine vollständige Binärinventur dieser App liegt noch nicht vor. Die aktuelle saubere Linux-Kopie des Paket-Repositorys hat 321 installierte Pakete und 412 Fremdpakete laut Lizenzprüfung; sie ist ebenfalls kein vollständiger App-Build. Die Tabelle darf deshalb nicht als beobachtete Paketliste der Minimal-App oder der fertigen Android-App gelesen werden.
+Die Minimal-App `d27fb91` hat ein anderes Lockfile: 488 Einträge mit `resolved`, nach `npm ci` 394 installierte Pakete. Beispielsweise enthält sie astro2tsx 0.1.0 statt 0.1.1 aus der ersten Tabelle. Die aktuelle saubere Linux-Kopie des Paket-Repositorys hat 321 installierte Pakete und 412 Fremdpakete laut Lizenzprüfung; sie ist ebenfalls kein vollständiger App-Build. Die erste Tabelle darf deshalb nicht als beobachtete Paketliste der Minimal-App oder der fertigen Android-App gelesen werden.
 
-## Prüfung der neuen Skripte unter Windows
+## Prüfung der ersten Fassung der Skripte unter Windows
 
 Geprüft am 2026-09-29 mit Node.js 22.23.2 und npm 10.9.8, ohne Downloads: 107 neue Tests mit `node:test`, davon 18 für die Einrichtung, 66 für die Build-Auswertung und 23 für Vorbereitung und Inventar. Jeder Test enthält einen gültigen Fall und eine Gegenprobe, die scheitern muss. Die Tests stellen HTTPS, Git- und Buildprozesse nach; Protokolle und APK-ZIPs sind Testdaten. Sie sind kein Nachweis eines echten F-Droid-Builds. Die Syntaxprüfung beider neuen Bash-Einstiege mit dem vorhandenen Git Bash ist bestanden.
 
-Der gesamte Aufruf `npm test` besteht mit 530 Skripttests, 134 Kerntests und 68 Oberflächentests, ohne Fehler oder übersprungene Tests. `npm run check` besteht: 15 Dateien der Oberfläche, 0 Fehler, 1 Hinweis auf eine ungenutzte Variable; Astro meldet außerdem das fehlende Seitenverzeichnis des Komponentenpakets. `npm run build` besteht und baut weiterhin nur den Rechenkern. `npm run lizenzen` besteht für 412 Fremdpakete. Diese Lizenzprüfung erteilt keine F-Droid-Freigabe für vorgebaute Programme.
+Der damalige gesamte Aufruf `npm test` bestand mit 530 Skripttests, 134 Kerntests und 68 Oberflächentests, ohne Fehler oder übersprungene Tests. `npm run check` bestand: 15 Dateien der Oberfläche, 0 Fehler, 1 Hinweis auf eine ungenutzte Variable; Astro meldete außerdem das fehlende Seitenverzeichnis des Komponentenpakets. `npm run build` bestand und baute nur den Rechenkern. `npm run lizenzen` bestand für 412 Fremdpakete. Diese Zahlen beschreiben die erste Fassung vor der Anpassung an die drei echten Protokolle. Die Lizenzprüfung erteilt keine F-Droid-Freigabe für vorgebaute Programme.
+
+## Prüfung der angepassten Skripte unter Windows
+
+Erneut geprüft am 2026-09-29 mit Node.js 22.23.2, npm 10.9.8 und Python 3.14.6: `npm test` besteht mit 606 Skripttests, 134 Kerntests und 68 Oberflächentests; keine Fehler, keine übersprungenen Tests. Die Skripttests enthalten 140 Prüfungen der Build-Auswertung sowie 25 Prüfungen der Build-Vorbereitung und Inventur. Nach der Korrektur der Projektangaben im Bericht wurden alle 140 Auswertungstests erneut ausgeführt: bestanden, Rückgabewert 0. Sie prüfen unter anderem andere uuid-Versionen, andere veraltete npm-Pakete, geänderte SDK-Zahlen, andere Kotlin-Dateien, Zeilen, Spalten und Wortlaute, falsche Kontexte sowie überschrittene Höchstzahlen für jeden bekannten Meldungstyp. Protokolle aus allen drei Debian-Läufen liegen anonymisiert unter `scripts/fdroid/fixtures/`; die Tests benötigen keine privaten Dateien.
+
+Danach liefen nacheinander `npm run check`, `npm run build` und `npm run lizenzen`, jeweils mit Rückgabewert 0. Die Typprüfung umfasst 15 Dateien der Oberfläche: 0 Fehler, 0 Warnungen im Diagnoseergebnis, 1 Hinweis auf die ungenutzte Variable `runde2Aktiv`. Astro meldet zusätzlich das fehlende Seitenverzeichnis des Komponentenpakets. Der Build baut weiterhin nur den Rechenkern; die Lizenzprüfung umfasst 412 Fremdpakete. Ein neuer Android- oder F-Droid-Build wurde dabei nicht ausgeführt.
 
 ## Nächste Schritte
 
 1. Erledigt am 2026-09-29: Node.js und das Android SDK unter Linux eingerichtet, nach F3 und F4.
 2. Erledigt am 2026-09-29: Minimal-App unter Linux gebaut, ohne die Werkzeuge von F-Droid.
-3. Rezept und Skripte sind vorbereitet und unter Windows mit nachgestellten Abläufen geprüft. Der echte Aufruf von `fdroid build` in Debian steht aus.
-4. Scanner nach den Vorbereitungsschritten prüfen, F5 anhand der Vergleichsläufe entscheiden.
-5. Am Ende von Stufe 2: alles mit der App wiederholen.
+3. Erledigt am 2026-09-29: drei lokale Aufrufe von `fdroid build` in Debian; mit `--versuch-scandelete` entstand die bytegleiche Minimal-APK.
+4. Die noch offene Legacy-Warnung aus Lauf 3 bewerten; danach angepasste Auswertung und Archivprüfung erneut im echten Debian-Ablauf prüfen.
+5. Den vorgeschlagenen bereinigten Build erproben und F5 anhand der Inventare und Vergleichsläufe entscheiden; F6 bleibt offen.
+6. Am Ende von Stufe 2: alles mit der App wiederholen; den Nachweis mit dem dann verwendeten Buildserver von F-Droid gesondert führen.

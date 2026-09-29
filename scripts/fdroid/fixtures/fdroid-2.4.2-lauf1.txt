@@ -1,0 +1,41 @@
+2026-09-29 15:30:21,768 DEBUG: Reading 'config.yml'
+2026-09-29 15:30:21,769 INFO: Creating log directory
+2026-09-29 15:30:21,770 INFO: Creating output directory
+2026-09-29 15:30:21,771 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:30:21,771 INFO: Creating build directory
+2026-09-29 15:30:21,777 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:30:21,777 DEBUG: Getting git vcs interface for file:///opt/probe/minimal-app
+2026-09-29 15:30:21,777 DEBUG: Checking de.baremos.fristenrechner.probe:1
+2026-09-29 15:30:21,777 INFO: Building version 1.0 (1) of de.baremos.fristenrechner.probe
+2026-09-29 15:30:21,779 WARNING: NoSuchPathError: build/de.baremos.fristenrechner.probe
+2026-09-29 15:30:21,783 ERROR: Could not build app de.baremos.fristenrechner.probe due to unknown error: Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/fdroidserver/build.py", line 1198, in main
+    if trybuild(app, build, build_dir, output_dir, log_dir,
+       ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                also_check_dir, srclib_dir, extlib_dir,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                tmp_dir, repo_dir, vcs, options.test,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                options.server, options.force,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                options.onserver, options.refresh):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/fdroidserver/build.py", line 941, in trybuild
+    build_local(app, build, vcs, build_dir, output_dir, log_dir, srclib_dir, extlib_dir, tmp_dir, force, onserver, refresh)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/fdroidserver/build.py", line 482, in build_local
+    common.set_FDroidPopen_env(app, build)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/fdroidserver/common.py", line 3294, in set_FDroidPopen_env
+    env['SOURCE_DATE_EPOCH'] = get_source_date_epoch(get_build_dir(app))
+    ~~~^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen os>", line 722, in __setitem__
+  File "<frozen os>", line 796, in encode
+TypeError: str expected, not NoneType
+
+2026-09-29 15:30:21,785 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:30:21,785 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:30:21,785 INFO: Finished
+2026-09-29 15:30:21,785 INFO: 1 build failed
+2026-09-29 15:30:21,785 DEBUG: skip deploying full build logs: not enabled in config
+2026-09-29 15:30:21,786 DEBUG: skip deploying full build logs: not enabled in config

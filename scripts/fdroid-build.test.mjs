@@ -124,24 +124,31 @@ def run():
             env = b.lauf_umgebung(w, w / "node", w / "jdk", w / "sdk")
         assert env["PATH"].endswith(b.SYSTEMPFAD)
         assert env["PATH"].startswith(str(w / "node/bin") + ":" + str(w / "jdk/bin") + ":")
-        assert not {"NODE_OPTIONS", "HTTPS_PROXY"} & env.keys()
-        caches = [env[k] for k in ("CACHEDIR", "GRADLE_USER_HOME", "XDG_CACHE_HOME", "npm_config_cache")]
-        assert len(set(caches)) == 4
+        assert not {"NODE_OPTIONS", "HTTPS_PROXY", "CACHEDIR"} & env.keys()
+        caches = [env[k] for k in ("GRADLE_USER_HOME", "XDG_CACHE_HOME", "npm_config_cache")]
+        assert len(set(caches)) == 3
         assert all(Path(x).is_relative_to(w) for x in caches)
         assert env["TEMP"] == env["TMP"] == env["TMPDIR"] == str(w / "tmp")
         assert env["npm_config_ignore_scripts"] == "true"
         if gegen: env["CACHEDIR"] = "fremd"
-        if not Path(env["CACHEDIR"]).is_relative_to(w):
+        if "CACHEDIR" in env:
             raise ValueError("Fremder Zwischenspeicher")
-    elif art == "archiv":
+    elif art in ("archiv", "archivort"):
+        (w / "fdroid-cache").mkdir()
         (w / "gradlew-cache").mkdir()
         inhalt = b"Archivprobe"
         vorgabe["gradle"]["sha256"]["bin"] = hashlib.sha256(inhalt).hexdigest()
-        p = w / "gradlew-cache" / ("gradle-" + vorgabe["gradle"]["version"] + "-bin.zip")
-        p.write_bytes(b"abweichend" if gegen else inhalt)
+        name = "gradle-" + vorgabe["gradle"]["version"] + "-bin.zip"
+        # Ein korrektes Archiv am alten Ort darf das fehlende/falsche
+        # Archiv am von F-Droid tatsächlich verwendeten Ort nicht ersetzen.
+        (w / "gradlew-cache" / name).write_bytes(inhalt)
+        p = w / "fdroid-cache" / name
+        if not (gegen and art == "archivort"):
+            p.write_bytes(b"abweichend" if gegen else inhalt)
         ergebnis = b.pruefe_gradle_archiv(w, vorgabe)
         assert ergebnis["bytes"] == len(inhalt)
         assert ergebnis["sha256"] == vorgabe["gradle"]["sha256"]["bin"]
+        assert ergebnis["pfad"] == "fdroid-cache/" + name
     elif art == "inventar":
         root = w / "node_modules"
         root.mkdir()
@@ -240,9 +247,13 @@ def run():
                 lauf = Path(kwargs["cwd"])
                 assert lauf.parent == andere
                 assert kwargs["env"]["TEMP"] == str(lauf / "tmp")
+                assert "CACHEDIR" not in kwargs["env"]
                 kwargs["stdout"].write("Nachgestellter Build\n")
-                (lauf / "gradlew-cache").mkdir()
-                archive = lauf / "gradlew-cache" / ("gradle-" + vorgabe["gradle"]["version"] + "-bin.zip")
+                # F-Droid setzt CACHEDIR aus config.yml, wie in den echten Läufen.
+                cache = Path(json.loads((lauf / "config.yml").read_text(encoding="utf-8"))["cachedir"])
+                assert cache == lauf / "fdroid-cache"
+                cache.mkdir()
+                archive = cache / ("gradle-" + vorgabe["gradle"]["version"] + "-bin.zip")
                 archive.write_bytes(b"abweichend" if gegen and art == "mainarchiv" else archivinhalt)
                 return subprocess.CompletedProcess(befehl, baucode)
             elif len(befehl) > 1 and befehl[1].endswith("build-auswerten.py"):
@@ -274,6 +285,10 @@ def run():
         assert len(list(andere.glob("lauf-*"))) == 1
         lauf = next(andere.glob("lauf-*"))
         assert json.loads((lauf / "rueckgabe.json").read_text(encoding="utf-8")) == {"fdroidBuild": baucode}
+        if not (gegen and art == "mainarchiv"):
+            nachweis = json.loads((lauf / "gradle-archiv.json").read_text(encoding="utf-8"))
+            assert nachweis["pfad"].startswith("fdroid-cache/")
+            assert nachweis["sha256"] == vorgabe["gradle"]["sha256"]["bin"]
         if code: raise ValueError("Build, Auswertung oder Archivprüfung meldet Fehler")
     else: raise AssertionError("Unbekannte Prüfung")
 
@@ -307,6 +322,7 @@ for (const [art, name, fehler] of [
   ['json', 'Neue JSON-Datei; Gegenprobe vorhandener Bericht bleibt erhalten', /GEGENPROBE:/],
   ['umgebung', 'Eigene Caches, TEMP und bereinigter PATH; Gegenprobe fremder Cache', /Fremder Zwischenspeicher/],
   ['archiv', 'Gradle-Archiv gegen Vorgabe; Gegenprobe abweichende Bytes', /weicht von toolchain.json ab/],
+  ['archivort', 'Gradle-Archiv im F-Droid-Cache; Gegenprobe nur am alten Ort vorhanden', /Gradle-Archiv fehlt/],
   ['inventar', 'ELF, WASM und Endung im Inventar; Gegenprobe fehlende Wurzel', /node_modules fehlt/],
   ['inventarverweis', 'Normale Inventarwurzel; Gegenprobe nachgestellter Verweis', /symbolischer Verweis/],
   ['inventarlesefehler', 'Lesbares Inventar; Gegenprobe os.walk meldet einen Lesefehler', /Lesefehler des Inventars/],
