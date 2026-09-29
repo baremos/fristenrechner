@@ -128,9 +128,10 @@ test('Alle Regeln sind zentral erfasst; Auslieferung ist eine echte Teilmenge', 
 });
 
 // Die drei Prüfungen am echten Baum lesen den Beleg im installierten Paket.
-// Ohne Installation entfallen sie. "npm run lizenzen" prüft den Baum in jedem Fall.
+// Sie entfallen nur, wenn gar nichts installiert ist. Fehlt in einer vorhandenen
+// Installation der Beleg, scheitern sie. "npm run lizenzen" prüft den Baum in jedem Fall.
 const amEchtenBaum = {
-  skip: fs.existsSync(resolve(hier, '..', 'node_modules', 'rgbcolor', 'LICENSE.md')) ? false : 'braucht die installierten Pakete, zuerst npm ci',
+  skip: fs.existsSync(resolve(hier, '..', 'node_modules')) ? false : 'braucht die installierten Pakete, zuerst npm ci',
 };
 
 test('Echter Baum: rgbcolor wird mit genau belegter MIT-Ausnahme angenommen', amEchtenBaum, () => {
