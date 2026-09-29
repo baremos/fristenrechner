@@ -1,6 +1,6 @@
 # Lizenzen und Abhängigkeiten
 
-Stand: **2026-09-29**, mit den vorbereiteten Abhängigkeiten der Oberfläche. Die Bestandsaufnahme umfasst das npm-Lockfile im Format 3 und die vorhandene Windows-Installation. Sie beschreibt die Projektregeln und gelesene Paketbelege, keine Rechtsauskunft. Werkzeuge und Android-Komponenten außerhalb dieses Lockfiles behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
+Stand: **2026-09-29**, mit den Abhängigkeiten der Oberfläche und von Capacitor 8.5.2 für die App. Die Bestandsaufnahme umfasst das npm-Lockfile im Format 3 und die vorhandene Windows-Installation. Sie beschreibt die Projektregeln und gelesene Paketbelege, keine Rechtsauskunft. Werkzeuge und Android-Komponenten außerhalb dieses Lockfiles behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
 
 Das Projekt steht unter Apache-2.0. Der Wortlaut liegt in `LICENSE`, der Herausgeberhinweis in `NOTICE` in der Wurzel des Repositorys.
 
@@ -38,13 +38,14 @@ Die verbindliche Liste steht in [`scripts/check-licenses.json`](../scripts/check
 | Zlib | ja | ja | Permissiv; Herkunft nicht falsch darstellen, geänderte Quellen kennzeichnen, Hinweis in Quellweitergaben erhalten. Für die Auslieferung zugelassen. [Text](https://spdx.org/licenses/Zlib.html); lokal auch `pako/lib/zlib/deflate.js`. |
 | GPL-3.0-or-later | nein, nur bekannt | nein, nur bekannt | Freie Copyleft-Lizenz mit Pflichten insbesondere bei Weitergabe von Quellen und Binärdateien. Die Projektliste erlaubt keinen GPL-Zweig, kennt aber die Kennung zur vollständigen Prüfung von Alternativen. Das ist keine Einstufung als proprietär. [GPL, insbesondere Abschnitte 4–6 und 14](https://spdx.org/licenses/GPL-3.0-or-later.html). Im aktuellen Baum kommt die Kennung nicht mehr vor. |
 | BSD-2-Clause | ja | nein | Permissiv; Urheberhinweis, Bedingungen und Haftungsausschluss in Quellen bzw. bei Binärweitergabe in Dokumentation oder Begleitmaterial erhalten. [Text](https://spdx.org/licenses/BSD-2-Clause.html); lokale LICENSE-Dateien der acht Pakete unten. |
-| 0BSD | ja | nein | Erlaubt Nutzung, Änderung und Weitergabe ohne zusätzliche Hinweispflicht im Lizenztext; Haftungsausschluss. Vorhandene Hinweise bleiben erhalten. [Text](https://spdx.org/licenses/0BSD.html); `tslib/LICENSE.txt`. |
+| 0BSD | ja | ja | Erlaubt Nutzung, Änderung und Weitergabe ohne zusätzliche Hinweispflicht im Lizenztext; Haftungsausschluss. Verlangt weniger als MIT. Vorhandene Hinweise bleiben erhalten. Für die Auslieferung zugelassen, seit `tslib` über `@capacitor/core` zur App gehört. [Text](https://spdx.org/licenses/0BSD.html); `tslib/LICENSE.txt`. |
+| Unlicense | ja | nein | Widmung an die Gemeinfreiheit mit ersatzweiser, uneingeschränkter Erlaubnis und Haftungsausschluss. Nur für Werkzeuge aufgenommen. [Text](https://spdx.org/licenses/Unlicense.html); `big-integer/LICENSE`, `stream-buffers/UNLICENSE`. |
 | BlueOak-1.0.0 | ja | nein | Weite Urheber- und Patenterlaubnis; Empfänger müssen Lizenztext oder Lizenzlink erhalten. Bei schriftlich gerügtem Hinweisverstoß nennt der Text eine Heilungsfrist von 30 Tagen. [Text](https://spdx.org/licenses/BlueOak-1.0.0.html); lokale LICENSE.md-Dateien der drei Pakete unten. |
 | CC0-1.0 | ja | nein | Verzicht auf die erfassten Rechte mit ersatzweiser Nutzungserlaubnis; keine Freigabe von Marken- oder Patentrechten, Haftungsausschlüsse beachten. [Text](https://spdx.org/licenses/CC0-1.0.html); `mdn-data/LICENSE` in beiden Versionen. |
 | Python-2.0 | ja | nein | Erlaubt Nutzung und Bearbeitung unter Erhalt der Lizenz- und Urheberhinweise; bei Weitergabe von Bearbeitungen Änderungen zusammenfassen, Namens-/Markenbeschränkungen beachten. [Text](https://spdx.org/licenses/Python-2.0.html); `argparse/LICENSE` mit PSF-, BeOpen-, CNRI- und CWI-Abschnitten. |
 | LGPL-3.0-or-later | ja | nein | Für den optionalen Werkzeugbaum aufgenommen. Bei Weitergabe betroffener Bibliotheken bzw. kombinierter Werke sind unter anderem Lizenzhinweise, Quelltext und Möglichkeiten zum erneuten Verbinden mit geänderter Bibliothek zu behandeln. Keine Freigabe eines App-Bundles. [LGPL, insbesondere Abschnitte 3–6 und einbezogene GPL](https://spdx.org/licenses/LGPL-3.0-or-later.html); Paketbeleg und Grenzen unten. |
 
-Für ausgelieferte Anteile bleiben genau **MIT, Apache-2.0, ISC, BSD-3-Clause und Zlib** zugelassen. Die sechs neu geprüften Werkzeugkennungen erweitern diesen Bereich nicht. Nutzung eines Werkzeugs allein ist kein Nachweis dafür, dass dessen Code im Ergebnis enthalten oder nicht enthalten ist; übernommene und eingebettete Anteile sind gesondert zu sichten.
+Für ausgelieferte Anteile sind genau **MIT, Apache-2.0, ISC, BSD-3-Clause, Zlib und 0BSD** zugelassen. Die übrigen Werkzeugkennungen erweitern diesen Bereich nicht. Nutzung eines Werkzeugs allein ist kein Nachweis dafür, dass dessen Code im Ergebnis enthalten oder nicht enthalten ist; übernommene und eingebettete Anteile sind gesondert zu sichten.
 
 ### Zusammengesetzte Angaben
 
@@ -86,7 +87,7 @@ Ohne vorhandenen, nicht leeren Paketbeleg mit passender Prüfsumme gibt es keine
 
 ## Bestandsaufnahme nach der Umstellung
 
-Der Lauf am 2026-09-29 erfasst **412 fremde Lockfile-Orte**, davon **24 ausgeliefert**, **288 bereitgestellt**, **100 für Test und Build**. **317 installierte Manifeste** wurden gelesen, **95 Einträge nur anhand des Lockfiles** geprüft. Es gibt **keine Fehler und eine angewandte Einzelausnahme**. Name, Version und Lizenzangaben der Installation bestehen den Gegenvergleich; bei `rgbcolor` wird die identische Rohangabe in Lockfile und Manifest über den geprüften Beleg als MIT eingeordnet. Eigene Workspaces und deren Links zählen nicht mit.
+Der Lauf am 2026-09-29 mit Capacitor erfasst **507 fremde Lockfile-Orte**, davon **27 ausgeliefert**, **289 bereitgestellt**, **191 für Test und Build**. **412 installierte Manifeste** wurden gelesen, **95 Einträge nur anhand des Lockfiles** geprüft. Es gibt **keine Fehler und eine angewandte Einzelausnahme**. Name, Version und Lizenzangaben der Installation bestehen den Gegenvergleich; bei `rgbcolor` wird die identische Rohangabe in Lockfile und Manifest über den geprüften Beleg als MIT eingeordnet. Eigene Workspaces und deren Links zählen nicht mit.
 
 Verteilung der unveränderten Lizenzangaben aus demselben Lauf; zusammengesetzte Angaben zählen je Paketort einmal:
 
@@ -94,21 +95,22 @@ Verteilung der unveränderten Lizenzangaben aus demselben Lauf; zusammengesetzte
 |---|---:|---:|---:|---:|
 | `(MIT AND Zlib)` | 1 | 0 | 0 | 1 |
 | `(MPL-2.0 OR Apache-2.0)` | 1 | 0 | 0 | 1 |
-| `0BSD` | 0 | 1 | 0 | 1 |
-| `Apache-2.0` | 0 | 16 | 2 | 18 |
+| `0BSD` | 1 | 0 | 0 | 1 |
+| `Apache-2.0` | 0 | 16 | 4 | 20 |
 | `Apache-2.0 AND LGPL-3.0-or-later` | 0 | 3 | 0 | 3 |
 | `Apache-2.0 AND LGPL-3.0-or-later AND MIT` | 0 | 1 | 0 | 1 |
 | `BSD-2-Clause` | 0 | 8 | 0 | 8 |
 | `BSD-3-Clause` | 0 | 3 | 1 | 4 |
-| `BlueOak-1.0.0` | 0 | 3 | 0 | 3 |
+| `BlueOak-1.0.0` | 0 | 3 | 9 | 12 |
 | `CC0-1.0` | 0 | 2 | 0 | 2 |
-| `ISC` | 0 | 9 | 6 | 15 |
+| `ISC` | 0 | 9 | 16 | 25 |
 | `LGPL-3.0-or-later` | 0 | 10 | 0 | 10 |
-| `MIT` | 21 | 219 | 91 | 331 |
+| `MIT` | 23 | 221 | 159 | 403 |
 | `MIT OR SEE LICENSE IN FEEL-FREE.md` | 1 | 0 | 0 | 1 |
 | `MPL-2.0` | 0 | 12 | 0 | 12 |
 | `Python-2.0` | 0 | 1 | 0 | 1 |
-| **Gesamt** | **24** | **288** | **100** | **412** |
+| `Unlicense` | 0 | 0 | 2 | 2 |
+| **Gesamt** | **27** | **289** | **191** | **507** |
 
 Für die SEE-LICENSE-Angabe wählt die Einzelausnahme MIT; die Tabelle bewahrt den ursprünglichen Wortlaut. Ebenso bleibt bei DOMPurify die zusammengesetzte Angabe sichtbar, obwohl für die Auslieferung Apache-2.0 gewählt wird.
 
@@ -120,12 +122,15 @@ Die folgende Auswahl erläutert die Werkzeugkennungen und die verbleibende Einze
 
 - **A:** Oberfläche → Peer `astro` 7.3.3; zugleich Wurzel → Entwicklungsabhängigkeit `astro` 7.3.3.
 - **J:** Oberfläche → `jspdf` 4.2.1. „Optional“ bezeichnet die betreffende Kante; die Pakete bleiben Teil der Prüfung.
+- **K:** App → `@capacitor/core` 8.5.2.
+- **C:** App → Entwicklungsabhängigkeit `@capacitor/cli` 8.5.2.
 
 | Angabe | Pakete mit Version | Bereich | Weg in den Baum | Vorschlag, Begründung und Quelle; Stand |
 |---|---|---|---|---|
 | `BSD-2-Clause` | `css-select` 6.0.0, `css-what` 7.0.0, `domelementtype` 2.3.0, `domhandler` 5.0.3, `domutils` 3.2.2, `entities` 4.5.0, `nth-check` 2.1.1, `http-cache-semantics` 4.2.0 | bereitgestellt | A → `svgo` → `css-select` / `css-what`; `css-select` → `domhandler` → `domelementtype`, → `domutils` → `dom-serializer` → `entities`, → `nth-check`; A → `http-cache-semantics` | Für Werkzeuge aufnehmen: permissiver Text in jeder lokalen `LICENSE`, mit Hinweispflichten; [BSD-2-Clause](https://spdx.org/licenses/BSD-2-Clause.html). **Umgesetzt**, Auslieferung bleibt gesperrt. |
-| `0BSD` | `tslib` 2.8.1 | bereitgestellt, auch entwicklung | A → `@astrojs/markdown-satteri` → `satteri` → optional `@bruits/satteri-wasm32-wasi` → dessen `@emnapi/core` → `tslib`; außerdem Wurzel → `@astrojs/check` → `@astrojs/language-server` → `@astrojs/astro2tsx` → `@emnapi/core` → `tslib` | Werkzeugnutzung aufnehmen: `node_modules/tslib/LICENSE.txt` enthält den [0BSD-Text](https://spdx.org/licenses/0BSD.html). **Umgesetzt**, Auslieferung bleibt gesperrt. |
-| `BlueOak-1.0.0` | `common-ancestor-path` 2.0.0, `lru-cache` 11.5.3, `sax` 1.6.1 | bereitgestellt | A → `common-ancestor-path`; A → `unstorage` → `lru-cache`; A → `svgo` → `sax` | Für Werkzeuge aufnehmen; alle drei `LICENSE.md` enthalten denselben [Blue-Oak-Text](https://spdx.org/licenses/BlueOak-1.0.0.html), einschließlich Pflicht zu Lizenztext oder Link. **Umgesetzt**, Auslieferung bleibt gesperrt. |
+| `0BSD` | `tslib` 2.8.1 | ausgeliefert | K → `tslib`; außerdem wie bisher über A und über Wurzel → `@astrojs/check` → `@astrojs/language-server` → `@astrojs/astro2tsx` → `@emnapi/core` → `tslib` | Für die Auslieferung aufgenommen: `node_modules/tslib/LICENSE.txt` (SHA-256 `210b19e543130388c68654b7497e967119ce17145f66ab7d85688fbd70f08751`) enthält Urheberhinweis und [0BSD-Text](https://spdx.org/licenses/0BSD.html). Ob Code von `tslib` im Bündel der App landet, zeigt erst deren Build. **Umgesetzt.** |
+| `Unlicense` | `big-integer` 1.6.52, `stream-buffers` 2.2.0 | entwicklung | C → `native-run` → `bplist-parser` → `big-integer`; C → `xcode` → `simple-plist` → `bplist-creator` → `stream-buffers` | Für Werkzeuge aufgenommen: `node_modules/big-integer/LICENSE` (SHA-256 `e9b0e94f628e00b5ed98046cfa041696ff89eebbbdd54108ee350625bc6d0363`) und `node_modules/stream-buffers/UNLICENSE` (SHA-256 `ca2abdf695884c77ea4b4a5b64ca7b732d9d9dbade4eebc1c2e76c53e9e3bc83`) enthalten den [Unlicense-Text](https://spdx.org/licenses/Unlicense.html). **Umgesetzt**, Auslieferung bleibt gesperrt. |
+| `BlueOak-1.0.0` | `common-ancestor-path` 2.0.0, `lru-cache` 11.5.3, `sax` 1.6.1; neu `chownr` 3.0.0, `glob` 13.0.6, `minimatch` 10.2.6, `minipass` 7.1.3, `package-json-from-dist` 1.0.1, `path-scurry` 2.0.2, `rimraf` 6.1.3, `tar` 7.5.22, `yallist` 5.0.0 | bereitgestellt; die neun neuen entwicklung | A → `common-ancestor-path`; A → `unstorage` → `lru-cache`; A → `svgo` → `sax`; C → `tar` → `chownr`, `minipass`, `yallist`; C → `rimraf` → `glob` → `minimatch`, `path-scurry`; C → `rimraf` → `package-json-from-dist` | Für Werkzeuge aufnehmen; die drei ersten `LICENSE.md` enthalten denselben [Blue-Oak-Text](https://spdx.org/licenses/BlueOak-1.0.0.html), einschließlich Pflicht zu Lizenztext oder Link. Die neun Pakete über C sind nach der Kennung im Manifest eingeordnet, ihre Lizenzdateien nicht einzeln gelesen. **Umgesetzt**, Auslieferung bleibt gesperrt. |
 | `CC0-1.0` | `mdn-data` 2.27.1 und 2.0.28 | bereitgestellt | A → `svgo` → `css-tree` → 2.27.1; A → `svgo` → `csso` → dessen `css-tree` → 2.0.28 | Für Werkzeugdaten aufnehmen; beide lokalen `LICENSE` enthalten [CC0](https://spdx.org/licenses/CC0-1.0.html), einschließlich ersatzweiser Erlaubnis und Beschränkungen. **Umgesetzt**, Auslieferung bleibt gesperrt. |
 | `Python-2.0` | `argparse` 2.0.1 | bereitgestellt | A → `js-yaml` → `argparse` | Werkzeugnutzung aufnehmen; vollständige Lizenzabschnitte in `node_modules/argparse/LICENSE`, [Vergleichstext](https://spdx.org/licenses/Python-2.0.html). **Umgesetzt**, Hinweise und Änderungsvermerk bei Weitergabe beachten. |
 | `LGPL-3.0-or-later` | `@img/sharp-libvips-darwin-arm64`, `-darwin-x64`, `-linux-arm`, `-linux-arm64`, `-linux-ppc64`, `-linux-riscv64`, `-linux-s390x`, `-linux-x64`, `-linuxmusl-arm64`, `-linuxmusl-x64`, jeweils 1.3.3 (voller Präfix jeweils `@img/sharp-libvips`) | bereitgestellt | A → optional `sharp` 0.35.4 → optionale Plattformpakete | Werkzeugkennung aufnehmen, Entfernung des optionalen Baums weiter prüfen. [LGPL-Text](https://spdx.org/licenses/LGPL-3.0-or-later.html); diese zehn Pakete sind lokal **nicht installiert**, ihr Inhalt ist nicht gegengeprüft. **Umgesetzt als Metadatenregel**, keine Bestätigung ihrer vollständigen Inhalte. |
@@ -147,7 +152,15 @@ Das installierte `@img/sharp-win32-x64` 0.35.4 zeigt eine weitere Grenze: Seine 
 
 Am 2026-09-29 nennt das Manifest der Oberfläche `fflate` 0.8.3 als direkte Abhängigkeit für das Packen selbst geschriebener Excel-Dateien. `fflate` trägt MIT, hat keine eigenen Abhängigkeiten und kein Installationsskript. Diese Angaben stammen aus Manifest, Lockfile und installiertem Paket.
 
-`exceljs` und sein bisheriger Abhängigkeitspfad sind aus Manifest, Lockfile und Installation entfernt. Der aktuelle Lauf enthält auch `big-integer`, `buffers`, `chainsaw`, `traverse`, `jszip`, `unzipper`, `glob`, `rimraf`, `fstream` und `uuid` nicht mehr. Für die entfallenen Pakete werden keine Ausnahmen oder zusätzlichen Lizenzkennungen eingetragen.
+`exceljs` und sein bisheriger Abhängigkeitspfad sind aus Manifest, Lockfile und Installation entfernt. Der aktuelle Lauf enthält `buffers`, `chainsaw`, `traverse`, `jszip`, `unzipper` und `fstream` nicht mehr. `big-integer` 1.6.52, `glob`, `rimraf` und `uuid` sind mit Capacitor zurückgekehrt, drei davon in anderer Version, und zwar nur über die Kommandozeile von Capacitor im Bereich `entwicklung`. Für die entfallenen Pakete werden keine Ausnahmen oder zusätzlichen Lizenzkennungen eingetragen.
+
+## Capacitor 8.5.2 für die App
+
+Die App nennt `@capacitor/core` und `@capacitor/android` 8.5.2 unter `dependencies` und `@capacitor/cli` 8.5.2 unter `devDependencies`. Das Lockfile wächst dadurch am 2026-09-29 um **95 Orte**: MIT 72, ISC 10, BlueOak-1.0.0 9, Apache-2.0 2, Unlicense 2. Kein bisheriger Eintrag ist entfallen oder in Version, Quelle, Prüfsumme oder Lizenz geändert. Jeder neue Eintrag stammt von `registry.npmjs.org` und trägt eine Prüfsumme. Keiner hat ein Installationsskript.
+
+Ausgeliefert sind neu nur `@capacitor/core`, `@capacitor/android` (beide MIT) und `tslib` (0BSD). Der Baum der Kommandozeile gehört zu Test und Build. Ohne die Kennungen 0BSD für die Auslieferung und Unlicense für Werkzeuge scheitert die Prüfung genau an diesen drei Paketen.
+
+Nicht erfasst sind die Abhängigkeiten, die Gradle für `@capacitor/android` lädt, darunter AndroidX und das Cordova-Framework. Ihre Liste entsteht mit dem Android-Projekt der App.
 
 Damit gehört das vorgebaute Browser-Bündel von ExcelJS nicht mehr zum aktuellen npm-Bestand. Seine frühere Auswertung ist kein Nachweis für den Inhalt eines neuen Website- oder App-Builds. Der eigene Excel-Schreiber und die vollständige Oberfläche sind in diesem Lauf nicht gebaut worden. Die erzeugten Bündel und die Originalhinweise ihrer tatsächlich enthaltenen Fremdanteile bleiben vor der Auslieferung zu prüfen; das gilt auch für die übrigen Exportbibliotheken.
 
@@ -168,7 +181,7 @@ Workspaces werden aus konkreten Pfaden und Mustern wie `packages/*` aufgelöst. 
 
 Dateizugriffsfehler nennen eigene Meldungen und Pfade relativ zur geprüften Wurzel, beispielsweise `Beleg der Einzelausnahme fehlt: node_modules/alt/LICENSE`. Betriebssystemmeldungen mit absoluten Pfaden und Ausschnitte fehlerhafter JSON-Inhalte werden nicht ausgegeben. Bei einer Packliste außerhalb der Wurzel erscheint nur `[außerhalb der Wurzel]/Dateiname`.
 
-`npm run lizenzen` endet am 2026-09-29 mit **Code 0**, ohne Fehlermeldung. Die einzige Metadatenberichtigung ist die oben belegte MIT-Ausnahme für `rgbcolor` 1.0.1. Ohne diese Ausnahme meldet die Gegenprobe ausschließlich für dieses Paket zwei Fehler: jeweils für Lockfile und installiertes Manifest. Es gibt keinen weiteren offenen Paketbefund aus diesem Metadatenlauf.
+`npm run lizenzen` endet am 2026-09-29 mit **Code 0**, ohne Fehlermeldung, auch mit Capacitor. Die einzige Metadatenberichtigung ist die oben belegte MIT-Ausnahme für `rgbcolor` 1.0.1. Ohne diese Ausnahme meldet die Gegenprobe ausschließlich für dieses Paket zwei Fehler: jeweils für Lockfile und installiertes Manifest. Es gibt keinen weiteren offenen Paketbefund aus diesem Metadatenlauf.
 
 ### Installationsskripte und vorgebaute Programme
 

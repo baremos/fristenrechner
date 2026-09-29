@@ -120,14 +120,14 @@ test('Umordnung und gleichartige Klammern ergeben dieselbe Lizenzangabe', () => 
 
 test('Alle Regeln sind zentral erfasst; Auslieferung ist eine echte Teilmenge', () => {
   assert.deepEqual(Object.entries(vorgabe.lizenzen).filter(([, b]) => b.includes('ausgeliefert')).map(([id]) => id).sort(),
-    ['Apache-2.0', 'BSD-3-Clause', 'ISC', 'MIT', 'Zlib']);
+    ['0BSD', 'Apache-2.0', 'BSD-3-Clause', 'ISC', 'MIT', 'Zlib']);
   for (const b of Object.values(vorgabe.lizenzen)) assert.equal(b.includes('entwicklung'), b.includes('bereitgestellt'));
   assert.equal(vorgabe.einzelausnahmen.length, 1);
   assert.equal(vorgabe.einzelausnahmen[0].paket, 'rgbcolor');
   assert.equal(vorgabe.einzelausnahmenMaxMonate, 12);
 });
 
-// Die drei Prüfungen am echten Baum lesen den Beleg im installierten Paket.
+// Die Prüfungen am echten Baum lesen den Beleg im installierten Paket.
 // Sie entfallen nur, wenn gar nichts installiert ist. Fehlt in einer vorhandenen
 // Installation der Beleg, scheitern sie. "npm run lizenzen" prüft den Baum in jedem Fall.
 const amEchtenBaum = {
@@ -150,9 +150,25 @@ test('Echter Baum: rgbcolor wird mit genau belegter MIT-Ausnahme angenommen', am
   assert.deepEqual(p.wege.ausgeliefert.map((k) => [k.name, k.art]), [
     ['jspdf', 'dependencies'], ['canvg', 'optionalDependencies'], ['rgbcolor', 'dependencies'],
   ]);
-  for (const name of ['exceljs', 'big-integer', 'buffers', 'chainsaw', 'traverse', 'jszip', 'unzipper', 'glob', 'rimraf', 'fstream', 'uuid']) {
+  for (const name of ['exceljs', 'buffers', 'chainsaw', 'traverse', 'jszip', 'unzipper', 'fstream']) {
     assert.ok(!b.pakete.some((p) => p.name === name), `${name} ist noch im Baum.`);
   }
+  // Diese Pakete kamen früher über exceljs in die Auslieferung. Heute bringt
+  // sie nur die Kommandozeile von Capacitor, also nur für den Build.
+  for (const name of ['big-integer', 'glob', 'rimraf', 'uuid']) {
+    const treffer = b.pakete.filter((p) => p.name === name);
+    assert.ok(treffer.length > 0, `${name} fehlt im Baum.`);
+    for (const p of treffer) assert.equal(p.bereich, 'entwicklung', `${name}@${p.version} liegt in ${p.bereich}.`);
+  }
+});
+
+test('Echter Baum: tslib kommt über den Kern von Capacitor in die Auslieferung und ist 0BSD', amEchtenBaum, () => {
+  const b = pruefeProjektMitVorgaben(resolve(hier, '..'), { stichtag: '2026-09-29' });
+  const p = b.pakete.find((p) => p.name === 'tslib');
+  assert.equal(p.bereich, 'ausgeliefert');
+  assert.equal(p.lizenz, '0BSD');
+  assert.deepEqual(p.fehler, []);
+  assert.deepEqual(p.wege.ausgeliefert.map((k) => k.name), ['@capacitor/core', 'tslib']);
 });
 
 test('Echter Baum: ohne Ausnahme scheitert ausschließlich rgbcolor', amEchtenBaum, () => {
@@ -173,11 +189,14 @@ for (const bereich of ['ausgeliefert', 'bereitgestellt', 'entwicklung']) {
     assert.deepEqual(pruefeAusdruck('GPL-3.0-or-later OR MIT', bereich).auswahl, ['MIT']);
     assert.equal(pruefeAusdruck('GPL-3.0-or-later AND MIT', bereich).zulaessig, false);
   });
-  for (const id of ['MPL-2.0', 'BSD-2-Clause', '0BSD', 'BlueOak-1.0.0', 'CC0-1.0', 'Python-2.0', 'LGPL-3.0-or-later']) {
+  for (const id of ['MPL-2.0', 'BSD-2-Clause', 'BlueOak-1.0.0', 'CC0-1.0', 'Python-2.0', 'LGPL-3.0-or-later', 'Unlicense']) {
     test(`Geprüfte Werkzeuglizenz ${id} in ${bereich}`, () => {
       assert.equal(pruefeAusdruck(id, bereich).zulaessig, bereich !== 'ausgeliefert');
     });
   }
+  test(`0BSD ist in jedem Bereich zugelassen: ${bereich}`, () => {
+    assert.equal(pruefeAusdruck('0BSD', bereich).zulaessig, true);
+  });
 }
 
 test('Ohne node_modules werden alle Lockfile-Pakete geprüft', () => {
