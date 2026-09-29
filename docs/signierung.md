@@ -129,7 +129,22 @@ Grenzen: Die Minimal-App hat keinen nativen Code. Bei Dateien mit nativem Code r
 | 8. AAB signieren | `jarsigner` mit dem Upload-Schlüssel | der fachlich Verantwortliche, Kennwort im Dialog, erst in Stufe 4 |
 | 9. Schlüssel bei Google Play einbringen | Play Console | der fachlich Verantwortliche, erst in Stufe 4 und vor der ersten Veröffentlichung |
 
-Die Skripte für die Schritte 4 bis 7 entstehen unter `scripts/signing/`. Sie nehmen den Ort der Schlüsseldatei als Angabe entgegen und speichern ihn nicht.
+Schritt 4 übernimmt `scripts/android-build.mjs`, die Schritte 5 bis 7 `scripts/signing/apk-signieren.mjs`. Das Skript nimmt den Ort der Schlüsseldatei als Angabe entgegen und speichert ihn nicht.
+
+```text
+node scripts/signing/apk-signieren.mjs --apk <unsignierte.apk> --aus <signierte.apk> --schluessel <Datei.p12> --alias <Alias> --fingerabdruck <SHA-256 des Zertifikats>
+```
+
+| Eigenschaft des Skripts | Umsetzung |
+|---|---|
+| Kennwort | fragt `apksigner` im Dialog ab. Für Proben gibt es `--kennwort-datei`. Ein Kennwort als Argument gibt es nicht. |
+| Schlüssel im Repository | Eine Schlüssel- oder Kennwortdatei, die im Repository liegt, lehnt das Skript ab. |
+| Vorhandene Dateien | Das Skript überschreibt und löscht nichts. Die unsignierte Datei bleibt unverändert, das prüft es am Ende. |
+| Prüfung vor der Ausgabe | Es schreibt zuerst in eine Datei mit der Endung `.ungeprueft` und benennt erst um, wenn Verfahren, Zahl der Signaturen, Schlüssel, Fingerabdruck und Ausrichtung stimmen. Scheitert die Prüfung, bleibt die ungeprüfte Datei liegen. |
+| Werkzeuge | `apksigner` und `zipalign` aus den festgelegten Build-Tools, JDK nach denselben Regeln wie beim Build. Die Suche liegt in `scripts/werkzeuge.mjs`, beide Skripte nutzen sie. |
+| Tests | `scripts/signing.test.mjs`, 20 Fälle. Sie brauchen ein JDK 21, die Build-Tools und die Plattform aus dem Projekt-SDK, sonst entfallen sie. Der Schlüssel der Tests entsteht in einem temporären Ordner. |
+
+Die Übertragung der Signatur auf einen zweiten Build (N5) ist kein Teil dieses Skripts. Sie braucht fdroidserver und läuft unter Linux.
 
 ## Nachweise für die Abnahme
 
