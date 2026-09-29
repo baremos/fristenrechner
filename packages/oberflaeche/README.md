@@ -10,7 +10,7 @@ Aus der Repository-Wurzel mit den bereits installierten Werkzeugen:
 
 ```powershell
 node node_modules/vitest/vitest.mjs run --root packages/oberflaeche
-node node_modules/astro/bin/astro.mjs check --root packages/oberflaeche
+node scripts/astro.mjs check --root packages/oberflaeche
 ```
 
 Die Typprüfung umfasst Astro, TypeScript und TypeScript-Tests. Der JavaScript-Testhelfer `test/struktur.mjs` verwendet Node-Bordmittel zum Prüfen der XLSX-Ausgabe; er wird nicht ausgeliefert. Es ist kein allgemeiner XML-Leser. Die Warnung über ein fehlendes `src/pages` ist bei diesem Komponentenpaket erwartbar; die Probeseite des Gastgebers prüft den Seiten-Build.

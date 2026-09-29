@@ -341,6 +341,7 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 6. **Der Build lädt Werkzeuge und Abhängigkeiten aus dem Netz.** Das betrifft nur den Build. Die App greift im Betrieb nicht auf das Netzwerk zu.
 7. **`sdkmanager` ist abgekündigt.** Siehe Abschnitt „Android SDK". Die Festlegung auf die Kommandozeilenwerkzeuge 22.0 ist eine Übergangslösung.
 8. **Warnung des Android-Gradle-Plugins zum Format der Paketbeschreibung.** Die installierten Pakete tragen `package.xml` im Format 4. Das Android-Gradle-Plugin 8.13 versteht Format 3 und meldet das beim Build als Warnung. Der Build läuft durch.
+9. **Astro meldet Nutzungsdaten.** Astro 7.3.3 schickt bei `astro build`, `astro check` und `astro sync` Angaben zu System, Versionen, Befehl und einer zufälligen Kennung an `https://telemetry.astro.build`, außer die Umgebungsvariable `ASTRO_TELEMETRY_DISABLED` oder `TELEMETRY_DISABLED` ist gesetzt (`@astrojs/telemetry` 3.3.3, `dist/index.js` und `dist/post.js`). Die Einstellung im Benutzerprofil ist in der Voreinstellung eingeschaltet. Das Repository ruft Astro deshalb über `scripts/astro.mjs` auf, das die Variable für jeden Lauf setzt und nichts in das Profil schreibt. `scripts/astro.test.mjs` lädt die installierte Telemetrie mit einem abgefangenen `fetch`: Mit der Umgebung des Skripts ruft sie `fetch` nicht auf, ohne die Variable einmal. Wer Astro direkt aufruft, setzt die Variable selbst.
 
 ## Pflege der Versionen
 

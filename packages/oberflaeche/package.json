@@ -24,7 +24,7 @@
     "NOTICE"
   ],
   "scripts": {
-    "check": "astro check",
+    "check": "node ../../scripts/astro.mjs check",
     "test": "vitest run",
     "referenz:schreiben": "vitest run test/export-excel.test.ts --update"
   },
