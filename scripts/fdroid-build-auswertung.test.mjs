@@ -16,9 +16,9 @@ const arbeit = mkdtempSync(join(scratchpad, 'fdroid-build-auswertung-'));
 const skript = join(hier, 'fdroid', 'build-auswerten.py');
 const APPID = 'de.baremos.fristenrechner.probe';
 const COMMIT = 'd27fb91d6584822b4803ac30cf79f9e1049e9a38';
-const python = ['python3', 'python'].find((name) => spawnSync(name, ['-B', '-c',
-  'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)'], { windowsHide: true }).status === 0);
 const umgebung = { ...process.env, TEMP: arbeit, TMP: arbeit, TMPDIR: arbeit, PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' };
+const python = ['python3', 'python'].find((name) => spawnSync(name, ['-B', '-c',
+  'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)'], { windowsHide: true, env: umgebung }).status === 0);
 const optionen = { skip: python ? false : 'Python ab 3.9 fehlt' };
 const kopf = (text, stufe = 'INFO') => `2026-09-29 16:00:00,000 ${stufe}: ${text}\n`;
 const BEGINN = kopf(`Building version 1.0 (1) of ${APPID}`);
@@ -35,9 +35,9 @@ test.after(() => {
   rmSync(arbeit, { recursive: true, force: true });
 });
 
-function pythonAufruf(argumente) {
+function pythonAufruf(argumente, timeout) {
   const ergebnis = spawnSync(python, ['-B', ...argumente], {
-    encoding: 'utf8', env: umgebung, windowsHide: true,
+    encoding: 'utf8', env: umgebung, windowsHide: true, timeout,
   });
   assert.equal(ergebnis.error, undefined, String(ergebnis.error));
   return { code: ergebnis.status, text: ergebnis.stdout + ergebnis.stderr };
@@ -309,7 +309,7 @@ paar('Kotlin mit wechselndem Laufpfad', ({ lauf }) => {
 paar('Kotlin nur für Filesystem 8.1.3', ({ lauf }) => {
   writeFileSync(join(lauf, 'build.log'), warnungsProbe(KOTLIN, 'gradle').replace('       @capacitor/filesystem@8.1.3\n', ''));
 }, /Zeile ohne Kopf: w:/, warnungsProbe(KOTLIN, 'gradle'));
-// Vergleich nur bis zur Entscheidung über die abweichende Legacy-Warnung.
+// Fehlende bekannte Meldungen sind zulässig; ohne Legacy bleiben acht statt neun.
 const ohneLegacyWarnung = echt[2].replace(LEGACY + '\n', '');
 function versuch(protokoll, scandeleteVersuch = true) {
   const fall = vorbereiten(protokoll);
@@ -432,11 +432,253 @@ test('Build-Auswertung: Dauer des Web-Builds in Sekunden; Gegenprobe andere Einh
   assert.equal(bericht(fall).beanstandungen.length, 1);
 });
 
+// Formate aus den festgelegten Werkzeugquellen, einschließlich Rundungsgrenzen.
+// Datei- und Zeilenbelege sowie Herkunft der lokalen Quellen: docs/fdroid-build.md.
+const zeitformate = [
+  {
+    werkzeug: 'Gradle 8.14.5', kontext: kopf('> /opt/gradlew.py assembleRelease', 'DEBUG'),
+    zeilen: [(d) => `BUILD SUCCESSFUL in ${d}`],
+    grenzen: [
+      ['0ms', '-1ms', '-0ms', '00ms'], ['999ms', '1000ms'],
+      ['1s', '0s', '01s'], ['59s', '60s'],
+      ['1m', '0m', '01m'], ['59m', '60m'],
+      ['1m 1s', '1m 0s', '1m 01s'], ['59m 59s', '59m 60s', '60m 59s'],
+      ['1h', '0h', '01h'], ['25h', '1d'],
+      ['1h 1s', '1h 0s', '1h 01s'], ['1h 59s', '1h 60s'],
+      ['1h 1m', '1h 0m', '1h 01m'], ['1h 59m', '1h 60m'],
+      ['1h 1m 1s', '1h 1m 0s', '1h 0m 1s'],
+      ['25h 59m 59s', '25h 60m 59s', '25h 59m 60s'],
+    ],
+    ungueltig: ['1.00s'],
+  },
+  {
+    werkzeug: 'npm 11.19.0', kontext: prebuild,
+    zeilen: [(d) => `added 394 packages in ${d}`],
+    grenzen: [
+      ['0ms', '-0ms', '00ms'],
+      ['1ms', '01ms'], ['-1ms', '-01ms'],
+      ['999ms', '1000ms'], ['-999ms', '-1000ms'],
+      ...['s', 'm'].flatMap((einheit) => [
+        [`1${einheit}`, `0${einheit}`, `01${einheit}`],
+        [`-1${einheit}`, `-0${einheit}`, `-01${einheit}`],
+        [`60${einheit}`, `61${einheit}`], [`-60${einheit}`, `-61${einheit}`],
+      ]),
+      ['1h', '0h', '01h'], ['-1h', '-0h', '-01h'],
+      ['24h', '25h'], ['-24h', '-25h'],
+      ['1d', '0d', '01d'], ['-1d', '-0d', '-01d'],
+      ['5000d', '5000.0d'], ['-5000d', '-5000.0d'],
+    ],
+    ungueltig: ['1w', '1.2s', '1m 1s'],
+  },
+  {
+    werkzeug: 'Astro 7.3.3', kontext: prebuild,
+    zeilen: [
+      (d) => `16:30:00 [types] Generated ${d}`,
+      (d) => `16:30:00 [build] ✓ Completed in ${d}.`,
+      (d) => `16:30:00 ✓ Completed in ${d}.`,
+      (d) => `16:30:00   ├─ /index.html (+${d}) `,
+      (d) => `16:30:00 [build] 1 page(s) built in ${d}`,
+    ],
+    grenzen: [
+      ['0ms', '-1ms', '-0ms', '00ms'], ['999ms', '0999ms'], ['1000ms', '1001ms'],
+      ['1.00s', '0.99s', '01.00s'], ['59.99s', '060.00s'], ['60.00s', '60.01s'],
+      ['1m 0s', '0m 0s', '1m 00s'], ['1m 1s', '1m 01s'],
+      ['1m 59s', '01m 59s'], ['1m 60s', '1m 61s'], ['120m 5s', '120m 05s'],
+    ],
+    ungueltig: ['1h', '1s', '1.2s', '1m', '1m 61s', '-1ms'],
+  },
+  {
+    werkzeug: 'Vite 8.3.0', kontext: prebuild,
+    zeilen: [(d) => `16:30:00 [vite] ✓ built in ${d}`],
+    grenzen: [
+      ['0ms', '-0ms', '00ms'], ['999ms', '1000ms'],
+      ['-1ms', '-01ms'], ['-1000ms', '-01000ms'], ['-5000ms', '-5000.0ms'],
+      ['1.00s', '0.99s', '01.00s'], ['59.99s', '060.00s'], ['60.00s', '60.01s'],
+      ['1m', '0m', '01m'], ['1m 1s', '1m 0s', '1m 01s'], ['1m 59s', '1m 60s'],
+      ['2m', '2m 0s'], ['120m 5s', '120m 05s'],
+    ],
+    ungueltig: ['1h', '1s', '1.2s', '1m 0s', '1m 60s', '-1.00s'],
+  },
+  {
+    werkzeug: 'Capacitor 8.5.2 Aufgaben', kontext: prebuild,
+    zeilen: [
+      'Copying web assets from dist to android/app/src/main/assets/public',
+      'Creating capacitor.config.json in android/app/src/main/assets',
+      'copy android', 'Updating Android plugins', 'update android',
+    ].map((aufgabe) => (d) => `✔ ${aufgabe} in ${d}`),
+    grenzen: [
+      ['0.00μs', '-0.01μs', '-0.00μs', '00.00μs'],
+      ['999.99μs', '0999.99μs'], ['1000.00μs', '1000.01μs'],
+      ['1.00ms', '0.99ms', '01.00ms'], ['999.99ms', '0999.99ms'],
+      ['1000.00ms', '1000.01ms'], ['1.00s', '0.99s', '01.00s'],
+      ['120.50s', '120.5s'],
+    ],
+    ungueltig: ['1.00ns', '1.00m', '1s', '1.2ms', '-1.00ms'],
+  },
+  {
+    werkzeug: 'Capacitor 8.5.2 Sync', kontext: prebuild,
+    zeilen: [(d) => `[info] Sync finished in ${d}`],
+    grenzen: [
+      ['0s', '-0s', '00s', '0.0s'], ['1s', '01s', '1.0s'], ['-1s', '-01s', '-1.0s'],
+      ['0.1s', '0.10s'], ['-0.1s', '-0.10s'],
+      ['0.01s', '0.010s'], ['-0.01s', '-0.010s'],
+      ['0.001s', '0.0001s'], ['-0.001s', '-0.0001s'],
+      ['1.5s', '1.50s'], ['-1.5s', '-1.50s'],
+      ['1.001s', '1.0010s'], ['120s', '0120s'],
+    ],
+    ungueltig: ['1ms', '1m', '0.0001s'],
+  },
+];
+for (const { werkzeug, kontext, zeilen, grenzen, ungueltig } of zeitformate) {
+  for (const zeile of zeilen) {
+    test(`Build-Auswertung: ${werkzeug}: ${zeile('<Dauer>')}`, optionen, () => {
+      const fall = vorbereiten();
+      const pruefen = (text, erlaubt, kopfzeile = kontext) => {
+        rmSync(join(fall.lauf, 'auswertung.json'), { force: true });
+        writeFileSync(join(fall.lauf, 'build.log'), BEGINN + kopfzeile + text + '\n'
+          + SCANNER + ERFOLG + APP_ERFOLG + ENDE + ZUSAMMEN);
+        if (erlaubt) positiv(fall);
+        else {
+          negativ(fall, /Protokoll, Zeile ohne Kopf/);
+          assert.equal(bericht(fall).beanstandungen.length, 1);
+        }
+      };
+      for (const [dauer, ...jenseits] of grenzen) {
+        pruefen(zeile(dauer), true);
+        // Gültiger Randwert und die Gegenproben unmittelbar daneben.
+        for (const gegenprobe of jenseits) pruefen(zeile(gegenprobe), false);
+        // Zusatz direkt nach der Dauer, auch innerhalb von Punkt/Klammer.
+        pruefen(zeile(`${dauer} Zusatz`), false);
+        pruefen(zeile(`${dauer} warning: neue Warnung`), false);
+      }
+      for (const dauer of ungueltig) pruefen(zeile(dauer), false);
+      pruefen(`${zeile(grenzen[0][0])} warning: neue Warnung`, false);
+      pruefen(zeile(grenzen[0][0]), false, kopf('Details', 'DEBUG'));
+    });
+  }
+}
+
+const gradleKontext = kopf('> /opt/gradlew.py assembleRelease', 'DEBUG');
+const zeilenProtokoll = (text, kontext = prebuild) => BEGINN + kontext + text + '\n'
+  + SCANNER + ERFOLG + APP_ERFOLG + ENDE + ZUSAMMEN;
+const andereZiffern = [
+  ['Arabisch-Indisch', '٠١٢٣٤٥٦٧٨٩'],
+  ['Vollbreite', '０１２３４５６７８９'],
+  ['Devanagari', '०१२३४५६७८९'],
+];
+const ziffernErsetzen = (text, alphabet) => text.replace(/[0-9]/g, (z) => alphabet[Number(z)]);
+const asciiZeilen = [
+  ['Paketzahl', 'added 394 packages in 9s', '394', prebuild],
+  ['Dateizahl', 'Inventar vor dem Scanner: 5 Dateien; eingebettetes WASM nicht vollständig erfasst.', '5', prebuild],
+  ['Aufgabenzahl', '188 actionable tasks: 188 executed', '188', gradleKontext],
+  ['Seitenzahl', '16:30:00 [build] 1 page(s) built in 1.53s', '1 page', prebuild],
+  ...[
+    '[build] output: "static"', '[build] mode: "static"', '[build] directory: /opt/probe/dist/',
+    '[build] Collecting build info...', '[build] Building static entrypoints...',
+    '[build] Rearranging server assets...', '[build] Complete!', '[types] Generated 1.00s',
+    '[build] ✓ Completed in 1.00s.', '✓ Completed in 1.00s.', '[vite] ✓ built in 1.00s',
+    '  ├─ /index.html (+1.00s) ', '[build] 1 page(s) built in 1.00s',
+  ].map((text) => [`Uhrzeit ${text}`, `16:30:00 ${text}`, '16:30:00', prebuild]),
+];
+for (const [name, zeile, zahl, kontext] of asciiZeilen) {
+  test(`Build-Auswertung: ASCII ${name}; Gegenproben in drei Ziffernschriften`, optionen, () => {
+    positiv(vorbereiten(zeilenProtokoll(zeile, kontext)));
+    for (const [, alphabet] of andereZiffern) {
+      const anders = zeile.replace(zahl, ziffernErsetzen(zahl, alphabet));
+      negativ(vorbereiten(zeilenProtokoll(anders, kontext)), /Protokoll, Zeile ohne Kopf/);
+    }
+  });
+}
+for (const [name, alphabet] of andereZiffern) {
+  paar(`ASCII im Protokollkopf; Gegenprobe ${name}`, ({ lauf }) => {
+    writeFileSync(join(lauf, 'build.log'), LOG.replace('2026-09-29', ziffernErsetzen('2026-09-29', alphabet)));
+  }, /Beginn genau einmal.*0/);
+  paar(`ASCII im Build-Marker; Gegenprobe ${name}`, ({ lauf }) => {
+    writeFileSync(join(lauf, 'build.log'), LOG.replace('1 build succeeded', `${alphabet[1]} build succeeded`));
+  }, /Unerwartete Build-Meldung/);
+}
+
+test('Build-Auswertung: Inventarzeile und Gegenprobe mit 64.000 wiederholten Trennern unter Zeitgrenze', optionen, () => {
+  // Der frühere offene Pfad konnte jeden Trenner wieder verschlucken. 1,9 MB
+  // müssen ohne den quadratischen Suchlauf innerhalb von fünf Sekunden enden.
+  const ergebnis = pythonAufruf(['-c', [
+    'import runpy,sys',
+    'pruefen = runpy.run_path(sys.argv[1])["normale_folgezeile"]',
+    'assert pruefen("+ python3 /opt/probe/npm-inventar.py node_modules /opt/probe/npm-vorgebaut-vor-web.json", "prebuild", "de.baremos.fristenrechner.probe")',
+    'angriff = "+ python3 " + "/npm-inventar.py node_modules " * 64000 + "x"',
+    'assert not pruefen(angriff, "prebuild", "de.baremos.fristenrechner.probe")',
+  ].join('\n'), skript], 5000);
+  assert.equal(ergebnis.code, 0, ergebnis.text);
+});
+
+const pfadZeilen = [
+  ['Gradle-Cache', gradleKontext, (p) => `CACHEDIR set to ${p}/fdroid-cache`],
+  ['Gradle-Cache-Nutzung', gradleKontext, (p) => `Using cache directory ${p}/fdroid-cache`],
+  ['Gradle-Aufruf', gradleKontext, (p) => `Running ${p}/fdroid-cache/versions/8.14.5/bin/gradle clean`],
+  ['Gradle-Bericht', gradleKontext, (p) => `[Incubating] Problems report is available at: file://${p}/android/build/reports/problems/problems-report.html`],
+  ['Lockfile-Kopie', prebuild, (p) => `+ cp package-lock.json ${p}/package-lock-minimal-app.json`],
+  ['Inventarskript', prebuild, (p) => `+ python3 ${p}/npm-inventar.py node_modules /opt/probe/npm-vorgebaut-vor-web.json`],
+  ['Inventarziel', prebuild, (p) => `+ python3 /opt/probe/npm-inventar.py node_modules ${p}/npm-vorgebaut-nach-web.json`],
+  ['Astro-Ausgabeordner', prebuild, (p) => `16:30:00 [build] directory: ${p}/dist/`],
+];
+for (const [name, kontext, zeile] of pfadZeilen) {
+  test(`Build-Auswertung: Pfad ${name}; Gegenproben mit Warnung und Steuerzeichen`, optionen, () => {
+    positiv(vorbereiten(zeilenProtokoll(zeile('/opt/probe-lauf_1/@paket+cache%20'), kontext)));
+    for (const zusatz of [' warning: neue Warnung ', '/warning:neu', ' BUILD FAILED in 5s ', '\x1b[2K', '\b', '\t', '\x7f', '\u009b', '\u00a0']) {
+      const falsch = zeilenProtokoll(zeile(`/opt/probe${zusatz}/lauf`), kontext);
+      negativ(vorbereiten(falsch), /Protokoll, Zeile ohne Kopf/);
+    }
+  });
+}
+paar('Gradle-Kontext mit engem Pfad und Gegenprobe Warnung im Skriptpfad', ({ lauf }) => {
+  writeFileSync(join(lauf, 'build.log'), zeilenProtokoll('> Task :app:assembleRelease',
+    kopf('> /opt/probe warning: neu /gradlew.py assembleRelease', 'DEBUG')));
+}, /Protokoll, Zeile ohne Kopf/, zeilenProtokoll('> Task :app:assembleRelease', gradleKontext));
+test('Build-Auswertung: Scannerpfad und Gegenprobe Warnung oder Steuerzeichen im Pfad', optionen, () => {
+  positiv(versuch(LOG.replace(SCANNER, SCANNER + kopf('Removing binary at node_modules/test/datei'))));
+  for (const zusatz of [' warning: neu ', '\x1b[2K', '\b', '\t']) {
+    negativ(versuch(LOG.replace(SCANNER, SCANNER + kopf(`Removing binary at node_modules/test${zusatz}/datei`))), /Scanner-Entfernung/);
+  }
+});
+
+test('Build-Auswertung: Beanstandung zeigt Rand-Leerraum und Steuerzeichen in Text und JSON', optionen, () => {
+  positiv(vorbereiten(zeilenProtokoll('BUILD SUCCESSFUL in 5s', gradleKontext)));
+  const faelle = [
+    ['BUILD SUCCESSFUL in 5s ', 'BUILD SUCCESSFUL in 5s\\x20'],
+    ['BUILD SUCCESSFUL in 5s  ', 'BUILD SUCCESSFUL in 5s\\x20\\x20'],
+    ['  BUILD SUCCESSFUL in 5s', '\\x20\\x20BUILD SUCCESSFUL in 5s'],
+    ['BUILD SUCCESSFUL in 5s\t', 'BUILD SUCCESSFUL in 5s\\t'],
+    ['BUILD SUCCESSFUL in 5s\x1f', 'BUILD SUCCESSFUL in 5s\\x1f'],
+    ['BUILD SUCCESSFUL in 5s\u00a0', 'BUILD SUCCESSFUL in 5s\\xa0'],
+    ['BUILD SUCCESSFUL in 5s\x1b[8m warning: verborgen\x1b[28m', 'BUILD SUCCESSFUL in 5s\\x1b[8m warning: verborgen\\x1b[28m'],
+    ['BUILD SUCCESSFUL in 5s\\t', 'BUILD SUCCESSFUL in 5s\\\\t'],
+  ];
+  for (const [roh, sichtbar] of faelle) {
+    const fall = vorbereiten(zeilenProtokoll(roh, gradleKontext));
+    const ergebnis = negativ(fall, /Protokoll, Zeile ohne Kopf/);
+    const meldungen = bericht(fall).beanstandungen;
+    assert.equal(meldungen.length, 1);
+    assert.ok(meldungen[0].includes(sichtbar), `${JSON.stringify(roh)}: ${meldungen[0]}`);
+    assert.ok(ergebnis.text.includes(sichtbar), ergebnis.text);
+    assert.doesNotMatch(ergebnis.text, /[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]/);
+    assert.doesNotMatch(meldungen[0], /[\x00-\x1f\x7f]/);
+  }
+  const vorspann = vorbereiten('  unbekannt\t\n' + LOG);
+  negativ(vorspann, /\\x20\\x20unbekannt\\t/);
+  assert.ok(bericht(vorspann).beanstandungen[0].includes('\\x20\\x20unbekannt\\t'));
+  const kopfFall = vorbereiten(LOG.replace(SCANNER, kopf('Warnung\x1b[8m verborgen\x1b[28m\t', 'WARNING') + SCANNER));
+  const kopfErgebnis = negativ(kopfFall, /WARNING: Warnung\\x1b\[8m verborgen\\x1b\[28m\\t/);
+  assert.doesNotMatch(kopfErgebnis.text, /\x1b/);
+});
+
 test('Build-Auswertung: Lauf 3 mit scandelete und Gegenprobe ohne Kennzeichnung', optionen, () => {
-  positiv(versuch(ohneLegacyWarnung));
+  const richtig = positiv(versuch(echt[2]));
+  assert.equal(bericht(richtig).bekannte_meldungen.anzahl, 9);
   const fall = versuch(echt[2], false);
   negativ(fall, /11 Dateien entfernt.*nicht als scandelete-Versuch/);
   assert.equal(bericht(fall).entfernte_dateien.anzahl, 11);
+  assert.equal(bericht(fall).beanstandungen.length, 1);
+  assert.deepEqual(bericht(fall).bekannte_meldungen, bericht(richtig).bekannte_meldungen);
 });
 
 for (const [name, aendern] of [

@@ -27,7 +27,7 @@ import zipfile
 
 
 KOPF = re.compile(
-    r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} (DEBUG|INFO|WARNING|ERROR|CRITICAL): (.*)$"
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3} (DEBUG|INFO|WARNING|ERROR|CRITICAL): (.*)$"
 )
 OHNE_KOPF = re.compile(
     r"^\s*(?:Traceback \(most recent call last\)|warning:|error:|critical:|"
@@ -40,7 +40,34 @@ BEKANNTE_MELDUNGEN = json.loads(
 ABSCHLUSS_DEBUG = "skip deploying full build logs: not enabled in config"
 ANSI_SGR = re.compile(r"\x1b\[[0-9;]*m")
 
-# Nur beobachtete Ausgabeformen; keine allgemeine Freigabe für Folgezeilen.
+# Dauerformate der festgelegten Werkzeuge; Quellen und Rundungsgrenzen stehen
+# in docs/fdroid-build.md. Die Muster werden nur in vollständige, bekannte
+# Zeilen eingebettet. Einheiten bleiben an das jeweilige Werkzeug gebunden.
+DAUER_REST = r"(?:[1-9]|[1-5][0-9])"
+DAUER_MS = r"(?:0|[1-9][0-9]{0,2})ms"
+DAUER_S60 = rf"(?:{DAUER_REST}\.[0-9]{{2}}|60\.00)s"
+DAUER_GRADLE = (
+    rf"(?:(?:0|[1-9][0-9]{{0,2}})ms|{DAUER_REST}s|{DAUER_REST}m(?: {DAUER_REST}s)?|"
+    rf"[1-9][0-9]*h(?: {DAUER_REST}m)?(?: {DAUER_REST}s)?)"
+)
+DAUER_NPM = (
+    r"(?:(?:0|-?[1-9][0-9]{0,2})ms|-?(?:[1-9]|[1-5][0-9]|60)[sm]|"
+    r"-?(?:[1-9]|1[0-9]|2[0-4])h|-?[1-9][0-9]*d)"
+)
+DAUER_ASTRO = rf"(?:{DAUER_MS}|1000ms|{DAUER_S60}|[1-9][0-9]*m (?:[0-9]|[1-5][0-9]|60)s)"
+DAUER_VITE = rf"(?:{DAUER_MS}|-[1-9][0-9]*ms|{DAUER_S60}|[1-9][0-9]*m(?: {DAUER_REST}s)?)"
+DAUER_CAPACITOR = (
+    r"(?:(?:(?:0|[1-9][0-9]{0,2})\.[0-9]{2}|1000\.00)μs|"
+    r"(?:[1-9][0-9]{0,2}\.[0-9]{2}|1000\.00)ms|[1-9][0-9]*\.[0-9]{2}s)"
+)
+DAUER_SYNC = r"(?:0|-?[1-9][0-9]*(?:\.[0-9]{0,2}[1-9])?|-?0\.[0-9]{0,2}[1-9])s"
+
+# Die beobachteten Debian-Pfade sind ungequotet und enthalten nur diese
+# ASCII-Zeichen. Insbesondere kein Leerraum, Doppelpunkt oder Steuerzeichen:
+# Ein Platzhalter kann dadurch nicht in das nächste Shell-Argument laufen.
+PFAD = r"[A-Za-z0-9_./@%+-]+"
+
+# Nur bekannte Ausgabeformen; keine allgemeine Freigabe für Folgezeilen.
 GRADLE_TEXT = frozenset((
     "Update checksum from gradle-transparency-log",
     "Remote gradle-transparency-log not changed, reusing cache",
@@ -54,13 +81,13 @@ GRADLE_TEXT = frozenset((
     "Note: Recompile with -Xlint:unchecked for details.",
 ))
 GRADLE_MUSTER = tuple(re.compile(muster) for muster in (
-    r"(?:CACHEDIR set to|Using cache directory) /[^\r\n]+/fdroid-cache",
-    r"Running /[^\r\n]+/fdroid-cache/versions/8\.14\.5/bin/gradle (?:clean|assembleRelease)",
+    rf"(?:CACHEDIR set to|Using cache directory) /{PFAD}/fdroid-cache",
+    rf"Running /{PFAD}/fdroid-cache/versions/8\.14\.5/bin/gradle (?:clean|assembleRelease)",
     r"> Configure project :(?:app|capacitor-cordova-android-plugins)",
     r"> Task :(?:app|capacitor-android|capacitor-filesystem|capacitor-share|capacitor-cordova-android-plugins):[A-Za-z][A-Za-z0-9]*(?: (?:UP-TO-DATE|NO-SOURCE|SKIPPED|FROM-CACHE))?",
-    r"BUILD SUCCESSFUL in (?:\d+m )?\d+s",
-    r"\d+ actionable tasks?: \d+ (?:executed|up-to-date)(?:, \d+ (?:executed|up-to-date))*",
-    r"\[Incubating\] Problems report is available at: file:///[^\r\n]+/android/build/reports/problems/problems-report\.html",
+    rf"BUILD SUCCESSFUL in {DAUER_GRADLE}",
+    r"[0-9]+ actionable tasks?: [0-9]+ (?:executed|up-to-date)(?:, [0-9]+ (?:executed|up-to-date))*",
+    rf"\[Incubating\] Problems report is available at: file:///{PFAD}/android/build/reports/problems/problems-report\.html",
 ))
 PREBUILD_TEXT = frozenset((
     "+ cd ../..", "+ npm ci --ignore-scripts --no-audit --no-fund", "+ npm run build",
@@ -69,20 +96,20 @@ PREBUILD_TEXT = frozenset((
     "       @capacitor/filesystem@8.1.3", "       @capacitor/share@8.0.2",
 ))
 PREBUILD_MUSTER = tuple(re.compile(muster) for muster in (
-    r"added \d+ packages in \d+s",
-    r"\+ cp package-lock\.json /[^\r\n]+/package-lock-minimal-app\.json",
-    r"\+ python3 /[^\r\n]+/npm-inventar\.py node_modules /[^\r\n]+/npm-vorgebaut-(?:vor|nach)-web\.json",
-    r"Inventar vor dem Scanner: \d+ Dateien; eingebettetes WASM nicht vollständig erfasst\.",
-    r'\d{2}:\d{2}:\d{2} \[build\] (?:output|mode): "static"',
-    r"\d{2}:\d{2}:\d{2} \[build\] directory: /[^\r\n]+/dist/",
-    r"\d{2}:\d{2}:\d{2} \[build\] (?:Collecting build info\.\.\.|Building static entrypoints\.\.\.|Rearranging server assets\.\.\.|Complete!)",
-    r"\d{2}:\d{2}:\d{2} \[types\] Generated \d+(?:\.\d+)?(?:ms|s)",
-    r"\d{2}:\d{2}:\d{2}(?: \[build\])? ✓ Completed in \d+(?:\.\d+)?(?:ms|s)\.",
-    r"\d{2}:\d{2}:\d{2} \[vite\] ✓ built in \d+(?:\.\d+)?(?:ms|s)",
-    r"\d{2}:\d{2}:\d{2}   ├─ /index\.html \(\+\d+(?:\.\d+)?(?:ms|s)\) ",
-    r"\d{2}:\d{2}:\d{2} \[build\] \d+ page\(s\) built in \d+(?:\.\d+)?(?:ms|s)",
-    r"✔ (?:Copying web assets from dist to android/app/src/main/assets/public|Creating capacitor\.config\.json in android/app/src/main/assets|copy android|Updating Android plugins|update android) in \d+(?:\.\d+)?(?:ms|μs)",
-    r"\[info\] Sync finished in \d+(?:\.\d+)?s",
+    rf"added [0-9]+ packages in {DAUER_NPM}",
+    rf"\+ cp package-lock\.json /{PFAD}/package-lock-minimal-app\.json",
+    rf"\+ python3 /{PFAD}/npm-inventar\.py node_modules /{PFAD}/npm-vorgebaut-(?:vor|nach)-web\.json",
+    r"Inventar vor dem Scanner: [0-9]+ Dateien; eingebettetes WASM nicht vollständig erfasst\.",
+    r'[0-9]{2}:[0-9]{2}:[0-9]{2} \[build\] (?:output|mode): "static"',
+    rf"[0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}} \[build\] directory: /{PFAD}/dist/",
+    r"[0-9]{2}:[0-9]{2}:[0-9]{2} \[build\] (?:Collecting build info\.\.\.|Building static entrypoints\.\.\.|Rearranging server assets\.\.\.|Complete!)",
+    rf"[0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}} \[types\] Generated {DAUER_ASTRO}",
+    rf"[0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}}(?: \[build\])? ✓ Completed in {DAUER_ASTRO}\.",
+    rf"[0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}} \[vite\] ✓ built in {DAUER_VITE}",
+    rf"[0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}}   ├─ /index\.html \(\+{DAUER_ASTRO}\) ",
+    rf"[0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}} \[build\] [0-9]+ page\(s\) built in {DAUER_ASTRO}",
+    rf"✔ (?:Copying web assets from dist to android/app/src/main/assets/public|Creating capacitor\.config\.json in android/app/src/main/assets|copy android|Updating Android plugins|update android) in {DAUER_CAPACITOR}",
+    rf"\[info\] Sync finished in {DAUER_SYNC}",
 ))
 
 
@@ -123,6 +150,18 @@ def lies_meldungen(zeilen):
     return vorspann, meldungen
 
 
+def sichtbar(text):
+    """Erhält den Wortlaut; Rand-Leerraum und Steuerzeichen werden sichtbar."""
+    anfang = len(text) - len(text.lstrip(" "))
+    ende = len(text.rstrip(" "))
+    return "".join(
+        r"\x20" if zeichen == " " and (index < anfang or index >= ende)
+        else ascii(zeichen)[1:-1] if (not zeichen.isprintable() or zeichen == "\\")
+        else zeichen
+        for index, zeichen in enumerate(text)
+    )
+
+
 def lies_lauf(wurzel, probleme):
     try:
         lauf = json.loads(pruefe_pfad(wurzel, "lauf.json").read_text(encoding="utf-8"))
@@ -156,7 +195,10 @@ def normale_folgezeile(text, kontext, appid):
 def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandelete, probleme):
     try:
         pfad = pruefe_pfad(wurzel, "build.log")
-        zeilen = pfad.read_text(encoding="utf-8").splitlines()
+        # Nur LF/CRLF trennen Zeilen. Sonstige Steuerzeichen müssen als Teil
+        # der Rohzeile erhalten bleiben und in der Beanstandung sichtbar sein.
+        with pfad.open(encoding="utf-8", newline="") as datei:
+            zeilen = [zeile.removesuffix("\r") for zeile in datei.read().split("\n")]
     except (OSError, ValueError) as fehler:
         probleme.append(f"Das Build-Protokoll ist nicht lesbar: {fehler}")
         zeilen = []
@@ -195,7 +237,7 @@ def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandele
     )
     for zeile_nr, zeile in vorspann:
         if zeile.strip():
-            probleme.append(f"Protokoll, Zeile ohne Kopf: {zeile.strip()} (Zeile {zeile_nr})")
+            probleme.append(f"Protokoll, Zeile ohne Kopf: {sichtbar(zeile)} (Zeile {zeile_nr})")
     for nummer, (stufe, text, folgezeilen, zeile_nr) in enumerate(meldungen):
         bekannte_warnung = (stufe == "WARNING" and bekannte_meldung(
             text, zeile_nr, mit_kopf=True, pfad=f"build/{appid}"
@@ -204,12 +246,12 @@ def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandele
             pass
         elif stufe in BEANSTANDET:
             zusatz = f" (dazu {len(folgezeilen)} Folgezeilen)" if folgezeilen else ""
-            probleme.append(f"Protokoll, {stufe}: {text}{zusatz} (Zeile {zeile_nr})")
+            probleme.append(f"Protokoll, {stufe}: {sichtbar(text)}{zusatz} (Zeile {zeile_nr})")
         elif OHNE_KOPF.match(text):
-            probleme.append(f"Protokoll, {stufe}: {text} (Zeile {zeile_nr})")
+            probleme.append(f"Protokoll, {stufe}: {sichtbar(text)} (Zeile {zeile_nr})")
 
         kontext, phase = None, None
-        if stufe == "DEBUG" and re.fullmatch(r"> /[^\r\n]+/gradlew\.py (clean|assembleRelease)", text):
+        if stufe == "DEBUG" and re.fullmatch(rf"> /{PFAD}/gradlew\.py (clean|assembleRelease)", text):
             kontext, phase = "gradle", text.rsplit(" ", 1)[1]
         elif stufe == "DEBUG" and text.startswith("> bash -e -u -o pipefail -x -c -- cd ../..; npm ci --ignore-scripts --no-audit --no-fund;"):
             kontext = "prebuild"
@@ -248,14 +290,14 @@ def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandele
                            and task == "> Task :capacitor-filesystem:compileReleaseKotlin"
                            and filesystem_version_belegt)
             if not erlaubt and (art or OHNE_KOPF.match(zeile) or not normale_folgezeile(zeile, kontext, appid)):
-                probleme.append(f"Protokoll, Zeile ohne Kopf: {rohzeile.strip()} (Zeile {folge_nr})")
+                probleme.append(f"Protokoll, Zeile ohne Kopf: {sichtbar(rohzeile)} (Zeile {folge_nr})")
             if kontext == "prebuild" and zeile == "       @capacitor/filesystem@8.1.3":
                 filesystem_version_belegt = True
             if zeile.startswith("> Task :"):
                 task = zeile
             vorzeile = zeile
 
-        loeschung = re.fullmatch(r"Removing (shared library|WebAssembly binary file|binary|gzip file archive|gradle-wrapper\.jar) at ([^\r\n]+)", text)
+        loeschung = re.fullmatch(rf"Removing (shared library|WebAssembly binary file|binary|gzip file archive|gradle-wrapper\.jar) at ({PFAD})", text)
         if loeschung:
             art, pfad = loeschung.groups()
             entfernt.append({"art": art, "pfad": pfad, "zeile": zeile_nr})
@@ -264,13 +306,13 @@ def pruefe_protokoll(wurzel, appid, version_name, version_code, commit, scandele
             if not (stufe == "INFO" and scanner_vorher and not scanner_beendet
                     and not Path(pfad).is_absolute() and ".." not in Path(pfad).parts
                     and (pfad.startswith("node_modules/") or pfad == "android/gradle/wrapper/gradle-wrapper.jar")):
-                probleme.append(f"Unerwartete Scanner-Entfernung in Zeile {zeile_nr}: {text}")
+                probleme.append(f"Unerwartete Scanner-Entfernung in Zeile {zeile_nr}: {sichtbar(text)}")
         elif text.startswith("Removing ") and " at " in text:
-            probleme.append(f"Unbekannte Scanner-Entfernung in Zeile {zeile_nr}: {text}")
+            probleme.append(f"Unbekannte Scanner-Entfernung in Zeile {zeile_nr}: {sichtbar(text)}")
 
-        marker = text.startswith(("Building version ", "Successfully built version ", "Scanning source ", "success:", "Finished")) or bool(re.fullmatch(r"\d+ builds? (?:succeeded|failed)", text))
+        marker = text.startswith(("Building version ", "Successfully built version ", "Scanning source ", "success:", "Finished")) or text.endswith((" build succeeded", " builds succeeded", " build failed", " builds failed"))
         if marker and (stufe != "INFO" or text not in erwartet):
-            probleme.append(f"Unerwartete Build-Meldung: {stufe}: {text}")
+            probleme.append(f"Unerwartete Build-Meldung: {stufe}: {sichtbar(text)}")
         for index, soll in enumerate(erwartet):
             if stufe == "INFO" and text == soll:
                 stellen[index].append(nummer)
