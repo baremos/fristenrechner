@@ -1,0 +1,35 @@
+{
+  "License": "Apache-2.0",
+  "AutoName": "Werkzeugprobe",
+  "Summary": "Lokale Probe des Android-Builds",
+  "Description": "Minimal-App für den lokalen Build-Nachweis; kein Veröffentlichungsrezept.",
+  "RepoType": "git",
+  "Repo": "@LOKALES_REPOSITORY@",
+  "Builds": [
+    {
+      "versionName": "1.0",
+      "versionCode": 1,
+      "commit": "d27fb91",
+      "subdir": "android/app",
+      "gradle": ["yes"],
+      "prebuild": [
+        "cd ../..",
+        "npm ci --ignore-scripts --no-audit --no-fund",
+        "cp package-lock.json \"$FR_FDROID_LAUF/package-lock-minimal-app.json\"",
+        "python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-vor-web.json\"",
+        "npm run build",
+        "./node_modules/.bin/cap sync android",
+        "python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-web.json\""
+      ],
+      "build": [
+        "test -f ../../node_modules/@capacitor/android/capacitor/build.gradle",
+        "test -f ../../node_modules/@capacitor/filesystem/android/build.gradle",
+        "test -f ../../node_modules/@capacitor/share/android/build.gradle"
+      ]
+    }
+  ],
+  "AutoUpdateMode": "None",
+  "UpdateCheckMode": "None",
+  "CurrentVersion": "1.0",
+  "CurrentVersionCode": 1
+}
