@@ -423,6 +423,15 @@ test('Build-Auswertung: echter Lauf 3 besteht mit neun bekannten Meldungen; Gege
   negativ(versuch(echt[2].replace(zeile, `${zeile}\n${zeile}`)), /kotlin_filesystem_legacy_typ|LegacyFilesystemImplementation/);
 });
 
+test('Build-Auswertung: Dauer des Web-Builds in Sekunden; Gegenprobe andere Einheit', optionen, () => {
+  // Beobachtet am 2026-09-29: derselbe Build meldet einmal 398ms, einmal 1.53s.
+  assert.ok(echt[2].includes('398ms'));
+  positiv(versuch(echt[2].replace('398ms', '1.53s')));
+  const fall = versuch(echt[2].replace('398ms', '1.53min'));
+  negativ(fall, /Protokoll, Zeile ohne Kopf: .*page\(s\) built in/);
+  assert.equal(bericht(fall).beanstandungen.length, 1);
+});
+
 test('Build-Auswertung: Lauf 3 mit scandelete und Gegenprobe ohne Kennzeichnung', optionen, () => {
   positiv(versuch(ohneLegacyWarnung));
   const fall = versuch(echt[2], false);
