@@ -4,12 +4,16 @@
 //                                      [--packliste <npm-pack-JSON>]
 // Regeln und Grenzen: docs/lizenzen.md, Daten: check-licenses.json.
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join, posix, relative, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, posix, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const hier = dirname(fileURLToPath(import.meta.url));
-export const vorgabe = JSON.parse(readFileSync(join(hier, 'check-licenses.json'), 'utf8'));
+export let vorgabe;
+let vorgabeFehler;
+try { vorgabe = leseJson(join(hier, 'check-licenses.json'), resolve(hier, '..')); }
+catch (e) { vorgabeFehler = e; }
 const objekt = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
 const gleich = (a, b) => JSON.stringify(sortiert(a)) === JSON.stringify(sortiert(b));
 
@@ -19,19 +23,35 @@ function sortiert(x) {
   return Object.fromEntries(Object.keys(x).sort().map((k) => [k, sortiert(x[k])]));
 }
 
+function anzeigePfad(datei, wurzel) {
+  const pfad = relative(wurzel, datei).replaceAll('\\', '/');
+  // Externe Packlisten können auf einem anderen Laufwerk liegen. Auch dann
+  // weder einen absoluten Pfad noch die fremde Ordnerstruktur ausgeben.
+  return isAbsolute(pfad) || pfad.split('/').includes('..')
+    ? `[außerhalb der Wurzel]/${basename(datei)}` : pfad || '.';
+}
+
+function dateizugriff(datei, wurzel, beschreibung, lesen) {
+  try { return lesen(); }
+  catch (e) {
+    const grund = e.code === 'ENOENT' ? 'fehlt' : 'ist nicht lesbar';
+    throw new Error(`${beschreibung} ${grund}: ${anzeigePfad(datei, wurzel)}`, { cause: e });
+  }
+}
+
 function leseJson(datei, wurzel) {
   try {
     return JSON.parse(readFileSync(datei, 'utf8').replace(/^\uFEFF/, ''));
   } catch (e) {
-    const pfad = relative(wurzel, datei).replaceAll('\\', '/');
-    throw new Error(`JSON-Datei ${pfad} ist nicht lesbar oder ungültig: ${e.code ?? e.message}`, { cause: e });
+    // SyntaxError-Texte können Ausschnitte privater Dateiinhalte enthalten.
+    throw new Error(`JSON-Datei ${anzeigePfad(datei, wurzel)} ist nicht lesbar oder ungültig: ${e.code ?? 'JSON-Syntaxfehler'}`, { cause: e });
   }
 }
 
 function pruefePfad(pfad) {
   if (typeof pfad !== 'string' || /[\\:\x00-\x1f]/.test(pfad)
       || pfad.split('/').some((teil) => !teil || teil === '.' || teil === '..')) {
-    throw new Error(`Ungültiger relativer Paketpfad: ${pfad}`);
+    throw new Error('Ungültiger relativer Paketpfad.');
   }
   return pfad;
 }
@@ -40,6 +60,7 @@ function pruefePfad(pfad) {
 // Zuerst den ganzen Ausdruck prüfen, danach auswerten: Unbekanntes darf auch
 // in einem nicht gewählten OR-Zweig nicht unbemerkt bleiben.
 export function pruefeAusdruck(text, bereich) {
+  if (vorgabeFehler) throw vorgabeFehler;
   if (typeof text !== 'string' || !text.trim()) throw new Error('Lizenzangabe fehlt oder ist kein SPDX-Text.');
   const teile = text.match(/[A-Za-z0-9][A-Za-z0-9.+:-]*|[()]|[^\s]/g) ?? [];
   const kennungen = new Map(Object.keys(vorgabe.lizenzen).map((id) => [id.toLowerCase(), id]));
@@ -79,6 +100,72 @@ export function pruefeAusdruck(text, bereich) {
   return { normalisiert: normalisiere(baum), zulaessig: auswahl !== null, auswahl: auswahl ?? [] };
 }
 
+// Ausnahmen berichtigen ausschließlich geprüfte Metadaten einer festen Version.
+// Sie erweitern weder die Bereichsregeln noch die Syntax des SPDX-Parsers.
+function pruefeAusnahmen(ausnahmen, stichtag) {
+  const datum = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
+    && Number.isFinite(Date.parse(s)) && new Date(s).toISOString().slice(0, 10) === s;
+  if (!datum(stichtag)) throw new Error('Stichtag der Ausnahmen muss ein gültiges ISO-Datum sein.');
+  if (!Array.isArray(ausnahmen)) throw new Error('einzelausnahmen muss eine Liste sein.');
+  const maxMonate = vorgabe.einzelausnahmenMaxMonate;
+  if (!Number.isSafeInteger(maxMonate) || maxMonate <= 0) {
+    throw new Error('einzelausnahmenMaxMonate muss eine positive ganze Zahl sein.');
+  }
+  const grenze = new Date(stichtag);
+  const tag = grenze.getUTCDate();
+  // Letzter Tag des Zielmonats, dann auf den ursprünglichen Tag begrenzen.
+  grenze.setUTCMonth(grenze.getUTCMonth() + maxMonate + 1, 0);
+  if (!Number.isFinite(grenze.getTime()) || grenze.getUTCFullYear() > 9999) {
+    throw new Error('einzelausnahmenMaxMonate ergibt für den Stichtag keine gültige ISO-Datumsgrenze.');
+  }
+  grenze.setUTCDate(Math.min(tag, grenze.getUTCDate()));
+  const spaetestens = grenze.toISOString().slice(0, 10);
+  const gesehen = new Set();
+  for (const a of ausnahmen) {
+    if (!objekt(a) || typeof a.paket !== 'string' || !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(a.paket)
+        || typeof a.version !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(a.version)
+        || !(a.angabe === null || typeof a.angabe === 'string')
+        || !['ausgeliefert', 'bereitgestellt', 'entwicklung'].includes(a.bereich)
+        || typeof a.begruendung !== 'string' || !a.begruendung.trim()
+        || !objekt(a.beleg) || typeof a.beleg.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(a.beleg.sha256)
+        || typeof a.beleg.quelle !== 'string' || !/^https:\/\/[^\s]+$/.test(a.beleg.quelle)
+        || !datum(a.gueltigBis)) throw new Error('Ungültige Einzelausnahme: Pflichtfelder, feste Version, Beleg und Befristung prüfen.');
+    pruefePfad(a.paket);
+    pruefePfad(a.beleg.datei);
+    if (a.gueltigBis < stichtag) throw new Error(`Einzelausnahme abgelaufen: ${a.paket}@${a.version} (${a.gueltigBis}).`);
+    if (a.gueltigBis > spaetestens) {
+      throw new Error(`Einzelausnahme zu lange gültig: ${a.paket}@${a.version}; höchstens ${maxMonate} Kalendermonate ab Stichtag, bis ${spaetestens}.`);
+    }
+    let bekannt = false;
+    try { pruefeAusdruck(a.angabe, a.bereich); bekannt = true; } catch { /* Fehlende oder ungeprüfte Metadaten. */ }
+    if (bekannt) throw new Error(`Einzelausnahme darf bekannte SPDX-Angaben nicht ersetzen: ${a.paket}@${a.version}.`);
+    if (!pruefeAusdruck(a.lizenz, a.bereich).zulaessig) throw new Error(`Festgestellte Lizenz der Einzelausnahme ist für ${a.bereich} nicht zugelassen.`);
+    const schluessel = JSON.stringify([a.paket, a.version, a.angabe, a.bereich]);
+    if (gesehen.has(schluessel)) throw new Error(`Doppelte Einzelausnahme: ${a.paket}@${a.version}.`);
+    gesehen.add(schluessel);
+  }
+}
+
+function pruefePaketlizenz(angabe, name, version, bereich, ordner, ausnahmen, wurzel) {
+  try { return pruefeAusdruck(angabe, bereich); }
+  catch (e) {
+    const a = ausnahmen.find((a) => a.paket === name && a.version === version
+      && a.bereich === bereich && a.angabe === (angabe ?? null));
+    if (!a) throw e;
+    // Ohne installierten, unveränderten Paketbeleg ist die Ausnahme unwirksam.
+    const belegpfad = join(ordner, a.beleg.datei);
+    const [paketpfad, beleg] = dateizugriff(belegpfad, wurzel, 'Beleg der Einzelausnahme',
+      () => [realpathSync(ordner), realpathSync(belegpfad)]);
+    const rel = relative(paketpfad, beleg);
+    if (isAbsolute(rel) || rel.split(/[\\/]/).includes('..')) throw new Error('Beleg der Einzelausnahme liegt außerhalb des Pakets.');
+    const inhalt = dateizugriff(belegpfad, wurzel, 'Beleg der Einzelausnahme', () => readFileSync(beleg));
+    if (!inhalt.length || createHash('sha256').update(inhalt).digest('hex') !== a.beleg.sha256) {
+      throw new Error(`Beleg der Einzelausnahme weicht ab: ${a.beleg.datei}`);
+    }
+    return { ...pruefeAusdruck(a.lizenz, bereich), ausnahme: a };
+  }
+}
+
 function workspacePfade(wurzel, muster) {
   if (!Array.isArray(muster)) throw new Error('workspaces muss eine Liste sein.');
   return [...new Set(muster.flatMap((p) => {
@@ -88,7 +175,8 @@ function workspacePfade(wurzel, muster) {
       throw new Error(`Workspace-Muster nicht unterstützt: ${p}; unterstützt sind Pfade und Ordner/*.`);
     }
     const basis = p.slice(0, -2);
-    return readdirSync(join(wurzel, basis), { withFileTypes: true })
+    return dateizugriff(join(wurzel, basis), wurzel, 'Workspace-Ordner',
+      () => readdirSync(join(wurzel, basis), { withFileTypes: true }))
       .filter((e) => e.isDirectory() && existsSync(join(wurzel, basis, e.name, 'package.json')))
       .map((e) => `${basis}/${e.name}`);
   }))].sort();
@@ -125,13 +213,15 @@ function kanten(manifest, mitDev = false) {
   return liste;
 }
 
-function dateihinweise(ordner) {
+function dateihinweise(ordner, wurzel) {
   const binaer = [];
   const hinweise = [];
   const muster = new RegExp(vorgabe.binaerdateien, 'i');
   const hinweismuster = new RegExp(vorgabe.hinweisdateien, 'i');
   function besuche(rel = '') {
-    for (const eintrag of readdirSync(join(ordner, rel), { withFileTypes: true })) {
+    const dateien = dateizugriff(join(ordner, rel), wurzel, 'Paketordner',
+      () => readdirSync(join(ordner, rel), { withFileTypes: true }));
+    for (const eintrag of dateien) {
       const p = posix.join(rel, eintrag.name);
       // Keine fremden Paketbäume oder symbolischen Verknüpfungen verfolgen.
       if (eintrag.isDirectory() && eintrag.name !== 'node_modules') besuche(p);
@@ -149,6 +239,7 @@ function dateihinweise(ordner) {
 // npm wird bewusst außerhalb dieses Skripts mit --offline --ignore-scripts
 // aufgerufen. Die Liste ersetzt nicht die Sichtung des späteren .tgz-Inhalts.
 export function pruefePackliste(liste, workspaces, wurzel) {
+  if (vorgabeFehler) throw vorgabeFehler;
   const fehler = [];
   const gesehen = new Set();
   const erwartet = workspaces.filter((w) => w.pfad.startsWith('packages/'));
@@ -178,7 +269,10 @@ export function pruefePackliste(liste, workspaces, wurzel) {
   return fehler;
 }
 
-export function pruefeProjekt(wurzel, { packliste } = {}) {
+export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelausnahmen,
+  stichtag = new Date().toISOString().slice(0, 10) } = {}) {
+  if (vorgabeFehler) throw vorgabeFehler;
+  pruefeAusnahmen(ausnahmen, stichtag);
   const lock = leseJson(join(wurzel, 'package-lock.json'), wurzel);
   if (lock.lockfileVersion !== 3 || !objekt(lock.packages) || !objekt(lock.packages[''])) {
     throw new Error('Erwartet wird package-lock.json im Format 3 mit packages und Wurzeleintrag.');
@@ -217,40 +311,47 @@ export function pruefeProjekt(wurzel, { packliste } = {}) {
     const ziele = kanten(lokale.get(pfad) ?? eintrag, lokale.has(pfad)).map((kante) => {
       const ziel = findePaket(pakete, pfad, kante.name);
       if (!ziel && !kante.optionalerPeer) fehler.push(`${pfad || '.'}: ${kante.art} ${kante.name} fehlt im Lockfile.`);
-      return { name: kante.name, art: kante.art, pfad: ziel };
+      return { ...kante, pfad: ziel };
     });
     graph.set(pfad, ziele);
   }
   function erreiche(starts) {
-    const besucht = new Set();
+    const besucht = new Map();
     const offen = [...starts];
-    while (offen.length) {
-      const p = offen.pop();
+    for (let i = 0; i < offen.length; i++) {
+      const { pfad: p, weg } = offen[i];
       if (p === null || besucht.has(p)) continue;
-      besucht.add(p);
-      for (const k of graph.get(p) ?? []) if (k.art !== 'devDependencies') offen.push(k.pfad);
+      besucht.set(p, weg);
+      for (const k of graph.get(p) ?? []) {
+        // Workspace-Peers starten einen eigenen Bereich. Fremde Peers erben
+        // dagegen den Bereich ihres Pfads, auch innerhalb der Auslieferung.
+        if (k.art === 'devDependencies' || (p !== '' && lokale.has(p) && k.art === 'peerDependencies')) continue;
+        offen.push({ pfad: k.pfad, weg: [...weg, { von: p, ...k }] });
+      }
     }
     return besucht;
   }
-  const ausgeliefert = erreiche(lokalePfade);
-  const entwicklung = erreiche([...lokale.keys()].flatMap((p) => graph.get(p)
-    .filter((k) => k.art === 'devDependencies').map((k) => k.pfad)));
+  const starts = (art, pfade) => pfade.flatMap((p) => graph.get(p)
+    .filter((k) => k.art === art).map((k) => ({ pfad: k.pfad, weg: [{ von: p, ...k }] })));
+  const ausgeliefert = erreiche(lokalePfade.map((pfad) => ({ pfad, weg: [] })));
+  const bereitgestellt = erreiche(starts('peerDependencies', lokalePfade.filter(Boolean)));
+  const entwicklung = erreiche(starts('devDependencies', lokalePfade));
   const liste = [];
   for (const [pfad, eintrag] of Object.entries(pakete).sort(([a], [b]) => a.localeCompare(b, 'en'))) {
     if (eintrag.link || lokale.has(pfad)) continue;
     const paketFehler = [];
-    const bereich = ausgeliefert.has(pfad) ? 'ausgeliefert' : 'entwicklung';
-    if (!ausgeliefert.has(pfad) && !entwicklung.has(pfad)) paketFehler.push('Keinem Abhängigkeitspfad zugeordnet.');
+    const bereich = ausgeliefert.has(pfad) ? 'ausgeliefert' : bereitgestellt.has(pfad) ? 'bereitgestellt' : 'entwicklung';
+    if (!ausgeliefert.has(pfad) && !bereitgestellt.has(pfad) && !entwicklung.has(pfad)) paketFehler.push('Keinem Abhängigkeitspfad zugeordnet.');
     const name = eintrag.name ?? pfad.slice(pfad.lastIndexOf('node_modules/') + 'node_modules/'.length);
     if (typeof eintrag.version !== 'string' || !eintrag.version) paketFehler.push('Version fehlt.');
     const installationsskripte = eintrag.hasInstallScript ? ['Lockfile: hasInstallScript'] : [];
     const vorgebaut = vorgabe.vorgebautePakete.filter((r) => new RegExp(r.muster).test(name)).map((r) => r.grund);
+    const ordner = join(wurzel, pfad);
     let lizenz;
     try {
-      lizenz = pruefeAusdruck(eintrag.license, bereich);
+      lizenz = pruefePaketlizenz(eintrag.license, name, eintrag.version, bereich, ordner, ausnahmen, wurzel);
       if (!lizenz.zulaessig) paketFehler.push(`Lizenz für ${bereich} nicht zugelassen: ${eintrag.license}`);
     } catch (e) { paketFehler.push(e.message); }
-    const ordner = join(wurzel, pfad);
     let installiert = false;
     let lizenzInstalliert = null;
     let hinweisdateien = [];
@@ -261,23 +362,37 @@ export function pruefeProjekt(wurzel, { packliste } = {}) {
         lizenzInstalliert = manifest.license ?? null;
         if (manifest.name !== name) paketFehler.push(`Installierter Paketname weicht ab: ${manifest.name}`);
         if (manifest.version !== eintrag.version) paketFehler.push(`Installierte Version weicht ab: ${manifest.version}`);
-        const lokal = pruefeAusdruck(manifest.license, bereich);
-        if (!lokal.zulaessig) paketFehler.push('Installierte Lizenz ist nicht zugelassen.');
-        if (lizenz && lokal.normalisiert !== lizenz.normalisiert) paketFehler.push('Lizenzangaben in Lockfile und Installation weichen ab.');
+        try {
+          const lokal = pruefePaketlizenz(manifest.license, manifest.name, manifest.version, bereich, ordner, ausnahmen, wurzel);
+          if (!lokal.zulaessig) paketFehler.push('Installierte Lizenz ist nicht zugelassen.');
+          if (lizenz && lokal.normalisiert !== lizenz.normalisiert) paketFehler.push('Lizenzangaben in Lockfile und Installation weichen ab.');
+          if ((lizenz?.ausnahme || lokal.ausnahme) && !gleich(eintrag.license ?? null, manifest.license ?? null)) {
+            paketFehler.push('Einzelausnahme verlangt identische Rohangaben in Lockfile und Installation.');
+          }
+        } catch (e) { paketFehler.push(`Installierte Lizenz nicht prüfbar: ${e.message}`); }
         for (const s of vorgabe.installationsskripte) {
           if (Object.hasOwn(manifest.scripts ?? {}, s)) installationsskripte.push(`package.json: ${s}`);
         }
         if (existsSync(join(ordner, 'binding.gyp'))) installationsskripte.push('binding.gyp: möglicher node-gyp-Installationsschritt');
-        const dateien = dateihinweise(ordner);
+        const dateien = dateihinweise(ordner, wurzel);
         vorgebaut.push(...dateien.binaer.map((p) => `Datei: ${p}`));
         hinweisdateien = dateien.hinweise;
       } catch (e) { paketFehler.push(`Installation nicht vollständig prüfbar: ${e.message}`); }
     }
     liste.push({ pfad, name, version: eintrag.version ?? null, bereich,
-      auchEntwicklung: ausgeliefert.has(pfad) && entwicklung.has(pfad),
-      lizenz: eintrag.license ?? null, auswahl: lizenz?.auswahl ?? [], installiert, lizenzInstalliert,
+      auchEntwicklung: bereich !== 'entwicklung' && entwicklung.has(pfad),
+      auchBereitgestellt: bereich !== 'bereitgestellt' && bereitgestellt.has(pfad),
+      wege: Object.fromEntries(Object.entries({ ausgeliefert, bereitgestellt, entwicklung })
+        .filter(([, erreicht]) => erreicht.has(pfad)).map(([art, erreicht]) => [art, erreicht.get(pfad)])),
+      lizenz: eintrag.license ?? null, auswahl: lizenz?.auswahl ?? [], ausnahme: lizenz?.ausnahme ?? null, installiert, lizenzInstalliert,
       installationsskripte, vorgebaut, hinweisdateien, abhaengigkeiten: graph.get(pfad), fehler: paketFehler });
     fehler.push(...paketFehler.map((f) => `${pfad}: ${f}`));
+  }
+  for (const a of ausnahmen) {
+    if (!liste.some((p) => p.name === a.paket && p.version === a.version
+      && p.bereich === a.bereich && p.lizenz === a.angabe)) {
+      fehler.push(`Einzelausnahme trifft auf kein Paket zu: ${a.paket}@${a.version} (${a.bereich}).`);
+    }
   }
   for (const datei of vorgabe.paketHinweise) {
     let original;
@@ -301,8 +416,10 @@ export function pruefeProjekt(wurzel, { packliste } = {}) {
   hinweise.push('Proprietäre Dienste, eingebettete Fremdanteile und vollständige Lizenztexte werden nicht automatisch bewertet.');
   const lizenzen = {};
   for (const p of liste) lizenzen[String(p.lizenz)] = (lizenzen[String(p.lizenz)] ?? 0) + 1;
-  return { formatVersion: 1, ok: fehler.length === 0,
+  return { formatVersion: 2, stichtag, ok: fehler.length === 0,
     zusammenfassung: { pakete: liste.length, ausgeliefert: liste.filter((p) => p.bereich === 'ausgeliefert').length,
+      bereitgestellt: liste.filter((p) => p.bereich === 'bereitgestellt').length,
+      einzelausnahmen: liste.filter((p) => p.ausnahme !== null).length,
       entwicklung: liste.filter((p) => p.bereich === 'entwicklung').length, installiert: liste.filter((p) => p.installiert).length,
       nurLockfile: liste.filter((p) => !p.installiert).length, installationsskripte: liste.filter((p) => p.installationsskripte.length).length,
       vorgebaut: liste.filter((p) => p.vorgebaut.length).length, lizenzen },
@@ -312,12 +429,14 @@ export function pruefeProjekt(wurzel, { packliste } = {}) {
 export function menschenlesbar(bericht) {
   const s = bericht.zusammenfassung;
   const zeilen = s ? [
-    `Lizenzprüfung: ${s.pakete} Fremdpakete; ${s.ausgeliefert} ausgeliefert, ${s.entwicklung} für Test und Build.`,
+    `Lizenzprüfung: ${s.pakete} Fremdpakete; ${s.ausgeliefert} ausgeliefert, ${s.bereitgestellt} bereitgestellt, ${s.entwicklung} für Test und Build.`,
     `Gegenprüfung: ${s.installiert} installiert, ${s.nurLockfile} nur im Lockfile.`,
     `Lizenzen: ${Object.entries(s.lizenzen).map(([k, n]) => `${k}: ${n}`).join(', ')}`,
     `Installationsskripte: ${s.installationsskripte}; vorgebaute Programme: ${s.vorgebaut}.`,
+    `Einzelausnahmen: ${s.einzelausnahmen}; Stichtag (UTC): ${bericht.stichtag}.`,
     ...bericht.pakete.map((p) => `${p.fehler.length ? 'FEHLER' : 'OK'} ${p.name}@${p.version} | ${p.lizenz} | ${p.bereich} | ${p.installiert ? 'gegengeprüft' : 'nur Lockfile'} | ${p.pfad}`
       + `${p.auswahl.length ? ` | gewählte Lizenz: ${p.auswahl.join(' AND ')}` : ''}`
+      + `${p.ausnahme ? ` | Einzelausnahme bis ${p.ausnahme.gueltigBis}: ${p.ausnahme.beleg.datei}` : ''}`
       + `${p.installationsskripte.length ? `\n  Installationsskript: ${p.installationsskripte.join('; ')}` : ''}`
       + `${p.vorgebaut.length ? `\n  Vorgebaut: ${p.vorgebaut.join('; ')}` : ''}`),
   ] : ['Lizenzprüfung konnte nicht abgeschlossen werden.'];
@@ -338,10 +457,10 @@ function haupt(argv) {
         const wert = resolve(argv[++i]);
         if (a === '--wurzel') wurzel = wert;
         else packliste = wert;
-      } else throw new Error(`Unbekanntes oder unvollständiges Argument: ${a}`);
+      } else throw new Error('Unbekanntes oder unvollständiges Argument.');
     }
     bericht = pruefeProjekt(wurzel, { packliste });
-  } catch (e) { bericht = { formatVersion: 1, ok: false, hinweise: [], fehler: [e.message] }; }
+  } catch (e) { bericht = { formatVersion: 2, ok: false, hinweise: [], fehler: [e.message] }; }
   console.log(argv.includes('--json') ? JSON.stringify(bericht, null, 2) : menschenlesbar(bericht));
   process.exitCode = bericht.ok ? 0 : 1;
 }

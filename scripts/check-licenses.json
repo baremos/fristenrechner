@@ -1,11 +1,21 @@
 {
   "lizenzen": {
-    "MIT": ["ausgeliefert", "entwicklung"],
-    "Apache-2.0": ["ausgeliefert", "entwicklung"],
-    "ISC": ["ausgeliefert", "entwicklung"],
-    "BSD-3-Clause": ["ausgeliefert", "entwicklung"],
-    "MPL-2.0": ["entwicklung"]
+    "MIT": ["ausgeliefert", "bereitgestellt", "entwicklung"],
+    "Apache-2.0": ["ausgeliefert", "bereitgestellt", "entwicklung"],
+    "ISC": ["ausgeliefert", "bereitgestellt", "entwicklung"],
+    "BSD-3-Clause": ["ausgeliefert", "bereitgestellt", "entwicklung"],
+    "MPL-2.0": ["bereitgestellt", "entwicklung"],
+    "Zlib": ["ausgeliefert", "bereitgestellt", "entwicklung"],
+    "GPL-3.0-or-later": [],
+    "BSD-2-Clause": ["bereitgestellt", "entwicklung"],
+    "0BSD": ["bereitgestellt", "entwicklung"],
+    "BlueOak-1.0.0": ["bereitgestellt", "entwicklung"],
+    "CC0-1.0": ["bereitgestellt", "entwicklung"],
+    "Python-2.0": ["bereitgestellt", "entwicklung"],
+    "LGPL-3.0-or-later": ["bereitgestellt", "entwicklung"]
   },
+  "einzelausnahmen": [],
+  "einzelausnahmenMaxMonate": 12,
   "installationsskripte": ["preinstall", "install", "postinstall"],
   "vorgebautePakete": [
     { "muster": "^@rolldown/binding-", "grund": "Native Rolldown-Bindung" },
