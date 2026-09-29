@@ -13,6 +13,9 @@ gradlew text eol=lf
 # Die Referenzdateien des Rechenkerns werden zeichengenau verglichen.
 packages/kern/test/referenz/*.txt text eol=lf
 
+# Die Referenzdateien der Oberfläche ebenso.
+packages/oberflaeche/test/referenz/** text eol=lf
+
 # Binärdateien
 *.png binary
 *.jpg binary
