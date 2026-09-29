@@ -34,7 +34,7 @@ Installiert am 2026-09-28 mit `apt-get install --no-install-recommends fdroidser
 | Python | 3.13.5 | `python3` 3.13.5-1 |
 | Git | 2.47.3 | `git` 1:2.47.3-0+deb13u1 |
 
-Nicht installiert sind das Android SDK und Gradle. Node.js ist nicht im System installiert, es liegt seit dem 2026-09-29 als Archiv im Benutzerbereich, siehe „Einrichtung unter Linux“. Die empfohlenen Pakete von `fdroidserver` sind nicht installiert, darunter das Paket `android-sdk` aus Debian.
+Im System sind das Android SDK, Node.js und Gradle nicht installiert. Node.js und das Projekt-SDK liegen seit dem 2026-09-29 im Benutzerbereich, siehe „Einrichtung unter Linux“. Gradle lädt der Gradle-Wrapper beim ersten Build dorthin. Die empfohlenen Pakete von `fdroidserver` sind nicht installiert, darunter das Paket `android-sdk` aus Debian.
 
 **Zur Fassung von fdroidserver:** `toolchain.md` nannte bis zum 2026-09-28 die Fassung 2.4.5, der Installationsweg sollte vor der Installation feststehen. Installiert worden ist für die frühe Probe die Fassung 2.4.2 aus Debian, also vor der Festlegung. Der fachlich Verantwortliche hat danach am selben Tag 2.4.2 aus Debian festgelegt, siehe F1.
 
@@ -103,8 +103,17 @@ Dieselbe Datei nennt für `node-v24.21.0-win-x64.zip` die Prüfsumme aus `script
 | Schritt | Befehl | Stand |
 |---|---|---|
 | Node.js bereitstellen | `scripts/node-einrichten.sh` | eingerichtet am 2026-09-29 unter `~/.local/share/fristenrechner/node`: Archiv geladen, Prüfsumme stimmt, Node.js 24.21.0 und npm 11.19.0, 4797 Dateien, 208 MiB. Ein zweiter Lauf erkennt die Einrichtung und lädt nichts. Im Suchpfad des Systems liegt kein Node.js. Am 2026-09-28 ohne Download geprüft: Probelauf, Fehlbedienung, vorhandene Ordner mit passendem und mit unpassendem Inhalt. |
-| Projekt-SDK einrichten | `scripts/android-sdk-einrichten.sh --ohne-testgruppe` | am 2026-09-28 geprüft ohne Download, siehe nächste Zeile. Geladen und installiert ist am 2026-09-29 noch nichts. Ungeprüft sind bis zum ersten Lauf: Download und Entpacken des Archivs, der Aufruf von `sdkmanager` mit der Anzeige der Lizenzbedingungen, Download und Installation der Pakete. |
-| Projekt-SDK prüfen | `scripts/android-sdk-einrichten.sh --nur-pruefen --ohne-testgruppe` | geprüft an einem leeren und an einem nachgebauten SDK, auch in einem Ordner mit Leerzeichen und Umlaut. Gegenproben mit einem ersetzten Prüfprogramm: Abbruch, zu wenige Zeilen, vertauschte Namen, fehlendes Feld und unbekannter Status lassen das Skript scheitern. |
+| Projekt-SDK einrichten | `scripts/android-sdk-einrichten.sh --ohne-testgruppe` | eingerichtet am 2026-09-29 unter `~/.local/share/fristenrechner/android-sdk`. Der fachlich Verantwortliche hat das Skript gestartet und die Lizenzbedingungen im Dialog bestätigt. Das war der erste Lauf mit Download. Ergebnis: 11 667 Dateien, rund 490 MiB, im Ordner `licenses` liegt nur `android-sdk-license`. |
+| Projekt-SDK prüfen | `scripts/android-sdk-einrichten.sh --nur-pruefen --ohne-testgruppe` | am 2026-09-29 am eingerichteten SDK: vier von vier Paketen wie festgelegt, Rückgabewert 0. Gegenprobe ohne `--ohne-testgruppe`: Emulator und drei Systemabbilder fehlen, Rückgabewert 2. Am 2026-09-28 geprüft an einem leeren und an einem nachgebauten SDK, auch in einem Ordner mit Leerzeichen und Umlaut. Gegenproben mit einem ersetzten Prüfprogramm: Abbruch, zu wenige Zeilen, vertauschte Namen, fehlendes Feld und unbekannter Status lassen das Skript scheitern. |
+
+| Paket im SDK | Revision |
+|---|---|
+| `cmdline-tools;22.0` | 22.0 |
+| `platforms;android-36` | 2 |
+| `build-tools;35.0.0` | 35.0.0 |
+| `platform-tools` | 37.0.1 |
+
+`sdkmanager` hat außerhalb des SDK den Ordner `~/.android/cache` angelegt und im SDK den Ordner `.temp`.
 
 Beide Skripte lesen Versionen und Prüfsummen aus `scripts/toolchain.json`. Sie schreiben nur in den Benutzerbereich und installieren nichts im System. `android-sdk-einrichten.sh` entspricht dem Skript für Windows: `sdkmanager` zeigt die Lizenzbedingungen an, wer das Skript startet, bestätigt sie selbst. `node-einrichten.sh` vergleicht nach dem Entpacken Node.js und npm mit der Festlegung.
 
@@ -130,6 +139,56 @@ Vorgebaute Programme nach `npm ci` unter Linux, gesucht nach den Endungen `node`
 
 Dazu kommt `es-module-lexer` mit WebAssembly, das in JavaScript eingebettet ist. Der Build des Rechenkerns ruft nur `tsc` auf. Das gilt für den Stand vom 2026-09-29 ohne die Oberfläche und ohne die App. Mit Astro kommen weitere Pakete hinzu, die Aufstellung ist dann zu wiederholen (F5).
 
+## Build der Minimal-App unter Linux
+
+Gebaut am 2026-09-29 in Debian 13.5, ohne die Werkzeuge von F-Droid. Quelle ist der Stand der Minimal-App, den auch der Scanner geprüft hat, 64 Dateien, frisch geklont in einen neuen Ordner. Das Build-Skript stammt aus der sauberen Kopie von `main`.
+
+| Schritt | Befehl | Ergebnis |
+|---|---|---|
+| Abhängigkeiten | `npm ci` | 394 Pakete |
+| Test des Web-Anteils | `npm test` | 1 Test bestanden |
+| Web-Build | `npm run build` | `dist` mit einer Seite |
+| Abgleich mit Capacitor | `npx --no-install cap sync android` | 2 Plugins erkannt, `filesystem` 8.1.3 und `share` 8.0.2. Der Arbeitsbaum ist danach laut Git unverändert. |
+| Prüfung der Werkzeuge | `scripts/android-build.mjs --nur-pruefen` | Node.js 24.21.0, JDK 21.0.12.1 aus Debian, SDK im Standardordner, Gradle 8.14.5. Hinweise nur auf die fehlende Testgruppe. |
+| Debug-Build | `scripts/android-build.mjs --aufgabe assembleDebug` | bestanden nach 2 Minuten 56 Sekunden, 154 Aufgaben. In dieser Zeit lädt der Wrapper Gradle und Gradle die Abhängigkeiten. |
+| Release-Build | `scripts/android-build.mjs --aufgabe assembleRelease` | bestanden nach 52 Sekunden, 204 Aufgaben. Die Datei ist unsigniert. |
+
+| Datei | Größe | Berechtigungen laut `aapt2` |
+|---|---|---|
+| `app-debug.apk` | 4 247 132 Bytes | nur `de.baremos.fristenrechner.probe.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, keine Berechtigung `INTERNET` |
+| `app-release-unsigned.apk` | 3 251 043 Bytes | wie oben |
+
+Die genannte Berechtigung legt die Bibliothek AndroidX Core für die App selbst an. Sie gewährt keinen Zugriff auf das Netzwerk.
+
+Geladen hat der Build in den Benutzerbereich: Gradle 8.14.5 über den Wrapper mit Prüfung der Prüfsumme und die Abhängigkeiten des Android-Builds, zusammen 1,3 GiB unter `~/.gradle`. Die Abhängigkeiten aus npm belegen 311 MiB.
+
+Gradle meldet zweimal „Using flatDir should be avoided“. Die Meldung stammt aus der Vorlage von Capacitor.
+
+### Erste Probe zur Reproduzierbarkeit
+
+Verglichen ist die unsignierte Release-Datei der Minimal-App, Stand `d27fb91`, gebaut am 2026-09-29.
+
+| Vergleich | Ergebnis |
+|---|---|
+| zwei Builds unter Linux in getrennten Ordnern mit verschieden langen Pfaden, jeweils frisch geklont, mit eigenem `npm ci` | bytegleich, 3 251 043 Bytes, SHA-256 `a491907e4b44ba1306bf67651e9d36d363b717bf1a7f760ebe481bf9fccf9350` |
+| Build unter Windows 11 gegen den Build unter Linux, unter Windows geklont ohne Umwandlung der Zeilenenden | bytegleich |
+| Gegenprobe: Build unter Windows, geklont mit `core.autocrlf=true`, 37 Dateien mit Zeilenenden von Windows im Arbeitsbaum | bytegleich |
+
+| Umgebung | Windows | Linux |
+|---|---|---|
+| Betriebssystem | Windows 11 | Debian 13.5 unter WSL 2 |
+| JDK | 21.0.8 | 21.0.12.1 |
+| Node.js und npm | 24.21.0 und 11.19.0 | 24.21.0 und 11.19.0 |
+| Gradle, Android-Gradle-Plugin, Build-Tools | 8.14.5, 8.13.0, 35.0.0 | 8.14.5, 8.13.0, 35.0.0 |
+
+Was das belegt und was nicht:
+
+1. Alle Builds liefen am selben Tag auf demselben Rechner. Unter Linux teilten sich beide Builds den Zwischenspeicher von Gradle.
+2. Die Minimal-App hat eine Seite, keine Bilder aus eigenen Quellen und keinen nativen Code. Die Zeilenenden der Quellen erreichen bei ihr das Ergebnis nicht. Bei der App kann das anders sein.
+3. Verglichen ist die unsignierte Datei. Signiert ist nichts.
+4. Das ist kein Build mit den Werkzeugen von F-Droid und kein Build auf dem Buildserver von F-Droid.
+5. Das Build-Skript meldet unter Windows, dass das JDK 21.0.8 vom Stand für Release-Builds abweicht. Auf das Ergebnis hatte das hier keinen Einfluss.
+
 ## Festlegungen
 
 Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1, F3 und F4 sind getroffen. F2, F5 und F6 sind offen.
@@ -145,8 +204,8 @@ Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1, F3 
 
 ## Nächste Schritte
 
-1. Das Android SDK unter Linux einrichten, nach F4. Node.js ist seit dem 2026-09-29 eingerichtet.
-2. Minimal-App unter Linux bauen, zuerst ohne die Werkzeuge von F-Droid, um den Weg zu prüfen.
+1. Erledigt am 2026-09-29: Node.js und das Android SDK unter Linux eingerichtet, nach F3 und F4.
+2. Erledigt am 2026-09-29: Minimal-App unter Linux gebaut, ohne die Werkzeuge von F-Droid.
 3. Rezept schreiben und mit `fdroid build` bauen. Dabei F2 und F5 klären.
 4. Scanner nach den Vorbereitungsschritten laufen lassen.
 5. Am Ende von Stufe 2: alles mit der App wiederholen.
