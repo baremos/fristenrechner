@@ -1,6 +1,6 @@
 # Signierung
 
-Stand 2026-09-29 · Entwurf, nach der ersten Runde des Kreuz-Reviews überarbeitet · es ist kein Schlüssel erzeugt
+Stand 2026-09-29 · Entwurf, nach zwei Runden des Kreuz-Reviews überarbeitet · es ist kein Schlüssel erzeugt
 
 Dieses Dokument legt fest, wie die App signiert wird. Es steht, bevor der erste Release-Build entsteht. Festlegungen trifft der fachlich Verantwortliche. Bis dahin sind alle Punkte Vorschläge.
 
@@ -46,18 +46,19 @@ Gelesen am 2026-09-29 in der Hilfe zur Play Console und in der Dokumentation des
 
 | Punkt | Was die Quellen sagen |
 |---|---|
-| Voreinstellung für neue Apps | Google Play signiert mit einem hybriden Verfahren und mit Schlüsseln, die Google erzeugt: ein klassischer Schlüssel RSA mit 4096 Bit und ein Schlüssel ML-DSA-65. |
+| Voreinstellung für neue Apps | Google Play signiert mit einem hybriden Verfahren und mit Schlüsseln, die Google erzeugt. Beteiligt sind drei Schlüssel: ein klassischer Schlüssel für ältere Geräte, in der Dokumentation K0 genannt, und für den hybriden Block ein neuer Schlüssel RSA mit 4096 Bit und ein Schlüssel ML-DSA-65. |
 | Eigener Schlüssel | Der Herausgeber kann die Voreinstellung ändern und einen eigenen Schlüssel einbringen, solange keine Version im offenen Test oder in der Produktion veröffentlicht ist. |
 | Signaturverfahren | APK Signature Scheme v3.2, eingeführt mit Android 17 (API 37). Es verlangt eine klassische und eine zweite Signatur nach einem Verfahren, das auch Quantenrechnern standhalten soll. |
 | Ältere Geräte | Bis Android 16 wertet das System den hybriden Block nicht aus und verwendet die bisherigen Verfahren. |
-| Wirkung auf Updates | Android behandelt den hybriden Block wie einen Schlüsselwechsel. Ein Update, das nur mit einem der beiden Schlüssel signiert ist, scheitert bei einer hybrid signierten App, wenn der Wechsel zurück nicht eigens belegt ist. |
+| Wirkung auf Updates | Android behandelt den hybriden Block wie einen Schlüsselwechsel. War die installierte App nur klassisch signiert, muss dieser Schlüssel in der Folge der Schlüssel des hybriden Blocks als Vorgänger stehen. War sie hybrid signiert und ist das Update nur mit einem Schlüssel signiert, müssen beide bisherigen Schlüssel den neuen bestätigen. |
+| Rückweg | Die Dokumentation empfiehlt, dem Schlüssel K0 in der Folge der Schlüssel das Recht `ROLLBACK` zu geben. Damit kann eine App zu einer klassischen Signatur zurückkehren. |
 
-Nicht aus den Quellen hervor geht, ob Google Play auch bei einem eigenen Schlüssel einen hybriden Block anfügt.
+Nicht aus den Quellen hervor geht, ob Google Play auch bei einem eigenen Schlüssel einen hybriden Block anfügt, ob der eigene Schlüssel dann K0 ist und ob Google Play ihm das Recht `ROLLBACK` gibt.
 
 Folgerung für dieses Projekt, noch ohne Nachweis:
 
-1. Signiert Google Play bei einem eigenen Schlüssel nur klassisch, passen die Fassungen beider Vertriebswege zueinander.
-2. Fügt Google Play einen hybriden Block an, kann auf Geräten ab Android 17 der Wechsel von Google Play zu F-Droid scheitern, auch wenn beide Fassungen denselben klassischen Schlüssel tragen. Der Wechsel in die andere Richtung wäre davon nicht betroffen.
+1. Signiert Google Play bei einem eigenen Schlüssel nur klassisch und mit demselben Zertifikat, passen die Fassungen beider Vertriebswege zueinander.
+2. Fügt Google Play einen hybriden Block an, gilt auf Geräten ab Android 17: Der Wechsel von F-Droid zu Google Play setzt voraus, dass das Zertifikat der Fassung von F-Droid in der Folge der Schlüssel als Vorgänger steht. Der Wechsel von Google Play zu F-Droid setzt voraus, dass der Rückweg zur klassischen Signatur eingerichtet ist. Fehlt eine der Voraussetzungen, scheitert der Wechsel in dieser Richtung.
 3. Ein gemeinsamer klassischer Schlüssel allein ist deshalb kein Nachweis für Ziel 1.
 
 Die festgelegten Build-Tools 35.0.0 sind älter als Android 17. Ob `apksigner` aus diesem Paket hybride Signaturen prüfen oder erzeugen kann, ist nicht geprüft.
@@ -77,6 +78,7 @@ Die festgelegten Build-Tools 35.0.0 sind älter als Android 17. Ob `apksigner` a
 | S9 | Kennwörter | kennt nur der fachlich Verantwortliche. Sie stehen in keiner Datei des Repositorys, in keinem Protokoll und in keinem Aufruf. Wer signiert, gibt das Kennwort im Dialog ein. | Regel 4 des Projekts |
 | S10 | Sicherung | zwei Kopien auf getrennten Datenträgern an getrennten Orten, verschlüsselt. Die Wiederherstellung des echten Schlüssels wird einmal geprüft, bevor er zum ersten Mal für eine Veröffentlichung verwendet wird. | Abnahmekriterium des Arbeitspakets |
 | S11 | Debug-Builds | tragen den Debug-Schlüssel, den die Build-Werkzeuge von Android auf dem Rechner erzeugen, und werden nicht veröffentlicht | Der Debug-Schlüssel entsteht auf jedem Rechner neu. |
+| S12 | Fassung von `apksigner` zum Signieren | offen, bis der Nachweis N5 vorliegt. Zu prüfen sind die Fassungen aus den Build-Tools 34.0.0 und 35.0.0. | F-Droid dokumentiert: Dateien, die `apksigner` aus den Build-Tools 34 signiert, lassen sich mit `apksigcopier` prüfen, bei neueren Fassungen scheitert das. Das Projekt baut mit den Build-Tools 35.0.0. Gebaut und signiert werden kann mit verschiedenen Fassungen. |
 
 ## Probe vor dem echten Schlüssel
 
@@ -100,8 +102,8 @@ Auch der Probeschlüssel entsteht erst nach einer Freigabe. Die Probe der Wieder
 | 2. Zertifikat prüfen und Fingerabdruck festhalten | `keytool -list -v` | der fachlich Verantwortliche. Der Fingerabdruck ist öffentlich und kommt in dieses Dokument. |
 | 3. Sicherung anlegen und Wiederherstellung prüfen | Kopie, Vergleich der Prüfsummen, Probe-Signatur mit der wiederhergestellten Datei | der fachlich Verantwortliche |
 | 4. Unsignierte Release-Dateien erzeugen | `scripts/android-build.mjs`, Aufgabe `assembleRelease` für die APK, Aufgabe `bundleRelease` für das AAB | Skript |
-| 5. Ausrichtung der APK prüfen | `zipalign`, vor dem Signieren. Danach wird die Datei nicht mehr verändert. | Skript |
-| 6. APK signieren | `apksigner sign` mit dem App-Signierschlüssel. Die signierte Datei ist eine eigene Datei, die unsignierte bleibt erhalten. | der fachlich Verantwortliche, Kennwort im Dialog |
+| 5. Ausrichtung der APK prüfen | `zipalign`. Stimmt die Ausrichtung nicht, wird sie vor dem Signieren hergestellt. | Skript |
+| 6. APK signieren | `apksigner sign` mit dem App-Signierschlüssel, in der Fassung nach S12. Die signierte Datei ist eine eigene Datei, die unsignierte bleibt erhalten. Nach dem Signieren wird die signierte Datei nicht mehr verändert. | der fachlich Verantwortliche, Kennwort im Dialog |
 | 7. Signatur der APK prüfen | `apksigner verify --verbose --print-certs`, Vergleich der Verfahren und des Fingerabdrucks mit diesem Dokument | Skript |
 | 8. AAB signieren | `jarsigner` mit dem Upload-Schlüssel | der fachlich Verantwortliche, Kennwort im Dialog, erst in Stufe 4 |
 | 9. Schlüssel bei Google Play einbringen | Play Console | der fachlich Verantwortliche, erst in Stufe 4 und vor der ersten Veröffentlichung |
@@ -116,7 +118,7 @@ Die Skripte für die Schritte 4 bis 7 entstehen unter `scripts/signing/`. Sie ne
 | N2 | Zertifikat geprüft | Verfahren, Länge, Gültigkeit mit Enddatum und Angaben gegen dieses Dokument | offen |
 | N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | offen |
 | N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, ein Projekt speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist vorhanden. Gegenprobe: Eine Fassung mit anderer Signatur wird abgelehnt. | offen |
-| N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. | offen |
+| N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | offen |
 | N6 | Wechsel zwischen den Vertriebswegen | Zertifikate und Folge der Schlüssel in den Dateien, die Google Play tatsächlich ausliefert, mit der Fassung für F-Droid vergleichen. Updates mit steigendem Versionscode in beiden Richtungen, ohne Datenverlust, auch auf Android 17. | offen, erst mit einem Konto bei Google Play möglich, vor der ersten Veröffentlichung |
 
 N1 bis N5 gehören zu Stufe 2 und laufen mit dem Probeschlüssel. N6 gehört zu Stufe 4.
@@ -133,9 +135,13 @@ Der Wechsel eines Schlüssels ist ein Notfall und kein Teil des gewöhnlichen Ab
 
 ## Offene Punkte
 
-1. Festlegungen S1 bis S11 durch den fachlich Verantwortlichen. S1 bleibt bedingt, bis N6 erbracht ist.
+1. Festlegungen S1 bis S12 durch den fachlich Verantwortlichen. S1 bleibt bedingt, bis N6 erbracht ist. S12 bleibt offen, bis N5 erbracht ist.
 2. Freigabe für einen Probeschlüssel.
-3. Klären, ob Google Play bei einem eigenen Schlüssel einen hybriden Block anfügt. Das zeigt sich erst an einer Datei, die Google Play ausliefert. Scheitert N6, ist Ziel 1 neu zu fassen: entweder getrennte Signaturen mit einem Hinweis an die Nutzer, oder eine hybride Signatur auch für F-Droid.
+3. Klären, ob Google Play bei einem eigenen Schlüssel einen hybriden Block anfügt. Das zeigt sich erst an einer Datei, die Google Play ausliefert. Scheitert N6, sind diese Wege zu prüfen:
+   - der Rückweg zur klassischen Signatur über das Recht `ROLLBACK` für K0. Ob Google Play ihn einrichtet und beibehält, ist offen.
+   - eine hybride Signatur auch für die Fassung bei F-Droid. Sie braucht passende Schlüssel und einen Nachweis mit den Werkzeugen von F-Droid.
+   - die signierte Datei aus der Play Console als Datei des Herausgebers für F-Droid.
+   - Bleiben nur Signaturen, die nicht zueinander passen, entfällt Ziel 1. Dann nehmen Nutzer ihre Daten über den Export und den Import der Projektdatei mit. Dieser Weg wäre eigens zu beschreiben und zu prüfen.
 4. Prüfen, mit welcher Version der Build-Tools `apksigner` das Verfahren v3.2 kennt.
 5. Die Mindestversion von Android kann in Arbeitspaket 2.5 steigen. S6 ändert sich dadurch nicht.
 6. Ursachen für abweichende Builds, die F-Droid nennt: Versionen der Werkzeuge, Zeitangaben in Archiven, Verarbeitung von Bildern, Zeilenenden unter Windows und Linux, Zahl der Prozessorkerne. Welche davon diese App betreffen, zeigt erst der Nachweis.
