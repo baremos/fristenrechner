@@ -101,6 +101,29 @@ def lauf_umgebung(lauf, node, jdk, sdk):
     return env
 
 
+def rezept_einchecken(lauf, repo, commit, env):
+    """Macht den Laufordner zum Git-Repository und checkt das Rezept ein.
+
+    fdroidserver 2.4.2 leitet SOURCE_DATE_EPOCH beim ersten Build aus dem
+    letzten Commit des Rezepts ab, wie im Repository mit den Rezepten von
+    F-Droid. Liegt das Rezept in keinem Git-Repository, bricht es mit
+    "str expected, not NoneType" ab. Der Commit trägt den Zeitpunkt des
+    gebauten Standes der App, damit jeder Lauf denselben Wert erhält.
+    """
+    zeit = ausgabe(["git", "-C", str(repo), "log", "-1", "--format=%ct", commit])
+    if not re.fullmatch(r"[0-9]{9,11}", zeit):
+        raise ValueError("Der Zeitpunkt des Commits ist nicht lesbar")
+    git_env = dict(env, GIT_AUTHOR_NAME="Probe", GIT_AUTHOR_EMAIL="probe@localhost",
+                   GIT_COMMITTER_NAME="Probe", GIT_COMMITTER_EMAIL="probe@localhost",
+                   GIT_AUTHOR_DATE=f"@{zeit} +0000", GIT_COMMITTER_DATE=f"@{zeit} +0000",
+                   GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_SYSTEM="/dev/null")
+    for befehl in (["init", "--quiet", "--initial-branch=probe"],
+                   ["add", "--", f"metadata/{REZEPT.name}"],
+                   ["commit", "--quiet", "--message", "Rezept der lokalen Probe"]):
+        ausgabe(["git", "-C", str(lauf)] + befehl, env=git_env)
+    return int(zeit)
+
+
 def pruefe_gradle_archiv(lauf, vorgabe):
     gradle = vorgabe["gradle"]
     archiv = lauf / "gradlew-cache" / f'gradle-{gradle["version"]}-bin.zip'
@@ -180,10 +203,12 @@ def main(argv=None):
     neue_json(lauf / "config.yml", {"sdk_path": str(sdk), "gradle": str(wrapper),
                                    "java_paths": {"21": str(jdk)}, "cachedir": str(lauf / "fdroid-cache")})
     befehl = ["fdroid", "build", "--verbose", f"{APPID}:1"]
+    env = lauf_umgebung(lauf, node, jdk, sdk)
+    zeit = rezept_einchecken(lauf, repo, commit, env)
     neue_json(lauf / "lauf.json", {"commit": commit, "repo": str(repo), "befehl": befehl,
                                   "scandeleteVersuch": args.versuch_scandelete,
-                                  "gradlewSha256": pin["sha256"]})
-    env = lauf_umgebung(lauf, node, jdk, sdk)
+                                  "gradlewSha256": pin["sha256"],
+                                  "zeitpunktDesRezepts": zeit})
     with (lauf / "build.log").open("x", encoding="utf-8") as protokoll:
         ergebnis = subprocess.run(befehl, cwd=lauf, env=env, stdout=protokoll, stderr=subprocess.STDOUT)
     neue_json(lauf / "rueckgabe.json", {"fdroidBuild": ergebnis.returncode})
