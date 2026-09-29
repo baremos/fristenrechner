@@ -1,0 +1,1323 @@
+---
+const bundeslaender = [
+  ['BW', 'Baden-Württemberg'], ['BY', 'Bayern'], ['BE', 'Berlin'], ['BB', 'Brandenburg'],
+  ['HB', 'Bremen'], ['HH', 'Hamburg'], ['HE', 'Hessen'], ['MV', 'Mecklenburg-Vorpommern'],
+  ['NI', 'Niedersachsen'], ['NW', 'Nordrhein-Westfalen'], ['RP', 'Rheinland-Pfalz'],
+  ['SL', 'Saarland'], ['SN', 'Sachsen'], ['ST', 'Sachsen-Anhalt'],
+  ['SH', 'Schleswig-Holstein'], ['TH', 'Thüringen'],
+] as const;
+---
+
+<div class="fristenrechner" data-fristenrechner data-pagefind-ignore="all">
+  <div class="privacy-note">
+    <strong>Ihre Daten bleiben lokal.</strong>
+    Eingaben werden nur in diesem Browser verarbeitet und nicht an BAREMOS IT oder Dritte übertragen.
+    <span id="storage-status" role="status" aria-live="polite"></span>
+  </div>
+  <p id="project-file-meta" class="project-file-meta" role="status" aria-live="polite" hidden></p>
+
+  <noscript>
+    <p class="notice notice-error">Für den Fristenrechner Vergabe &amp; Terminplanung muss JavaScript aktiviert sein.</p>
+  </noscript>
+
+  <form id="schedule-form">
+    <div class="form-header">
+      <div>
+        <p class="eyebrow">Eingaben</p>
+        <h2>Vergabeverfahren konfigurieren</h2>
+      </div>
+      <button type="button" class="button button-quiet" id="reset-project">Neues Projekt</button>
+    </div>
+
+    <fieldset>
+      <legend>Projektkopf <span>optional</span></legend>
+      <div class="form-grid three-columns">
+        <label>
+          <span>Kunde / Vergabestelle</span>
+          <input name="kunde" autocomplete="organization" maxlength="200" />
+        </label>
+        <label>
+          <span>Projektname</span>
+          <input name="projektname" maxlength="200" />
+        </label>
+        <label>
+          <span>Vergabenummer</span>
+          <input name="vergabenummer" maxlength="100" />
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Verfahren</legend>
+      <div class="form-grid three-columns">
+        <label>
+          <span>Vergabeordnung</span>
+          {/* Verfahrensarten je Ordnung unterschiedlich (VSVgV ohne offenes
+              Verfahren) — die UI befüllt das Verfahrensart-Feld passend um
+              (Kern 1.5.0) */}
+          <select name="vergabeordnung" required>
+            <optgroup label="EU-weit (ab den Schwellenwerten)">
+              <option value="vgv">VgV — Liefer- und Dienstleistungen</option>
+              <option value="vob_a_eu">VOB/A-EU — Bauleistungen</option>
+              <option value="sektvo">SektVO — Sektorenauftraggeber</option>
+              <option value="vsvgv">VSVgV — Verteidigung und Sicherheit</option>
+              <option value="konzvgv">KonzVgV — Konzessionen</option>
+            </optgroup>
+            <optgroup label="National (unterhalb der Schwellenwerte)">
+              <option value="uvgo">UVgO — Liefer- und Dienstleistungen</option>
+              <option value="vob_a_1">VOB/A 1. Abschnitt — Bauleistungen</option>
+            </optgroup>
+          </select>
+        </label>
+        <label>
+          <span>Verfahrensart</span>
+          <select name="verfahrensart" required>
+            <option value="offen">Offenes Verfahren</option>
+            <option value="nicht_offen_mit_tnw">Nicht offenes Verfahren mit Teilnahmewettbewerb</option>
+            <option value="verhandlung_ohne_tnw">Verhandlungsverfahren ohne Teilnahmewettbewerb</option>
+            <option value="verhandlung_mit_tnw">Verhandlungsverfahren mit Teilnahmewettbewerb</option>
+          </select>
+        </label>
+        <label>
+          <span>Bundesland der Vergabestelle</span>
+          <select name="bundesland" required>
+            {bundeslaender.map(([value, label]) => <option value={value} selected={value === 'BE'}>{label}</option>)}
+          </select>
+        </label>
+        <label>
+          <span data-start-label>Absendung der Bekanntmachung</span>
+          <input type="date" name="bekanntmachung" required />
+        </label>
+        {/* Nur zweistufige Verfahren (Kern 1.7.0): fester Termin für den Start der Angebotsphase —
+            ersetzt die Berechnung aus der TNA-Bewertungszeit; min-Attribut
+            = Ablauf der Teilnahmefrist (fruehesteStarts) */}
+        <label data-aufforderung-field hidden>
+          <span>Aufforderung zur Angebotsabgabe <small>optional — fester Termin</small></span>
+          <input type="date" name="angebotsaufforderungTermin" disabled />
+        </label>
+        {/* Abgabe-Uhrzeit (Kern 1.8.0): Ist für
+            die Abgabe eine Uhrzeit bestimmt (z. B. 10:00 statt Fristablauf
+            24:00 Uhr), legt der Kern jeden Abgabe-/Eingangstermin auf den
+            nächsten Arbeitstag nach dem Fristende — die volle Frist bleibt
+            gewahrt, die Folgetermine verschieben sich entsprechend */}
+        <label>
+          <span>Uhrzeit der Angebotsabgabe <small>optional — ohne Uhrzeit endet die Frist um 24:00 Uhr</small></span>
+          <input type="time" name="abgabeUhrzeit" />
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Verfahrensoptionen</legend>
+      <div class="check-grid">
+        <label class="check-card">
+          <input type="checkbox" name="elektronischeAbgabe" checked />
+          {/* Titel/Beschreibung je Vergabeordnung (VSVgV: E-Bekanntmachung
+              + E-Vergabeunterlagen statt E-Angebotsabgabe) — Texte kommen
+              aus VERGABEORDNUNGEN, die UI schreibt sie beim Wechsel um */}
+          <span><strong data-elektronisch-label>Elektronische Angebotsabgabe</strong><small data-elektronisch-hinweis>Bei den gesetzlichen Mindestfristen berücksichtigen</small></span>
+        </label>
+        <label class="check-card">
+          <input type="checkbox" name="ortsbegehung" />
+          <span><strong>Ortsbegehung erforderlich</strong><small>Zusätzlichen Zeitbedarf einplanen</small></span>
+        </label>
+        <label class="check-card">
+          <input type="checkbox" name="dringlichkeit" />
+          {/* Hilfetext je Verfahrensart: nicht jede Ordnung kennt
+              Dringlichkeitsfristen  */}
+          <span><strong>Begründete Dringlichkeit</strong><small data-dringlichkeit-hinweis>Verkürzte Mindestfristen prüfen</small></span>
+        </label>
+        <label class="check-card">
+          <input type="checkbox" name="teststellungAktiv" />
+          <span><strong>Teststellung / Proof of Concept</strong><small>Zusätzliche Phase in den Terminplan aufnehmen</small></span>
+        </label>
+        <label class="check-card">
+          <input type="checkbox" name="praesentationAktiv" />
+          <span><strong>Bieterpräsentation</strong><small>Nach der Bewertung der (Erst-)Angebote einplanen</small></span>
+        </label>
+        <label class="check-card">
+          <input type="checkbox" name="verhandlungRunde1Aktiv" />
+          <span><strong>Bieterverhandlung – Runde 1</strong><small>Nur im Verhandlungsverfahren; vor den optimierten Angeboten</small></span>
+        </label>
+        <label class="check-card" data-verhandlung-runde2-card>
+          <input type="checkbox" name="verhandlungRunde2Aktiv" disabled />
+          <span><strong>Bieterverhandlung – Runde 2</strong><small>Setzt eine aktive Runde 1 voraus</small></span>
+        </label>
+      </div>
+
+      {/* Einzeilig: Beschreibung links, Auswahl rechts  */}
+      {/* Nur bei Wartepflicht (§ 134 GWB, Oberschwelle) — im
+          Unterschwellenbereich blendet die UI die Zeile aus (Kern 1.6.0) */}
+      <div class="option-fields" data-bieterinfo-field>
+        <label class="optionen-zeile">
+          <span class="zeit-beschreibung">Versand der Bieterinformation (§ 134 GWB)</span>
+          <select name="versandBieterinformation" required>
+            <option value="elektronisch" selected>Elektronisch / Fax (10 KT Wartefrist)</option>
+            <option value="postalisch">Postalisch (15 KT Wartefrist)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="conditional-panel" data-teststellung hidden>
+        <div class="form-grid three-columns uniform-field-grid option-panel-grid">
+          <label>
+            <span>Dauer der Teststellung (AT)</span>
+            <input type="number" name="teststellungDauerAT" min="0" max="250" step="1" value="5" />
+          </label>
+          <label>
+            <span>Fester Starttermin <small>optional</small></span>
+            <input type="date" name="teststellungStart" />
+          </label>
+          <label>
+            <span>Auswertung (AT)</span>
+            <input type="number" name="teststellungAuswertungAT" min="0" max="250" step="1" value="3" />
+          </label>
+        </div>
+      </div>
+
+      <div class="conditional-panel" data-praesentation hidden>
+        <div class="form-grid three-columns uniform-field-grid option-panel-grid">
+          <label>
+            <span>Dauer der Bieterpräsentation (AT)</span>
+            <input type="number" name="praesentationDauerAT" min="0" max="250" step="1" value="2" />
+          </label>
+          <label>
+            <span>Fester Starttermin <small>optional</small></span>
+            <input type="date" name="praesentationStart" />
+          </label>
+        </div>
+      </div>
+
+      <div class="conditional-panel" data-verhandlung-runde1 hidden>
+        <div class="form-grid three-columns uniform-field-grid option-panel-grid">
+          <label>
+            <span>Dauer Bieterverhandlung Nr. 1 (AT)</span>
+            <input type="number" name="verhandlungRunde1DauerAT" min="0" max="250" step="1" value="3" />
+          </label>
+          <label>
+            <span>Fester Starttermin <small>optional</small></span>
+            <input type="date" name="verhandlungRunde1Start" />
+          </label>
+        </div>
+      </div>
+
+      <div class="conditional-panel" data-verhandlung-runde2 hidden>
+        <div class="form-grid three-columns uniform-field-grid option-panel-grid">
+          <label>
+            <span>Dauer Bieterverhandlung Nr. 2 (AT)</span>
+            <input type="number" name="verhandlungRunde2DauerAT" min="0" max="250" step="1" value="3" />
+          </label>
+          <label>
+            <span>Fester Starttermin <small>optional</small></span>
+            <input type="date" name="verhandlungRunde2Start" />
+          </label>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Interne Bearbeitungszeiten</legend>
+      <p class="field-help">
+        AT = Arbeitstage (Montag bis Freitag ohne Feiertage des gewählten Bundeslands), KT = Kalendertage.
+      </p>
+      {/* Zeilenliste: Beschreibung links, Eingabe rechts, Reihenfolge =
+          Verfahrensablauf : TNA-Bewertung → Bewertung vor Präsentation/Verhandlung →
+          Angebotsbewertung → Aufklärung → interner Zuschlag → Versand der
+          Bieterinformation. Sichtbar sind nur die Zeiten, die sich aus der
+          gewählten Vergabeart und den Optionen ergeben. */}
+      <div class="zeiten-liste">
+        <label class="zeit-zeile" data-teilnahme-bewertung-field hidden>
+          <span class="zeit-beschreibung">
+            Zeitraum zur Bewertung der Teilnahmeanträge (AT)
+            <small>optional — Standard: wie Bewertung der Angebote</small>
+          </span>
+          <input type="number" name="teilnahmeBewertungAT" min="0" max="500" step="1" placeholder="Wie Angebotsbewertung" />
+        </label>
+        <label class="zeit-zeile">
+          <span class="zeit-beschreibung">
+            Versand der Aufforderung (AT nach Bewertungs-/Vorbereitungsende)
+            <small>Standard: 1 AT; 0 = Versand am selben Tag. Gilt für Angebotsaufforderung, Teststellung und weitere Angebotsrunden.</small>
+          </span>
+          <input type="number" name="aufforderungVersandAT" min="0" max="500" step="1" value="1" required />
+        </label>
+        <label class="zeit-zeile" data-zwischenbewertung-field hidden>
+          <span class="zeit-beschreibung">
+            Zeitraum zur Bewertung vor Präsentation/Verhandlung (AT)
+            <small>optional — Standard: wie Bewertung der Angebote</small>
+          </span>
+          <input type="number" name="zwischenbewertungAT" min="0" max="500" step="1" placeholder="Wie Bewertungszeitraum" />
+        </label>
+        <label class="zeit-zeile" data-einladung-versand-field hidden>
+          <span class="zeit-beschreibung">
+            Versand der Einladung zur Bieterverhandlung (AT nach Bewertungsende)
+            <small>Standard: 1 AT; nur bei aktiver Bieterverhandlung.</small>
+          </span>
+          <input type="number" name="einladungVersandAT" min="0" max="500" step="1" value="1" required />
+        </label>
+        <label class="zeit-zeile" data-vu-anpassung-runde1-field hidden>
+          <span class="zeit-beschreibung">
+            Anpassung der Vergabeunterlagen vor der ersten weiteren Angebotsrunde (AT)
+            <small>Standard: 2 AT; vor der ersten weiteren Angebotsrunde (optimierte oder direkt finale Angebote). Ohne Verhandlungstermin beginnt die Anpassung nach dem Bewertungsende.</small>
+          </span>
+          <input type="number" name="vuAnpassungRunde1AT" min="0" max="500" step="1" value="2" required />
+        </label>
+        <label class="zeit-zeile" data-vu-anpassung-runde2-field hidden>
+          <span class="zeit-beschreibung">
+            Anpassung der Vergabeunterlagen vor den finalen Angeboten nach optimierter Runde (AT)
+            <small>Standard: 2 AT; nur mit optimierter und finaler Angebotsrunde. Ohne Verhandlungstermin beginnt die Anpassung nach dem Bewertungsende.</small>
+          </span>
+          <input type="number" name="vuAnpassungRunde2AT" min="0" max="500" step="1" value="2" required />
+        </label>
+        <label class="zeit-zeile">
+          <span class="zeit-beschreibung">Zeitraum zur Bewertung der Angebote (AT)</span>
+          <input type="number" name="bewertungAT" min="0" max="500" step="1" value="10" required />
+        </label>
+        <label class="zeit-zeile">
+          <span class="zeit-beschreibung">Zeitraum zur Aufklärung / Entscheidungsfindung / Zuschlagsempfehlung (AT)</span>
+          <input type="number" name="aufklaerungEntscheidungAT" min="0" max="500" step="1" value="5" required />
+        </label>
+        <label class="zeit-zeile">
+          <span class="zeit-beschreibung">Zeitraum für die Entscheidung / interner Zuschlag (AT)</span>
+          <input type="number" name="internerZuschlagAT" min="0" max="500" step="1" value="3" required />
+        </label>
+        <label class="zeit-zeile" data-infoversand-field>
+          <span class="zeit-beschreibung">
+            Interne Bearbeitungszeit vor Versand der Bieterinformation (AT)
+            <small>0 = Versand am Tag der internen Zuschlagsentscheidung</small>
+          </span>
+          <input type="number" name="infoVersandAT" min="0" max="500" step="1" value="0" required />
+        </label>
+      </div>
+      <div class="form-grid two-columns uniform-field-grid bindefrist-grid">
+        <label>
+          <span>Bindefrist festlegen als</span>
+          <select name="bindefristArt">
+            <option value="tage" selected>Dauer ab Angebotsabgabe</option>
+            <option value="termin">Fester Endtermin</option>
+          </select>
+        </label>
+        <label data-bindefrist-tage>
+          <span><span class="field-label-text">Bindefrist-Dauer (KT){' '}<small>optional</small></span></span>
+          <input type="number" name="bindefristTage" min="0" max="1000" step="1" value="60" />
+        </label>
+        <label data-bindefrist-termin hidden>
+          <span><span class="field-label-text">Ende der Bindefrist{' '}<small>optional</small></span></span>
+          <input type="date" name="bindefristTermin" />
+        </label>
+      </div>
+    </fieldset>
+
+    <details class="advanced-settings">
+      <summary>Fristwerte anzeigen und anpassen</summary>
+      <p class="field-help">
+        AT = Arbeitstage (Montag bis Freitag ohne Feiertage des gewählten Bundeslands), KT = Kalendertage.
+        Die Vorschlagswerte werden aus Verfahrensart und Optionen befüllt. Abweichungen von gesetzlichen Mindestfristen
+        werden später vom fachlichen Rechenkern als Warnung ausgewiesen.
+      </p>
+      {/* Zeilenliste wie bei den internen Bearbeitungszeiten: Beschreibung
+          links, Eingabe rechts, Reihenfolge = Verfahrensablauf */}
+      <div class="zeiten-liste">
+        <label class="zeit-zeile" data-teilnahme-field hidden>
+          <span class="zeit-beschreibung">Teilnahmefrist (KT)</span>
+          <input type="number" name="teilnahmefristKT" min="0" max="365" step="1" />
+        </label>
+        <label class="zeit-zeile" data-bewerberfragen-field hidden>
+          <span class="zeit-beschreibung">
+            Ende Bewerberfragen (KT vor Ablauf der Teilnahmefrist)
+            <small>Praxiswert für Verfahren mit Teilnahmewettbewerb; fällt der Termin auf ein Wochenende oder einen Feiertag, wird er vorgezogen.</small>
+          </span>
+          <input type="number" name="bewerberfragenVorTeilnahmeKT" min="0" max="365" step="1" />
+        </label>
+        <label class="zeit-zeile">
+          <span class="zeit-beschreibung">Angebotsfrist (KT)</span>
+          <input type="number" name="angebotsfristKT" min="0" max="365" step="1" />
+        </label>
+        <label class="zeit-zeile">
+          <span class="zeit-beschreibung">Bieterfragen vor Angebotsfrist (KT)</span>
+          <input type="number" name="bieterfragenVorAngebotKT" min="0" max="365" step="1" />
+        </label>
+        <label class="zeit-zeile">
+          <span class="zeit-beschreibung">Letzte Klarstellung vor Angebotsfrist (KT)</span>
+          <input type="number" name="klarstellungVorAngebotKT" min="0" max="365" step="1" />
+        </label>
+        <label class="zeit-zeile" data-verhandlungs-field hidden>
+          <span class="zeit-beschreibung">
+            Optimiertes Angebot (KT)
+            <small>Standard: 10 — leer lassen, wenn keine weitere Angebotsrunde geplant ist. Gibt es nur diese weitere Runde, heißt sie im Ergebnis „finale Angebote“.</small>
+          </span>
+          <input type="number" name="optimiertesAngebotKT" min="0" max="365" step="1" />
+        </label>
+        <label class="zeit-zeile" data-verhandlungs-field hidden>
+          <span class="zeit-beschreibung">
+            Finales Angebot (KT)
+            <small>Standard: 10 — leer lassen, wenn keine finale Angebotsrunde geplant ist.</small>
+          </span>
+          <input type="number" name="finalesAngebotKT" min="0" max="365" step="1" />
+        </label>
+        <label class="zeit-zeile" data-wartefrist-field>
+          <span class="zeit-beschreibung">
+            Wartefrist nach § 134 GWB (KT)
+            <small>Vorschlag folgt aus der Versandart; nur bei Bedarf überschreiben.</small>
+          </span>
+          <input type="number" name="wartefristKT" min="0" max="365" step="1" />
+        </label>
+      </div>
+    </details>
+
+    <div class="form-actions">
+      <button type="submit" class="button button-primary">Terminplan berechnen</button>
+      <span id="form-message" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <section class="results" id="schedule-results" aria-labelledby="results-heading">
+    <div class="print-page-header" aria-hidden="true">
+      <span><strong>Kunde:</strong> <span id="print-customer">—</span></span>
+      <span><strong>Projekt:</strong> <span id="print-project">—</span></span>
+    </div>
+    <div class="print-page-footer" aria-hidden="true">BAREMOS IT GmbH</div>
+
+    <header class="results-header">
+      <div>
+        <p class="eyebrow">Ergebnis</p>
+        <h2 id="results-heading">Terminplan</h2>
+        <p id="result-summary"></p>
+        <p id="result-regelstand"></p>
+        <p id="result-bindefrist" class="result-bindefrist" hidden></p>
+      </div>
+      <div class="export-actions" aria-label="Projekt- und Exportaktionen">
+        <button type="button" class="button button-secondary" id="save-json" data-requires-result disabled>Projekt exportieren</button>
+        <label class="button button-secondary file-button">
+          Projekt importieren
+          <input type="file" id="open-json" accept="application/json,.json" />
+        </label>
+        <button type="button" class="button button-secondary" id="export-excel" data-requires-result data-schedule-export="excel" disabled>Excel exportieren</button>
+        <button type="button" class="button button-secondary" id="export-pdf" data-requires-result data-schedule-export="pdf" disabled>PDF exportieren</button>
+      </div>
+    </header>
+    <p id="export-message" class="export-message" role="status" aria-live="polite"></p>
+
+    {/* Harte Startkonflikte (Kern 1.4.0):
+        bei Einträgen wird KEIN Terminplan angezeigt */}
+    <div id="result-konflikte" class="notice notice-error" role="alert" hidden></div>
+    <div id="result-warnings" class="notice notice-warning" role="status" hidden></div>
+
+    <section class="timeline-section" aria-labelledby="timeline-heading">
+      <div class="section-heading-row">
+        <h3 id="timeline-heading">Zeitschiene</h3>
+        <p aria-hidden="true">früh → spät</p>
+      </div>
+      <div class="timeline-stack">
+        <ol id="timeline" class="timeline"></ol>
+      </div>
+    </section>
+
+    <section class="table-section" aria-labelledby="table-heading">
+      <h3 id="table-heading">Termine und Rechenwege</h3>
+      <div class="table-scroll" tabindex="0">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Datum</th>
+              <th scope="col">Meilenstein</th>
+              <th scope="col">Typ / Phase</th>
+              <th scope="col">Rechenweg und Grundlage</th>
+            </tr>
+          </thead>
+          <tbody id="schedule-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="print-footer">
+      <p>Erstellt mit dem Fristenrechner der BAREMOS IT GmbH · www.baremos.de</p>
+    </footer>
+  </section>
+
+  <section class="legal-note" aria-labelledby="legal-heading">
+    <h2 id="legal-heading">Wichtiger Hinweis</h2>
+    <p>
+      Der Fristenrechner Vergabe &amp; Terminplanung ist eine unverbindliche Rechenhilfe und ersetzt keine Rechtsberatung. Alle Angaben erfolgen
+      ohne Gewähr. Maßgeblich sind die anwendbaren Rechtsvorschriften und die konkreten Vergabeunterlagen.
+      Der PDF- und Excel-Export nutzt die Open-Source-Bibliotheken jsPDF, jsPDF-AutoTable und fflate (MIT-Lizenz).
+    </p>
+  </section>
+</div>
+
+<script>
+  import { initFristenrechner } from './fristenrechner-ui';
+
+  document.querySelectorAll<HTMLElement>('[data-fristenrechner]').forEach(initFristenrechner);
+</script>
+
+<style is:global>
+  .fristenrechner {
+    --phase-einholung: #a7303c;
+    --phase-teilnahme: #76528f;
+    --phase-bewertung: #2f6f73;
+    --phase-teststellung: #a56721;
+    --phase-zuschlag: #4d6b3c;
+    margin-top: 1.5rem;
+  }
+
+  .fristenrechner h2,
+  .fristenrechner h3,
+  .fristenrechner p {
+    max-width: none;
+  }
+
+  .privacy-note,
+  .notice {
+    padding: 0.85rem 1rem;
+    border: 1px solid #c7c7c3;
+    border-radius: 4px;
+    background: #f7f7f6;
+  }
+
+  .privacy-note {
+    margin-bottom: 0.75rem;
+    border-left: 4px solid #4d6b3c;
+  }
+
+  .privacy-note strong {
+    margin-right: 0.25rem;
+  }
+
+  #storage-status {
+    margin-left: 0.35rem;
+    color: #586258;
+    font-size: 0.9rem;
+  }
+
+  .project-file-meta {
+    margin: -0.25rem 0 0.75rem;
+    color: #55555a;
+    font-size: 0.86rem;
+  }
+
+  .project-file-meta--migration {
+    padding: 0.65rem 0.8rem;
+    border-left: 4px solid #a56721;
+    background: #fff8ef;
+    color: #55401f;
+  }
+
+  .fristenrechner form,
+  .results,
+  .legal-note {
+    padding: clamp(1rem, 2.5vw, 1.5rem);
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    background: #fff;
+    box-shadow: 0 0.3rem 1.2rem rgba(45, 45, 45, 0.06);
+  }
+
+  .form-header,
+  .results-header,
+  .section-heading-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .eyebrow {
+    margin: 0 0 0.2rem;
+    color: var(--color-accent);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .form-header h2,
+  .results-header h2 {
+    margin: 0;
+    font-size: clamp(1.25rem, 2vw, 1.55rem);
+  }
+
+  .fristenrechner fieldset {
+    margin: 1.5rem 0 0;
+    padding: 1rem;
+    border: 1px solid #d7d7d3;
+    border-radius: 4px;
+  }
+
+  .fristenrechner legend {
+    padding-inline: 0.35rem;
+    font-weight: 700;
+  }
+
+  .fristenrechner legend span,
+  .fristenrechner label small {
+    color: #68686c;
+    font-size: 0.82rem;
+    font-weight: 400;
+  }
+
+  .form-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .three-columns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .two-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .four-columns {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .fristenrechner label:not(.check-card):not(.file-button) {
+    min-width: 0;
+    display: grid;
+    gap: 0.35rem;
+    color: #37373b;
+    font-weight: 650;
+  }
+
+  .uniform-field-grid {
+    align-items: start;
+  }
+
+  .uniform-field-grid > label:not(.check-card):not(.file-button) {
+    align-self: start;
+    align-content: start;
+    grid-template-rows: auto 2.75rem auto;
+  }
+
+  .uniform-field-grid > label:not(.check-card):not(.file-button) > span:first-child {
+    min-height: var(--field-label-height);
+    display: flex;
+    align-items: flex-end;
+    line-height: 1.35;
+  }
+
+  .field-label-text {
+    min-width: 0;
+  }
+
+  /* Interne Bearbeitungszeiten als Zeilenliste: Beschreibung links,
+     Eingabe rechts  */
+  .zeiten-liste {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .zeit-zeile {
+    padding: 0.5rem 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 8.5rem;
+    gap: 0.35rem 1.25rem;
+    align-items: center;
+  }
+
+  /* Trennlinie nur zwischen SICHTBAREN Zeilen (ausgeblendete Zeilen dürfen
+     keine verwaiste Linie hinterlassen) */
+  .zeit-zeile:not([hidden]) ~ .zeit-zeile:not([hidden]) {
+    border-top: 1px solid #ececea;
+  }
+
+  .zeit-zeile[hidden] {
+    display: none;
+  }
+
+  .zeit-beschreibung {
+    line-height: 1.35;
+  }
+
+  .zeit-beschreibung small {
+    margin-top: 0.15rem;
+    display: block;
+    color: #626267;
+    font-weight: 400;
+  }
+
+  .zeit-zeile input {
+    box-sizing: border-box;
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  @media (max-width: 34rem) {
+    .zeit-zeile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .bindefrist-grid {
+    --field-label-height: 2.9rem;
+    margin-top: 1rem;
+  }
+
+
+  .uniform-field-grid input,
+  .uniform-field-grid select {
+    align-self: start;
+    box-sizing: border-box;
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .fristenrechner input,
+  .fristenrechner select {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.55rem 0.65rem;
+    color: var(--color-text);
+    background: #fff;
+    border: 1px solid #99999d;
+    border-radius: 3px;
+  }
+
+  .fristenrechner input:focus-visible,
+  .fristenrechner select:focus-visible,
+  .fristenrechner button:focus-visible,
+  .fristenrechner summary:focus-visible,
+  .fristenrechner .file-button:focus-within {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .check-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .option-fields {
+    margin-top: 1rem;
+  }
+
+  /* Versand-Auswahl als einzeilige Reihe: Beschreibung links, Select rechts */
+  .optionen-zeile {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17.5rem;
+    gap: 0.35rem 1.25rem;
+    align-items: center;
+  }
+
+  .optionen-zeile select {
+    box-sizing: border-box;
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  @media (max-width: 34rem) {
+    .optionen-zeile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Options-Panels: einheitliche Label-Höhe, damit Dauer- und Termin-Kästen
+     auf gleicher Höhe sitzen  */
+  .option-panel-grid {
+    --field-label-height: 1.6rem;
+  }
+
+  .check-card {
+    padding: 0.8rem;
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-start;
+    border: 1px solid #d7d7d3;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .check-card:has(input:checked) {
+    border-color: #bd777e;
+    background: #fff7f8;
+  }
+
+  .check-card input {
+    width: 1.15rem;
+    min-height: auto;
+    height: 1.15rem;
+    margin-top: 0.15rem;
+    accent-color: var(--color-accent);
+  }
+
+  .check-card span,
+  .check-card small {
+    display: block;
+  }
+
+  .check-card small {
+    margin-top: 0.15rem;
+    color: #626267;
+  }
+
+  /* generalisiert: seit der Verfahrens-Sperre
+     kann auch Runde 1 deaktiviert sein (offene/nicht offene Verfahren) */
+  .check-card:has(input:disabled) {
+    opacity: 0.55;
+    background: #f1f1ef;
+    cursor: not-allowed;
+  }
+
+  .conditional-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f7f7f6;
+    border-radius: 4px;
+  }
+
+  /* !important: die Feldhöhen-Vereinheitlichung setzt display:grid mit
+     höherer Spezifität und überstimmt sonst das hidden-Attribut.
+     Ausgeblendete Felder müssen verborgen bleiben. */
+  .conditional-panel[hidden],
+  [data-teilnahme-field][hidden],
+  [data-bewerberfragen-field][hidden],
+  [data-teilnahme-bewertung-field][hidden],
+  [data-zwischenbewertung-field][hidden],
+  [data-einladung-versand-field][hidden],
+  [data-vu-anpassung-runde1-field][hidden],
+  [data-vu-anpassung-runde2-field][hidden],
+  [data-verhandlungs-field][hidden],
+  [data-bindefrist-tage][hidden],
+  [data-bindefrist-termin][hidden],
+  [data-aufforderung-field][hidden],
+  [data-bieterinfo-field][hidden],
+  [data-infoversand-field][hidden],
+  [data-wartefrist-field][hidden],
+  .project-file-meta[hidden],
+  .result-bindefrist[hidden],
+  .notice[hidden] {
+    display: none !important;
+  }
+
+  .field-help {
+    margin: 0 0 0.8rem;
+    color: #606064;
+    font-size: 0.9rem;
+  }
+
+
+  .advanced-settings {
+    margin-top: 1.25rem;
+    border: 1px solid #d7d7d3;
+    border-radius: 4px;
+  }
+
+  .advanced-settings summary {
+    padding: 0.85rem 1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .advanced-settings[open] {
+    padding: 0 1rem 1rem;
+  }
+
+  .advanced-settings[open] summary {
+    margin-inline: -1rem;
+  }
+
+  .form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: center;
+  }
+
+  .export-actions {
+    width: min(100%, 46rem);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    align-items: stretch;
+  }
+
+  .form-actions {
+    margin-top: 1.25rem;
+  }
+
+  .button {
+    width: auto;
+    min-height: 2.75rem;
+    padding: 0.55rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text);
+    background: #fff;
+    border: 1px solid #96969a;
+    border-radius: 3px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .form-actions .button,
+  .export-actions .button {
+    box-sizing: border-box;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    white-space: nowrap;
+  }
+
+  .export-actions .button {
+    width: 100%;
+    padding-inline: 1.25rem;
+  }
+
+  .button:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .button:disabled,
+  .button:disabled:hover {
+    border-color: #c5c5c2;
+    color: #6d6d72;
+    background: #f3f3f1;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  .button-primary {
+    color: #fff;
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .button-primary:hover {
+    color: #fff;
+    background: var(--color-accent-deep);
+  }
+
+  .button-quiet {
+    min-height: 2.3rem;
+    color: #55555a;
+    border-color: transparent;
+    text-decoration: underline;
+  }
+
+  .file-button {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .file-button input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .results {
+    margin-top: 1.5rem;
+  }
+
+  #result-summary {
+    margin: 0.35rem 0 0;
+    color: #5b5b60;
+  }
+
+  .result-bindefrist {
+    margin: 0.3rem 0 0;
+    color: #343438;
+    font-weight: 700;
+  }
+
+  .export-message {
+    min-height: 1.35rem;
+    margin: 0.65rem 0 0;
+    color: #5b5b60;
+    font-size: 0.88rem;
+    text-align: right;
+  }
+
+  .notice {
+    margin-top: 1rem;
+  }
+
+  .notice ul {
+    margin: 0;
+  }
+
+  .notice-warning {
+    border-left: 4px solid #a56721;
+    background: #fff8ef;
+  }
+
+  .notice-error {
+    border-left: 4px solid #a7303c;
+    background: #fff5f6;
+  }
+
+  .timeline-section,
+  .table-section {
+    margin-top: 1.75rem;
+  }
+
+  .timeline-section h3,
+  .table-section h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.12rem;
+  }
+
+  .section-heading-row p {
+    margin: 0;
+    color: #6d6d72;
+    font-size: 0.85rem;
+  }
+
+  .timeline-stack,
+  .table-scroll {
+    max-width: 100%;
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  .timeline {
+    width: 100%;
+    margin: 0;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    list-style: none;
+    border: 1px solid #d7d7d3;
+    border-radius: 4px;
+    background: linear-gradient(#fff, #fbfbfa);
+  }
+
+  .timeline-phase {
+    min-width: 0;
+    border-top: 3px solid var(--phase-color);
+    border-inline: 1px solid #dededb;
+    border-bottom: 1px solid #dededb;
+    border-radius: 3px;
+    background: #fff;
+  }
+
+  .timeline-phase > header {
+    padding: 0.7rem;
+    display: grid;
+    align-content: start;
+    gap: 0.2rem;
+    border-bottom: 1px solid #dededb;
+    background: color-mix(in srgb, var(--phase-color) 8%, white);
+  }
+
+  .timeline-phase > header strong {
+    color: #343438;
+    font-size: 0.9rem;
+  }
+
+  .timeline-phase > header .timeline-phase-order {
+    color: var(--phase-color);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .timeline-phase > header span {
+    color: #646469;
+    font-size: 0.76rem;
+  }
+
+  .timeline-milestones {
+    margin: 0;
+    padding: 0.75rem 0.75rem 0.75rem 1.8rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.75rem;
+    list-style: none;
+  }
+
+  .timeline-milestones li {
+    position: relative;
+    display: grid;
+    gap: 0.12rem;
+  }
+
+  .timeline-milestones li::before {
+    position: absolute;
+    left: -1.15rem;
+    top: 0.3rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--phase-color);
+    content: '';
+  }
+
+  .timeline-milestones time,
+  .timeline-milestones .milestone-date {
+    color: #5d5d62;
+    font-size: 0.74rem;
+    font-weight: 700;
+  }
+
+  .timeline-milestones .milestone-date {
+    line-height: 1.35;
+  }
+
+  .timeline-milestones span {
+    font-size: 0.79rem;
+    line-height: 1.3;
+  }
+
+  .table-scroll {
+    border: 1px solid #d7d7d3;
+    border-radius: 4px;
+  }
+
+  .fristenrechner table {
+    width: 100%;
+    min-width: 48rem;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .fristenrechner th,
+  .fristenrechner td {
+    padding: 0.7rem;
+    border-bottom: 1px solid #e0e0dd;
+    vertical-align: top;
+  }
+
+  .fristenrechner th {
+    background: #f2f2f1;
+    font-size: 0.82rem;
+  }
+
+  .fristenrechner td {
+    font-size: 0.88rem;
+  }
+
+  .fristenrechner td:first-child {
+    white-space: nowrap;
+  }
+
+  .fristenrechner tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .milestone-label {
+    font-weight: 700;
+  }
+
+  .milestone-warning {
+    margin-top: 0.35rem;
+    color: #8b2d38;
+    font-weight: 700;
+  }
+
+  .type-badge {
+    padding: 0.16rem 0.4rem;
+    display: inline-block;
+    border: 1px solid #c8c8c5;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    white-space: nowrap;
+  }
+
+  .legal-note {
+    margin-top: 1.5rem;
+    background: #f7f7f6;
+  }
+
+  .legal-note h2 {
+    margin-top: 0;
+    font-size: 1.12rem;
+  }
+
+  .legal-note p:last-child {
+    margin-bottom: 0;
+  }
+
+  .print-footer {
+    margin-top: 1.5rem;
+    padding-top: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-top: 1px solid #d7d7d3;
+  }
+
+  .print-footer img {
+    width: auto;
+    height: 2rem;
+  }
+
+  .print-footer p {
+    margin: 0;
+    color: #68686c;
+    font-size: 0.78rem;
+  }
+
+  .print-page-header,
+  .print-page-footer {
+    display: none;
+  }
+
+  @media (max-width: 64rem) {
+    .four-columns {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .export-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .timeline {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 48rem) {
+    .three-columns,
+    .two-columns,
+    .four-columns,
+    .check-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .form-header,
+    .results-header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .uniform-field-grid > label:not(.check-card):not(.file-button) > span:first-child {
+      min-height: auto;
+    }
+
+    .button,
+    .export-actions .button {
+      width: 100%;
+    }
+
+    .form-actions {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .export-message {
+      text-align: left;
+    }
+
+    .timeline-milestones {
+      grid-template-columns: 1fr;
+    }
+
+    .timeline {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 30rem) {
+    .export-actions {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media print {
+    @page {
+      margin: 2.4cm 1.3cm 1.8cm;
+      size: A4 portrait;
+    }
+
+    .print-page-header {
+      position: fixed;
+      top: -1.7cm;
+      right: 0;
+      left: 0;
+      display: flex;
+      gap: 1.2cm;
+      padding-bottom: 0.25cm;
+      border-bottom: 1px solid #b8b8b5;
+      background: #fff;
+      color: #44444a;
+      font-size: 9pt;
+      line-height: 1.3;
+      z-index: 1;
+    }
+
+    .print-page-header > span {
+      flex: 1 1 0;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .print-page-footer {
+      position: fixed;
+      right: 0;
+      bottom: -1.15cm;
+      left: 0;
+      display: block;
+      padding-top: 0.2cm;
+      border-top: 1px solid #b8b8b5;
+      background: #fff;
+      color: #68686c;
+      font-size: 8pt;
+      line-height: 1.2;
+      text-align: left;
+      z-index: 1;
+    }
+
+    .site-header,
+    .site-footer,
+    .breadcrumbs,
+    .fristenrechner > form,
+    .fristenrechner > .privacy-note,
+    .fristenrechner > .legal-note,
+    .export-actions {
+      display: none !important;
+    }
+
+    .main-inner {
+      padding: 0;
+    }
+
+    .layout-container {
+      width: 100%;
+    }
+
+    .results {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      box-shadow: none;
+    }
+
+    .timeline-stack,
+    .table-scroll {
+      overflow: visible;
+    }
+
+    .fristenrechner table {
+      min-width: 0;
+    }
+
+    .timeline {
+      padding: 0.65rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    .timeline-phase {
+      break-inside: avoid;
+    }
+
+    .table-section {
+      break-before: page;
+    }
+
+    .print-footer {
+      break-inside: avoid;
+    }
+  }
+</style>

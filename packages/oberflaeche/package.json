@@ -9,10 +9,25 @@
   "engines": {
     "node": "^22.23.2 || ^24.18.1"
   },
+  "exports": {
+    ".": "./src/Fristenrechner.astro",
+    "./Fristenrechner.astro": "./src/Fristenrechner.astro",
+    "./ui": "./src/fristenrechner-ui.ts",
+    "./export-data": "./src/fristenrechner-export-data.ts",
+    "./export-excel": "./src/fristenrechner-export-excel.ts",
+    "./export-pdf": "./src/fristenrechner-export-pdf.ts"
+  },
   "files": [
+    "src",
+    "README.md",
     "LICENSE",
     "NOTICE"
   ],
+  "scripts": {
+    "check": "astro check",
+    "test": "vitest run",
+    "referenz:schreiben": "vitest run test/export-excel.test.ts --update"
+  },
   "dependencies": {
     "@baremos/fristenrechner-kern": "0.0.0",
     "fflate": "0.8.3",
