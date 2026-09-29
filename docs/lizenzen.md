@@ -156,9 +156,9 @@ Am 2026-09-29 nennt das Manifest der Oberfläche `fflate` 0.8.3 als direkte Abh�
 
 ## Capacitor 8.5.2 für die App
 
-Die App nennt `@capacitor/core` und `@capacitor/android` 8.5.2 unter `dependencies` und `@capacitor/cli` 8.5.2 unter `devDependencies`. Das Lockfile wächst dadurch am 2026-09-29 um **95 Orte**: MIT 72, ISC 10, BlueOak-1.0.0 9, Apache-2.0 2, Unlicense 2. Kein bisheriger Eintrag ist entfallen oder in Version, Quelle, Prüfsumme oder Lizenz geändert. Jeder neue Eintrag stammt von `registry.npmjs.org` und trägt eine Prüfsumme. Keiner hat ein Installationsskript.
+Die App nennt `@capacitor/core` und `@capacitor/android` 8.5.2 unter `dependencies` und `@capacitor/cli` 8.5.2 unter `devDependencies`. Das Lockfile wächst dadurch am 2026-09-29 um **95 Orte**: MIT 72, ISC 10, BlueOak-1.0.0 9, Apache-2.0 2, Unlicense 2. Kein bisheriger Eintrag eines Fremdpakets ist entfallen oder in Version, Quelle, Prüfsumme oder Lizenz geändert; geändert ist nur die Version des eigenen Workspaces `app`. Jeder neue Eintrag stammt von `registry.npmjs.org` und trägt eine Prüfsumme. Keiner hat ein Installationsskript.
 
-Ausgeliefert sind neu nur `@capacitor/core`, `@capacitor/android` (beide MIT) und `tslib` (0BSD). Der Baum der Kommandozeile gehört zu Test und Build. Ohne die Kennungen 0BSD für die Auslieferung und Unlicense für Werkzeuge scheitert die Prüfung genau an diesen drei Paketen.
+Ausgeliefert sind neu nur `@capacitor/core`, `@capacitor/android` (beide MIT) und `tslib` (0BSD). Die Kommandozeile ist eine Entwicklungsabhängigkeit. Orte, die ihr Baum mit anderen Bäumen teilt, behalten den vorrangigen Bereich: Von den 95 neuen Orten sind 2 ausgeliefert (`@capacitor/core`, `@capacitor/android`), 91 für Test und Build und 2 bereitgestellt (`@types/node`, `undici-types`, zusätzlich über Astro erreichbar). `tslib` stand schon im Lockfile und ist jetzt ausgeliefert. Ohne die Kennungen 0BSD für die Auslieferung und Unlicense für Werkzeuge scheitert die Prüfung genau an `tslib`, `big-integer` und `stream-buffers`.
 
 Nicht erfasst sind die Abhängigkeiten, die Gradle für `@capacitor/android` lädt, darunter AndroidX und das Cordova-Framework. Ihre Liste entsteht mit dem Android-Projekt der App.
 
