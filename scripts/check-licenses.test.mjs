@@ -127,7 +127,13 @@ test('Alle Regeln sind zentral erfasst; Auslieferung ist eine echte Teilmenge', 
   assert.equal(vorgabe.einzelausnahmenMaxMonate, 12);
 });
 
-test('Echter Baum: rgbcolor wird mit genau belegter MIT-Ausnahme angenommen', () => {
+// Die drei Prüfungen am echten Baum lesen den Beleg im installierten Paket.
+// Ohne Installation entfallen sie. "npm run lizenzen" prüft den Baum in jedem Fall.
+const amEchtenBaum = {
+  skip: fs.existsSync(resolve(hier, '..', 'node_modules', 'rgbcolor', 'LICENSE.md')) ? false : 'braucht die installierten Pakete, zuerst npm ci',
+};
+
+test('Echter Baum: rgbcolor wird mit genau belegter MIT-Ausnahme angenommen', amEchtenBaum, () => {
   const b = pruefeProjektMitVorgaben(resolve(hier, '..'), { stichtag: '2026-09-29' });
   assert.equal(b.ok, true, b.fehler.join('\n'));
   assert.equal(b.zusammenfassung.einzelausnahmen, 1);
@@ -148,14 +154,14 @@ test('Echter Baum: rgbcolor wird mit genau belegter MIT-Ausnahme angenommen', ()
   }
 });
 
-test('Echter Baum: ohne Ausnahme scheitert ausschließlich rgbcolor', () => {
+test('Echter Baum: ohne Ausnahme scheitert ausschließlich rgbcolor', amEchtenBaum, () => {
   const b = pruefeProjekt(resolve(hier, '..'));
   assert.equal(b.ok, false);
   assert.deepEqual(b.pakete.filter((p) => p.fehler.length).map((p) => p.name), ['rgbcolor']);
   assert.equal(b.fehler.length, 2);
 });
 
-test('Echte Ausnahme: Ablaufdatum ist eingeschlossen, der Folgetag scheitert', () => {
+test('Echte Ausnahme: Ablaufdatum ist eingeschlossen, der Folgetag scheitert', amEchtenBaum, () => {
   assert.equal(pruefeProjektMitVorgaben(resolve(hier, '..'), { stichtag: '2027-09-29' }).ok, true);
   assert.throws(() => pruefeProjektMitVorgaben(resolve(hier, '..'), { stichtag: '2027-09-30' }), /Einzelausnahme abgelaufen: rgbcolor@1\.0\.1/);
 });
