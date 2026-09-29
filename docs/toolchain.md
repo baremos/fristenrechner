@@ -48,13 +48,15 @@ Dieses Dokument legt fest, mit welchen Werkzeugen und in welchen Versionen der F
 
 ### Bibliotheken für die Exporte
 
-Unverändert aus dem Ausgangscode übernommen. Arbeitspaket 2.4 bindet sie ein. Die Lizenzprüfung samt Transitivabhängigkeiten liegt davor.
+Arbeitspaket 2.4 bindet sie ein. Die Lizenzprüfung samt Transitivabhängigkeiten liegt davor.
 
 | Bibliothek | Version | Lizenz | Zweck |
 |---|---|---|---|
-| jspdf | 4.2.1 | MIT | PDF |
-| jspdf-autotable | 5.0.8 | MIT | Tabellen im PDF |
-| exceljs | 4.4.0 | MIT | Excel |
+| jspdf | 4.2.1 | MIT | PDF, unverändert aus dem Ausgangscode |
+| jspdf-autotable | 5.0.8 | MIT | Tabellen im PDF, unverändert aus dem Ausgangscode |
+| fflate | 0.8.3 | MIT | packt die Excel-Datei, keine eigenen Abhängigkeiten |
+
+Die Excel-Datei schreibt das Paket selbst. Der Ausgangscode nutzte dafür exceljs 4.4.0. Entscheidung vom 2026-09-29: exceljs entfällt, weil zwei Pakete in seinem Baum keinen Lizenzbeleg mitbringen (`buffers` 0.1.1 und `chainsaw` 0.1.0). fflate lag schon als Abhängigkeit von jspdf im Baum.
 
 ### Capacitor
 
