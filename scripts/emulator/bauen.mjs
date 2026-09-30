@@ -6,6 +6,7 @@ import { basename, join, relative, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dateiNoetig, innen, sha256 } from './rahmen.mjs';
+import { ohneGradleKommentare } from '../app-pruefungen.mjs';
 
 const groovy = value => `'${value.replaceAll('\\', '/').replaceAll("'", "\\'")}'`;
 const varianten = ['gegenprobe', 'fehlerseite', 'ohne-fehlerseite'];
@@ -90,7 +91,8 @@ export function gegenprobeQuellen({ manifest, gradle, activity }) {
   manifest = ersetzeEinmal(manifest, '    <application', '    <uses-permission android:name="android.permission.INTERNET" />\n    <application');
   gradle = ersetzeEinmal(gradle, 'applicationId "de.baremos.fristenrechner"', 'applicationId "de.baremos.fristenrechner.gegenprobe"');
   activity = ersetzeEinmal(activity, 'registerPlugin(NavigationssperrePlugin.class);', '');
-  if (/android:(fullBackupContent|dataExtractionRules)=/.test(manifest) || /registerPlugin\s*\(/.test(activity)) throw new Error('Gegenprobe enthält noch Sicherungsregeln oder eine Pluginregistrierung.');
+  const registrierungen = [...ohneGradleKommentare(activity).matchAll(/\bregisterPlugin\s*\(([^)]*)\)/g)].map(m => m[1].replace(/\s/g, ''));
+  if (/android:(fullBackupContent|dataExtractionRules)=/.test(manifest) || registrierungen.length !== 1 || registrierungen[0] !== 'DateiablaufPlugin.class') throw new Error('Gegenprobe enthält noch Sicherungsregeln oder abweichende Pluginregistrierungen.');
   return { manifest, gradle, activity };
 }
 

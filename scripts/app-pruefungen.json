@@ -50,7 +50,7 @@
       "plugins.CapacitorHttp.enabled",
       "plugins.CapacitorCookies.enabled"
     ],
-    "loggingBehavior": "debug",
+    "loggingBehavior": "none",
     "minWebViewVersion": 83
   },
   "laufzeitNamen": [
@@ -325,6 +325,12 @@
         "name": "androidx.profileinstaller.ProfileInstallReceiver",
         "berechtigung": "android.permission.DUMP"
       }
+    ],
+    "komponenten": [
+      { "art": "activity", "name": "de.baremos.fristenrechner.MainActivity", "exportiert": true, "berechtigung": null, "authority": null, "grants": false },
+      { "art": "receiver", "name": "androidx.profileinstaller.ProfileInstallReceiver", "exportiert": true, "berechtigung": "android.permission.DUMP", "authority": null, "grants": false },
+      { "art": "provider", "name": "androidx.startup.InitializationProvider", "exportiert": false, "berechtigung": null, "authority": "de.baremos.fristenrechner.androidx-startup", "grants": false },
+      { "art": "provider", "name": "de.baremos.fristenrechner.io.ExportFileProvider", "exportiert": false, "berechtigung": null, "authority": "de.baremos.fristenrechner.exportdateien", "grants": true }
     ],
     "sicherungsDomaenen": [
       "root",

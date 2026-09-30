@@ -49,6 +49,20 @@ Der vollständige Dateivergleich mit der Android-Vorlage von Capacitor 8.5.2, di
 
 `assets/capacitor.config.json` ist nach geparstem JSON mit der Quelle identisch, aber anders formatiert. `assets/capacitor.plugins.json` enthält `[]`. Die erzeugten Assets, `config.xml`, das Cordova-Modul und die Build-Ausgaben bleiben von Git ausgeschlossen. Die zwei erzeugten Gradle-Dateien `capacitor.settings.gradle` und `app/capacitor.build.gradle` sind dagegen eingecheckt und müssen nach erneutem Sync unverändert sein.
 
+## Dateiabläufe: vorbereitet, noch nicht angeschlossen
+
+Die native Basis für „Speichern unter“ und Teilen ist vorbereitet. Die Oberfläche verwendet diese Endpunkte noch nicht. Import und Bestätigung beim Zurücksetzen folgen in einem weiteren Schritt. Die bisher dokumentierten Emulatorläufe belegen diese neuen Dateiabläufe nicht.
+
+`DateiablaufPlugin` bietet `ausgabeBeginnen`, `ausgabeBlock`, `ausgabeAbschliessen`, `speichernUnter`, `teilen` und `ausgabeVerwerfen`. Beginn nimmt `name`, `mime` und `anzahlBytes` entgegen und liefert `auftragId`; ein Block enthält `auftragId`, `offset` und `base64`. Die übrigen Aufrufe verwenden nur die Kennung. Erst nach vollständigem Schreiben und Schließen kann die Datei gespeichert oder geteilt werden. Speichern liefert `ok` oder bei geschlossener Auswahl `abgebrochen`. Teilen liefert `bereitgestellt`, sobald die Android-Auswahl gestartet wurde; das bestätigt keinen Versand.
+
+Die Daten liegen ausschließlich unter `cacheDir/export/<zufällige Kennung>/<bereinigter Basename>`. Der Provider ist nicht exportiert. Die App vergibt nur Leserecht auf die konkrete URI. Eine eigene Präferenzdatei merkt ausschließlich Kennungen und Bereitstellungszeiten, keine Namen oder Inhalte. Nicht bereitgestellte Reste werden beim nächsten Start entfernt. Bereitgestellte Dateien bleiben bis zur nächsten Bereinigung nach mindestens 24 Stunden erhalten; diese läuft beim Start, vor dem Anlegen einer neuen Ausgabe und vor einem weiteren Teilen. So kann ein inzwischen abgelaufener voller Cache den nächsten Teilen-Auftrag nicht bereits bei dessen Anlage blockieren. Android kann Cachedateien früher entfernen. Der Widerruf einer Freigabe entfernt keine Kopien bei Empfängern und schließt dort bereits offene Deskriptoren nicht.
+
+Pro Auftrag sind höchstens 2 MiB PDF oder 1 MiB Excel beziehungsweise Projektdatei vorgesehen, pro Base64-Block höchstens 64 KiB dekodierte Daten. Das Budget aller eigenen Nutzdateien beträgt 16 MiB. Eine neue Ausgabe verdrängt keine frische geteilte Datei. Eingaben, Zustände, Offsets, Längen und Pfade werden nativ geprüft. Ein serieller IO-Pfad verarbeitet Dateien; Android-Auswahlfenster starten auf dem UI-Thread. Ein Activity-Neustart nimmt keinen alten Auftrag wieder auf. Zielreste werden nur für das Ergebnis der noch zugeordneten eigenen Speichern-Auswahl bestmöglich entfernt.
+
+Capacitor-Protokollierung ist mit `loggingBehavior: "none"` abgeschaltet. K1 verlangt diesen Wert und eine leere npm-Pluginliste. K3/K4 prüfen zusätzlich die beiden eigenen Pluginregistrierungen, den Provider und seine einzige Pfadressource. K5 prüft das vollständige Komponentenverzeichnis der APK und die aufgelöste Provider-Authority samt Ressourceninhalt. Die Navigations-Gegenprobe behält das Datei-Plugin.
+
+Debug- und Release-Build samt K1 bis K5 sind an diesem Stand am 2026-09-30 unter Windows gelaufen (Debug `95781d9a…c1e3`, Release unsigniert `05c5549c…3fc2`, 7 737 705 Bytes). Noch auszuführen sind die nativen Laufzeitfälle: Größen- und Cachegrenzen, Inhaltstreue, Schreib- und Schließfehler, Zielreste, Abbruch, Hintergrundwechsel, echte Neuerstellung, Prozessverlust, späte Rückgaben und zeitversetztes Empfängerlesen. Quellprüfungen ersetzen diese Nachweise nicht. Die Java-Quellen verwenden keine Sprachmittel nach Java 17; die unveränderte, von Capacitor erzeugte Builddatei setzt das Compilerziel auf Java 21.
+
 ## Bauen
 
 Die Werkzeuge und ihre Versionen beschreibt [toolchain.md](toolchain.md). Die folgenden Befehle laufen aus der Repositorywurzel nach Installation der festgelegten Abhängigkeiten mit `npm ci`:

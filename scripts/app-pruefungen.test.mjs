@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { crc32 } from 'node:zlib';
 import { after, test } from 'node:test';
-import { analysiereSkript, attributeVon, dateistamm, leseAndroidZustand, leseApkEintraege, ohneGradleKommentare, pruefeApk, pruefeDist, pruefeGradle, pruefeKonfiguration, pruefeSync, skriptArt, VORGABE } from './app-pruefungen.mjs';
+import { analysiereSkript, attributeVon, dateistamm, leseAndroidZustand, leseApkEintraege, ohneGradleKommentare, pruefeApk, pruefeDist, pruefeGradle, pruefeKonfiguration, pruefeNativeQuellen, pruefeSync, skriptArt, VORGABE } from './app-pruefungen.mjs';
 import { standardSdk, windows } from './werkzeuge.mjs';
 
 const echteKonfiguration = JSON.parse(readFileSync(new URL('../app/capacitor.config.json', import.meta.url), 'utf8'));
@@ -52,6 +52,8 @@ const falsche = [
   ['android.webContentsDebuggingEnabled', false],
   ['android.buildOptions', {}],
   ['loggingBehavior', 'production'],
+  ['loggingBehavior', 'debug'],
+  ['loggingBehavior', undefined],
   ['android.loggingBehavior', 'none'],
   ['plugins.CapacitorHttp.enabled', true],
   ['plugins.CapacitorCookies.enabled', true],
@@ -61,6 +63,7 @@ const falsche = [
   ['appId', 'de.baremos.anders'],
   ['webDir', 'www'],
   ['includePlugins', '@capacitor/share'],
+  ['includePlugins', ['@capacitor/share']],
   ['android.minWebViewVersion', 60],
   ['android.minWebViewVersion', '83'],
 ];
@@ -374,6 +377,39 @@ function schreibe(w, name, text) {
   mkdirSync(dirname(join(w, name)), { recursive: true });
   writeFileSync(join(w, name), text);
 }
+function nativeProbe(w) {
+  for (const p of ['AndroidManifest.xml', 'res/xml/export_paths.xml', 'java/de/baremos/fristenrechner/MainActivity.java']) {
+    const relativ = 'app/android/app/src/main/' + p;
+    schreibe(w, relativ, readFileSync(join(projekt, relativ), 'utf8'));
+  }
+}
+test('K3/K4: native Quelldateien bestehen', () => {
+  assert.deepEqual(pruefeNativeQuellen({ wurzel: projekt }), []);
+});
+for (const [titel, datei, von, nach, muster] of [
+  ['exported=true', 'AndroidManifest.xml', /android:authorities="\$\{applicationId\}\.exportdateien"\s+android:exported="false"/, 'android:authorities="${applicationId}.exportdateien" android:exported="true"', /ExportFileProvider/],
+  ['andere Authority', 'AndroidManifest.xml', '${applicationId}.exportdateien', '${applicationId}.anders', /ExportFileProvider/],
+  ['kein Grant', 'AndroidManifest.xml', 'android:grantUriPermissions="true"', 'android:grantUriPermissions="false"', /ExportFileProvider/],
+  ['zusätzlicher Pfad', 'res/xml/export_paths.xml', '</paths>', '<cache-path name="zweiter" path="mehr/"/></paths>', /export_paths/],
+  ['root-path', 'res/xml/export_paths.xml', 'cache-path', 'root-path', /export_paths/],
+  ['zusätzliches Plugin', 'java/de/baremos/fristenrechner/MainActivity.java', 'super.onCreate', 'registerPlugin(WeiteresPlugin.class); super.onCreate', /MainActivity/],
+  ['doppeltes Datei-Plugin', 'java/de/baremos/fristenrechner/MainActivity.java', 'super.onCreate', 'registerPlugin(DateiablaufPlugin.class); super.onCreate', /MainActivity/],
+  ['zusätzliche Berechtigung', 'AndroidManifest.xml', '<application', '<uses-permission android:name="android.permission.INTERNET"/><application', /Berechtigung/],
+]) {
+  test(`K3/K4 native Gegenprobe: ${titel}`, () => {
+    const w = ordner({}); nativeProbe(w);
+    ersetze(w, 'app/android/app/src/main/' + datei, von, nach);
+    erwartetFehler(titel, pruefeNativeQuellen({ wurzel: w }), muster);
+  });
+}
+test('K3/K4 native Gegenprobe: alternative Pfadressource und Alias', () => {
+  const w = ordner({}); nativeProbe(w);
+  schreibe(w, 'app/android/app/src/main/res/xml-v31/export_paths.xml', '<paths><root-path name="alles" path="/"/></paths>');
+  erwartetFehler('Variante', pruefeNativeQuellen({ wurzel: w }), /keine Varianten/);
+  rmSync(join(w, 'app/android/app/src/main/res/xml-v31/export_paths.xml'));
+  schreibe(w, 'app/android/app/src/main/res/values/pfade.xml', '<resources><item type="xml" name="export_paths">@xml/anders</item></resources>');
+  erwartetFehler('Alias', pruefeNativeQuellen({ wurzel: w }), /Ressourcenalias/);
+});
 function syncProbe() {
   const w = ordner({
     'app/dist/index.html': '<head></head>',
@@ -390,6 +426,7 @@ function syncProbe() {
     // wird von K3 abgefragt; die positiven Quelldateien sind hier ausgeschlossen.
     '.gitignore': '/app/android/\n',
   });
+  nativeProbe(w);
   const git = spawnSync('git', ['init', '--quiet', w], { encoding: 'utf8', windowsHide: true });
   assert.equal(git.status, 0, git.stderr);
   return w;
@@ -533,6 +570,7 @@ test('K3: Symlink-Ziel wird erfasst, die verlinkte Datei nicht gelesen', { skip:
 
 function gradleProbe() {
   const w = ordner({ 'scripts/toolchain.json': JSON.stringify(toolchain), 'app/package.json': JSON.stringify({ version: appVersion }) });
+  nativeProbe(w);
   for (const datei of ['app/build.gradle', 'build.gradle', 'variables.gradle', 'gradle/wrapper/gradle-wrapper.properties']) {
     const ziel = join(w, 'app/android', datei);
     mkdirSync(dirname(ziel), { recursive: true });
@@ -693,6 +731,9 @@ function apkProbe(optionen = {}) {
   let regeln = `<data-extraction-rules><cloud-backup>${ausschluesse}</cloud-backup><device-transfer>${ausschluesse}</device-transfer></data-extraction-rules>`;
   if (optionen.regeln) regeln = optionen.regeln(regeln);
   schreibe(w, 'res/xml/data_extraction_rules.xml', regeln);
+  const exportPfade = '<paths><cache-path name="exportdateien" path="export/"/></paths>';
+  schreibe(w, 'res/xml/export_paths.xml', optionen.exportPfade ? optionen.exportPfade(exportPfade) : exportPfade);
+  if (optionen.exportVariante) schreibe(w, 'res/xml-v31/export_paths.xml', '<paths><root-path name="alles" path="/"/></paths>');
   if (optionen.regelVariante) schreibe(w, 'res/xml-v31/data_extraction_rules.xml', '<data-extraction-rules><cloud-backup/><device-transfer/></data-extraction-rules>');
   if (optionen.sprache) schreibe(w, 'res/values-en/strings.xml', '<resources><string name="titel">English</string></resources>');
   let manifest = `<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="de.baremos.fristenrechner" android:versionCode="${codeFuer(appVersion)}" android:versionName="${appVersion}">
@@ -703,7 +744,8 @@ function apkProbe(optionen = {}) {
 <meta-data android:name="android.webkit.WebView.EnableSafeBrowsing" android:value="false"/>
 <activity android:name="de.baremos.fristenrechner.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
 <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver" android:exported="true" android:permission="android.permission.DUMP"/>
-<provider android:name="androidx.startup.InitializationProvider" android:exported="false" android:authorities="de.baremos.test"/>
+<provider android:name="androidx.startup.InitializationProvider" android:exported="false" android:authorities="de.baremos.fristenrechner.androidx-startup"/>
+<provider android:name="de.baremos.fristenrechner.io.ExportFileProvider" android:exported="false" android:authorities="de.baremos.fristenrechner.exportdateien" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/export_paths"/></provider>
 </application></manifest>`;
   if (optionen.manifest) manifest = optionen.manifest(manifest);
   schreibe(w, 'AndroidManifest.xml', manifest);
@@ -729,6 +771,16 @@ for (const debug of [true, false]) {
 const manifestAendern = (von, nach) => ({ manifest: (text) => { assert.ok(text.includes(von)); return text.replace(von, nach); } });
 const permissionTag = `<uses-permission android:name="${VORGABE.apk.berechtigung}"/>`;
 const faelleApk = [
+  ['Exportprovider exportiert', manifestAendern('ExportFileProvider" android:exported="false"', 'ExportFileProvider" android:exported="true"'), /ExportFileProvider:/],
+  ['Exportprovider andere Authority', manifestAendern('de.baremos.fristenrechner.exportdateien', 'de.baremos.fristenrechner.anders'), /ExportFileProvider:/],
+  ['Exportprovider ohne Grants', manifestAendern('android:grantUriPermissions="true"', 'android:grantUriPermissions="false"'), /ExportFileProvider:/],
+  ['Exportprovider zusätzliche Grants', manifestAendern('android:grantUriPermissions="true"', 'android:grantUriPermissions="true" android:forceUriPermissions="true"'), /ExportFileProvider:/],
+  ['Exportprovider falsche Ressource', manifestAendern('android:resource="@xml/export_paths"', 'android:resource="@xml/data_extraction_rules"'), /ExportFileProvider:/],
+  ['Exportpfad erweitert', { exportPfade: r => r.replace('export/', '') }, /export_paths: genau ein cache-path/],
+  ['zusätzlicher Cachepfad', { exportPfade: r => r.replace('</paths>', '<cache-path name="extra" path="mehr/"/></paths>') }, /export_paths: genau ein cache-path/],
+  ['root-path', { exportPfade: r => r.replace('cache-path', 'root-path') }, /export_paths: genau ein cache-path/],
+  ['Exportpfadvariante', { exportVariante: true }, /export_paths: genau eine unqualifizierte/],
+  ['zusätzliche nicht exportierte Komponente', manifestAendern('</application>', '<service android:name="de.baremos.Extra" android:exported="false"/></application>'), /Gesamtinventar/],
   ['INTERNET statt erlaubter Berechtigung', manifestAendern(permissionTag, '<uses-permission android:name="android.permission.INTERNET"/>'), /Berechtigungen: erwartet ausschließlich/],
   ['zweite Berechtigung INTERNET', manifestAendern(permissionTag, permissionTag + '<uses-permission android:name="android.permission.INTERNET"/>'), /Berechtigungen: erwartet ausschließlich/],
   ['zweite Berechtigung CAMERA', manifestAendern(permissionTag, permissionTag + '<uses-permission android:name="android.permission.CAMERA"/>'), /Berechtigungen: erwartet ausschließlich/],
