@@ -21,8 +21,8 @@ HIER = Path(__file__).resolve().parent
 REZEPT = HIER / "de.baremos.fristenrechner.probe.yml"
 APPID = REZEPT.stem
 APP_REZEPT = HIER / "de.baremos.fristenrechner.yml"
-APP_REFERENZ = {"bytes": 7715483,
-                "sha256": "776bba301220d1d9b3f5e4f5d4841f37449609e72d6622b8ebdab065fcab93b3"}
+APP_STAND = json.loads((HIER / "app-referenz.json").read_text(encoding="utf-8"))
+APP_REFERENZ = APP_STAND["apk"]
 SYSTEMPFAD = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 FDROID_CACHE = "fdroid-cache"
 
@@ -77,6 +77,23 @@ def rezept_fuer_lauf(vorlage, repo, commit, scandelete=False):
     # Keine Festlegung zu F5 und keine Scan-Ausnahme für die spätere App.
     if scandelete:
         rezept["Builds"][0]["scandelete"] = ["node_modules"]
+    return rezept
+
+
+def lade_app_rezept():
+    """Füllt die lokale Vorlage aus derselben Referenz wie die Auswertung."""
+    rezept = json.loads(APP_REZEPT.read_text(encoding="utf-8"))
+    if APP_STAND["appId"] != APP_REZEPT.stem:
+        raise ValueError("App-ID der Referenz passt nicht zum Rezept")
+    for objekt, name, code in ((rezept["Builds"][0], "versionName", "versionCode"),
+                              (rezept, "CurrentVersion", "CurrentVersionCode")):
+        if objekt[name] != "@APP_VERSION_NAME@" or objekt[code] != "@APP_VERSION_CODE@":
+            raise ValueError("Die App-Vorlage muss Versionsplatzhalter enthalten")
+        objekt[name] = APP_STAND["versionName"]
+        objekt[code] = APP_STAND["versionCode"]
+    if (not isinstance(APP_STAND["versionName"], str) or not APP_STAND["versionName"]
+            or type(APP_STAND["versionCode"]) is not int or APP_STAND["versionCode"] < 1):
+        raise ValueError("Ungültige Version in app-referenz.json")
     return rezept
 
 
@@ -218,7 +235,8 @@ def main(argv=None):
     rezeptdatei = APP_REZEPT if args.app else REZEPT
     appid = rezeptdatei.stem
     vorgabe = json.loads((HIER.parent / "toolchain.json").read_text(encoding="utf-8"))
-    vorlage = json.loads(rezeptdatei.read_text(encoding="utf-8"))  # JSON ist auch gültiges YAML.
+    # JSON ist auch gültiges YAML; die App-Vorlage erhält ihre Version zentral.
+    vorlage = lade_app_rezept() if args.app else json.loads(rezeptdatei.read_text(encoding="utf-8"))
     repo, arbeit = pruefe_pfade(args.repo, args.arbeitsordner)
     commit = (pruefe_app_quelle(repo, vorlage, vorgabe, args.stand or "HEAD") if args.app
               else pruefe_quelle(repo, vorlage, vorgabe))

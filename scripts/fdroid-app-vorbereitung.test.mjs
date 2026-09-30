@@ -122,10 +122,23 @@ p = Path(sys.argv[1]) / 'fdroid/build-lokal.py'
 b = types.ModuleType('build_lokal'); b.__file__ = str(p)
 exec(compile(p.read_text(encoding='utf-8'), str(p), 'exec'), b.__dict__)
 w = Path(sys.argv[2]).resolve()
-rezept = json.loads(b.APP_REZEPT.read_text(encoding='utf-8'))
+rezept = b.lade_app_rezept()
 vorgabe = json.loads((p.parent.parent / 'toolchain.json').read_text(encoding='utf-8'))
 commit = 'a' * 40
 class Pruefung(unittest.TestCase):
+    def test_zentrale_referenz(self):
+        stand = copy.deepcopy(b.APP_STAND)
+        stand.update(versionName='0.2.0', versionCode=101)
+        with patch.object(b, 'APP_STAND', stand):
+            neu = b.lade_app_rezept()
+            self.assertEqual(neu['Builds'][0]['versionName'], '0.2.0')
+            self.assertEqual(neu['Builds'][0]['versionCode'], 101)
+            self.assertEqual(neu['CurrentVersion'], '0.2.0')
+            self.assertEqual(neu['CurrentVersionCode'], 101)
+            stand['appId'] = 'de.anderes.projekt'
+            with self.assertRaisesRegex(ValueError, 'App-ID'): b.lade_app_rezept()
+        with patch.object(b, 'APP_STAND', dict(b.APP_STAND, versionCode=True)):
+            with self.assertRaisesRegex(ValueError, 'Ungültige Version'): b.lade_app_rezept()
     def test_varianten(self):
         original = copy.deepcopy(rezept)
         for variante in ['ohne', 'gezielt', 'gezielt-scandelete']:
@@ -236,5 +249,5 @@ test('Python-Laufsteuerung: Varianten, Byte-Referenz, Argumentgrenzen, Commitque
     encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
   });
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.match(r.stderr, /Ran 6 tests/);
+  assert.match(r.stderr, /Ran 7 tests/);
 });

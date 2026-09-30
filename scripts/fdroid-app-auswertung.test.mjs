@@ -17,5 +17,5 @@ test('F-Droid-App: Python-Gegenproben für Inventare, APK und Referenz', {
     encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1', PYTHONIOENCODING: 'utf-8' },
   });
   assert.equal(lauf.status, 0, lauf.stdout + lauf.stderr);
-  assert.match(lauf.stderr, /Ran 37 tests/);
+  assert.match(lauf.stderr, /Ran 53 tests/);
 });

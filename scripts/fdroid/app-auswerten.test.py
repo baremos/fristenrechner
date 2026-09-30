@@ -327,6 +327,139 @@ class AppAuswertung(unittest.TestCase):
         (self.lauf / "build.log").write_text("Neue App-Ausgabe\n" + self.log, encoding="utf-8")
         self.befund("Zeile ohne Kopf: Neue App-Ausgabe")
 
+    def app_fixture(self, variante="gezielt"):
+        daten = json.loads((HIER / "fixtures/app-laeufe-2026-09-30.json").read_text(encoding="utf-8"))["laeufe"]
+        name = {"ohne": "lauf-bms4awvc-ohne", "gezielt": "lauf-hqj89xdz-gezielt",
+                "gezielt-scandelete": "lauf-zhqctq16-gezielt-scandelete"}[variante]
+        zeilen = [""] * max(e["zeile"] for e in daten[name])
+        for eintrag in daten[name]:
+            zeilen[eintrag["zeile"] - 1] = eintrag["text"]
+        return "\n".join(zeilen) + "\n"
+
+    def protokoll(self, log, variante="gezielt"):
+        (self.lauf / "build.log").write_text(log, encoding="utf-8")
+        probleme = []
+        bekannt, entfernt, ergebnis = A.PROTOKOLL.pruefen(
+            A.BUILD, self.lauf, A.APPID, A.VERSION_NAME, str(A.VERSION_CODE),
+            "f272140294ee270e82e2d549cf0c6765801b602c", variante, probleme)
+        return probleme, bekannt, entfernt, ergebnis
+
+    def test_drei_bereinigte_echte_protokolle(self):
+        for variante, anzahl, art in (("ohne", 1, "scanner_binaerfunde"), ("gezielt", 0, "build_erfolg"),
+                                     ("gezielt-scandelete", 1, "scandelete_ungenutzt")):
+            with self.subTest(variante=variante):
+                probleme, _, entfernt, ergebnis = self.protokoll(self.app_fixture(variante), variante)
+                self.assertEqual(len(probleme), anzahl, probleme)
+                self.assertEqual(ergebnis["art"], art)
+                self.assertEqual(len(entfernt), 1)
+                self.assertTrue(entfernt[0]["erwartet"])
+
+    def test_jedes_muster_hat_passende_originalzeilen(self):
+        daten = json.loads((HIER / "fixtures/app-laeufe-2026-09-30.json").read_text(encoding="utf-8"))["laeufe"]
+        nach_nummer = {name: {e["zeile"]: e["text"] for e in zeilen} for name, zeilen in daten.items()}
+        for eintrag, regex in A.PROTOKOLL.muster_laden(A.BUILD):
+            with self.subTest(art=eintrag["art"]):
+                self.assertTrue(eintrag["belege"])
+                for beleg in eintrag["belege"]:
+                    for nr in beleg["zeilen"]:
+                        text = nach_nummer[beleg["lauf"]][nr]
+                        if eintrag["art"] == "scanner_app_wrapper":
+                            text = A.BUILD.KOPF.fullmatch(text)[2]
+                        self.assertIsNotNone(regex.fullmatch(A.BUILD.ANSI_SGR.sub("", text)), (beleg, nr))
+
+    def test_app_fixtures_ohne_rechnerpfade(self):
+        text = (HIER / "fixtures/app-laeufe-2026-09-30.json").read_text(encoding="utf-8")
+        self.assertNotIn("/home/", text)
+        self.assertNotRegex(text, r"[A-Za-z]:\\\\")
+
+    def test_unbekannte_folgezeile_in_jedem_kontext(self):
+        log = self.app_fixture()
+        for marker in ("== Seite der App bauen", "K4 Gradle: bestanden",
+                       "Android-Quellen nach dem Scanner vorhanden: node_modules/@capacitor/android/capacitor",
+                       "BUILD SUCCESSFUL in 1m 52s"):
+            with self.subTest(marker=marker):
+                probleme, *_ = self.protokoll(log.replace(marker, marker + "\nunerwartete zusätzliche Ausgabe", 1))
+                self.assertEqual(len(probleme), 1, probleme)
+                self.assertIn("Zeile ohne Kopf: unerwartete", probleme[0])
+
+    def test_bekannte_zeile_mit_zusatz_bleibt_unbekannt(self):
+        for zusatz in (" neue Meldung", "\x1b[2J", "\x00", "\r", "\u2028"):
+            with self.subTest(zusatz=repr(zusatz)):
+                probleme, *_ = self.protokoll(self.app_fixture().replace("K4 Gradle: bestanden", "K4 Gradle: bestanden" + zusatz))
+                self.assertTrue(any("Zeile ohne Kopf" in p for p in probleme), probleme)
+
+    def test_falscher_shell_kontext_schaltet_nichts_frei(self):
+        log = self.app_fixture().replace(A.PROTOKOLL.PREBUILD, A.PROTOKOLL.PREBUILD + "true; ", 1)
+        probleme, *_ = self.protokoll(log)
+        self.assertTrue(any("Zeile ohne Kopf: + cd" in p for p in probleme), probleme)
+
+    def test_zusaetzlicher_unbekannter_gradle_task(self):
+        probleme, *_ = self.protokoll(self.app_fixture().replace("> Task :app:assembleRelease", "> Task :app:unbekannteAufgabe"))
+        self.assertEqual(len(probleme), 1, probleme)
+        self.assertIn("unbekannteAufgabe", probleme[0])
+
+    def test_wrapper_ausnahme_nur_genauer_app_pfad(self):
+        for pfad in ("android/gradle/wrapper/gradle-wrapper.jar", "app/android/gradle/wrapper/anderes.jar",
+                     "app/android/gradle/../wrapper/gradle-wrapper.jar", "node_modules/anderes/gradle-wrapper.jar"):
+            with self.subTest(pfad=pfad):
+                probleme, *_ = self.protokoll(self.app_fixture().replace(A.PROTOKOLL.WRAPPER, pfad))
+                self.assertTrue(any("Scanner-Entfernung" in p for p in probleme), probleme)
+
+    def test_zweite_scanner_entfernung_ausserhalb_wrapper(self):
+        log = self.app_fixture().replace("2026-09-30 18:52:35,098 INFO: Creating source tarball...",
+            "2026-09-30 18:52:35,097 INFO: Removing binary at app/android/anderes.bin\n2026-09-30 18:52:35,098 INFO: Creating source tarball...")
+        probleme, *_ = self.protokoll(log)
+        self.assertEqual(len(probleme), 1, probleme)
+        self.assertIn("Unerwartete Scanner-Entfernung", probleme[0])
+
+    def test_wrapper_doppelt_bleibt_befund(self):
+        zeile = "2026-09-30 18:52:35,095 INFO: Removing gradle-wrapper.jar at " + A.PROTOKOLL.WRAPPER
+        probleme, *_ = self.protokoll(self.app_fixture().replace(zeile, zeile + "\n" + zeile))
+        self.assertEqual(len(probleme), 1, probleme)
+        self.assertIn("Scanner-Entfernung", probleme[0])
+
+    def test_wrapper_ausserhalb_scanner_bleibt_befund(self):
+        zeile = "2026-09-30 18:52:35,095 INFO: Removing gradle-wrapper.jar at " + A.PROTOKOLL.WRAPPER
+        log = self.app_fixture().replace(zeile, "").replace("2026-09-30 18:52:34,628 INFO: Scanning source for common problems...", zeile + "\n2026-09-30 18:52:34,628 INFO: Scanning source for common problems...")
+        probleme, *_ = self.protokoll(log)
+        self.assertEqual(len(probleme), 1, probleme)
+
+    def test_error_im_erfolgreichen_scanner_bleibt_befund(self):
+        log = self.app_fixture().replace("2026-09-30 18:52:35,098 INFO: Creating source tarball...",
+            "2026-09-30 18:52:35,097 ERROR: neuer Scannerfehler\n2026-09-30 18:52:35,098 INFO: Creating source tarball...")
+        probleme, *_ = self.protokoll(log)
+        self.assertEqual(len(probleme), 1, probleme)
+        self.assertIn("ERROR: neuer Scannerfehler", probleme[0])
+
+    def test_abbruchzahl_muss_zu_einzelfehlern_passen(self):
+        log = self.app_fixture("gezielt-scandelete").replace("due to 1 error while scanning", "due to 2 errors while scanning")
+        probleme, *_ = self.protokoll(log, "gezielt-scandelete")
+        self.assertTrue(any("Zahl der einzeln belegten" in p for p in probleme), probleme)
+
+    def test_unused_scandelete_ohne_variante_bleibt_error(self):
+        probleme, *_ = self.protokoll(self.app_fixture("gezielt-scandelete"), "gezielt")
+        self.assertTrue(any("ERROR: Unused scandelete path" in p for p in probleme), probleme)
+
+    def test_scannerabbruch_hat_eigenen_befund_ohne_folgefehler(self):
+        self.meta.update(variante="gezielt-scandelete", scandeleteVersuch=True, commit="f272140294ee270e82e2d549cf0c6765801b602c")
+        self.json("lauf.json", self.meta)
+        (self.lauf / "build.log").write_text(self.app_fixture("gezielt-scandelete"), encoding="utf-8")
+        for name in ("npm-vorgebaut-nach-scanner.json", "npm-dateien-nach-scanner.json"):
+            (self.lauf / name).unlink()
+        self.apk.unlink()
+        bericht = self.auswertung()
+        self.assertEqual(len(bericht["beanstandungen"]), 1, bericht["beanstandungen"])
+        self.assertEqual(bericht["buildErgebnis"]["art"], "scandelete_ungenutzt")
+        self.assertIsNone(bericht["vergleich"]["web"])
+        self.assertIsNone(bericht["vergleich"]["apk"])
+        self.assertTrue(bericht["nichtGeprueft"])
+
+    def test_scannerabbruch_mit_apk_ist_widerspruechlich(self):
+        self.meta.update(variante="gezielt-scandelete", scandeleteVersuch=True, commit="f272140294ee270e82e2d549cf0c6765801b602c")
+        self.json("lauf.json", self.meta)
+        (self.lauf / "build.log").write_text(self.app_fixture("gezielt-scandelete"), encoding="utf-8")
+        self.befund("APK vorhanden trotz protokolliertem Scannerabbruch")
+
     def test_doppelte_zip_eintraege(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)

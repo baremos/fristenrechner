@@ -18,11 +18,12 @@ import sys
 import zipfile
 
 
-APPID = "de.baremos.fristenrechner"
-VERSION_NAME = "0.1.0"
-VERSION_CODE = 100
-REFERENZ_BYTES = 7715483
-REFERENZ_SHA256 = "776bba301220d1d9b3f5e4f5d4841f37449609e72d6622b8ebdab065fcab93b3"
+APP_REFERENZ = json.loads(Path(__file__).with_name("app-referenz.json").read_text(encoding="utf-8"))
+APPID = APP_REFERENZ["appId"]
+VERSION_NAME = APP_REFERENZ["versionName"]
+VERSION_CODE = APP_REFERENZ["versionCode"]
+REFERENZ_BYTES = APP_REFERENZ["apk"]["bytes"]
+REFERENZ_SHA256 = APP_REFERENZ["apk"]["sha256"]
 PHASEN = ("vor-web", "nach-web", "nach-bereinigung", "nach-scanner", "nach-lauf")
 VARIANTEN = ("ohne", "gezielt", "gezielt-scandelete")
 LEER_SHA256 = hashlib.sha256(b"").hexdigest()
@@ -30,15 +31,16 @@ BELEGTE_LEERQUELLEN = frozenset(("node-fetch-native/lib/empty.cjs", "node-fetch-
 BELEGTE_LEERZIELE = frozenset(("assets/public/cordova.js", "assets/public/cordova_plugins.js"))
 
 
-def lade_build_auswertung():
-    quelle = Path(__file__).with_name("build-auswerten.py")
-    spezifikation = importlib.util.spec_from_file_location("fdroid_build_auswertung", quelle)
+def lade_modul(name):
+    quelle = Path(__file__).with_name(name + ".py")
+    spezifikation = importlib.util.spec_from_file_location(name.replace("-", "_"), quelle)
     modul = importlib.util.module_from_spec(spezifikation)
     spezifikation.loader.exec_module(modul)
     return modul
 
 
-BUILD = lade_build_auswertung()
+BUILD = lade_modul("build-auswerten")
+PROTOKOLL = lade_modul("app-protokoll")
 
 
 def relativ(pfad):
@@ -187,12 +189,12 @@ def web_vergleich(web, apk):
             "bestanden": not (fehlt or zusaetzlich or abweichend)}
 
 
-def inventare_laden(lauf, probleme):
+def inventare_laden(lauf, probleme, scannerabbruch=False):
     inventare = {}
     for phase in PHASEN:
         name = f"npm-vorgebaut-{phase}.json"
         # nach-lauf ist ein ausdrücklich getrennter Ersatznachweis bei Abbruch.
-        if phase == "nach-lauf" and not (lauf / name).exists():
+        if (phase == "nach-lauf" or phase == "nach-scanner" and scannerabbruch) and not (lauf / name).exists():
             inventare[phase] = None
             continue
         try:
@@ -269,10 +271,13 @@ def matrix(inventare, apk):
     return zeilen
 
 
-def scanner_dateien_pruefen(lauf, inventare, protokoll_entfernt, variante, probleme):
+def scanner_dateien_pruefen(lauf, inventare, protokoll_entfernt, variante, probleme, scannerabbruch=False):
     """Vergleicht alle regulären Dateien, nicht nur bereits erkannte Binärfunde."""
     voll = {}
     for phase, inventar_phase in (("vor-scanner", "nach-bereinigung"), ("nach-scanner", "nach-scanner")):
+        if phase == "nach-scanner" and scannerabbruch and not (lauf / f"npm-dateien-{phase}.json").exists():
+            voll[phase] = None
+            continue
         try:
             voll[phase] = dateiangaben(lies_json(lauf, f"npm-dateien-{phase}.json"))
             for name, eintrag in (inventare[inventar_phase] or {}).items():
@@ -320,9 +325,10 @@ def auswerten(lauf):
         raise ValueError("fdroidBuild muss ein ganzzahliger Rückgabewert sein")
     if rueckgabe["fdroidBuild"] != 0:
         probleme.append(f"fdroid build endete mit Rückgabewert {rueckgabe['fdroidBuild']}.")
-    bekannt, scanner_entfernt = BUILD.pruefe_protokoll(
-        lauf, APPID, VERSION_NAME, str(VERSION_CODE), meta["commit"], meta["scandeleteVersuch"], probleme)
-    inventare = inventare_laden(lauf, probleme)
+    bekannt, scanner_entfernt, build_ergebnis = PROTOKOLL.pruefen(
+        BUILD, lauf, APPID, VERSION_NAME, str(VERSION_CODE), meta["commit"], meta["variante"], probleme)
+    scannerabbruch = build_ergebnis["scannerAbbruch"]
+    inventare = inventare_laden(lauf, probleme, scannerabbruch)
     bereinigung, entfernt = bereinigung_laden(lauf, meta["variante"], inventare, probleme)
     vorher, nachher = inventare["nach-bereinigung"], inventare["nach-scanner"]
     if vorher is not None and nachher is not None:
@@ -334,10 +340,10 @@ def auswerten(lauf):
         for name in set(nachher) - set(vorher):
             probleme.append(f"Neuer Inventarfund nach dem Scanner: {name}")
     scanner_dateien, scanner_manifeste = scanner_dateien_pruefen(
-        lauf, inventare, scanner_entfernt, meta["variante"], probleme)
+        lauf, inventare, scanner_entfernt, meta["variante"], probleme, scannerabbruch)
     apk, referenz, apk_pfade = None, None, {}
     apk_relativ = f"unsigned/{APPID}_{VERSION_CODE}.apk"
-    vergleich = {"bytegleich": False, "referenzPinBestanden": False}
+    vergleich = {"bytegleich": None if scannerabbruch else False, "referenzPinBestanden": False}
     try:
         referenz_meta = meta.get("referenzApk")
         if (not isinstance(referenz_meta, dict) or referenz_meta.get("pfad") != "referenz.apk"
@@ -349,12 +355,15 @@ def auswerten(lauf):
                                               and referenz["sha256"] == REFERENZ_SHA256)
         if not vergleich["referenzPinBestanden"]:
             probleme.append("Die Referenzdatei weicht in Größe oder SHA-256 vom festgelegten Nachweis ab.")
-        apk_pfad = BUILD.pruefe_pfad(lauf, apk_relativ)
-        apk = {"pfad": apk_relativ, **hash_datei(apk_pfad)}
-        apk_pfade = apk_dateien(apk_pfad)
-        vergleich["bytegleich"] = bytegleich(referenz_pfad, apk_pfad)
-        if not vergleich["bytegleich"]:
-            probleme.append("Die unsignierte APK ist nicht bytegleich zur Referenzdatei.")
+        if not scannerabbruch or (lauf / apk_relativ).exists():
+            if scannerabbruch:
+                probleme.append("APK vorhanden trotz protokolliertem Scannerabbruch; Herkunft ungeklärt.")
+            apk_pfad = BUILD.pruefe_pfad(lauf, apk_relativ)
+            apk = {"pfad": apk_relativ, **hash_datei(apk_pfad)}
+            apk_pfade = apk_dateien(apk_pfad)
+            vergleich["bytegleich"] = bytegleich(referenz_pfad, apk_pfad)
+            if not vergleich["bytegleich"]:
+                probleme.append("Die unsignierte APK ist nicht bytegleich zur Referenzdatei.")
     except (OSError, ValueError, zipfile.BadZipFile, RuntimeError, NotImplementedError) as fehler:
         probleme.append(f"APK-Vergleich nicht vollständig prüfbar: {fehler}")
     web = None
@@ -365,9 +374,10 @@ def auswerten(lauf):
         web_dateien = dateiangaben(web_meta.get("dateien"))
         if "index.html" not in web_dateien or not web_dateien["index.html"]["bytes"]:
             raise ValueError("index.html fehlt oder ist leer")
-        web = web_vergleich(web_dateien, apk_pfade)
-        if not web["bestanden"]:
-            probleme.append("assets/public in der APK stimmt nicht exakt mit dem Web-Stand vor der Bereinigung überein.")
+        if apk is not None or not scannerabbruch:
+            web = web_vergleich(web_dateien, apk_pfade)
+            if not web["bestanden"]:
+                probleme.append("assets/public in der APK stimmt nicht exakt mit dem Web-Stand vor der Bereinigung überein.")
     except (OSError, ValueError) as fehler:
         probleme.append(f"Web-Nachweis fehlt oder ist ungültig: {fehler}")
     treffer = in_apk(entfernt, apk_pfade)
@@ -378,12 +388,17 @@ def auswerten(lauf):
     vergleich.update({"referenz": referenz, "apk": apk, "web": web,
                       "entfernteDateienInApk": treffer, "scannerDateienInApk": scanner_treffer,
                       "belegteLeerdateiGleichheiten": belegt_leer, "unbelegteEntfernteDateienInApk": ungeklart,
-                      "entfernteDateienGeprueft": len(entfernt), "scannerDateienGeprueft": len(scanner_dateien),
+                      "apkInhalteGeprueft": apk is not None and bool(apk_pfade),
+                      "entfernteDateienGeprueft": len(entfernt) if apk_pfade else 0,
+                      "scannerDateienGeprueft": len(scanner_dateien) if apk_pfade else 0,
+                      "entfernteDateienVerfuegbar": len(entfernt),
                       "scannerDateimanifeste": scanner_manifeste, "scannerEntfernteDateien": list(scanner_dateien.values()),
                       "inventare": {phase: None if daten is None else len(daten) for phase, daten in inventare.items()},
                       "dateien": matrix(inventare, apk_pfade), "apkDateien": list(apk_pfade.values()),
                       "grenze": "Inhaltsvergleich ganzer Dateien nach Größe und SHA-256; keine Aussage über umgeformte oder verschachtelte Inhalte. Gleiche leere Dateien oder kurze Standardtexte können unabhängig entstehen. Die Meldung einer Inhaltsgleichheit beweist keine Übernahme aus dem entfernten Paket; sie bleibt bis zur Einzelprüfung ein Befund."})
+    ungeprueft = (["Inventar und Dateimanifest unmittelbar nach dem Scanner", "APK-Erzeugung und Bytevergleich", "Web-Inhalte in der APK", "Entfernte Dateiinhalte in der APK"] if scannerabbruch else [])
     return {"schemaVersion": 1, "projekt": "app", "variante": meta["variante"], "commit": meta["commit"],
+            "buildErgebnis": build_ergebnis, "nichtGeprueft": ungeprueft,
             "rueckgabewertBuild": rueckgabe["fdroidBuild"], "bekannteMeldungen": bekannt,
             "scannerEntfernt": scanner_entfernt, "bereinigung": bereinigung,
             "vergleich": vergleich, "beanstandungen": probleme, "bestanden": not probleme}
@@ -397,9 +412,9 @@ def markdown(bericht):
               "`nach-lauf` belegt den Zustand nach dem Ende des Aufrufs; es ersetzt keinen Nachweis direkt nach dem Scanner.", "",
               "| Phase | Inventarfunde |", "|---|---:|"]
     zeilen += [f"| {phase} | {anzahl if anzahl is not None else 'nicht erfasst'} |" for phase, anzahl in vergleich["inventare"].items()]
-    zeilen += ["", f"APK bytegleich zur Referenz: **{'ja' if vergleich['bytegleich'] else 'nein oder ungeprüft'}**.",
+    zeilen += ["", f"APK bytegleich zur Referenz: **{'nicht geprüft' if vergleich['bytegleich'] is None else 'ja' if vergleich['bytegleich'] else 'nein oder ungeprüft'}**.",
                f"Referenz entspricht dem festgelegten SHA-256 und der Größe: **{'ja' if vergleich['referenzPinBestanden'] else 'nein oder ungeprüft'}**.", "",
-               f"Inhaltsgleiche entfernte Dateien: {len(vergleich['entfernteDateienInApk'])}; davon unabhängig erzeugte Leerdatei-Gleichheiten mit Beleg: {len(vergleich['belegteLeerdateiGleichheiten'])}; ungeklärte Treffer: {len(vergleich['unbelegteEntfernteDateienInApk'])}.", "",
+               (f"Inhaltsgleiche entfernte Dateien: {len(vergleich['entfernteDateienInApk'])}; davon unabhängig erzeugte Leerdatei-Gleichheiten mit Beleg: {len(vergleich['belegteLeerdateiGleichheiten'])}; ungeklärte Treffer: {len(vergleich['unbelegteEntfernteDateienInApk'])}." if vergleich["apkInhalteGeprueft"] else "Entfernte Dateiinhalte in der APK: nicht geprüft; kein APK-Inhaltsnachweis."), "",
                "Die vollständigen SHA-256-Werte, Web-Abweichungen und APK-Einträge stehen in `vergleich.json`.", "",
                "| Datei unter node_modules | " + " | ".join(PHASEN) + " | Inhaltsgleich in APK |",
                "|---|" + "---|" * (len(PHASEN) + 1)]
@@ -407,7 +422,8 @@ def markdown(bericht):
         werte = ["nicht erfasst" if wert is None else "fehlt" if wert is False else f"{wert['bytes']} B; {wert['sha256'][:12]}"
                  for wert in zeile["phasen"].values()]
         apk_namen = sorted({name for listen in zeile["apkInhaltsgleich"].values() for liste in listen for name in liste})
-        zeilen.append("| " + " | ".join(map(zelle, [zeile["pfad"], *werte, ", ".join(apk_namen) or "kein Fund"])) + " |")
+        apk_text = (", ".join(apk_namen) or "kein Fund") if vergleich["apkInhalteGeprueft"] else "nicht geprüft"
+        zeilen.append("| " + " | ".join(map(zelle, [zeile["pfad"], *werte, apk_text])) + " |")
     zeilen += ["", vergleich["grenze"]]
     if vergleich["belegteLeerdateiGleichheiten"]:
         zeilen += ["", "## Geprüfte Herkunft der Leerdateien", "",
@@ -418,6 +434,8 @@ def markdown(bericht):
                    for eintrag in vergleich["belegteLeerdateiGleichheiten"]]
     zeilen += ["", "## Beanstandungen", ""]
     zeilen += [f"{nummer}. {zelle(problem)}" for nummer, problem in enumerate(bericht["beanstandungen"], 1)] or ["Keine."]
+    if bericht.get("nichtGeprueft"):
+        zeilen += ["", "Wegen Scannerabbruch nicht geprüft: " + "; ".join(bericht["nichtGeprueft"]) + "."]
     return "\n".join(zeilen) + "\n"
 
 
@@ -432,6 +450,7 @@ def laeufe_vergleichen(laeufe):
     if len({bericht["commit"] for bericht in berichte}) != 1:
         raise ValueError("Die drei Läufe verwenden unterschiedliche Quellstände")
     varianten = {bericht["variante"]: {"lauf": str(pfad), "bestanden": bericht["bestanden"],
+                 "buildErgebnis": bericht.get("buildErgebnis"), "nichtGeprueft": bericht.get("nichtGeprueft", []),
                  "rueckgabewertBuild": bericht["rueckgabewertBuild"], "beanstandungen": bericht["beanstandungen"],
                  **bericht["vergleich"]} for pfad, bericht in zip(laeufe, berichte)}
     zeilen = ["# Vergleich der drei App-Läufe", "", f"Stand: `{berichte[0]['commit']}`.", "",
@@ -441,11 +460,11 @@ def laeufe_vergleichen(laeufe):
         zeilen.append("| Inventar " + phase + " | " + " | ".join(zellen) + " |")
     for titel, feld in (("Build-Rückgabe", "rueckgabewertBuild"), ("APK bytegleich", "bytegleich"),
                         ("Referenz-Pin geprüft", "referenzPinBestanden"), ("Auswertung bestanden", "bestanden")):
-        zeilen.append("| " + titel + " | " + " | ".join(str(v[feld]) for v in varianten.values()) + " |")
+        zeilen.append("| " + titel + " | " + " | ".join("nicht geprüft" if v[feld] is None else str(v[feld]) for v in varianten.values()) + " |")
     for titel, feld in (("Inhaltsgleiche entfernte Dateien", "entfernteDateienInApk"),
                         ("Belegte unabhängige Leerdateien", "belegteLeerdateiGleichheiten"),
                         ("Ungeklärte Inhaltsgleichheiten", "unbelegteEntfernteDateienInApk")):
-        zeilen.append("| " + titel + " | " + " | ".join(str(len(v[feld])) if feld in v else "nicht erfasst" for v in varianten.values()) + " |")
+        zeilen.append("| " + titel + " | " + " | ".join("nicht geprüft" if v.get("apkInhalteGeprueft") is False else str(len(v[feld])) if feld in v else "nicht erfasst" for v in varianten.values()) + " |")
     zeilen += ["", "Fehlende APKs oder Scanner-Nachweise bleiben fehlende Nachweise, auch wenn ein Scannerabbruch im Vergleichslauf erwartet wurde.",
                "Die Dateimatrizen und Beanstandungen aller Varianten stehen in der JSON-Datei."]
     return {"schemaVersion": 1, "commit": berichte[0]["commit"], "varianten": varianten,

@@ -8,8 +8,8 @@
   "Repo": "@LOKALES_REPOSITORY@",
   "Builds": [
     {
-      "versionName": "0.1.0",
-      "versionCode": 100,
+      "versionName": "@APP_VERSION_NAME@",
+      "versionCode": "@APP_VERSION_CODE@",
       "commit": "@APP_COMMIT@",
       "subdir": "app/android/app",
       "gradle": ["yes"],
@@ -34,6 +34,6 @@
   ],
   "AutoUpdateMode": "None",
   "UpdateCheckMode": "None",
-  "CurrentVersion": "0.1.0",
-  "CurrentVersionCode": 100
+  "CurrentVersion": "@APP_VERSION_NAME@",
+  "CurrentVersionCode": "@APP_VERSION_CODE@"
 }

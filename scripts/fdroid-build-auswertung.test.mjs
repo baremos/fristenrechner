@@ -10,7 +10,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const hier = dirname(fileURLToPath(import.meta.url));
-const scratchpad = resolve(hier, '..', 'scratchpad');
+const scratchpad = resolve(hier, '../scratchpad/paket-2.8-f5/tmp');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'fdroid-build-auswertung-'));
 const skript = join(hier, 'fdroid', 'build-auswerten.py');
