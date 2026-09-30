@@ -251,7 +251,7 @@ Die Pfade beziehen sich auf `app/android/`. „Entfernt“ bedeutet, dass die Da
 | `gradle.properties` | unverändert | Vorhandene Einstellungen für JVM und AndroidX. |
 | `gradle/wrapper/gradle-wrapper.jar` | unverändert | Unveränderter Gradle-Wrapper; Prüfsumme mit der Werkzeugfestlegung verglichen. |
 | `gradle/wrapper/gradle-wrapper.properties` | geändert | Gradle 8.14.5 als bin-Verteilung mit festgelegter SHA-256. |
-| `gradlew` | unverändert | Unverändertes Gradle-Startskript für POSIX mit Lizenzkopf. |
+| `gradlew` | unverändert | Unverändertes Gradle-Startskript für POSIX mit Lizenzkopf. Der Dateimodus 755 der Vorlage ist im Git-Index als 100755 übernommen. Unter Windows übernimmt Git das Ausführungsrecht nicht automatisch; dafür ist `git update-index --chmod=+x -- app/android/gradlew` nötig. K4 prüft diesen Indexeintrag. |
 | `gradlew.bat` | unverändert | Unverändertes Gradle-Startskript für Windows mit Lizenzkopf. |
 | `settings.gradle` | unverändert | Bindet App, Cordova-Modul und die von Capacitor erzeugten Projekteinstellungen ein. |
 | `variables.gradle` | geändert | Mindest-API 30 und feste AndroidX-/Cordova-Versionen; unbenötigte Test- und Startbildvariablen entfallen. |

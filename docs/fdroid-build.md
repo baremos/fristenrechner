@@ -153,6 +153,14 @@ Gebaut am 2026-09-29 in Debian 13.5, ohne die Werkzeuge von F-Droid. Quelle ist 
 | Debug-Build | `scripts/android-build.mjs --aufgabe assembleDebug` | bestanden nach 2 Minuten 56 Sekunden, 154 Aufgaben. In dieser Zeit lädt der Wrapper Gradle und Gradle die Abhängigkeiten. |
 | Release-Build | `scripts/android-build.mjs --aufgabe assembleRelease` | bestanden nach 52 Sekunden, 204 Aufgaben. Die Datei ist unsigniert. |
 
+Die Tabelle hält die damaligen Aufrufe der Minimal-App fest. Für die App unter `app/android` startet der Release-Build mit strenger Prüfung und dem nur für Builds eingerichteten Projekt-SDK aus der Repositorywurzel so:
+
+```sh
+node scripts/app-bauen.mjs --android --aufgabe assembleRelease --streng --ohne-testgruppe
+```
+
+`--ohne-testgruppe` nimmt Emulator und Systemabbilder aus der Werkzeugprüfung. Alle anderen Prüfungen bleiben bestehen; ein fehlendes Paket der Gruppe „Build" lässt den Aufruf weiterhin scheitern.
+
 | Datei | Größe | Berechtigungen laut `aapt2` |
 |---|---|---|
 | `app-debug.apk` | 4 247 132 Bytes | nur `de.baremos.fristenrechner.probe.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, keine Berechtigung `INTERNET` |

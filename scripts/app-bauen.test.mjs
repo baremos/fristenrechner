@@ -74,12 +74,12 @@ function probe({ fehlerBei, prozessFehler, ausnahmeBei, ohneApk = false } = {}) 
 }
 
 test('Argumente: Android verwendet ohne weitere Angaben assembleDebug', () => {
-  assert.deepEqual(argumente(['--android']), { modus: 'android', aufgabe: 'assembleDebug', streng: false, bericht: false });
+  assert.deepEqual(argumente(['--android']), { modus: 'android', aufgabe: 'assembleDebug', streng: false, bericht: false, ohneTestgruppe: false });
 });
 
 for (const aufgabe of ['assembleDebug', 'assembleRelease', ':app:assembleDebug', ':app:assembleRelease']) {
   test(`Argumente: ${aufgabe}, streng und Bericht auch vor dem Arbeitsgang`, () => {
-    assert.deepEqual(argumente(['--streng', '--aufgabe', aufgabe, '--bericht', '--android']), { modus: 'android', aufgabe, streng: true, bericht: true });
+    assert.deepEqual(argumente(['--streng', '--aufgabe', aufgabe, '--bericht', '--android']), { modus: 'android', aufgabe, streng: true, bericht: true, ohneTestgruppe: false });
   });
 }
 
@@ -89,6 +89,8 @@ for (const [args, grund] of [
   [['--web', '--android'], /Genau einen Arbeitsgang/],
   [['--android', '--android'], /mehrfach/],
   [['--android', '--streng', '--streng'], /mehrfach/],
+  [['--android', '--ohne-testgruppe', '--ohne-testgruppe'], /mehrfach/],
+  ...['--web', '--check', '--pruefen', '--android-quellen'].map((modus) => [[modus, '--ohne-testgruppe'], /nur mit --android/]),
   [['--android', '--bericht', '--bericht'], /mehrfach/],
   [['--android', '--aufgabe'], /Wert für --aufgabe fehlt/],
   [['--android', '--aufgabe', '--streng'], /Wert für --aufgabe fehlt/],
@@ -139,7 +141,7 @@ for (const aufgabe of ['assembleDebug', 'assembleRelease', ':app:assembleDebug',
       { name: 'K2', args: [join(p.ort, 'app', 'dist'), { fehlerseite: 'startfehler.html', quellOrdner: [join(p.ort, 'packages', 'kern', 'src'), join(p.ort, 'packages', 'oberflaeche', 'src')] }] },
       { name: 'Zustand', args: [{ wurzel: p.ort, umgebung: p.prozesse[0].env }] },
       { name: 'K3', args: [{ wurzel: p.ort, umgebung: p.prozesse[0].env }] },
-      { name: 'K4', args: [{ wurzel: p.ort }] },
+      { name: 'K4', args: [{ wurzel: p.ort, umgebung: p.prozesse[0].env }] },
       { name: 'K5', args: [join(p.ort, 'app', 'android', 'app', 'build', 'outputs', 'apk', debug ? 'debug' : 'release', debug ? 'app-debug.apk' : 'app-release-unsigned.apk'), { wurzel: p.ort, debug, umgebung: p.prozesse[0].env }] },
     ]);
     assert.ok(p.meldungen.some((text) => text.includes('Bericht der Gegenprobe')));
@@ -150,8 +152,23 @@ test('Android ohne --streng gibt den Schalter nicht an android-build weiter', ()
   const p = probe();
   assert.equal(baue(['--android'], p.optionen), 0);
   assert.ok(!p.prozesse.at(-1).args.includes('--streng'));
+  assert.ok(!p.prozesse.at(-1).args.includes('--ohne-testgruppe'));
   assert.equal(p.pruefaufrufe.find(({ name }) => name === 'K3').args[0].vorher, p.vorher);
 });
+
+for (const streng of [false, true]) {
+  test(`Android reicht --ohne-testgruppe weiter, streng=${streng}`, () => {
+    const p = probe();
+    const args = ['--ohne-testgruppe', '--android', ...(streng ? ['--streng'] : [])];
+    assert.equal(argumente(args).ohneTestgruppe, true);
+    assert.equal(baue(args, p.optionen), 0, p.fehler.join('\n'));
+    assert.deepEqual(p.prozesse.at(-1).args, [
+      join(p.ort, 'scripts', 'android-build.mjs'), '--projekt', 'app/android', '--aufgabe', 'assembleDebug',
+      ...(streng ? ['--streng'] : []), '--ohne-testgruppe',
+    ]);
+    assert.deepEqual(p.schritte, reihenfolge);
+  });
+}
 
 test('Android ohne --streng weist auf vorhandene Änderungen hin und reicht den Zustand an K3 weiter', (t) => {
   const p = probe();

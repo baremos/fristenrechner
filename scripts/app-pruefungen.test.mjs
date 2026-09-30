@@ -538,7 +538,15 @@ function gradleProbe() {
     mkdirSync(dirname(ziel), { recursive: true });
     copyFileSync(join(projekt, 'app/android', datei), ziel);
   }
+  schreibe(w, 'app/android/gradlew', '#!/bin/sh\nexit 0\n');
+  probeGit(w, 'init', '--quiet');
+  probeGit(w, 'add', '--chmod=+x', '--', 'app/android/gradlew');
   return w;
+}
+function probeGit(w, ...argumente) {
+  const lauf = spawnSync('git', argumente, { cwd: w, encoding: 'utf8', windowsHide: true });
+  assert.equal(lauf.status, 0, lauf.error?.message ?? lauf.stderr);
+  return lauf.stdout;
 }
 function ersetze(w, datei, von, nach) {
   const pfad = join(w, datei);
@@ -549,6 +557,31 @@ function ersetze(w, datei, von, nach) {
 
 test('K4: eingecheckte Gradle-Werte, SDK-Bindungen und bin-Wrapper bestehen', () => {
   assert.deepEqual(pruefeGradle({ wurzel: gradleProbe() }), []);
+});
+test('K4: Wrappermodus 100644 scheitert, git update-index --chmod=+x behebt ihn', () => {
+  const w = gradleProbe();
+  probeGit(w, 'update-index', '--chmod=-x', '--', 'app/android/gradlew');
+  assert.match(probeGit(w, 'ls-files', '-s', '--', 'app/android/gradlew'), /^100644 /);
+  erwartetFehler('K4 Wrappermodus 100644', pruefeGradle({ wurzel: w }), /Dateimodus im Git-Index muss 100755 sein, gefunden 100644\. Beheben mit: git update-index --chmod=\+x -- app\/android\/gradlew/);
+  probeGit(w, 'update-index', '--chmod=+x', '--', 'app/android/gradlew');
+  assert.match(probeGit(w, 'ls-files', '-s', '--', 'app/android/gradlew'), /^100755 /);
+  assert.deepEqual(pruefeGradle({ wurzel: w }), []);
+});
+for (const [titel, aendern, muster] of [
+  ['Wrapper fehlt im Index', (w) => probeGit(w, 'update-index', '--force-remove', '--', 'app/android/gradlew'), /app\/android\/gradlew: ein eindeutiger Eintrag ohne Konflikt im Git-Index fehlt/],
+  ['Quellarchiv ohne .git in umgebendem Repository', (w) => rmSync(join(w, '.git'), { recursive: true }), /Kein zugehöriges Git-Repository: K4 kann den Dateimodus/],
+  ['ungültiger Git-Index', (w) => schreibe(w, '.git/index', 'kein Git-Index'), /git ls-files ist fehlgeschlagen/],
+]) {
+  test(`K4 Gegenprobe: ${titel}`, () => {
+    const w = gradleProbe(); aendern(w);
+    erwartetFehler(`K4 ${titel}`, pruefeGradle({ wurzel: w }), muster);
+  });
+}
+test('K4 Gegenprobe: Git lässt sich nicht starten, kein stilles Bestehen', () => {
+  const w = gradleProbe();
+  const umgebung = Object.fromEntries(Object.entries(process.env).filter(([name]) => name.toUpperCase() !== 'PATH'));
+  umgebung.PATH = w;
+  erwartetFehler('K4 Git nicht ausführbar', pruefeGradle({ wurzel: w, umgebung }), /git rev-parse ist fehlgeschlagen:.*ENOENT/);
 });
 for (const datei of VORGABE.gradle.dateienMitVerboten) {
   for (const verboten of VORGABE.gradle.verboten) {

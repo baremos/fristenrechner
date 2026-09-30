@@ -206,14 +206,15 @@ So bleiben die Revisionen unter Kontrolle:
 - Ist eine vorhandene `package.xml` unlesbar oder beschreibt sie ein anderes Paket, gilt das Paket als ungültig. Das Programm greift dann nicht auf `source.properties` zurück.
 - Revisionen aus Zahlen und Punkten vergleicht das Programm Stelle für Stelle, fehlende Stellen gelten als 0. Revisionen mit Zusatz wie `36.0.0 rc5` vergleicht es als Text.
 - `scripts/sdk-pruefung.test.mjs` prüft das Programm: `node --test "scripts/*.test.mjs"`. Der Test braucht ein JDK 21.
-- Das Build-Skript vergleicht vor jedem Build alle Pakete beider Gruppen:
+- Das Build-Skript vergleicht vor jedem Build die Pakete beider Gruppen. Mit `--ohne-testgruppe` übergibt es nur die Gruppe „Build" an dasselbe Prüfprogramm und nennt diese Auswahl in der Ausgabe:
 
 | Befund | Folge |
 |---|---|
 | Paket der Gruppe „Build" fehlt oder ist ungültig | Abbruch |
 | Paket, das in die App eingeht, weicht ab | Abbruch |
-| Paket der Gruppe „Test" fehlt oder ist ungültig | Hinweis |
-| anderes Paket weicht ab | Hinweis |
+| Paket der Gruppe „Test" fehlt oder ist ungültig, ohne `--ohne-testgruppe` | Hinweis |
+| Gruppe „Test" bei `--ohne-testgruppe` | nicht geprüft, kein Hinweis |
+| anderes geprüftes Paket weicht ab | Hinweis |
 | beliebiger Hinweis bei `--streng` | Abbruch |
 
 - Der Vergleich prüft Revisionen, nicht den Inhalt der installierten Dateien.
@@ -253,6 +254,16 @@ Offen für Arbeitspaket 2.8: Prüfsummen der Gradle-Abhängigkeiten über `gradl
 | `app/android/variables.gradle` | API-Stufen und AndroidX-Versionen | 2.5 |
 | `app/android/gradle/wrapper/gradle-wrapper.properties` | Gradle-Version und Prüfsumme | 2.5 |
 | Build-Rezept für F-Droid | Node-Referenzversion mit Prüfsumme des Linux-Archivs | 2.8 |
+
+## Bauen unter Linux
+
+Unter Linux ist nur die Gruppe „Build" eingerichtet. Für den Release-Build der App mit allen Prüfungen gilt aus der Repositorywurzel:
+
+```sh
+node scripts/app-bauen.mjs --android --aufgabe assembleRelease --streng --ohne-testgruppe
+```
+
+`--ohne-testgruppe` gilt auch für `node scripts/android-build.mjs --nur-pruefen`. Die Prüfung der Gruppe „Build" und aller übrigen Werkzeuge bleibt unverändert; `--streng` macht weiterhin aus jedem verbleibenden Hinweis einen Abbruch.
 
 ## Einrichtung unter Windows
 

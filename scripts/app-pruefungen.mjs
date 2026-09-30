@@ -505,12 +505,8 @@ function versucht(fehler, name, funktion) {
   try { funktion(); } catch (e) { fehler.push(`${name}: ${e.message}`); }
 }
 
-/** Zustand unmittelbar vor cap sync: Git-Status und Inhalt der nicht ausgeschlossenen
- * Dateien. Auch saubere versionierte Dateien werden erfasst, damit Git etwa einen
- * vom Sync geänderten Zeilenumbruch nicht durch seine Normalisierung verdeckt. */
-export function leseAndroidZustand({ wurzel, umgebung = process.env } = {}) {
+function gitImProjekt(wurzel, umgebung, ohneGit) {
   // Ein Archiv unter einem fremden Repository darf dessen sauberen Status nicht erben.
-  const ohneGit = 'Kein zugehöriges Git-Repository: K3 kann die unveränderten Android-Quellen nicht belegen. Für Quellarchive ist ein unabhängig vertrauenswürdiges Dateimanifest nötig; derzeit bitte einen Git-Checkout verwenden.';
   if (!existsSync(join(wurzel, '.git'))) throw new Error(ohneGit);
   const optionen = { cwd: wurzel, encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024, env: { ...umgebung, CI: '1', ASTRO_TELEMETRY_DISABLED: '1' } };
   const git = (...argumente) => {
@@ -519,8 +515,16 @@ export function leseAndroidZustand({ wurzel, umgebung = process.env } = {}) {
     if (ergebnis.status !== 0) throw new Error(`git ${argumente[0]} ist fehlgeschlagen (Rückgabewert ${ergebnis.status}).`);
     return ergebnis.stdout;
   };
+  if (realpathSync(git('rev-parse', '--show-toplevel').replace(/\r?\n$/, '')) !== realpathSync(wurzel)) throw new Error(ohneGit);
+  return git;
+}
+
+/** Zustand unmittelbar vor cap sync: Git-Status und Inhalt der nicht ausgeschlossenen
+ * Dateien. Auch saubere versionierte Dateien werden erfasst, damit Git etwa einen
+ * vom Sync geänderten Zeilenumbruch nicht durch seine Normalisierung verdeckt. */
+export function leseAndroidZustand({ wurzel, umgebung = process.env } = {}) {
+  const git = gitImProjekt(wurzel, umgebung, 'Kein zugehöriges Git-Repository: K3 kann die unveränderten Android-Quellen nicht belegen. Für Quellarchive ist ein unabhängig vertrauenswürdiges Dateimanifest nötig; derzeit bitte einen Git-Checkout verwenden.');
   const basis = realpathSync(wurzel);
-  if (realpathSync(git('rev-parse', '--show-toplevel').replace(/\r?\n$/, '')) !== basis) throw new Error(ohneGit);
   const status = git('status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames', '--', 'app/android')
     .split('\0').filter(Boolean).map((zeile) => `${zeile.slice(0, 3)}${JSON.stringify(zeile.slice(3))}`);
   const pfade = [...new Set(git('ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'app/android').split('\0').filter(Boolean))].sort();
@@ -630,8 +634,22 @@ function versionscode(version) {
   return code;
 }
 
-export function pruefeGradle({ wurzel, vorgabe = VORGABE } = {}) {
+export function pruefeGradle({ wurzel, vorgabe = VORGABE, umgebung = process.env } = {}) {
   const fehler = [];
+  versucht(fehler, 'K4 Git', () => {
+    // Nur der Index legt den Modus künftiger Klone fest. Der Dateisystemmodus
+    // unter Windows belegt das Ausführungsrecht für einen Linux-Klon nicht.
+    const git = gitImProjekt(wurzel, umgebung, 'Kein zugehöriges Git-Repository: K4 kann den Dateimodus von app/android/gradlew im Git-Index nicht belegen. Bitte einen Git-Checkout verwenden.');
+    const eintraege = git('ls-files', '--stage', '-z', '--', 'app/android/gradlew').split('\0').filter(Boolean);
+    if (eintraege.length !== 1 || !/^[0-7]{6} [0-9a-f]+ 0\tapp\/android\/gradlew$/.test(eintraege[0])) {
+      throw new Error('app/android/gradlew: ein eindeutiger Eintrag ohne Konflikt im Git-Index fehlt. Datei mit git add --chmod=+x -- app/android/gradlew aufnehmen.');
+    }
+    const modus = eintraege[0].slice(0, 6);
+    if (modus !== '100755') {
+      const behebung = modus === '100644' ? ' Beheben mit: git update-index --chmod=+x -- app/android/gradlew' : ' Erwartet wird eine reguläre ausführbare Datei.';
+      throw new Error(`app/android/gradlew: Dateimodus im Git-Index muss 100755 sein, gefunden ${modus}.${behebung}`);
+    }
+  });
   versucht(fehler, 'K4', () => {
     const werkzeuge = jsonDatei(join(wurzel, 'scripts/toolchain.json'));
     const version = jsonDatei(join(wurzel, 'app/package.json')).version;

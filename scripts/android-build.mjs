@@ -5,7 +5,7 @@
 //
 // Aufruf:
 //   node scripts/android-build.mjs [--projekt <Ordner>] [--aufgabe <Gradle-Aufgabe>]
-//                                  [--sdk <Ordner>] [--nur-pruefen] [--streng]
+//                                  [--sdk <Ordner>] [--nur-pruefen] [--streng] [--ohne-testgruppe]
 //
 // Vorgaben: --projekt app/android, --aufgabe assembleDebug
 //
@@ -26,11 +26,12 @@ const wurzel = resolve(hier, '..');
 const hinweise = [];
 
 function argumente(argv) {
-  const werte = { projekt: join('app', 'android'), aufgabe: 'assembleDebug', sdk: null, nurPruefen: false, streng: false };
+  const werte = { projekt: join('app', 'android'), aufgabe: 'assembleDebug', sdk: null, nurPruefen: false, streng: false, ohneTestgruppe: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--nur-pruefen') werte.nurPruefen = true;
     else if (a === '--streng') werte.streng = true;
+    else if (a === '--ohne-testgruppe') werte.ohneTestgruppe = true;
     else if (a === '--projekt' && argv[i + 1]) werte.projekt = argv[(i += 1)];
     else if (a === '--aufgabe' && argv[i + 1]) werte.aufgabe = argv[(i += 1)];
     else if (a === '--sdk' && argv[i + 1]) werte.sdk = argv[(i += 1)];
@@ -99,21 +100,24 @@ function entmaskiere(text) {
 
 // Prüft die Pakete mit scripts/SdkPruefung.java. Das Programm läuft mit dem JDK
 // des Builds. Das Einrichtungsskript ruft dasselbe Programm auf.
-function pruefePakete(sdk, javaHome) {
+function pruefePakete(sdk, javaHome, ohneTestgruppe) {
   const java = join(javaHome, 'bin', windows ? 'java.exe' : 'java');
-  const angaben = vorgabe.android.pakete.flatMap((p) => [p.name, p.ordner, p.revision]);
+  // Wie beim Einrichtungsskript nur die gewählten Pakete an die gemeinsame
+  // Java-Prüfung übergeben. Sie kennt Pakettripel, keine Gruppenschalter.
+  const pakete = vorgabe.android.pakete.filter((p) => !ohneTestgruppe || p.gruppe !== 'test');
+  const angaben = pakete.flatMap((p) => [p.name, p.ordner, p.revision]);
   const lauf = spawnSync(java, [join(hier, 'SdkPruefung.java'), sdk, ...angaben], { encoding: 'utf8' });
   if (lauf.status !== 0) {
     abbruch(`Die Prüfung der Pakete ist fehlgeschlagen. ${`${lauf.stderr ?? ''}${lauf.error?.message ?? ''}`.trim()}`);
   }
   const zeilen = lauf.stdout.split(/\r?\n/).filter((zeile) => zeile !== '').map((zeile) => zeile.split('\t'));
-  if (zeilen.length !== vorgabe.android.pakete.length || zeilen.some((zeile, i) => zeile.length !== 4 || zeile[1] !== vorgabe.android.pakete[i].name)) {
+  if (zeilen.length !== pakete.length || zeilen.some((zeile, i) => zeile.length !== 4 || zeile[1] !== pakete[i].name)) {
     abbruch('Die Prüfung der Pakete hat eine unerwartete Ausgabe geliefert.');
   }
-  return zeilen.map(([status, , gefunden, meldung], i) => ({ paket: vorgabe.android.pakete[i], status, gefunden, meldung }));
+  return zeilen.map(([status, , gefunden, meldung], i) => ({ paket: pakete[i], status, gefunden, meldung }));
 }
 
-function findeSdk(projekt, angabe, javaHome) {
+function findeSdk(projekt, angabe, javaHome, ohneTestgruppe) {
   let pfad = angabe;
   let herkunft = '--sdk';
   const lokal = sdkDir(projekt);
@@ -140,7 +144,7 @@ function findeSdk(projekt, angabe, javaHome) {
   // Fehlt ein Paket der Gruppe "build", ist seine Beschreibung ungültig oder weicht
   // ein Paket ab, das in die App eingeht, bricht der Lauf ab. Alles andere wird
   // als Hinweis gemeldet.
-  for (const { paket, status, gefunden, meldung } of pruefePakete(pfad, javaHome)) {
+  for (const { paket, status, gefunden, meldung } of pruefePakete(pfad, javaHome, ohneTestgruppe)) {
     if (status === 'OK') continue;
     if (status === 'UNGUELTIG') {
       const text = `Die Beschreibung des Pakets ${paket.name} ist ungültig: ${meldung}`;
@@ -186,29 +190,50 @@ function pruefeWrapper(projekt) {
   return `${version} (${art})`;
 }
 
-const werte = argumente(process.argv.slice(2));
-const projekt = resolve(wurzel, werte.projekt);
-if (!existsSync(projekt)) abbruch(`Projektordner nicht gefunden: ${projekt}`);
+// Separat aufrufbar für Gegenproben ohne echten Gradle-Lauf.
+export function starteGradle(projekt, aufgabe, umgebung, { spawn = spawnSync, fehlerausgabe = console.error } = {}) {
+  // Mit ".\" aufrufen: Ist NoDefaultCurrentDirectoryInExePath gesetzt, sucht cmd.exe nicht im aktuellen Ordner.
+  const lauf = windows
+    ? spawn('cmd.exe', ['/d', '/c', '.\\gradlew.bat', aufgabe], { cwd: projekt, env: umgebung, stdio: 'inherit' })
+    : spawn('./gradlew', [aufgabe], { cwd: projekt, env: umgebung, stdio: 'inherit' });
+  if (lauf.error) {
+    const ursache = lauf.error.code === 'EACCES'
+      ? ' Häufig fehlt gradlew das Ausführungsrecht; unter Linux mit chmod +x gradlew im Projektordner setzen.'
+      : '';
+    fehlerausgabe(`Fehler: gradlew ließ sich nicht starten (${lauf.error.code ?? 'unbekannter Fehler'}). ${lauf.error.message}${ursache}`);
+    return 1;
+  }
+  if (lauf.status === null) {
+    fehlerausgabe(`Fehler: gradlew wurde ohne Rückgabewert beendet${lauf.signal ? ` (Signal ${lauf.signal})` : ''}.`);
+    return 1;
+  }
+  return lauf.status;
+}
 
-const node = pruefeNode();
-const jdk = findeJdk();
-const sdk = findeSdk(projekt, werte.sdk ? resolve(werte.sdk) : null, jdk.pfad);
-const gradle = pruefeWrapper(projekt);
+function main() {
+  const werte = argumente(process.argv.slice(2));
+  const projekt = resolve(wurzel, werte.projekt);
+  if (!existsSync(projekt)) abbruch(`Projektordner nicht gefunden: ${projekt}`);
 
-console.log(`Node    ${node}`);
-console.log(`JDK     ${jdk.version}  ${jdk.pfad}`);
-console.log(`SDK     ${sdk}`);
-console.log(`Gradle  ${gradle}`);
-console.log(`Projekt ${projekt}`);
-for (const h of hinweise) console.log(`Hinweis: ${h}`);
-if (werte.streng && hinweise.length > 0) abbruch('Strenge Prüfung: Mindestens ein Werkzeug weicht von der Festlegung ab.');
+  const node = pruefeNode();
+  const jdk = findeJdk();
+  const sdk = findeSdk(projekt, werte.sdk ? resolve(werte.sdk) : null, jdk.pfad, werte.ohneTestgruppe);
+  const gradle = pruefeWrapper(projekt);
 
-if (werte.nurPruefen) process.exit(0);
+  console.log(`Node    ${node}`);
+  console.log(`JDK     ${jdk.version}  ${jdk.pfad}`);
+  console.log(`SDK     ${sdk}`);
+  if (werte.ohneTestgruppe) console.log('SDK-Prüfung ohne Testgruppe (Emulator und Systemabbilder).');
+  console.log(`Gradle  ${gradle}`);
+  console.log(`Projekt ${projekt}`);
+  for (const h of hinweise) console.log(`Hinweis: ${h}`);
+  if (werte.streng && hinweise.length > 0) abbruch('Strenge Prüfung: Mindestens ein Werkzeug weicht von der Festlegung ab.');
 
-const umgebung = { ...process.env, JAVA_HOME: jdk.pfad, ANDROID_HOME: sdk };
-delete umgebung.ANDROID_SDK_ROOT;
-// Mit ".\" aufrufen: Ist NoDefaultCurrentDirectoryInExePath gesetzt, sucht cmd.exe nicht im aktuellen Ordner.
-const lauf = windows
-  ? spawnSync('cmd.exe', ['/d', '/c', '.\\gradlew.bat', werte.aufgabe], { cwd: projekt, env: umgebung, stdio: 'inherit' })
-  : spawnSync('./gradlew', [werte.aufgabe], { cwd: projekt, env: umgebung, stdio: 'inherit' });
-process.exit(lauf.status ?? 1);
+  if (werte.nurPruefen) return;
+
+  const umgebung = { ...process.env, JAVA_HOME: jdk.pfad, ANDROID_HOME: sdk };
+  delete umgebung.ANDROID_SDK_ROOT;
+  process.exitCode = starteGradle(projekt, werte.aufgabe, umgebung);
+}
+
+if (import.meta.main) main();

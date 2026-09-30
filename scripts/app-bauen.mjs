@@ -9,10 +9,10 @@ import { fileURLToPath } from 'node:url';
 import * as appPruefungen from './app-pruefungen.mjs';
 
 const wurzelVorgabe = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const aufruf = 'Aufruf: node scripts/app-bauen.mjs --web | --check | --pruefen | --android [--aufgabe assembleDebug|assembleRelease] [--streng] | --android-quellen [--bericht]';
+const aufruf = 'Aufruf: node scripts/app-bauen.mjs --web | --check | --pruefen | --android [--aufgabe assembleDebug|assembleRelease] [--streng] [--ohne-testgruppe] | --android-quellen [--bericht]';
 
 export function argumente(argv) {
-  const werte = { modus: null, aufgabe: 'assembleDebug', streng: false, bericht: false };
+  const werte = { modus: null, aufgabe: 'assembleDebug', streng: false, bericht: false, ohneTestgruppe: false };
   const gesehen = new Set();
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -23,14 +23,15 @@ export function argumente(argv) {
       werte.modus = a.slice(2);
     } else if (a === '--bericht') werte.bericht = true;
     else if (a === '--streng') werte.streng = true;
+    else if (a === '--ohne-testgruppe') werte.ohneTestgruppe = true;
     else if (a === '--aufgabe') {
       if (!argv[i + 1] || argv[i + 1].startsWith('--')) throw new Error('Wert für --aufgabe fehlt.');
       werte.aufgabe = argv[++i];
     } else throw new Error(`Unbekanntes Argument: ${a}`);
   }
   if (!werte.modus) throw new Error('Arbeitsgang fehlt.');
-  if (werte.modus !== 'android' && (werte.streng || gesehen.has('--aufgabe'))) {
-    throw new Error('--aufgabe und --streng sind nur mit --android zulässig.');
+  if (werte.modus !== 'android' && (werte.streng || werte.ohneTestgruppe || gesehen.has('--aufgabe'))) {
+    throw new Error('--aufgabe, --streng und --ohne-testgruppe sind nur mit --android zulässig.');
   }
   // K5 benötigt eine eindeutige APK und die zugehörige Debug-Eigenschaft.
   if (!/^(?::app:)?assemble(?:Debug|Release)$/.test(werte.aufgabe)) {
@@ -154,9 +155,10 @@ export function baue(argv, {
     }
     if (!lauf('Android synchronisieren', [join(wurzel, 'node_modules', '@capacitor', 'cli', 'bin', 'capacitor'), 'sync', 'android'], app)
       || !pruefung('K3 Sync', pruefungen.pruefeSync({ wurzel, umgebung: env, ...(werte.streng ? {} : { vorher }) }))
-      || !pruefung('K4 Gradle', pruefungen.pruefeGradle({ wurzel }))) return 1;
+      || !pruefung('K4 Gradle', pruefungen.pruefeGradle({ wurzel, umgebung: env }))) return 1;
     const args = [join(wurzel, 'scripts', 'android-build.mjs'), '--projekt', 'app/android', '--aufgabe', werte.aufgabe];
     if (werte.streng) args.push('--streng');
+    if (werte.ohneTestgruppe) args.push('--ohne-testgruppe');
     if (!lauf('Android bauen', args, wurzel)) return 1;
     const debug = werte.aufgabe.endsWith('Debug');
     const apk = join(app, 'android', 'app', 'build', 'outputs', 'apk', debug ? 'debug' : 'release', debug ? 'app-debug.apk' : 'app-release-unsigned.apk');
