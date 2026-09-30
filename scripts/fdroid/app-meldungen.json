@@ -1,0 +1,1442 @@
+[
+  {
+    "art": "git_clone",
+    "kontexte": [
+      "git-clone"
+    ],
+    "muster": "Cloning into 'build/de\\.baremos\\.fristenrechner'\\.\\.\\.",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          18
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          18
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          18
+        ]
+      }
+    ]
+  },
+  {
+    "art": "shell_cd",
+    "kontexte": [
+      "prebuild",
+      "build"
+    ],
+    "muster": "\\+\\ cd\\ \\.\\./\\.\\./\\.\\.",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          37
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          37,
+          124
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          37
+        ]
+      }
+    ]
+  },
+  {
+    "art": "npm_ci",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "\\+\\ npm\\ ci\\ \\-\\-ignore\\-scripts\\ \\-\\-no\\-audit\\ \\-\\-no\\-fund",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          38
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          38
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          38
+        ]
+      }
+    ]
+  },
+  {
+    "art": "npm_uuid_7_0_3",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "npm warn deprecated uuid@7\\.0\\.3: uuid@10 and below is no longer supported\\.  For ESM codebases, update to uuid@latest\\.  For CommonJS codebases, use uuid@11 \\(but be aware this version will likely be deprecated in 2028\\)\\.",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          39
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          39
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          39
+        ]
+      }
+    ]
+  },
+  {
+    "art": "gradle_flatdir",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": "WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats\\.",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          109
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          111,
+          141
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          111
+        ]
+      }
+    ]
+  },
+  {
+    "art": "android_sdk_xml_3_4",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": "Warning: SDK processing\\. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered\\. This can happen if you use versions of Android Studio and the command-line tools that were released at different times\\.",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          142
+        ]
+      }
+    ]
+  },
+  {
+    "art": "npm_installiert",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "added [0-9]+ packages in {DAUER_NPM}",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          41
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          41
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          41
+        ]
+      }
+    ]
+  },
+  {
+    "art": "shell_lockkopie",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "\\+ cp package-lock\\.json /{PFAD}/package-lock-app\\.json",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          42
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          42
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          42
+        ]
+      }
+    ]
+  },
+  {
+    "art": "shell_inventar_vor_scanner",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "\\+ python3 (/{PFAD})/npm-inventar\\.py node_modules \\1/npm-vorgebaut-(?:vor-web|nach-web|nach-bereinigung)\\.json",
+    "maximal_pro_lauf": 3,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          43,
+          80,
+          82
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          43,
+          80,
+          84
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          43,
+          80,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "art": "shell_inventar_nach_scanner",
+    "kontexte": [
+      "build"
+    ],
+    "muster": "\\+ python3 (/{PFAD})/npm-inventar\\.py node_modules \\1/npm-vorgebaut-nach-scanner\\.json",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          125
+        ]
+      }
+    ]
+  },
+  {
+    "art": "shell_vollinventar_vor_scanner",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "\\+ python3 (/{PFAD})/npm-inventar\\.py --alle node_modules \\1/npm-dateien-vor-scanner\\.json",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          84
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          86
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          86
+        ]
+      }
+    ]
+  },
+  {
+    "art": "shell_vollinventar_nach_scanner",
+    "kontexte": [
+      "build"
+    ],
+    "muster": "\\+ python3 (/{PFAD})/npm-inventar\\.py --alle node_modules \\1/npm-dateien-nach-scanner\\.json",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          127
+        ]
+      }
+    ]
+  },
+  {
+    "art": "inventar_vorgebaut",
+    "kontexte": [
+      "prebuild",
+      "build"
+    ],
+    "muster": "Inventar: [0-9]+ Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie\\.",
+    "maximal_pro_lauf": 4,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          44,
+          81,
+          83
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          44,
+          81,
+          85,
+          126
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          44,
+          81,
+          85
+        ]
+      }
+    ]
+  },
+  {
+    "art": "inventar_alle_dateien",
+    "kontexte": [
+      "prebuild",
+      "build"
+    ],
+    "muster": "Inventar: [0-9]+ Dateien; alle regulären Dateien, ohne Verweise\\.",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          85
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          87,
+          128
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          87
+        ]
+      }
+    ]
+  },
+  {
+    "art": "shell_app_vorbereiten",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "\\+\\ node\\ scripts/fdroid/app\\-vorbereiten\\.mjs",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          45
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          45
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          45
+        ]
+      }
+    ]
+  },
+  {
+    "art": "shell_app_nach_scanner",
+    "kontexte": [
+      "build"
+    ],
+    "muster": "\\+\\ node\\ scripts/fdroid/app\\-vorbereiten\\.mjs\\ \\-\\-nach\\-scanner",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          129
+        ]
+      }
+    ]
+  },
+  {
+    "art": "npm_kern_build",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": ">\\ @baremos/fristenrechner\\-kern@0\\.0\\.0\\ build",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          48
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          48
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          48
+        ]
+      }
+    ]
+  },
+  {
+    "art": "tsc_build",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": ">\\ tsc\\ \\-p\\ tsconfig\\.build\\.json",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          49
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          49
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          49
+        ]
+      }
+    ]
+  },
+  {
+    "art": "astro_statische_routen",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "\\ generating\\ static\\ routes\\ ",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          63
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          63
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          63
+        ]
+      }
+    ]
+  },
+  {
+    "art": "k1_bestanden",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "==\\ K1\\ Konfiguration:\\ bestanden",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          70
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          70
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          70
+        ]
+      }
+    ]
+  },
+  {
+    "art": "k3_bestanden",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "K3\\ Sync:\\ bestanden",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          78
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          78
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          78
+        ]
+      }
+    ]
+  },
+  {
+    "art": "k4_bestanden",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "K4\\ Gradle:\\ bestanden",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          79
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          79
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          79
+        ]
+      }
+    ]
+  },
+  {
+    "art": "android_quellen_vorhanden",
+    "kontexte": [
+      "build"
+    ],
+    "muster": "Android\\-Quellen\\ nach\\ dem\\ Scanner\\ vorhanden:\\ node_modules/@capacitor/android/capacitor",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          130
+        ]
+      }
+    ]
+  },
+  {
+    "art": "app_bauschritt",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "== (?:Rechenkern bauen|Seite der App bauen)",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          46,
+          51
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          46,
+          51
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          46,
+          51
+        ]
+      }
+    ]
+  },
+  {
+    "art": "k2_bestanden",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "== K2 dist \\([0-9]+ Dateien\\): bestanden",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          71
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          71
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          71
+        ]
+      }
+    ]
+  },
+  {
+    "art": "astro_output",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "[0-9]{2}:[0-9]{2}:[0-9]{2} \\[build\\] (?:output|mode): \"static\"",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          53,
+          54
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          53,
+          54
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          53,
+          54
+        ]
+      }
+    ]
+  },
+  {
+    "art": "astro_ziel",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "[0-9]{2}:[0-9]{2}:[0-9]{2} \\[build\\] directory: /{PFAD}/build/de\\.baremos\\.fristenrechner/app/dist/",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          55
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          55
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          55
+        ]
+      }
+    ]
+  },
+  {
+    "art": "astro_fortschritt",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "[0-9]{2}:[0-9]{2}:[0-9]{2} \\[build\\] (?:Collecting build info\\.\\.\\.|Building static entrypoints\\.\\.\\.|Rearranging server assets\\.\\.\\.|Complete!)",
+    "maximal_pro_lauf": 4,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          56,
+          58,
+          61,
+          69
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          56,
+          58,
+          61,
+          69
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          56,
+          58,
+          61,
+          69
+        ]
+      }
+    ]
+  },
+  {
+    "art": "astro_typen",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "[0-9]{2}:[0-9]{2}:[0-9]{2} \\[types\\] Generated {DAUER_ASTRO}",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          52
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          52
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          52
+        ]
+      }
+    ]
+  },
+  {
+    "art": "astro_teil_erfolg",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "[0-9]{2}:[0-9]{2}:[0-9]{2}(?: \\[build\\])? ✓ Completed in {DAUER_ASTRO}\\.",
+    "maximal_pro_lauf": 3,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          57,
+          65,
+          67
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          57,
+          65,
+          67
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          57,
+          65,
+          67
+        ]
+      }
+    ]
+  },
+  {
+    "art": "vite_erfolg",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "[0-9]{2}:[0-9]{2}:[0-9]{2} \\[vite\\] ✓ built in {DAUER_VITE}",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          59,
+          60
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          59,
+          60
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          59,
+          60
+        ]
+      }
+    ]
+  },
+  {
+    "art": "astro_route",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "[0-9]{2}:[0-9]{2}:[0-9]{2}   ├─ /index\\.html \\(\\+{DAUER_ASTRO}\\) ",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          64
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          64
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          64
+        ]
+      }
+    ]
+  },
+  {
+    "art": "astro_seite_fertig",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "[0-9]{2}:[0-9]{2}:[0-9]{2} \\[build\\] 1 page\\(s\\) built in {DAUER_ASTRO}",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          68
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          68
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          68
+        ]
+      }
+    ]
+  },
+  {
+    "art": "capacitor_teil_erfolg",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "✔ (?:Copying web assets from dist to android/app/src/main/assets/public|Creating capacitor\\.config\\.json in android/app/src/main/assets|copy android|Updating Android plugins|update android) in {DAUER_CAPACITOR}",
+    "maximal_pro_lauf": 5,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          72,
+          73,
+          74,
+          75,
+          76
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          72,
+          73,
+          74,
+          75,
+          76
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          72,
+          73,
+          74,
+          75,
+          76
+        ]
+      }
+    ]
+  },
+  {
+    "art": "capacitor_sync_erfolg",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "\\[info\\] Sync finished in {DAUER_SYNC}",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          77
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          77
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          77
+        ]
+      }
+    ]
+  },
+  {
+    "art": "shell_bereinigung",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "\\+ python3 scripts/fdroid/npm-bereinigen\\.py --wurzel \\. --ausgabe /{PFAD}/bereinigung\\.json",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          82
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          82
+        ]
+      }
+    ]
+  },
+  {
+    "art": "bereinigung_ergebnis",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "Bereinigung: [0-9]+ Pakete, [0-9]+ Dateien entfernt; 0 zugelassene Restfunde\\.",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          83
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          83
+        ]
+      }
+    ]
+  },
+  {
+    "art": "gradle_text",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": "(?:\\ \\-\\ Build\\ Authoring\\ improvements|\\ \\-\\ Enhancements\\ to\\ test\\ reporting|\\ \\-\\ GraalVM\\ Native\\ Image\\ toolchain\\ selection|\\ \\-\\ Java\\ 24\\ support|Downloading\\ missing\\ gradle\\ version\\ 8\\.14\\.5|For\\ more\\ details\\ see\\ https://docs\\.gradle\\.org/8\\.14\\.5/release\\-notes\\.html|Found\\ 8\\.14\\.5\\ via\\ distributionUrl|Here\\ are\\ the\\ highlights\\ of\\ this\\ release:|Note:\\ Recompile\\ with\\ \\-Xlint:unchecked\\ for\\ details\\.|Note:\\ Some\\ input\\ files\\ use\\ unchecked\\ or\\ unsafe\\ operations\\.|Remote\\ gradle\\-transparency\\-log\\ not\\ changed,\\ reusing\\ cache|Starting\\ a\\ Gradle\\ Daemon\\ \\(subsequent\\ builds\\ will\\ be\\ faster\\)|Update\\ checksum\\ from\\ gradle\\-transparency\\-log|Welcome\\ to\\ Gradle\\ 8\\.14\\.5!)",
+    "maximal_pro_lauf": 16,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          90,
+          91,
+          92,
+          96,
+          98,
+          99,
+          100,
+          101,
+          102,
+          104,
+          106
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          92,
+          93,
+          94,
+          98,
+          100,
+          101,
+          102,
+          103,
+          104,
+          106,
+          108,
+          135,
+          136,
+          137,
+          178,
+          179
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          92,
+          93,
+          94,
+          98,
+          100,
+          101,
+          102,
+          103,
+          104,
+          106,
+          108
+        ]
+      }
+    ]
+  },
+  {
+    "art": "gradle_cache",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": "(?:CACHEDIR set to|Using cache directory) /{PFAD}/fdroid-cache",
+    "maximal_pro_lauf": 3,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          89,
+          93
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          91,
+          95,
+          134
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          91,
+          95
+        ]
+      }
+    ]
+  },
+  {
+    "art": "gradle_aufruf",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": "Running /{PFAD}/fdroid-cache/versions/8\\.14\\.5/bin/gradle (?:clean|assembleRelease)",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          94
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          96,
+          138
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          96
+        ]
+      }
+    ]
+  },
+  {
+    "art": "gradle_projekt",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": ">\\ Configure\\ project\\ :capacitor\\-cordova\\-android\\-plugins",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          108
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          110,
+          140
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          110
+        ]
+      }
+    ]
+  },
+  {
+    "art": "gradle_task",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": "(?:>\\ Task\\ :app:assembleRelease|>\\ Task\\ :app:checkReleaseAarMetadata|>\\ Task\\ :app:checkReleaseDuplicateClasses|>\\ Task\\ :app:clean|>\\ Task\\ :app:compileReleaseArtProfile|>\\ Task\\ :app:compileReleaseJavaWithJavac|>\\ Task\\ :app:compileReleaseNavigationResources|>\\ Task\\ :app:compileReleaseShaders|>\\ Task\\ :app:compressReleaseAssets|>\\ Task\\ :app:createReleaseApkListingFileRedirect|>\\ Task\\ :app:createReleaseCompatibleScreenManifests|>\\ Task\\ :app:desugarReleaseFileDependencies|>\\ Task\\ :app:dexBuilderRelease|>\\ Task\\ :app:extractDeepLinksRelease|>\\ Task\\ :app:extractProguardFiles|>\\ Task\\ :app:extractReleaseNativeSymbolTables|>\\ Task\\ :app:extractReleaseVersionControlInfo|>\\ Task\\ :app:generateReleaseAssets|>\\ Task\\ :app:generateReleaseLintVitalReportModel|>\\ Task\\ :app:generateReleaseResValues|>\\ Task\\ :app:generateReleaseResources|>\\ Task\\ :app:javaPreCompileRelease|>\\ Task\\ :app:lintVitalAnalyzeRelease|>\\ Task\\ :app:lintVitalRelease|>\\ Task\\ :app:lintVitalReportRelease|>\\ Task\\ :app:mapReleaseSourceSetPaths|>\\ Task\\ :app:mergeDexRelease|>\\ Task\\ :app:mergeExtDexRelease|>\\ Task\\ :app:mergeReleaseArtProfile|>\\ Task\\ :app:mergeReleaseAssets|>\\ Task\\ :app:mergeReleaseGlobalSynthetics|>\\ Task\\ :app:mergeReleaseJavaResource|>\\ Task\\ :app:mergeReleaseJniLibFolders|>\\ Task\\ :app:mergeReleaseNativeDebugMetadata|>\\ Task\\ :app:mergeReleaseNativeLibs|>\\ Task\\ :app:mergeReleaseResources|>\\ Task\\ :app:mergeReleaseShaders|>\\ Task\\ :app:mergeReleaseStartupProfile|>\\ Task\\ :app:optimizeReleaseResources|>\\ Task\\ :app:packageRelease|>\\ Task\\ :app:packageReleaseResources|>\\ Task\\ :app:parseReleaseLocalResources|>\\ Task\\ :app:preBuild|>\\ Task\\ :app:preReleaseBuild|>\\ Task\\ :app:processReleaseJavaRes|>\\ Task\\ :app:processReleaseMainManifest|>\\ Task\\ :app:processReleaseManifest|>\\ Task\\ :app:processReleaseManifestForPackage|>\\ Task\\ :app:processReleaseNavigationResources|>\\ Task\\ :app:processReleaseResources|>\\ Task\\ :app:stripReleaseDebugSymbols|>\\ Task\\ :app:writeReleaseAppMetadata|>\\ Task\\ :app:writeReleaseSigningConfigVersions|>\\ Task\\ :capacitor\\-android:bundleLibCompileToJarRelease|>\\ Task\\ :capacitor\\-android:bundleLibRuntimeToDirRelease|>\\ Task\\ :capacitor\\-android:bundleLibRuntimeToJarRelease|>\\ Task\\ :capacitor\\-android:bundleReleaseLocalLintAar|>\\ Task\\ :capacitor\\-android:checkReleaseAarMetadata|>\\ Task\\ :capacitor\\-android:compileReleaseJavaWithJavac|>\\ Task\\ :capacitor\\-android:compileReleaseLibraryResources|>\\ Task\\ :capacitor\\-android:compileReleaseShaders|>\\ Task\\ :capacitor\\-android:copyReleaseJniLibsProjectAndLocalJars|>\\ Task\\ :capacitor\\-android:copyReleaseJniLibsProjectOnly|>\\ Task\\ :capacitor\\-android:createFullJarRelease|>\\ Task\\ :capacitor\\-android:extractDeepLinksForAarRelease|>\\ Task\\ :capacitor\\-android:extractDeepLinksRelease|>\\ Task\\ :capacitor\\-android:extractProguardFiles|>\\ Task\\ :capacitor\\-android:extractReleaseAnnotations|>\\ Task\\ :capacitor\\-android:generateReleaseAssets|>\\ Task\\ :capacitor\\-android:generateReleaseLintModel|>\\ Task\\ :capacitor\\-android:generateReleaseLintVitalModel|>\\ Task\\ :capacitor\\-android:generateReleaseRFile|>\\ Task\\ :capacitor\\-android:generateReleaseResValues|>\\ Task\\ :capacitor\\-android:generateReleaseResources|>\\ Task\\ :capacitor\\-android:javaPreCompileRelease|>\\ Task\\ :capacitor\\-android:lintVitalAnalyzeRelease|>\\ Task\\ :capacitor\\-android:mergeReleaseAssets|>\\ Task\\ :capacitor\\-android:mergeReleaseConsumerProguardFiles|>\\ Task\\ :capacitor\\-android:mergeReleaseGeneratedProguardFiles|>\\ Task\\ :capacitor\\-android:mergeReleaseJavaResource|>\\ Task\\ :capacitor\\-android:mergeReleaseJniLibFolders|>\\ Task\\ :capacitor\\-android:mergeReleaseNativeLibs|>\\ Task\\ :capacitor\\-android:mergeReleaseShaders|>\\ Task\\ :capacitor\\-android:packageReleaseResources|>\\ Task\\ :capacitor\\-android:parseReleaseLocalResources|>\\ Task\\ :capacitor\\-android:preBuild|>\\ Task\\ :capacitor\\-android:preReleaseBuild|>\\ Task\\ :capacitor\\-android:prepareLintJarForPublish|>\\ Task\\ :capacitor\\-android:prepareReleaseArtProfile|>\\ Task\\ :capacitor\\-android:processReleaseJavaRes|>\\ Task\\ :capacitor\\-android:processReleaseManifest|>\\ Task\\ :capacitor\\-android:processReleaseNavigationResources|>\\ Task\\ :capacitor\\-android:stripReleaseDebugSymbols|>\\ Task\\ :capacitor\\-android:syncReleaseLibJars|>\\ Task\\ :capacitor\\-android:writeReleaseAarMetadata|>\\ Task\\ :capacitor\\-android:writeReleaseLintModelMetadata|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:bundleLibCompileToJarRelease|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:bundleLibRuntimeToDirRelease|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:bundleLibRuntimeToJarRelease|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:bundleReleaseLocalLintAar|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:checkReleaseAarMetadata|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:compileReleaseJavaWithJavac|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:compileReleaseLibraryResources|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:compileReleaseShaders|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:copyReleaseJniLibsProjectAndLocalJars|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:copyReleaseJniLibsProjectOnly|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:createFullJarRelease|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:extractDeepLinksForAarRelease|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:extractDeepLinksRelease|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:extractProguardFiles|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:extractReleaseAnnotations|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:generateReleaseAssets|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:generateReleaseLintModel|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:generateReleaseLintVitalModel|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:generateReleaseRFile|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:generateReleaseResValues|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:generateReleaseResources|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:javaPreCompileRelease|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:lintVitalAnalyzeRelease|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:mergeReleaseAssets|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:mergeReleaseConsumerProguardFiles|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:mergeReleaseGeneratedProguardFiles|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:mergeReleaseJavaResource|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:mergeReleaseJniLibFolders|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:mergeReleaseNativeLibs|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:mergeReleaseShaders|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:packageReleaseResources|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:parseReleaseLocalResources|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:preBuild|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:preReleaseBuild|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:prepareLintJarForPublish|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:prepareReleaseArtProfile|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:processReleaseJavaRes|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:processReleaseManifest|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:processReleaseNavigationResources|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:stripReleaseDebugSymbols|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:syncReleaseLibJars|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:writeReleaseAarMetadata|>\\ Task\\ :capacitor\\-cordova\\-android\\-plugins:writeReleaseLintModelMetadata)(?: (?:UP-TO-DATE|NO-SOURCE))?",
+    "maximal_pro_lauf": 139,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          111
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          113,
+          144,
+          145,
+          146,
+          147,
+          148,
+          149,
+          150,
+          151,
+          152,
+          153,
+          154,
+          155,
+          156,
+          157,
+          158,
+          159,
+          160,
+          161,
+          162,
+          163,
+          164,
+          165,
+          166,
+          167,
+          168,
+          169,
+          170,
+          171,
+          172,
+          173,
+          174,
+          175,
+          177,
+          181,
+          182,
+          183,
+          184,
+          185,
+          186,
+          187,
+          188,
+          189,
+          190,
+          191,
+          192,
+          193,
+          194,
+          195,
+          196,
+          197,
+          198,
+          199,
+          200,
+          201,
+          202,
+          203,
+          204,
+          205,
+          206,
+          207,
+          208,
+          209,
+          210,
+          211,
+          212,
+          213,
+          214,
+          215,
+          216,
+          217,
+          218,
+          219,
+          220,
+          221,
+          222,
+          223,
+          224,
+          225,
+          226,
+          227,
+          228,
+          229,
+          230,
+          231,
+          232,
+          233,
+          234,
+          235,
+          236,
+          237,
+          238,
+          239,
+          240,
+          241,
+          242,
+          243,
+          244,
+          245,
+          246,
+          247,
+          248,
+          249,
+          250,
+          251,
+          252,
+          253,
+          254,
+          255,
+          256,
+          257,
+          258,
+          259,
+          260,
+          261,
+          262,
+          263,
+          264,
+          265,
+          266,
+          267,
+          268,
+          269,
+          270,
+          271,
+          272,
+          273,
+          274,
+          275,
+          276,
+          277,
+          278,
+          279,
+          280,
+          281,
+          282,
+          283,
+          284,
+          285
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          113
+        ]
+      }
+    ]
+  },
+  {
+    "art": "gradle_erfolg",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": "BUILD SUCCESSFUL in {DAUER_GRADLE}",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          113
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          115,
+          289
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          115
+        ]
+      }
+    ]
+  },
+  {
+    "art": "gradle_taskzahl",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": "[0-9]+ actionable tasks?: [0-9]+ (?:executed|up-to-date)(?:, [0-9]+ (?:executed|up-to-date))*",
+    "maximal_pro_lauf": 2,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          114
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          116,
+          290
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          116
+        ]
+      }
+    ]
+  },
+  {
+    "art": "gradle_problembericht",
+    "kontexte": [
+      "gradle"
+    ],
+    "muster": "\\[Incubating\\] Problems report is available at: file:///{PFAD}/build/de\\.baremos\\.fristenrechner/app/android/build/reports/problems/problems-report\\.html",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          287
+        ]
+      }
+    ]
+  },
+  {
+    "art": "scanner_app_wrapper",
+    "kontexte": [
+      "scanner-info"
+    ],
+    "muster": "Removing\\ gradle\\-wrapper\\.jar\\ at\\ app/android/gradle/wrapper/gradle\\-wrapper\\.jar",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-bms4awvc-ohne",
+        "zeilen": [
+          127
+        ]
+      },
+      {
+        "lauf": "lauf-hqj89xdz-gezielt",
+        "zeilen": [
+          119
+        ]
+      },
+      {
+        "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          119
+        ]
+      }
+    ]
+  }
+]
