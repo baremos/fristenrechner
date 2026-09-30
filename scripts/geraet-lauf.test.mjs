@@ -229,7 +229,7 @@ const VERWEIGERT = { art: 'fehler', name: 'TypeError', code: 'ECONNREFUSED', mel
 function geraeteProbe(wahl = {}) {
   const { buildType = 'user', unixLesbar = true, debugSocket = true, releaseSocket = false, releaseDevtools = releaseSocket, releaseAbruf = KEIN_SOCKET,
     releaseKontrolle = KEIN_SOCKET, schonInstalliert = false, root = false, zustand = 'device', api = '35', qemu = '', appBehalten = false, fremdesPaket = null,
-    installFehler = null, installHalb = null, installVorhanden = false, fremdNachDebug = false, fremdNachUninstall = false, signalBeiInstallation = false, installVerzoegert = 0, signalNachAbruf = false, pullAbweichung = false,
+    installFehler = null, installHalb = null, installHalbVerzoegert = 0, installVorhanden = false, fremdNachDebug = false, fremdNachUninstall = false, uninstallOhneErgebnis = false, signalBeiInstallation = false, installVerzoegert = 0, fremdNachSignal = 0, signalNachAbruf = false, pullAbweichung = false,
     forwardFehlerAb = Infinity, listeOhneWeiterleitung = false, deinstallationFehler = false,
     debugFlags = 'DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA', releaseFlags = 'HAS_CODE ALLOW_CLEAR_USER_DATA',
     releasePids = [], starts = {}, statFehler = false, fremdeActivityAb = Infinity, ansicht = baum, debugDevtools = true,
@@ -278,18 +278,31 @@ function geraeteProbe(wahl = {}) {
       if (installFehler === art(a[1])) return { code: 1, out: 'Failure [INSTALL_FAILED_VERIFICATION_FAILURE]\n', err: '' };
       if (signalBeiInstallation) {
         // Der Aufruf wird abgebrochen; auf dem Gerät kann die Installation noch laufen und später fertig werden.
-        if (installVerzoegert === Infinity) { /* erscheint nie */ } else if (installVerzoegert > 0) ausstehend = { apk: a[1], nach: listAufrufe + installVerzoegert }; else Object.assign(app, { apk: a[1], debug: a[1] === debug, laeuft: false });
+        if (fremdNachSignal > 0) ausstehend = { apk: 'fremd', nach: listAufrufe + fremdNachSignal };
+        else if (installVerzoegert === Infinity) { /* erscheint nie */ } else if (installVerzoegert > 0) ausstehend = { apk: a[1], nach: listAufrufe + installVerzoegert }; else Object.assign(app, { apk: a[1], debug: a[1] === debug, laeuft: false });
         process.emit('SIGINT'); return { code: null, out: '', err: 'Prozesslauf unterbrochen' };
       }
+      if (installHalb === art(a[1])) {
+        // Die Rückmeldung reißt ab; die Installation auf dem Gerät läuft trotzdem, sofort oder verzögert.
+        if (installHalbVerzoegert > 0) ausstehend = { apk: a[1], nach: listAufrufe + installHalbVerzoegert }; else Object.assign(app, { apk: a[1], debug: a[1] === debug, laeuft: false });
+        return { code: 1, out: '', err: 'adb: Verbindung während der Rückmeldung verloren' };
+      }
       Object.assign(app, { apk: a[1], debug: a[1] === debug, laeuft: false });
-      return installHalb === art(a[1]) ? { code: 1, out: '', err: 'adb: Verbindung während der Rückmeldung verloren' } : ok('Performing Streamed Install\nSuccess\n');
+      return ok('Performing Streamed Install\nSuccess\n');
     }
     if (text === `uninstall ${APP}`) {
       if (deinstallationFehler) return { code: 1, out: 'Failure [DELETE_FAILED_INTERNAL_ERROR]\n', err: '' };
       // Unmittelbar nach der Deinstallation kann dasselbe Paket von außen installiert werden.
-      Object.assign(app, fremdNachUninstall ? { apk: 'fremd', debug: false, laeuft: false } : { apk: null, laeuft: false }); return ok('Success\n');
+      Object.assign(app, fremdNachUninstall ? { apk: 'fremd', debug: false, laeuft: false } : { apk: null, laeuft: false });
+      // Die Bestätigung geht verloren, obwohl das Gerät deinstalliert hat.
+      if (uninstallOhneErgebnis) return { code: null, out: '', err: 'Prozesslauf unterbrochen' };
+      return ok('Success\n');
     }
-    if (a[0] === 'pull') { assert.equal(a.length, 3); assert.equal(a[1], PFAD); if (pullAbweichung) writeFileSync(a[2], 'anderer Inhalt'); else copyFileSync(app.apk, a[2]); return ok('1 file pulled'); }
+    if (a[0] === 'pull') {
+      assert.equal(a.length, 3); assert.equal(a[1], PFAD); assert.ok(app.apk, 'pull ohne installiertes Paket');
+      if (pullAbweichung || app.apk === 'fremd') writeFileSync(a[2], 'anderer Inhalt'); else copyFileSync(app.apk, a[2]);
+      return ok('1 file pulled');
+    }
     if (text === 'exec-out screencap -p') { assert.equal(opts.binary, true); return { code: 0, out: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]), err: '' }; }
     if (a[0] === 'logcat') { assert.match(text, /^logcat -d -v time --pid=\d+$/); return ok('Protokoll der App'); }
     if (a[0] === 'forward') {
@@ -307,7 +320,7 @@ function geraeteProbe(wahl = {}) {
     if (c === 'dumpsys webviewupdate') return ok('Current WebView package (name, version): (com.google.android.webview, 140.0.7339.51)\n');
     if (c === 'id') return ok(root ? 'uid=0(root) gid=0(root)' : 'uid=2000(shell) gid=2000(shell)');
     if (c === `pm list packages ${APP}`) {
-      if (ausstehend && ++listAufrufe >= ausstehend.nach) { Object.assign(app, { apk: ausstehend.apk, debug: ausstehend.apk === debug, laeuft: false }); ausstehend = null; }
+      if (ausstehend && ++listAufrufe >= ausstehend.nach) { Object.assign(app, { apk: ausstehend.apk, debug: ausstehend.apk === debug, laeuft: false }); ausstehend = null; } else if (!ausstehend) listAufrufe++;
       return ok(app.apk || schonInstalliert ? `package:${APP}\n` : '');
     }
     if (c === `pm path ${APP}`) return ok(`package:${PFAD}\n`);
@@ -352,13 +365,15 @@ function geraeteProbe(wahl = {}) {
     if (app.laeuft && offen && signalNachAbruf && nr === 1) process.emit('SIGINT');
     return app.laeuft && offen ? ANTWORT : releaseAbruf;
   };
-  return { local, optionen, run, java, debugKey, holen, calls, app, weiterleitungen, signiert, sleep: async () => {} };
+  // Virtuelle Uhr: Das nachgestellte Warten lässt die Zeit vergehen, ohne zu warten.
+  const uhr = { ms: 1_700_000_000_000 };
+  return { local, optionen, run, java, debugKey, holen, calls, app, weiterleitungen, signiert, uhr, sleep: async ms => { uhr.ms += ms; }, jetzt: () => uhr.ms };
 }
 
 async function nachgestellterLauf(p) {
   const alt = process.env.LOCALAPPDATA;
   process.env.LOCALAPPDATA = p.local;
-  try { return await lauf(p.optionen, { run: p.run, sleep: p.sleep, java: p.java, debugKey: p.debugKey, holen: p.holen }); }
+  try { return await lauf(p.optionen, { run: p.run, sleep: p.sleep, java: p.java, debugKey: p.debugKey, holen: p.holen, jetzt: p.jetzt }); }
   finally { if (alt === undefined) delete process.env.LOCALAPPDATA; else process.env.LOCALAPPDATA = alt; }
 }
 const ergebnis = p => JSON.parse(readFileSync(join(p.optionen.ausgabe, 'ergebnis.json'), 'utf8'));
@@ -553,6 +568,41 @@ test('Unterbrochene Installation erscheint nicht: Das Aufräumen meldet den unge
   assert.equal(aufgeraeumt(p)[0][1], 'nicht bestanden');
   assert.match(grund(p, 'Aufräumen: App deinstallieren'), /innerhalb von 60 Sekunden nicht erschienen/);
   assert.equal(p.calls.filter(c => c.args[3] === `pm list packages ${APP}`).length >= 30, true);
+  assert.ok(p.uhr.ms - 1_700_000_000_000 >= 60000 && p.uhr.ms - 1_700_000_000_000 < 62000, 'Das Warten dauert 60 Sekunden der virtuellen Uhr');
+});
+
+test('Abgerissene Rückmeldung mit Fehlercode, Installation wird später fertig: Das Aufräumen wartet und entfernt sie', nurWindows, async () => {
+  const p = geraeteProbe({ installHalb: 'debug', installHalbVerzoegert: 5 });
+  assert.equal(await nachgestellterLauf(p), 2);
+  assert.equal(adbAufrufe(p, 'uninstall').length, 1);
+  assert.equal(p.app.apk, null);
+  assert.deepEqual(aufgeraeumt(p), ALLES_AUFGERAEUMT);
+});
+
+test('Nach der unterbrochenen Installation erscheint ein fremdes Paket: bleibt unberührt', nurWindows, async () => {
+  // Die Installation des Laufs kam nie an; stattdessen erscheint dasselbe Paket mit anderem Inhalt.
+  const p = geraeteProbe({ signalBeiInstallation: true, installVerzoegert: Infinity, fremdNachSignal: 3 });
+  assert.equal(await nachgestellterLauf(p), 1);
+  assert.equal(adbAufrufe(p, 'uninstall').length, 0);
+  assert.equal(p.app.apk, 'fremd');
+  assert.match(grund(p, 'Aufräumen: App deinstallieren'), /nicht die eigene Datei \(andere Prüfsumme\)\. Es gilt als fremd und bleibt unberührt/);
+});
+
+test('Deinstallation ohne Bestätigung, danach fremdes Paket: bleibt unberührt', nurWindows, async () => {
+  const p = geraeteProbe({ uninstallOhneErgebnis: true, fremdNachUninstall: true });
+  assert.equal(await nachgestellterLauf(p), 1);
+  assert.match(grund(p, 'Laufrahmen'), /Deinstallation fehlgeschlagen/);
+  assert.equal(adbAufrufe(p, 'uninstall').length, 1);
+  assert.equal(p.app.apk, 'fremd');
+  assert.match(grund(p, 'Aufräumen: App deinstallieren'), /nicht die eigene Datei/);
+});
+
+test('Eigene Formulartexte ohne Fläche neben sichtbaren fremden: Start nicht belegt', nurWindows, async () => {
+  const gemischt = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node text="Fristenrechner Vergabe" package="${APP}" bounds="[0,0][0,0]" /><node text="Vergabeordnung" package="${APP}" bounds="[0,60][0,60]" /><node text="Fristenrechner Vergabe" package="com.example.fremd" bounds="[0,0][100,50]" /><node text="Vergabeordnung" package="com.example.fremd" bounds="[0,60][100,100]" /></hierarchy>`;
+  const p = geraeteProbe({ ansicht: gemischt });
+  assert.equal(await nachgestellterLauf(p), 2);
+  assert.deepEqual([status(p, 'G-Start'), status(p, 'G-Socket'), status(p, 'G-Devtools')], ['ungültig', 'ungültig', 'ungültig']);
+  assert.match(grund(p, 'G-Start'), /nicht aus dem eigenen Paket/);
 });
 
 test('Unterbrechung direkt nach einer Antwort der Devtools: Die Antwort wird bewertet', nurWindows, async () => {
@@ -665,11 +715,13 @@ test('Deinstallation scheitert: Das Aufräumen meldet den Rest', nurWindows, asy
   assert.equal(p.app.apk, p.optionen.debug);
 });
 
-test('Installierte Datei weicht von der Eingabe ab: ungültig, App entfernt', nurWindows, async () => {
+test('Installierte Datei weicht von der Eingabe ab: ungültig; das Paket gilt nicht als eigenes und bleibt', nurWindows, async () => {
   const p = geraeteProbe({ pullAbweichung: true });
-  assert.equal(await nachgestellterLauf(p), 2);
+  assert.equal(await nachgestellterLauf(p), 1);
   assert.match(grund(p, 'Laufrahmen'), /weicht von der Eingabedatei ab/);
-  assert.equal(p.app.apk, null);
+  assert.equal(adbAufrufe(p, 'uninstall').length, 0);
+  assert.equal(p.app.apk, p.optionen.debug);
+  assert.match(grund(p, 'Aufräumen: App deinstallieren'), /nicht die eigene Datei \(andere Prüfsumme\)/);
 });
 
 test('Start nicht bestätigt: ungültig, App entfernt', nurWindows, async () => {

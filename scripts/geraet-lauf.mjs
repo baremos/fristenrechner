@@ -69,10 +69,15 @@ export function prozessStart(stat, pid) {
 }
 
 // Die Formulartexte müssen aus Knoten des eigenen Pakets stammen; die Ansicht kann auch fremde Fenster enthalten.
+// Es zählen nur Knoten, die zugleich dem eigenen Paket gehören, sichtbar sind und eine Fläche haben.
 export function formularAusEigenemPaket(xml) {
   const knoten = ansichtsKnoten(xml);
   if (!knoten) return false;
-  const texte = knoten.filter(k => k.package === APP && k['visible-to-user'] !== 'false').map(k => `${k.text ?? ''} ${k['content-desc'] ?? ''}`);
+  const sichtbar = k => {
+    const m = /^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(k.bounds ?? '');
+    return m !== null && Number(m[3]) > Number(m[1]) && Number(m[4]) > Number(m[2]) && k['visible-to-user'] !== 'false';
+  };
+  const texte = knoten.filter(k => k.package === APP && sichtbar(k)).map(k => `${k.text ?? ''} ${k['content-desc'] ?? ''}`);
   return texte.some(t => t.includes('Fristenrechner Vergabe')) && texte.some(t => /Vergabeverfahren konfigurieren|Vergabeordnung/.test(t));
 }
 
@@ -185,7 +190,7 @@ export async function geraeteDaten(ctx) {
   return geraet;
 }
 
-export async function lauf(optionen, { run = prozess, sleep = pause, java, debugKey = join(homedir(), '.android/debug.keystore'), holen = holeDevtoolsVersion } = {}) {
+export async function lauf(optionen, { run = prozess, sleep = pause, java, debugKey = join(homedir(), '.android/debug.keystore'), holen = holeDevtoolsVersion, jetzt = Date.now } = {}) {
   if (process.platform !== 'win32') throw new Error('Der Gerätelauf ist für das eingerichtete Windows-Testsystem vorgesehen.');
   if (existsSync(optionen.ausgabe) && readdirSync(optionen.ausgabe).length) throw new Error('Ausgabeordner ist nicht leer; bitte einen neuen Ordner wählen.');
   mkdirSync(optionen.ausgabe, { recursive: true });
@@ -204,7 +209,7 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
   ] };
   // eigen: Der Lauf hat eine Installation begonnen, nachdem das Paket nachweislich fehlte, und sie noch nicht
   // wieder entfernt. fremdVorhanden: Das Paket war da, ohne dass der Lauf es installiert hat; es bleibt unberührt.
-  let befehlNummer = 0, verbunden = false, eigen = false, installOffen = false, fremdVorhanden = false, releaseInstalliert = false, ansichtBenutzt = false, abbruch = false, cleaning = false;
+  let befehlNummer = 0, pullNummer = 0, verbunden = false, eigen = false, installOffen = false, eigeneDatei = null, fremdVorhanden = false, releaseInstalliert = false, ansichtBenutzt = false, abbruch = false, cleaning = false;
   const forwards = new Set();
   const controller = new AbortController();
   const signal = () => { abbruch = true; controller.abort(); };
@@ -238,30 +243,44 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
       if (id !== APP) throw new Error(`Die Datei für ${name} gehört zum Paket „${id}“, erwartet ist ${APP}. Nichts installiert.`);
       if (await ctx.installiert()) { fremdVorhanden = true; throw new Error(`Das Paket ${APP} ist vor der Installation schon vorhanden. Nichts installiert; das vorhandene Paket bleibt unberührt.`); }
       // Ab hier gehört ein vorhandenes Paket zu diesem Lauf, auch wenn der Aufruf unterbrochen wird:
-      // Es fehlte eben noch, und installiert wird ohne Ersetzen. Das Aufräumen klärt den Zustand.
+      // Es fehlte eben noch, und installiert wird ohne Ersetzen. Das Aufräumen klärt den Zustand und
+      // deinstalliert nur, wenn die installierte Datei bytegleich zu dieser Eingabe ist.
       if (abbruch) throw new Error('Lauf unterbrochen.');
-      eigen = true; installOffen = true;
+      eigen = true; installOffen = true; eigeneDatei = apk;
       const r = await ctx.adb(['install', apk], { timeoutMs: 180000 });
-      // Ohne Rückgabewert (Aufruf unterbrochen oder abgebrochen) kann die Installation auf dem Gerät noch laufen.
-      installOffen = r.code === null;
-      if (r.code !== 0 && /INSTALL_FAILED_ALREADY_EXISTS/.test(`${r.out}${r.err}`)) { eigen = false; fremdVorhanden = true; }
+      const ausgabe = `${r.out}${r.err}`;
+      // Nur eine Erfolgsmeldung oder eine benannte Ablehnung des Paketmanagers ist ein Ergebnis. Alles andere
+      // (kein Rückgabewert, abgerissene Verbindung) lässt offen, ob die Installation auf dem Gerät noch zu Ende läuft.
+      installOffen = !(r.code === 0 && /^Success\s*$/m.test(r.out)) && !/Failure \[INSTALL_FAILED_[A-Z_]+/.test(ausgabe);
+      if (r.code !== 0 && /INSTALL_FAILED_ALREADY_EXISTS/.test(ausgabe)) { eigen = false; fremdVorhanden = true; }
       if (r.code !== 0 || !/^Success\s*$/m.test(r.out)) throw new Error(`Installation fehlgeschlagen: ${r.out} ${r.err}`.trim());
-      const m = /^package:(\/[^\r\n]+\.apk)$/.exec(await ctx.shell(`pm path ${APP}`));
-      if (!m) throw new Error('Installierte APK nicht eindeutig gefunden.');
-      const ziel = join(tmp, `installiert-${daten.installationen.length}.apk`);
-      const pull = await ctx.adb(['pull', m[1], ziel]);
-      if (pull.code !== 0) throw new Error('Installierte APK konnte nicht zur Prüfsumme gelesen werden.');
-      const installiert = sha256(ziel), eingang = sha256(apk);
-      rmSync(ziel);
+      const installiert = await ctx.installiertePruefsumme();
+      const eingang = sha256(apk);
       daten.installationen.push({ name, eingang, installiert });
       save('installationen.json', daten.installationen);
       if (installiert !== eingang) throw new Error('Installierte APK weicht von der Eingabedatei ab.');
     },
-    // Nur für Installationen dieses Laufs. Mit der bestätigten Deinstallation ist die Berechtigung verbraucht,
-    // noch vor der Nachkontrolle: Ein Paket, das danach auftaucht, ist nicht mehr das eigene.
+    // SHA-256 der installierten APK, oder null, wenn sie sich nicht lesen lässt.
+    async installiertePruefsumme() {
+      const m = /^package:(\/[^\r\n]+\.apk)$/.exec(await ctx.shell(`pm path ${APP}`));
+      if (!m) return null;
+      const ziel = join(tmp, `installiert-${++pullNummer}.apk`);
+      const pull = await ctx.adb(['pull', m[1], ziel]);
+      if (pull.code !== 0 || !existsSync(ziel)) return null;
+      const summe = sha256(ziel);
+      rmSync(ziel);
+      return summe;
+    },
+    // Nur für Installationen dieses Laufs: Deinstalliert wird ausschließlich ein Paket, dessen Datei bytegleich zur
+    // eigenen Eingabe ist. Mit der bestätigten Deinstallation ist die Berechtigung verbraucht, noch vor der Nachkontrolle.
     async uninstall() {
       if (!eigen) throw new Error('Deinstallation ohne eigene Installation.');
       if (await ctx.installiert()) {
+        const installiert = await ctx.installiertePruefsumme();
+        if (installiert === null || installiert !== sha256(eigeneDatei)) {
+          eigen = false; fremdVorhanden = true;
+          throw new Error(`Das installierte Paket ${APP} ist nicht die eigene Datei (${installiert ? 'andere Prüfsumme' : 'nicht lesbar'}). Es gilt als fremd und bleibt unberührt.`);
+        }
         const r = await ctx.adb(['uninstall', APP]);
         if (r.code !== 0 || !/^Success\s*$/m.test(r.out)) throw new Error('Deinstallation fehlgeschlagen.');
         eigen = false;
@@ -324,10 +343,11 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
     ['App deinstallieren', async () => {
       if (!verbunden) return;
       if (installOffen) {
-        // Ein unterbrochener Installationsaufruf kann auf dem Gerät noch zu Ende laufen. Erst abwarten.
-        let da = false;
-        for (let i = 0; i < 30 && !da; i++) { if (i) await ctx.sleep(2000); da = await ctx.installiert(); }
-        if (!da) throw new Error(`Ein Installationsversuch wurde unterbrochen, und das Paket ${APP} ist innerhalb von 60 Sekunden nicht erschienen. Bitte später prüfen, ob es installiert wurde.`);
+        // Ein Installationsaufruf ohne Ergebnis kann auf dem Gerät noch zu Ende laufen. Bis zu 60 Sekunden abwarten.
+        const ende = jetzt() + 60000;
+        let da = await ctx.installiert();
+        while (!da && jetzt() < ende) { await ctx.sleep(2000); da = await ctx.installiert(); }
+        if (!da) throw new Error(`Ein Installationsversuch blieb ohne Ergebnis, und das Paket ${APP} ist innerhalb von 60 Sekunden nicht erschienen. Bitte später prüfen, ob es installiert wurde.`);
         installOffen = false;
       }
       if (optionen.appBehalten && releaseInstalliert) { ctx.log('Die App bleibt auf Wunsch installiert: Release-Build, mit dem Debug-Schlüssel signiert.'); return; }
