@@ -17,7 +17,8 @@
 // als Text. Dass die App keine Verbindung aufbaut und nicht nach außen navigiert,
 // belegen die Läufe im Emulator mit Netzmelder und Gegenprobe.
 // Aufruf über scripts/app-bauen.mjs. Die Regeln stehen in scripts/app-pruefungen.json.
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { basename, extname, join, relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
@@ -504,8 +505,46 @@ function versucht(fehler, name, funktion) {
   try { funktion(); } catch (e) { fehler.push(`${name}: ${e.message}`); }
 }
 
-/** K3 liefert wie K1 eine Liste der Fehler; [] bedeutet bestanden. Ohne Git kein Bestehen. */
-export function pruefeSync({ wurzel, vorgabe = VORGABE, umgebung = process.env } = {}) {
+/** Zustand unmittelbar vor cap sync: Git-Status und Inhalt der nicht ausgeschlossenen
+ * Dateien. Auch saubere versionierte Dateien werden erfasst, damit Git etwa einen
+ * vom Sync geänderten Zeilenumbruch nicht durch seine Normalisierung verdeckt. */
+export function leseAndroidZustand({ wurzel, umgebung = process.env } = {}) {
+  // Ein Archiv unter einem fremden Repository darf dessen sauberen Status nicht erben.
+  const ohneGit = 'Kein zugehöriges Git-Repository: K3 kann die unveränderten Android-Quellen nicht belegen. Für Quellarchive ist ein unabhängig vertrauenswürdiges Dateimanifest nötig; derzeit bitte einen Git-Checkout verwenden.';
+  if (!existsSync(join(wurzel, '.git'))) throw new Error(ohneGit);
+  const optionen = { cwd: wurzel, encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024, env: { ...umgebung, CI: '1', ASTRO_TELEMETRY_DISABLED: '1' } };
+  const git = (...argumente) => {
+    const ergebnis = spawnSync('git', argumente, optionen);
+    if (ergebnis.error) throw new Error(`git ${argumente[0]} ist fehlgeschlagen: ${ergebnis.error.message}`);
+    if (ergebnis.status !== 0) throw new Error(`git ${argumente[0]} ist fehlgeschlagen (Rückgabewert ${ergebnis.status}).`);
+    return ergebnis.stdout;
+  };
+  const basis = realpathSync(wurzel);
+  if (realpathSync(git('rev-parse', '--show-toplevel').replace(/\r?\n$/, '')) !== basis) throw new Error(ohneGit);
+  const status = git('status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames', '--', 'app/android')
+    .split('\0').filter(Boolean).map((zeile) => `${zeile.slice(0, 3)}${JSON.stringify(zeile.slice(3))}`);
+  const pfade = [...new Set(git('ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'app/android').split('\0').filter(Boolean))].sort();
+  const dateien = pfade.map((pfad) => {
+    const absolut = join(basis, pfad);
+    let info;
+    try { info = lstatSync(absolut); } catch (e) {
+      if (e.code === 'ENOENT' || e.code === 'ENOTDIR') return { pfad, typ: 'geloescht' };
+      throw e;
+    }
+    const modus = info.mode & 0o777;
+    const hash = (inhalt) => createHash('sha256').update(inhalt).digest('hex');
+    if (info.isSymbolicLink()) return { pfad, typ: 'symlink', modus, sha256: hash(readlinkSync(absolut, { encoding: 'buffer' })) };
+    if (info.isFile()) return { pfad, typ: 'datei', modus, sha256: hash(readFileSync(absolut)) };
+    if (info.isDirectory()) return { pfad, typ: 'ordner', modus };
+    throw new Error(`${JSON.stringify(pfad)}: nicht unterstützter Dateityp.`);
+  });
+  return { wurzel: basis, status, dateien };
+}
+
+/** K3 liefert wie K1 eine Liste der Fehler; [] bedeutet bestanden. Ohne vorher
+ * gilt der strenge Modus (sauberer Git-Status), sonst darf cap sync den zuvor
+ * erfassten Zustand nicht verändern. Ohne Git kein Bestehen. */
+export function pruefeSync({ wurzel, vorher, vorgabe = VORGABE, umgebung = process.env } = {}) {
   const fehler = [];
   versucht(fehler, 'K3 Dateien', () => {
     const haupt = join(wurzel, 'app/android/app/src/main');
@@ -519,15 +558,22 @@ export function pruefeSync({ wurzel, vorgabe = VORGABE, umgebung = process.env }
     }
   });
   versucht(fehler, 'K3 Git', () => {
-    // Ein Archiv unter einem fremden Repository darf dessen sauberen Status nicht erben.
-    const ohneGit = 'Kein zugehöriges Git-Repository: K3 kann die unveränderten Android-Quellen nicht belegen. Für Quellarchive ist ein unabhängig vertrauenswürdiges Dateimanifest nötig; derzeit bitte einen Git-Checkout verwenden.';
-    if (!existsSync(join(wurzel, '.git'))) throw new Error(ohneGit);
-    const optionen = { cwd: wurzel, encoding: 'utf8', windowsHide: true, env: { ...umgebung, CI: '1', ASTRO_TELEMETRY_DISABLED: '1' } };
-    const git = spawnSync('git', ['rev-parse', '--show-toplevel'], optionen);
-    if (git.status !== 0 || realpathSync(git.stdout.trim()) !== realpathSync(wurzel)) throw new Error(ohneGit);
-    const status = spawnSync('git', ['status', '--porcelain', '--', 'app/android'], optionen);
-    if (status.status !== 0) throw new Error(`git status ist fehlgeschlagen (Rückgabewert ${status.status}).`);
-    if (status.stdout.trim()) fehler.push(`git status --porcelain -- app/android ist nicht leer:\n${status.stdout.trimEnd()}`);
+    const nachher = leseAndroidZustand({ wurzel, umgebung });
+    if (vorher === undefined) {
+      if (nachher.status.length) fehler.push(`git status --porcelain -- app/android ist nicht leer:\n${nachher.status.join('\n')}`);
+      return;
+    }
+    if (!vorher || vorher.wurzel !== nachher.wurzel || !Array.isArray(vorher.status) || !Array.isArray(vorher.dateien)) {
+      throw new Error('Der Zustand vor cap sync fehlt oder gehört nicht zu dieser Arbeitskopie.');
+    }
+    const alt = new Map(vorher.dateien.map((datei) => [datei.pfad, datei]));
+    const neu = new Map(nachher.dateien.map((datei) => [datei.pfad, datei]));
+    for (const pfad of [...new Set([...alt.keys(), ...neu.keys()])].sort()) {
+      if (!isDeepStrictEqual(alt.get(pfad), neu.get(pfad))) fehler.push(`cap sync hat den Zustand unter app/android verändert: ${JSON.stringify(pfad)}.`);
+    }
+    if (!isDeepStrictEqual(vorher.status, nachher.status)) {
+      fehler.push(`cap sync hat den Git-Status unter app/android verändert.\nVorher:\n${vorher.status.join('\n') || '(sauber)'}\nNachher:\n${nachher.status.join('\n') || '(sauber)'}`);
+    }
   });
   return fehler;
 }

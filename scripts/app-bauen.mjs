@@ -4,8 +4,8 @@
 // --android-quellen gibt die von Capacitor eingebundenen Quellordner aus.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as appPruefungen from './app-pruefungen.mjs';
 
 const wurzelVorgabe = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -84,13 +84,11 @@ export function findeNpm(umgebung, node = process.execPath) {
   }
   // Auch den dokumentierten direkten Aufruf mit node unterstützen. Die Node-
   // Archive und die üblichen Linux-Installationen legen npm neben Node ab.
-  const ordner = [dirname(node), ...(umgebung.PATH ?? umgebung.Path ?? '').split(delimiter).filter(Boolean)];
-  for (const basis of ordner) {
-    for (const kandidat of [join(basis, 'node_modules', 'npm', 'bin', 'npm-cli.js'), join(basis, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'), join(basis, 'npm')]) {
-      if (!existsSync(kandidat) || !statSync(kandidat).isFile()) continue;
-      // Eine eventuelle Shell-Datei namens npm nicht an Node weiterreichen.
-      if (kandidat.endsWith('npm-cli.js') || /^#![^\r\n]*\bnode(?:\s|$)/.test(readFileSync(kandidat, 'utf8'))) return realpathSync(kandidat);
-    }
+  const basis = dirname(node);
+  for (const kandidat of [join(basis, 'node_modules', 'npm', 'bin', 'npm-cli.js'), join(basis, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'), join(basis, 'npm')]) {
+    if (!existsSync(kandidat) || !statSync(kandidat).isFile()) continue;
+    // Eine eventuelle Shell-Datei namens npm nicht an Node weiterreichen.
+    if (kandidat.endsWith('npm-cli.js') || /^#![^\r\n]*\bnode(?:\s|$)/.test(readFileSync(kandidat, 'utf8'))) return realpathSync(kandidat);
   }
   throw new Error('npm nicht gefunden. Aufruf über npm run build --workspace app oder npm neben Node installieren.');
 }
@@ -100,8 +98,15 @@ export function baue(argv, {
   wurzel = wurzelVorgabe, umgebung = process.env, node = process.execPath,
   spawn = spawnSync, pruefungen = appPruefungen, ausgabe = console.log, fehlerausgabe = console.error,
 } = {}) {
+  let werte;
   try {
-    const werte = argumente(argv);
+    werte = argumente(argv);
+  } catch (fehler) {
+    fehlerausgabe(`Fehler: ${fehler.message}`);
+    fehlerausgabe(aufruf);
+    return 1;
+  }
+  try {
     const app = join(wurzel, 'app');
     const env = { ...umgebung, ASTRO_TELEMETRY_DISABLED: '1', CI: '1' };
     function lauf(titel, args, cwd) {
@@ -139,8 +144,16 @@ export function baue(argv, {
       || !lauf('Seite der App bauen', [join(wurzel, 'scripts', 'astro.mjs'), 'build'], app)
       || !pruefeWeb()) return 1;
     if (werte.modus === 'web') return 0;
+    const vorher = pruefungen.leseAndroidZustand({ wurzel, umgebung: env });
+    if (vorher.status.length) {
+      if (werte.streng) {
+        fehlerausgabe(`K3: git status --porcelain -- app/android ist vor dem Sync nicht leer:\n${vorher.status.join('\n')}`);
+        return 1;
+      }
+      ausgabe(`Arbeitskopie unter app/android enthält Änderungen:\n${vorher.status.join('\n')}\nK3 prüft, dass der Sync diesen Zustand unverändert lässt.`);
+    }
     if (!lauf('Android synchronisieren', [join(wurzel, 'node_modules', '@capacitor', 'cli', 'bin', 'capacitor'), 'sync', 'android'], app)
-      || !pruefung('K3 Sync', pruefungen.pruefeSync({ wurzel, umgebung: env }))
+      || !pruefung('K3 Sync', pruefungen.pruefeSync({ wurzel, umgebung: env, ...(werte.streng ? {} : { vorher }) }))
       || !pruefung('K4 Gradle', pruefungen.pruefeGradle({ wurzel }))) return 1;
     const args = [join(wurzel, 'scripts', 'android-build.mjs'), '--projekt', 'app/android', '--aufgabe', werte.aufgabe];
     if (werte.streng) args.push('--streng');
@@ -156,8 +169,4 @@ export function baue(argv, {
   }
 }
 
-if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
-  const code = baue(process.argv.slice(2));
-  if (code !== 0) console.error(aufruf);
-  process.exitCode = code;
-}
+if (import.meta.main) process.exitCode = baue(process.argv.slice(2));

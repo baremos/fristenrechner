@@ -32,6 +32,7 @@ function probe({ fehlerBei, prozessFehler, ausnahmeBei, ohneApk = false } = {}) 
   const meldungen = [];
   const fehler = [];
   const pruefaufrufe = [];
+  const vorher = { wurzel: ort, status: [], dateien: [] };
   function pruefung(name, args) {
     schritte.push(name);
     pruefaufrufe.push({ name, args });
@@ -47,6 +48,11 @@ function probe({ fehlerBei, prozessFehler, ausnahmeBei, ohneApk = false } = {}) 
     pruefungen: {
       pruefeKonfiguration: (...args) => pruefung('K1', args),
       pruefeDist: (...args) => ({ fehler: pruefung('K2', args), bericht: { dateien: 2, besonderheit: 'Bericht der Gegenprobe' } }),
+      leseAndroidZustand: (...args) => {
+        const fehler = pruefung('Zustand', args);
+        if (fehler.length) throw new Error(fehler.join('\n'));
+        return vorher;
+      },
       pruefeSync: (...args) => pruefung('K3', args),
       pruefeGradle: (...args) => pruefung('K4', args),
       pruefeApk: (...args) => pruefung('K5', args),
@@ -64,7 +70,7 @@ function probe({ fehlerBei, prozessFehler, ausnahmeBei, ohneApk = false } = {}) 
       return { status: 0 };
     },
   };
-  return { ort, npm, config, schritte, prozesse, meldungen, fehler, pruefaufrufe, optionen };
+  return { ort, npm, config, schritte, prozesse, meldungen, fehler, pruefaufrufe, vorher, optionen };
 }
 
 test('Argumente: Android verwendet ohne weitere Angaben assembleDebug', () => {
@@ -99,12 +105,13 @@ for (const [args, grund] of [
     const p = probe();
     assert.equal(baue(args, p.optionen), 1);
     assert.match(p.fehler.join('\n'), grund);
+    assert.equal(p.fehler.filter((text) => text.startsWith('Aufruf:')).length, 1);
     assert.deepEqual(p.schritte, []);
     t.diagnostic(p.fehler.join('\n'));
   });
 }
 
-const reihenfolge = ['Kern', 'Astro', 'K1', 'K2', 'Sync', 'K3', 'K4', 'Gradle', 'K5'];
+const reihenfolge = ['Kern', 'Astro', 'K1', 'K2', 'Zustand', 'Sync', 'K3', 'K4', 'Gradle', 'K5'];
 for (const aufgabe of ['assembleDebug', 'assembleRelease', ':app:assembleDebug', ':app:assembleRelease']) {
   test(`Android ${aufgabe}: vollständige Reihenfolge, Argumente, Umgebung und richtige APK`, () => {
     const p = probe();
@@ -130,6 +137,7 @@ for (const aufgabe of ['assembleDebug', 'assembleRelease', ':app:assembleDebug',
     assert.deepEqual(p.pruefaufrufe, [
       { name: 'K1', args: [p.config, { publicOrdner: join(p.ort, 'app', 'public') }] },
       { name: 'K2', args: [join(p.ort, 'app', 'dist'), { fehlerseite: 'startfehler.html', quellOrdner: [join(p.ort, 'packages', 'kern', 'src'), join(p.ort, 'packages', 'oberflaeche', 'src')] }] },
+      { name: 'Zustand', args: [{ wurzel: p.ort, umgebung: p.prozesse[0].env }] },
       { name: 'K3', args: [{ wurzel: p.ort, umgebung: p.prozesse[0].env }] },
       { name: 'K4', args: [{ wurzel: p.ort }] },
       { name: 'K5', args: [join(p.ort, 'app', 'android', 'app', 'build', 'outputs', 'apk', debug ? 'debug' : 'release', debug ? 'app-debug.apk' : 'app-release-unsigned.apk'), { wurzel: p.ort, debug, umgebung: p.prozesse[0].env }] },
@@ -142,6 +150,35 @@ test('Android ohne --streng gibt den Schalter nicht an android-build weiter', ()
   const p = probe();
   assert.equal(baue(['--android'], p.optionen), 0);
   assert.ok(!p.prozesse.at(-1).args.includes('--streng'));
+  assert.equal(p.pruefaufrufe.find(({ name }) => name === 'K3').args[0].vorher, p.vorher);
+});
+
+test('Android ohne --streng weist auf vorhandene Änderungen hin und reicht den Zustand an K3 weiter', (t) => {
+  const p = probe();
+  p.vorher.status.push(' M app/android/MainActivity.java', '?? app/android/Neu.java');
+  assert.equal(baue(['--android'], p.optionen), 0, p.fehler.join('\n'));
+  assert.deepEqual(p.schritte, reihenfolge);
+  assert.match(p.meldungen.join('\n'), /Arbeitskopie unter app\/android enthält Änderungen:[\s\S]*MainActivity.java[\s\S]*Neu.java/);
+  assert.equal(p.pruefaufrufe.find(({ name }) => name === 'K3').args[0].vorher, p.vorher);
+  t.diagnostic(p.meldungen.find((text) => text.startsWith('Arbeitskopie')));
+});
+
+test('Android mit --streng lehnt vorhandene Änderungen vor dem Sync ab', (t) => {
+  const p = probe();
+  p.vorher.status.push(' M app/android/MainActivity.java');
+  assert.equal(baue(['--android', '--streng'], p.optionen), 1);
+  assert.deepEqual(p.schritte, reihenfolge.slice(0, reihenfolge.indexOf('Sync')));
+  assert.match(p.fehler.join('\n'), /git status.*vor dem Sync nicht leer:[\s\S]*MainActivity.java/);
+  assert.ok(!p.fehler.some((text) => text.startsWith('Aufruf:')));
+  t.diagnostic(p.fehler.join('\n'));
+});
+
+test('Android mit --streng prüft K3 nach dem Sync ohne Vorzustand', (t) => {
+  const p = probe({ fehlerBei: 'K3' });
+  assert.equal(baue(['--android', '--streng'], p.optionen), 1);
+  assert.deepEqual(p.schritte, reihenfolge.slice(0, reihenfolge.indexOf('K3') + 1));
+  assert.ok(!Object.hasOwn(p.pruefaufrufe.find(({ name }) => name === 'K3').args[0], 'vorher'));
+  t.diagnostic(p.fehler.join('\n'));
 });
 
 for (const schritt of reihenfolge) {
@@ -149,7 +186,8 @@ for (const schritt of reihenfolge) {
     const p = probe({ fehlerBei: schritt });
     assert.equal(baue(['--android'], p.optionen), 1);
     assert.deepEqual(p.schritte, reihenfolge.slice(0, reihenfolge.indexOf(schritt) + 1));
-    assert.match(p.fehler.join('\n'), schritt.startsWith('K') && schritt !== 'Kern' ? new RegExp(`Gegenprobe ${schritt}`) : /Rückgabewert 7/);
+    assert.match(p.fehler.join('\n'), schritt === 'Zustand' || (schritt.startsWith('K') && schritt !== 'Kern') ? new RegExp(`Gegenprobe ${schritt}`) : /Rückgabewert 7/);
+    assert.ok(!p.fehler.some((text) => text.startsWith('Aufruf:')));
     t.diagnostic(p.fehler.join('\n'));
   });
 }
@@ -161,18 +199,19 @@ for (const [name, prozessFehler, meldung] of [
   test(`Ablauf Gegenprobe: ${name} wird zum Abbruch`, (t) => {
     const p = probe({ fehlerBei: 'Sync', prozessFehler });
     assert.equal(baue(['--android'], p.optionen), 1);
-    assert.deepEqual(p.schritte, reihenfolge.slice(0, 5));
+    assert.deepEqual(p.schritte, reihenfolge.slice(0, reihenfolge.indexOf('Sync') + 1));
     assert.match(p.fehler.join('\n'), meldung);
     t.diagnostic(p.fehler.join('\n'));
   });
 }
 
-for (const schritt of ['K1', 'K2', 'K3', 'K4', 'K5', 'Sync', 'Gradle']) {
+for (const schritt of ['K1', 'K2', 'Zustand', 'K3', 'K4', 'K5', 'Sync', 'Gradle']) {
   test(`Ablauf Gegenprobe: Ausnahme in ${schritt} beendet die Kette`, (t) => {
     const p = probe({ ausnahmeBei: schritt });
     assert.equal(baue(['--android'], p.optionen), 1);
     assert.deepEqual(p.schritte, reihenfolge.slice(0, reihenfolge.indexOf(schritt) + 1));
     assert.match(p.fehler.join('\n'), new RegExp(`Gegenprobe Ausnahme ${schritt}`));
+    assert.ok(!p.fehler.some((text) => text.startsWith('Aufruf:')));
     t.diagnostic(p.fehler.join('\n'));
   });
 }
@@ -274,12 +313,23 @@ test('Direkter Node-Aufruf findet npm in einer Linux-Installation', () => {
   assert.equal(findeNpm({}, join(p.ort, 'bin', 'node')), realpathSync(npm));
 });
 
-test('npm-Skript mit Node-Shebang im Suchpfad wird gefunden', () => {
+test('npm-Skript mit Node-Shebang neben Node wird gefunden', () => {
   const p = probe();
   const npm = join(p.ort, 'bin', 'npm');
   schreibe(npm, '#!/usr/bin/env node\n// Gegenprobe\n');
-  assert.equal(findeNpm({ PATH: dirname(npm) }, join(p.ort, 'anders', 'node')), realpathSync(npm));
+  assert.equal(findeNpm({}, join(p.ort, 'bin', 'node')), realpathSync(npm));
 });
+
+for (const name of ['PATH', 'Path']) {
+  test(`npm Gegenprobe: fremde Node-Installation in ${name} wird nicht durchsucht`, (t) => {
+    const p = probe();
+    const basis = join(p.ort, 'fremd');
+    schreibe(join(basis, 'npm'), '#!/usr/bin/env node\n// Gegenprobe\n');
+    schreibe(join(basis, 'node_modules', 'npm', 'bin', 'npm-cli.js'), '// Gegenprobe');
+    assert.throws(() => findeNpm({ [name]: basis }, join(p.ort, 'anders', 'node')), /npm nicht gefunden/);
+    t.diagnostic('npm nicht gefunden; fremde Installation im Suchpfad bleibt unberücksichtigt.');
+  });
+}
 
 test('npm Gegenprobe: Shell-Skript wird nicht an Node übergeben', (t) => {
   const p = probe();
@@ -304,4 +354,22 @@ test('Programmaufruf mit ungültigen Argumenten endet mit 1 und Hilfe', () => {
   assert.equal(lauf.status, 1);
   assert.match(lauf.stderr, /keine eindeutig zugeordnete APK/);
   assert.match(lauf.stderr, /Aufruf: node scripts\/app-bauen\.mjs/);
+});
+
+test('Programmaufruf mit fehlendem Build-Werkzeug endet mit 1 ohne Hilfe', () => {
+  const lauf = spawnSync(process.execPath, [join(wurzel, 'scripts', 'app-bauen.mjs'), '--web'], {
+    encoding: 'utf8', env: { ...process.env, npm_execpath: join(arbeit, 'fehlt', 'npm-cli.js'), CI: '1', ASTRO_TELEMETRY_DISABLED: '1' },
+  });
+  assert.equal(lauf.status, 1);
+  assert.match(lauf.stderr, /npm_execpath nennt eine fehlende Datei/);
+  assert.doesNotMatch(lauf.stderr, /Aufruf:/);
+});
+
+test('Import startet keine Build-Kette und gibt keine Aufrufhilfe aus', () => {
+  const lauf = spawnSync(process.execPath, ['--input-type=module', '-e', "await import('./scripts/app-bauen.mjs'); console.log('Import bestanden');"], {
+    cwd: wurzel, encoding: 'utf8', env: { ...process.env, CI: '1', ASTRO_TELEMETRY_DISABLED: '1' },
+  });
+  assert.equal(lauf.status, 0, lauf.stderr);
+  assert.equal(lauf.stdout.trim(), 'Import bestanden');
+  assert.equal(lauf.stderr, '');
 });

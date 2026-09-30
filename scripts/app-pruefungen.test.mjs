@@ -1,12 +1,12 @@
 // Tests der Prüfungen K1 bis K5 mit Gegenproben, die scheitern müssen.
 import assert from 'node:assert/strict';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { crc32 } from 'node:zlib';
 import { after, test } from 'node:test';
-import { analysiereSkript, attributeVon, dateistamm, leseApkEintraege, ohneGradleKommentare, pruefeApk, pruefeDist, pruefeGradle, pruefeKonfiguration, pruefeSync, skriptArt, VORGABE } from './app-pruefungen.mjs';
+import { analysiereSkript, attributeVon, dateistamm, leseAndroidZustand, leseApkEintraege, ohneGradleKommentare, pruefeApk, pruefeDist, pruefeGradle, pruefeKonfiguration, pruefeSync, skriptArt, VORGABE } from './app-pruefungen.mjs';
 import { standardSdk, windows } from './werkzeuge.mjs';
 
 const echteKonfiguration = JSON.parse(readFileSync(new URL('../app/capacitor.config.json', import.meta.url), 'utf8'));
@@ -421,6 +421,115 @@ for (const [titel, aendern, muster] of [
     erwartetFehler(`K3 ${titel}`, pruefeSync({ wurzel: w }), muster);
   });
 }
+
+const androidQuelle = 'app/android/app/src/main/java/MainActivity.java';
+function syncZustandsProbe() {
+  const w = syncProbe();
+  schreibe(w, '.gitignore', '/app/android/app/src/main/assets/\n/app/android/app/src/main/res/xml/config.xml\n/app/android/build/\n');
+  schreibe(w, androidQuelle, 'class MainActivity {}\n');
+  const git = (...argumente) => {
+    const r = spawnSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', ...argumente], {
+      cwd: w, encoding: 'utf8', windowsHide: true,
+    });
+    assert.equal(r.status, 0, r.stderr || r.error?.message);
+    return r.stdout.trim();
+  };
+  git('config', 'core.autocrlf', 'false');
+  git('add', '--', '.gitignore', 'app/android');
+  // Der Test braucht einen sauberen Ausgangsstand. Git-Objekte und HEAD entstehen
+  // ausschließlich im isolierten Repository unter scratchpad, ohne Commit-Hooks.
+  git('update-ref', 'HEAD', git('commit-tree', git('write-tree'), '-m', 'Teststand'));
+  assert.deepEqual(leseAndroidZustand({ wurzel: w }).status, []);
+  return w;
+}
+
+for (const [titel, vorbereiten, aendern, gleicherStatus] of [
+  ['saubere eingecheckte Datei verändert', () => {}, (w) => schreibe(w, androidQuelle, 'class Neu {}\n'), false],
+  ['schon geänderte Datei weiter verändert', (w) => schreibe(w, androidQuelle, 'class Vorher {}\n'), (w) => schreibe(w, androidQuelle, 'class Nachher {}\n'), true],
+  ['unversionierte Datei angelegt', () => {}, (w) => schreibe(w, 'app/android/neue Datei.txt', 'neu'), false],
+  ['schon unversionierte Datei weiter verändert', (w) => schreibe(w, 'app/android/neue Datei.txt', 'vorher'), (w) => schreibe(w, 'app/android/neue Datei.txt', 'nachher'), true],
+  ['eingecheckte Datei gelöscht', () => {}, (w) => rmSync(join(w, androidQuelle)), false],
+]) {
+  test(`K3 Zustandsvergleich Gegenprobe: ${titel}`, () => {
+    const w = syncZustandsProbe(); vorbereiten(w);
+    const vorher = leseAndroidZustand({ wurzel: w });
+    aendern(w);
+    if (gleicherStatus) assert.deepEqual(leseAndroidZustand({ wurzel: w }).status, vorher.status, 'Statuszeilen allein würden die Änderung übersehen.');
+    erwartetFehler(`K3 vor/nach ${titel}`, pruefeSync({ wurzel: w, vorher }), /cap sync hat den Zustand.*verändert: "app\/android\//);
+    erwartetFehler(`K3 streng ${titel}`, pruefeSync({ wurzel: w }), /git status.*ist nicht leer/);
+  });
+}
+
+for (const [titel, aendern] of [
+  ['geänderte eingecheckte Datei', (w) => schreibe(w, androidQuelle, 'class Vorher {}\n')],
+  ['unversionierte Datei mit Leerzeichen und Umlaut', (w) => schreibe(w, 'app/android/Änderung vor Sync.txt', 'vorher')],
+  ['gelöschte eingecheckte Datei', (w) => rmSync(join(w, androidQuelle))],
+]) {
+  test(`K3: unveränderter vorheriger Zustand besteht normal, scheitert streng (${titel})`, () => {
+    const w = syncZustandsProbe(); aendern(w);
+    const vorher = leseAndroidZustand({ wurzel: w });
+    assert.ok(vorher.status.length);
+    assert.ok(vorher.status.every((s) => !s.includes('\0')));
+    assert.deepEqual(pruefeSync({ wurzel: w, vorher }), []);
+    gegenproben.push({ titel: `K3 vor/nach unverändert: ${titel}`, meldungen: [], bestanden: true, status: vorher.status });
+    erwartetFehler(`K3 streng unverändert: ${titel}`, pruefeSync({ wurzel: w }), /git status.*ist nicht leer/);
+  });
+}
+
+test('K3: ausgeschlossene Build-Ausgaben ändern den erfassten Zustand nicht', () => {
+  const w = syncZustandsProbe();
+  const vorher = leseAndroidZustand({ wurzel: w });
+  schreibe(w, 'app/android/build/ausgabe.bin', 'neuer Build');
+  assert.deepEqual(leseAndroidZustand({ wurzel: w }), vorher);
+  assert.deepEqual(pruefeSync({ wurzel: w, vorher }), []);
+  assert.deepEqual(pruefeSync({ wurzel: w }), []);
+});
+
+test('K3: Snapshot aus einer anderen Arbeitskopie wird abgewiesen', () => {
+  const w = syncZustandsProbe();
+  const vorher = leseAndroidZustand({ wurzel: syncZustandsProbe() });
+  erwartetFehler('K3 fremder Snapshot', pruefeSync({ wurzel: w, vorher }), /Zustand vor cap sync.*nicht zu dieser Arbeitskopie/);
+});
+
+test('K3: Git-Fehler beim Lesen des Zustands wird nicht als sauber behandelt', () => {
+  const w = syncZustandsProbe();
+  writeFileSync(join(w, '.git/index'), 'kein Git-Index');
+  assert.throws(() => leseAndroidZustand({ wurzel: w }), /git status ist fehlgeschlagen/);
+  erwartetFehler('K3 ungültiger Git-Index', pruefeSync({ wurzel: w }), /git status ist fehlgeschlagen/);
+});
+
+test('K3: Dateinamen mit Zeilenumbruch bleiben ein Eintrag und werden lesbar ausgegeben', { skip: windows }, () => {
+  const w = syncZustandsProbe();
+  const pfad = 'app/android/Name\nmit Zeilenumbruch.txt';
+  schreibe(w, pfad, 'vorher');
+  const vorher = leseAndroidZustand({ wurzel: w });
+  assert.deepEqual(vorher.status, [`?? ${JSON.stringify(pfad)}`]);
+  assert.deepEqual(pruefeSync({ wurzel: w, vorher }), []);
+  schreibe(w, pfad, 'nachher');
+  erwartetFehler('K3 Dateiname mit Zeilenumbruch', pruefeSync({ wurzel: w, vorher }), /Name\\nmit Zeilenumbruch/);
+});
+
+test('K3: geänderter Dateimodus fällt auch ohne Inhaltsänderung auf', { skip: windows }, () => {
+  const w = syncZustandsProbe();
+  chmodSync(join(w, androidQuelle), 0o644);
+  const vorher = leseAndroidZustand({ wurzel: w });
+  chmodSync(join(w, androidQuelle), 0o755);
+  erwartetFehler('K3 geänderter Dateimodus', pruefeSync({ wurzel: w, vorher }), /cap sync hat den Zustand.*MainActivity/);
+});
+
+test('K3: Symlink-Ziel wird erfasst, die verlinkte Datei nicht gelesen', { skip: windows }, () => {
+  const w = syncZustandsProbe();
+  const pfad = 'app/android/verknuepft';
+  schreibe(w, 'ziel.txt', 'vorher');
+  symlinkSync('../../ziel.txt', join(w, pfad));
+  const vorher = leseAndroidZustand({ wurzel: w });
+  assert.equal(vorher.dateien.find((d) => d.pfad === pfad).typ, 'symlink');
+  schreibe(w, 'ziel.txt', 'nachher');
+  assert.deepEqual(pruefeSync({ wurzel: w, vorher }), []);
+  rmSync(join(w, pfad));
+  symlinkSync('../../anderes-ziel.txt', join(w, pfad));
+  erwartetFehler('K3 geändertes Symlink-Ziel', pruefeSync({ wurzel: w, vorher }), /cap sync hat den Zustand.*verknuepft/);
+});
 
 function gradleProbe() {
   const w = ordner({ 'scripts/toolchain.json': JSON.stringify(toolchain), 'app/package.json': JSON.stringify({ version: appVersion }) });

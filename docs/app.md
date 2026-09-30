@@ -65,9 +65,13 @@ node scripts/app-bauen.mjs --android-quellen
 
 `--android` verwendet in der Voreinstellung `assembleDebug`. Der Ablauf ist: Rechenkern bauen, App-Seite mit Astro bauen, K1 und K2, `cap sync android`, K3 und K4, `scripts/android-build.mjs`, K5 an der erzeugten APK. Jeder Fehler beendet den Ablauf. `ASTRO_TELEMETRY_DISABLED=1` und `CI=1` gelten für alle Unterprozesse.
 
+Der Kurzbefehl `npm run android --workspace app` startet denselben Ablauf und passt zu den übrigen npm-Aufrufen. Zusätzliche Argumente stehen hinter `--`, zum Beispiel `npm run android --workspace app -- --aufgabe assembleRelease --streng`.
+
 `--aufgabe` unterstützt `assembleDebug` und `assembleRelease`, auch mit dem Präfix `:app:`. Andere Aufgaben werden vor dem Build abgewiesen, weil ihnen keine APK eindeutig für die anschließende Prüfung zugeordnet werden kann.
 
-Die APKs liegen unter `app/android/app/build/outputs/apk/debug/app-debug.apk` beziehungsweise `app/android/app/build/outputs/apk/release/app-release-unsigned.apk`. `--streng` verlangt die festgelegten Referenzversionen der Werkzeuge. Das beim Windows-Build vom 2026-09-30 verwendete JDK 21.0.8 erfüllt den Release-Referenzstand 21.0.12 nicht; dieser beobachtete Build lief ohne `--streng`.
+Die APKs liegen unter `app/android/app/build/outputs/apk/debug/app-debug.apk` beziehungsweise `app/android/app/build/outputs/apk/release/app-release-unsigned.apk`. `--streng` verlangt die festgelegten Referenzversionen der Werkzeuge und eine saubere Git-Arbeitskopie unter `app/android` vor und nach dem Sync. Das beim Windows-Build vom 2026-09-30 verwendete JDK 21.0.8 erfüllt den Release-Referenzstand 21.0.12 nicht; dieser beobachtete Build lief ohne `--streng`.
+
+Ohne `--streng` hält die Kette den Zustand unter `app/android` unmittelbar vor dem Sync fest. Bereits vorhandene Änderungen nennt sie mit „Arbeitskopie unter app/android enthält Änderungen: …“ und baut weiter, solange der Sync diesen Zustand nicht verändert. K3 vergleicht neben dem Git-Status die Inhalte aller versionierten sowie der unversionierten, nicht ausgeschlossenen Dateien anhand von Prüfsummen. So scheitert auch eine weitere Änderung an einer bereits geänderten Datei. Neue nicht ausgeschlossene Dateien oder Änderungen an zuvor sauberen eingecheckten Dateien lassen die Prüfung ebenfalls scheitern. Ein Aufruf der Funktion `pruefeSync` ohne Zustand von vorher prüft streng.
 
 `--android-quellen` gibt die in `capacitor.settings.gradle` referenzierten Quellordner aus. Der Aufruf baut und löscht nichts. Die Liste dient dazu, diese Quellen bei einer gesonderten Bereinigung der Build-Umgebung zu erhalten.
 
@@ -79,7 +83,7 @@ Ein Build kann Werkzeuge und Abhängigkeiten aus dem Netz benötigen, sofern sie
 |---|---|---|
 | K1: Konfiguration | Nur zugelassene Schlüssel, festgelegte lokale Herkunft, Fehlerseite, WebView-Untergrenze und keine verbotene Netzfreigabe in der Capacitor-Konfiguration. | Tatsächliches Verhalten der WebView und Wirkung der Android-Komponenten. |
 | K2: Web-Dateien | Pflichtdateien und HTML-Kopf vorhanden, Fehlerseite ohne Skript, keine Source-Maps, keine erkannten zu neuen Syntaxmerkmale; bekannte Laufzeitnamen, dynamischer Code und Adressen nur nach den begrenzten Regeln in der JSON-Datei. Kern und Oberfläche enthalten keine Capacitor-Verweise. | Vollständige Browserauswertung oder alle möglichen Laufzeitaufrufe. Berechnete Namen, zusammengesetzte Adressen, Aliase und erst zur Laufzeit erzeugter Code sind nicht vollständig erfassbar. |
-| K3: Übertragung | Jeder Pfad und Dateiinhalt aus `dist` ist in `assets/public` enthalten, ergänzt um genau die zwei leeren Cordova-Dateien; Plugin-Liste leer, Capacitor-Konfiguration nach geparstem JSON gleich, Cordova-Konfiguration bytegleich zur Erwartung. `git status --porcelain -- app/android` ist leer. | Vollständigkeit eines Quellarchivs ohne vertrauenswürdige Referenz oder das Verhalten der kopierten Dateien zur Laufzeit. |
+| K3: Übertragung | Jeder Pfad und Dateiinhalt aus `dist` ist in `assets/public` enthalten, ergänzt um genau die zwei leeren Cordova-Dateien; Plugin-Liste leer, Capacitor-Konfiguration nach geparstem JSON gleich, Cordova-Konfiguration bytegleich zur Erwartung. Der Sync verändert den vorher festgehaltenen Git-Status und die geprüften Dateiinhalte unter `app/android` nicht. Mit `--streng` ist die Arbeitskopie dort vor und nach dem Sync sauber. | Vollständigkeit eines Quellarchivs ohne vertrauenswürdige Referenz oder das Verhalten der kopierten Dateien zur Laufzeit. |
 | K4: Gradle-Dateien | Keine Vorkommen von `signingConfig`, `google-services` oder `flatDir` außerhalb von Kommentaren in den beiden eigenen `build.gradle`-Dateien; SDK-, Build-Tools-, App- und Wrapper-Versionen samt Wrapper-Prüfsumme stimmen mit ihren Vorgaben überein. | Vollständige Auswertung beliebigen Gradle-Codes, aller erzeugten Gradle-Dateien oder der Lizenzen und Inhalte sämtlicher Abhängigkeiten. |
 | K5: APK | Mit `aapt2` aus den festgelegten Build-Tools werden Paket und Version, Mindest- und Ziel-API, Sprachressourcen, Berechtigungen, Sicherungsregeln, WebView-Metadaten, Komponenten und Debug-Kennung geprüft. Außerdem: keine nativen Bibliotheken, keine der beiden gesuchten Google-Dienst-Bytefolgen in `classes*.dex`, korrekte Web-Assets und leere Plugin-Liste. | Ausführung der App, Vollständigkeit aller denkbaren Dienstmerkmale, Lizenzprüfung, kryptografische Signaturprüfung oder Reproduzierbarkeit des Builds. |
 
@@ -113,4 +117,26 @@ Beide APKs enthalten dieselben 15 Dateien unter `assets/public`: die 13 Dateien 
 
 Beide Builds meldeten eine Warnung zu `flatDir` im erzeugten `capacitor-cordova-android-plugins/build.gradle` sowie eine Warnung zum SDK-XML-Format. Beide endeten erfolgreich. Das `flatDir` liegt außerhalb der zwei in K4 geprüften eigenen Gradle-Dateien.
 
-Dies war je ein Build ohne vorausgehendes `clean`. Damit ist keine Reproduzierbarkeit belegt. Ausstehend sind die Emulatorprüfungen dieser App auf API 30 und 36, die abgelehnte Installation auf API 24, die Lizenzprüfung der Gradle-Abhängigkeiten sowie Linux-Builds unter Debian. Dort sind zwei saubere, getrennte Arbeitskopien und ein Vergleich der unsignierten APKs untereinander und mit Windows vorgesehen. Ebenso ausstehend ist der Nachweis von Web-Build und Sync ohne Netzwerk in einer vorbereiteten Linux-Umgebung.
+Die ersten Builds liefen ohne vorausgehendes `clean`. Am selben Tag wurden die Builds wiederholt:
+
+| Vergleich | Beobachtetes Ergebnis |
+|---|---|
+| Neubau nach `clean` | Debug- und Release-Build jeweils mit Rückgabewert 0; beide APKs bytegleich zum ersten Build, mit den oben genannten Prüfsummen. |
+| Zweite Arbeitskopie in einem anderen Ordner, mit eigenem `node_modules` | Gesamte Kette über `app-bauen.mjs --android`: Debug in 73 Sekunden, Release in 45 Sekunden, jeweils Rückgabewert 0 und K1 bis K5 bestanden. Beide APKs bytegleich zu denen der ersten Arbeitskopie; `git status --porcelain -- app/android` danach leer. |
+
+Diese Vergleiche belegen bytegleiche Builds auf einem Windows-Rechner, am selben Tag und mit denselben Werkzeugen. Ein zweiter Rechner und Linux sind damit nicht geprüft.
+
+### Rauchtest im Emulator
+
+Am 2026-09-30 lief die oben genannte Debug-APK im Emulator aus dem Projekt-SDK, ohne Fenster:
+
+| Punkt | API 36: Android 16, WebView 133.0.6943.137 | API 30: Android 11, WebView 83.0.4103.120 |
+|---|---|---|
+| Installation und Start | Installation erfolgreich; `am start -W` meldet `Status: ok`, Kaltstart 1,5 bis 1,7 Sekunden. | Installation erfolgreich; `Status: ok`, Kaltstart 1,4 Sekunden. |
+| Anzeige nach 12 Sekunden | Seite des Rechners mit Überschrift und Eingabefeldern. | Ebenso. |
+| Protokoll (`logcat`) | Keine Zeile der WebView-Konsole und keine Fehlerzeile; Registrierung des Plugins `Navigationssperre` gemeldet. | Ebenso. |
+| Symbol und Name | Infoseite der App zeigt das eigene Symbol, „Fristenrechner Vergabe“ und „No permissions requested“. | Liste der Apps zeigt das eigene Symbol; der Launcher kürzt die Beschriftung im Raster mit fünf Spalten auf „Fristenr…“. |
+
+Beim ersten Lauf auf API 36 erschien ein Systemdialog, dass die Systemoberfläche nicht antwortet. Beim zweiten Lauf mit 45 Sekunden Wartezeit nach dem Systemstart trat er nicht auf. Nach den Proben wurden die App deinstalliert und die Emulatoren beendet.
+
+Der Rauchtest belegt Start und Anzeige. Er ersetzt die noch ausstehenden Emulatorprüfungen auf API 30 und 36 nicht: Es gab keinen Netzmelder, keine Navigationsversuche, keine Sicherungsprüfung und keine Berechnung in der Oberfläche. Auch die Wirkung beim Gerätewechsel, die Fehlerseite und das Startbildverhalten bleiben zu prüfen. Ausstehend sind außerdem die abgelehnte Installation auf API 24, die Lizenzprüfung der Gradle-Abhängigkeiten sowie Linux-Builds unter Debian. Dort sind zwei saubere, getrennte Arbeitskopien und ein Vergleich der unsignierten APKs untereinander und mit Windows vorgesehen. Ebenso ausstehend ist der Nachweis von Web-Build und Sync ohne Netzwerk in einer vorbereiteten Linux-Umgebung.
