@@ -1,0 +1,1632 @@
+{
+  "schemaVersion": 1,
+  "format": "Gekürzte App-Protokolle vom 2026-09-30; Zeilennummern aus ursprünglichem build.log. Absolute Rechnerpfade durch /lauf und /werkzeug ersetzt. Keine APK enthalten.",
+  "laeufe": {
+    "lauf-bms4awvc-ohne": [
+      {
+        "zeile": 13,
+        "text": "2026-09-30 18:46:43,869 INFO: Building version 0.1.0 (100) of de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 14,
+        "text": "2026-09-30 18:46:43,869 WARNING: NoSuchPathError: build/de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 16,
+        "text": "2026-09-30 18:46:43,874 INFO: Getting source for revision f272140294ee270e82e2d549cf0c6765801b602c"
+      },
+      {
+        "zeile": 17,
+        "text": "2026-09-30 18:46:43,875 DEBUG: > git clone -- file:///quelle build/de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 18,
+        "text": "Cloning into 'build/de.baremos.fristenrechner'..."
+      },
+      {
+        "zeile": 36,
+        "text": "2026-09-30 18:46:45,398 DEBUG: > bash -e -u -o pipefail -x -c -- cd ../../..; npm ci --ignore-scripts --no-audit --no-fund; cp package-lock.json \"$FR_FDROID_LAUF/package-lock-app.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-vor-web.json\"; node scripts/fdroid/app-vorbereiten.mjs; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-web.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-bereinigung.json\"; python3 \"$FR_FDROID_INVENTAR\" --alle node_modules \"$FR_FDROID_LAUF/npm-dateien-vor-scanner.json\""
+      },
+      {
+        "zeile": 37,
+        "text": "+ cd ../../.."
+      },
+      {
+        "zeile": 38,
+        "text": "+ npm ci --ignore-scripts --no-audit --no-fund"
+      },
+      {
+        "zeile": 39,
+        "text": "npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028)."
+      },
+      {
+        "zeile": 41,
+        "text": "added 416 packages in 26s"
+      },
+      {
+        "zeile": 42,
+        "text": "+ cp package-lock.json /lauf/package-lock-app.json"
+      },
+      {
+        "zeile": 43,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-vor-web.json"
+      },
+      {
+        "zeile": 44,
+        "text": "Inventar: 43 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 45,
+        "text": "+ node scripts/fdroid/app-vorbereiten.mjs"
+      },
+      {
+        "zeile": 46,
+        "text": "== Rechenkern bauen"
+      },
+      {
+        "zeile": 48,
+        "text": "> @baremos/fristenrechner-kern@0.0.0 build"
+      },
+      {
+        "zeile": 49,
+        "text": "> tsc -p tsconfig.build.json"
+      },
+      {
+        "zeile": 51,
+        "text": "== Seite der App bauen"
+      },
+      {
+        "zeile": 52,
+        "text": "\u001b[2m18:47:27\u001b[22m \u001b[34m[types]\u001b[39m Generated \u001b[2m217ms\u001b[22m"
+      },
+      {
+        "zeile": 53,
+        "text": "\u001b[2m18:47:27\u001b[22m \u001b[34m[build]\u001b[39m output: \u001b[34m\"static\"\u001b[39m"
+      },
+      {
+        "zeile": 54,
+        "text": "\u001b[2m18:47:27\u001b[22m \u001b[34m[build]\u001b[39m mode: \u001b[34m\"static\"\u001b[39m"
+      },
+      {
+        "zeile": 55,
+        "text": "\u001b[2m18:47:27\u001b[22m \u001b[34m[build]\u001b[39m directory: \u001b[34m/lauf/build/de.baremos.fristenrechner/app/dist/\u001b[39m"
+      },
+      {
+        "zeile": 56,
+        "text": "\u001b[2m18:47:27\u001b[22m \u001b[34m[build]\u001b[39m Collecting build info..."
+      },
+      {
+        "zeile": 57,
+        "text": "\u001b[2m18:47:27\u001b[22m \u001b[34m[build]\u001b[39m \u001b[32m✓ Completed in 267ms.\u001b[39m"
+      },
+      {
+        "zeile": 58,
+        "text": "\u001b[2m18:47:27\u001b[22m \u001b[34m[build]\u001b[39m Building static entrypoints..."
+      },
+      {
+        "zeile": 59,
+        "text": "\u001b[2m18:47:28\u001b[22m \u001b[34m[vite]\u001b[39m \u001b[32m✓ built in 339ms\u001b[39m"
+      },
+      {
+        "zeile": 60,
+        "text": "\u001b[2m18:47:28\u001b[22m \u001b[34m[vite]\u001b[39m \u001b[32m✓ built in 633ms\u001b[39m"
+      },
+      {
+        "zeile": 61,
+        "text": "\u001b[2m18:47:28\u001b[22m \u001b[34m[build]\u001b[39m Rearranging server assets..."
+      },
+      {
+        "zeile": 63,
+        "text": "\u001b[42m\u001b[30m generating static routes \u001b[39m\u001b[49m"
+      },
+      {
+        "zeile": 64,
+        "text": "\u001b[2m18:47:28\u001b[22m   \u001b[34m├─\u001b[39m \u001b[2m/index.html\u001b[22m \u001b[2m(+23ms)\u001b[22m "
+      },
+      {
+        "zeile": 65,
+        "text": "\u001b[2m18:47:28\u001b[22m \u001b[32m✓ Completed in 40ms."
+      },
+      {
+        "zeile": 66,
+        "text": "\u001b[39m"
+      },
+      {
+        "zeile": 67,
+        "text": "\u001b[2m18:47:28\u001b[22m \u001b[34m[build]\u001b[39m \u001b[32m✓ Completed in 1.08s.\u001b[39m"
+      },
+      {
+        "zeile": 68,
+        "text": "\u001b[2m18:47:28\u001b[22m \u001b[34m[build]\u001b[39m 1 page(s) built in \u001b[1m1.35s\u001b[22m"
+      },
+      {
+        "zeile": 69,
+        "text": "\u001b[2m18:47:28\u001b[22m \u001b[34m[build]\u001b[39m \u001b[1mComplete!\u001b[22m"
+      },
+      {
+        "zeile": 70,
+        "text": "== K1 Konfiguration: bestanden"
+      },
+      {
+        "zeile": 71,
+        "text": "== K2 dist (13 Dateien): bestanden"
+      },
+      {
+        "zeile": 72,
+        "text": "✔ Copying web assets from dist to android/app/src/main/assets/public in 13.10ms"
+      },
+      {
+        "zeile": 73,
+        "text": "✔ Creating capacitor.config.json in android/app/src/main/assets in 1.10ms"
+      },
+      {
+        "zeile": 74,
+        "text": "✔ copy android in 24.75ms"
+      },
+      {
+        "zeile": 75,
+        "text": "✔ Updating Android plugins in 50.49μs"
+      },
+      {
+        "zeile": 76,
+        "text": "✔ update android in 28.96ms"
+      },
+      {
+        "zeile": 77,
+        "text": "[info] Sync finished in 0.06s"
+      },
+      {
+        "zeile": 78,
+        "text": "K3 Sync: bestanden"
+      },
+      {
+        "zeile": 79,
+        "text": "K4 Gradle: bestanden"
+      },
+      {
+        "zeile": 80,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-nach-web.json"
+      },
+      {
+        "zeile": 81,
+        "text": "Inventar: 43 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 82,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-nach-bereinigung.json"
+      },
+      {
+        "zeile": 83,
+        "text": "Inventar: 43 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 84,
+        "text": "+ python3 /lauf/npm-inventar.py --alle node_modules /lauf/npm-dateien-vor-scanner.json"
+      },
+      {
+        "zeile": 85,
+        "text": "Inventar: 19892 Dateien; alle regulären Dateien, ohne Verweise."
+      },
+      {
+        "zeile": 88,
+        "text": "2026-09-30 18:48:12,993 DEBUG: > /werkzeug/gradlew-fdroid/c7227d147483979bb5c408048cee3533a8814fb0/gradlew.py clean"
+      },
+      {
+        "zeile": 89,
+        "text": "CACHEDIR set to /lauf/fdroid-cache"
+      },
+      {
+        "zeile": 90,
+        "text": "Update checksum from gradle-transparency-log"
+      },
+      {
+        "zeile": 91,
+        "text": "Found 8.14.5 via distributionUrl"
+      },
+      {
+        "zeile": 92,
+        "text": "Downloading missing gradle version 8.14.5"
+      },
+      {
+        "zeile": 93,
+        "text": "Using cache directory /lauf/fdroid-cache"
+      },
+      {
+        "zeile": 94,
+        "text": "Running /lauf/fdroid-cache/versions/8.14.5/bin/gradle clean"
+      },
+      {
+        "zeile": 96,
+        "text": "Welcome to Gradle 8.14.5!"
+      },
+      {
+        "zeile": 98,
+        "text": "Here are the highlights of this release:"
+      },
+      {
+        "zeile": 99,
+        "text": " - Java 24 support"
+      },
+      {
+        "zeile": 100,
+        "text": " - GraalVM Native Image toolchain selection"
+      },
+      {
+        "zeile": 101,
+        "text": " - Enhancements to test reporting"
+      },
+      {
+        "zeile": 102,
+        "text": " - Build Authoring improvements"
+      },
+      {
+        "zeile": 104,
+        "text": "For more details see https://docs.gradle.org/8.14.5/release-notes.html"
+      },
+      {
+        "zeile": 106,
+        "text": "Starting a Gradle Daemon (subsequent builds will be faster)"
+      },
+      {
+        "zeile": 108,
+        "text": "> Configure project :capacitor-cordova-android-plugins"
+      },
+      {
+        "zeile": 109,
+        "text": "WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats."
+      },
+      {
+        "zeile": 111,
+        "text": "> Task :app:clean UP-TO-DATE"
+      },
+      {
+        "zeile": 113,
+        "text": "BUILD SUCCESSFUL in 48s"
+      },
+      {
+        "zeile": 114,
+        "text": "1 actionable task: 1 up-to-date"
+      },
+      {
+        "zeile": 115,
+        "text": "2026-09-30 18:49:07,248 INFO: Scanning source for common problems..."
+      },
+      {
+        "zeile": 116,
+        "text": "2026-09-30 18:49:07,421 ERROR: Found shared library at node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.6"
+      },
+      {
+        "zeile": 117,
+        "text": "2026-09-30 18:49:07,439 ERROR: Found WebAssembly binary file at node_modules/shiki/dist/onig.wasm"
+      },
+      {
+        "zeile": 118,
+        "text": "2026-09-30 18:49:07,478 ERROR: Found WebAssembly binary file at node_modules/@astrojs/astro2tsx/astro2tsx.wasm32-wasi.wasm"
+      },
+      {
+        "zeile": 119,
+        "text": "2026-09-30 18:49:07,842 ERROR: Found binary at node_modules/@esbuild/linux-x64/bin/esbuild"
+      },
+      {
+        "zeile": 120,
+        "text": "2026-09-30 18:49:07,895 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/ios-pods-template.tar.gz"
+      },
+      {
+        "zeile": 121,
+        "text": "2026-09-30 18:49:07,895 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/capacitor-cordova-android-plugins.tar.gz"
+      },
+      {
+        "zeile": 122,
+        "text": "2026-09-30 18:49:07,895 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/capacitor-cordova-ios-plugins.tar.gz"
+      },
+      {
+        "zeile": 123,
+        "text": "2026-09-30 18:49:07,895 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/ios-spm-template.tar.gz"
+      },
+      {
+        "zeile": 124,
+        "text": "2026-09-30 18:49:07,896 ERROR: Found gzip file archive at node_modules/@capacitor/cli/assets/android-template.tar.gz"
+      },
+      {
+        "zeile": 126,
+        "text": "2026-09-30 18:49:08,008 ERROR: Found WebAssembly binary file at node_modules/xxhash-wasm/workerd/xxhash.wasm"
+      },
+      {
+        "zeile": 127,
+        "text": "2026-09-30 18:49:08,054 INFO: Removing gradle-wrapper.jar at app/android/gradle/wrapper/gradle-wrapper.jar"
+      },
+      {
+        "zeile": 128,
+        "text": "2026-09-30 18:49:08,063 ERROR: Could not build app de.baremos.fristenrechner: Can't build due to 10 errors while scanning"
+      },
+      {
+        "zeile": 131,
+        "text": "2026-09-30 18:49:08,070 INFO: Finished"
+      },
+      {
+        "zeile": 132,
+        "text": "2026-09-30 18:49:08,070 INFO: 1 build failed"
+      }
+    ],
+    "lauf-hqj89xdz-gezielt": [
+      {
+        "zeile": 13,
+        "text": "2026-09-30 18:49:48,189 INFO: Building version 0.1.0 (100) of de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 14,
+        "text": "2026-09-30 18:49:48,190 WARNING: NoSuchPathError: build/de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 16,
+        "text": "2026-09-30 18:49:48,199 INFO: Getting source for revision f272140294ee270e82e2d549cf0c6765801b602c"
+      },
+      {
+        "zeile": 17,
+        "text": "2026-09-30 18:49:48,199 DEBUG: > git clone -- file:///quelle build/de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 18,
+        "text": "Cloning into 'build/de.baremos.fristenrechner'..."
+      },
+      {
+        "zeile": 36,
+        "text": "2026-09-30 18:49:49,419 DEBUG: > bash -e -u -o pipefail -x -c -- cd ../../..; npm ci --ignore-scripts --no-audit --no-fund; cp package-lock.json \"$FR_FDROID_LAUF/package-lock-app.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-vor-web.json\"; node scripts/fdroid/app-vorbereiten.mjs; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-web.json\"; python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe \"$FR_FDROID_LAUF/bereinigung.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-bereinigung.json\"; python3 \"$FR_FDROID_INVENTAR\" --alle node_modules \"$FR_FDROID_LAUF/npm-dateien-vor-scanner.json\""
+      },
+      {
+        "zeile": 37,
+        "text": "+ cd ../../.."
+      },
+      {
+        "zeile": 38,
+        "text": "+ npm ci --ignore-scripts --no-audit --no-fund"
+      },
+      {
+        "zeile": 39,
+        "text": "npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028)."
+      },
+      {
+        "zeile": 41,
+        "text": "added 416 packages in 25s"
+      },
+      {
+        "zeile": 42,
+        "text": "+ cp package-lock.json /lauf/package-lock-app.json"
+      },
+      {
+        "zeile": 43,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-vor-web.json"
+      },
+      {
+        "zeile": 44,
+        "text": "Inventar: 43 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 45,
+        "text": "+ node scripts/fdroid/app-vorbereiten.mjs"
+      },
+      {
+        "zeile": 46,
+        "text": "== Rechenkern bauen"
+      },
+      {
+        "zeile": 48,
+        "text": "> @baremos/fristenrechner-kern@0.0.0 build"
+      },
+      {
+        "zeile": 49,
+        "text": "> tsc -p tsconfig.build.json"
+      },
+      {
+        "zeile": 51,
+        "text": "== Seite der App bauen"
+      },
+      {
+        "zeile": 52,
+        "text": "\u001b[2m18:50:30\u001b[22m \u001b[34m[types]\u001b[39m Generated \u001b[2m205ms\u001b[22m"
+      },
+      {
+        "zeile": 53,
+        "text": "\u001b[2m18:50:30\u001b[22m \u001b[34m[build]\u001b[39m output: \u001b[34m\"static\"\u001b[39m"
+      },
+      {
+        "zeile": 54,
+        "text": "\u001b[2m18:50:30\u001b[22m \u001b[34m[build]\u001b[39m mode: \u001b[34m\"static\"\u001b[39m"
+      },
+      {
+        "zeile": 55,
+        "text": "\u001b[2m18:50:30\u001b[22m \u001b[34m[build]\u001b[39m directory: \u001b[34m/lauf/build/de.baremos.fristenrechner/app/dist/\u001b[39m"
+      },
+      {
+        "zeile": 56,
+        "text": "\u001b[2m18:50:30\u001b[22m \u001b[34m[build]\u001b[39m Collecting build info..."
+      },
+      {
+        "zeile": 57,
+        "text": "\u001b[2m18:50:30\u001b[22m \u001b[34m[build]\u001b[39m \u001b[32m✓ Completed in 249ms.\u001b[39m"
+      },
+      {
+        "zeile": 58,
+        "text": "\u001b[2m18:50:30\u001b[22m \u001b[34m[build]\u001b[39m Building static entrypoints..."
+      },
+      {
+        "zeile": 59,
+        "text": "\u001b[2m18:50:30\u001b[22m \u001b[34m[vite]\u001b[39m \u001b[32m✓ built in 330ms\u001b[39m"
+      },
+      {
+        "zeile": 60,
+        "text": "\u001b[2m18:50:31\u001b[22m \u001b[34m[vite]\u001b[39m \u001b[32m✓ built in 486ms\u001b[39m"
+      },
+      {
+        "zeile": 61,
+        "text": "\u001b[2m18:50:31\u001b[22m \u001b[34m[build]\u001b[39m Rearranging server assets..."
+      },
+      {
+        "zeile": 63,
+        "text": "\u001b[42m\u001b[30m generating static routes \u001b[39m\u001b[49m"
+      },
+      {
+        "zeile": 64,
+        "text": "\u001b[2m18:50:31\u001b[22m   \u001b[34m├─\u001b[39m \u001b[2m/index.html\u001b[22m \u001b[2m(+32ms)\u001b[22m "
+      },
+      {
+        "zeile": 65,
+        "text": "\u001b[2m18:50:31\u001b[22m \u001b[32m✓ Completed in 82ms."
+      },
+      {
+        "zeile": 66,
+        "text": "\u001b[39m"
+      },
+      {
+        "zeile": 67,
+        "text": "\u001b[2m18:50:31\u001b[22m \u001b[34m[build]\u001b[39m \u001b[32m✓ Completed in 980ms.\u001b[39m"
+      },
+      {
+        "zeile": 68,
+        "text": "\u001b[2m18:50:31\u001b[22m \u001b[34m[build]\u001b[39m 1 page(s) built in \u001b[1m1.23s\u001b[22m"
+      },
+      {
+        "zeile": 69,
+        "text": "\u001b[2m18:50:31\u001b[22m \u001b[34m[build]\u001b[39m \u001b[1mComplete!\u001b[22m"
+      },
+      {
+        "zeile": 70,
+        "text": "== K1 Konfiguration: bestanden"
+      },
+      {
+        "zeile": 71,
+        "text": "== K2 dist (13 Dateien): bestanden"
+      },
+      {
+        "zeile": 72,
+        "text": "✔ Copying web assets from dist to android/app/src/main/assets/public in 14.64ms"
+      },
+      {
+        "zeile": 73,
+        "text": "✔ Creating capacitor.config.json in android/app/src/main/assets in 1.34ms"
+      },
+      {
+        "zeile": 74,
+        "text": "✔ copy android in 31.39ms"
+      },
+      {
+        "zeile": 75,
+        "text": "✔ Updating Android plugins in 54.26μs"
+      },
+      {
+        "zeile": 76,
+        "text": "✔ update android in 35.27ms"
+      },
+      {
+        "zeile": 77,
+        "text": "[info] Sync finished in 0.072s"
+      },
+      {
+        "zeile": 78,
+        "text": "K3 Sync: bestanden"
+      },
+      {
+        "zeile": 79,
+        "text": "K4 Gradle: bestanden"
+      },
+      {
+        "zeile": 80,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-nach-web.json"
+      },
+      {
+        "zeile": 81,
+        "text": "Inventar: 43 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 82,
+        "text": "+ python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe /lauf/bereinigung.json"
+      },
+      {
+        "zeile": 83,
+        "text": "Bereinigung: 21 Pakete, 1580 Dateien entfernt; 0 zugelassene Restfunde."
+      },
+      {
+        "zeile": 84,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-nach-bereinigung.json"
+      },
+      {
+        "zeile": 85,
+        "text": "Inventar: 0 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 86,
+        "text": "+ python3 /lauf/npm-inventar.py --alle node_modules /lauf/npm-dateien-vor-scanner.json"
+      },
+      {
+        "zeile": 87,
+        "text": "Inventar: 18312 Dateien; alle regulären Dateien, ohne Verweise."
+      },
+      {
+        "zeile": 90,
+        "text": "2026-09-30 18:51:39,955 DEBUG: > /werkzeug/gradlew-fdroid/c7227d147483979bb5c408048cee3533a8814fb0/gradlew.py clean"
+      },
+      {
+        "zeile": 91,
+        "text": "CACHEDIR set to /lauf/fdroid-cache"
+      },
+      {
+        "zeile": 92,
+        "text": "Update checksum from gradle-transparency-log"
+      },
+      {
+        "zeile": 93,
+        "text": "Found 8.14.5 via distributionUrl"
+      },
+      {
+        "zeile": 94,
+        "text": "Downloading missing gradle version 8.14.5"
+      },
+      {
+        "zeile": 95,
+        "text": "Using cache directory /lauf/fdroid-cache"
+      },
+      {
+        "zeile": 96,
+        "text": "Running /lauf/fdroid-cache/versions/8.14.5/bin/gradle clean"
+      },
+      {
+        "zeile": 98,
+        "text": "Welcome to Gradle 8.14.5!"
+      },
+      {
+        "zeile": 100,
+        "text": "Here are the highlights of this release:"
+      },
+      {
+        "zeile": 101,
+        "text": " - Java 24 support"
+      },
+      {
+        "zeile": 102,
+        "text": " - GraalVM Native Image toolchain selection"
+      },
+      {
+        "zeile": 103,
+        "text": " - Enhancements to test reporting"
+      },
+      {
+        "zeile": 104,
+        "text": " - Build Authoring improvements"
+      },
+      {
+        "zeile": 106,
+        "text": "For more details see https://docs.gradle.org/8.14.5/release-notes.html"
+      },
+      {
+        "zeile": 108,
+        "text": "Starting a Gradle Daemon (subsequent builds will be faster)"
+      },
+      {
+        "zeile": 110,
+        "text": "> Configure project :capacitor-cordova-android-plugins"
+      },
+      {
+        "zeile": 111,
+        "text": "WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats."
+      },
+      {
+        "zeile": 113,
+        "text": "> Task :app:clean UP-TO-DATE"
+      },
+      {
+        "zeile": 115,
+        "text": "BUILD SUCCESSFUL in 48s"
+      },
+      {
+        "zeile": 116,
+        "text": "1 actionable task: 1 up-to-date"
+      },
+      {
+        "zeile": 117,
+        "text": "2026-09-30 18:52:34,628 INFO: Scanning source for common problems..."
+      },
+      {
+        "zeile": 119,
+        "text": "2026-09-30 18:52:35,095 INFO: Removing gradle-wrapper.jar at app/android/gradle/wrapper/gradle-wrapper.jar"
+      },
+      {
+        "zeile": 120,
+        "text": "2026-09-30 18:52:35,098 INFO: Creating source tarball..."
+      },
+      {
+        "zeile": 123,
+        "text": "2026-09-30 18:53:03,781 DEBUG: > bash -e -u -o pipefail -x -c cd ../../..; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-scanner.json\"; python3 \"$FR_FDROID_INVENTAR\" --alle node_modules \"$FR_FDROID_LAUF/npm-dateien-nach-scanner.json\"; node scripts/fdroid/app-vorbereiten.mjs --nach-scanner"
+      },
+      {
+        "zeile": 124,
+        "text": "+ cd ../../.."
+      },
+      {
+        "zeile": 125,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-nach-scanner.json"
+      },
+      {
+        "zeile": 126,
+        "text": "Inventar: 0 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 127,
+        "text": "+ python3 /lauf/npm-inventar.py --alle node_modules /lauf/npm-dateien-nach-scanner.json"
+      },
+      {
+        "zeile": 128,
+        "text": "Inventar: 18312 Dateien; alle regulären Dateien, ohne Verweise."
+      },
+      {
+        "zeile": 129,
+        "text": "+ node scripts/fdroid/app-vorbereiten.mjs --nach-scanner"
+      },
+      {
+        "zeile": 130,
+        "text": "Android-Quellen nach dem Scanner vorhanden: node_modules/@capacitor/android/capacitor"
+      },
+      {
+        "zeile": 133,
+        "text": "2026-09-30 18:53:32,329 DEBUG: > /werkzeug/gradlew-fdroid/c7227d147483979bb5c408048cee3533a8814fb0/gradlew.py assembleRelease"
+      },
+      {
+        "zeile": 134,
+        "text": "CACHEDIR set to /lauf/fdroid-cache"
+      },
+      {
+        "zeile": 135,
+        "text": "Remote gradle-transparency-log not changed, reusing cache"
+      },
+      {
+        "zeile": 136,
+        "text": "Update checksum from gradle-transparency-log"
+      },
+      {
+        "zeile": 137,
+        "text": "Found 8.14.5 via distributionUrl"
+      },
+      {
+        "zeile": 138,
+        "text": "Running /lauf/fdroid-cache/versions/8.14.5/bin/gradle assembleRelease"
+      },
+      {
+        "zeile": 140,
+        "text": "> Configure project :capacitor-cordova-android-plugins"
+      },
+      {
+        "zeile": 141,
+        "text": "WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats."
+      },
+      {
+        "zeile": 142,
+        "text": "Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times."
+      },
+      {
+        "zeile": 144,
+        "text": "> Task :app:preBuild UP-TO-DATE"
+      },
+      {
+        "zeile": 145,
+        "text": "> Task :app:preReleaseBuild UP-TO-DATE"
+      },
+      {
+        "zeile": 146,
+        "text": "> Task :app:mergeReleaseJniLibFolders"
+      },
+      {
+        "zeile": 147,
+        "text": "> Task :capacitor-android:preBuild UP-TO-DATE"
+      },
+      {
+        "zeile": 148,
+        "text": "> Task :capacitor-android:preReleaseBuild UP-TO-DATE"
+      },
+      {
+        "zeile": 149,
+        "text": "> Task :capacitor-android:mergeReleaseJniLibFolders"
+      },
+      {
+        "zeile": 150,
+        "text": "> Task :capacitor-android:mergeReleaseNativeLibs NO-SOURCE"
+      },
+      {
+        "zeile": 151,
+        "text": "> Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE"
+      },
+      {
+        "zeile": 152,
+        "text": "> Task :capacitor-cordova-android-plugins:preReleaseBuild UP-TO-DATE"
+      },
+      {
+        "zeile": 153,
+        "text": "> Task :capacitor-android:copyReleaseJniLibsProjectOnly"
+      },
+      {
+        "zeile": 154,
+        "text": "> Task :capacitor-cordova-android-plugins:mergeReleaseJniLibFolders"
+      },
+      {
+        "zeile": 155,
+        "text": "> Task :capacitor-cordova-android-plugins:mergeReleaseNativeLibs NO-SOURCE"
+      },
+      {
+        "zeile": 156,
+        "text": "> Task :capacitor-cordova-android-plugins:copyReleaseJniLibsProjectOnly"
+      },
+      {
+        "zeile": 157,
+        "text": "> Task :capacitor-android:generateReleaseResValues"
+      },
+      {
+        "zeile": 158,
+        "text": "> Task :app:mergeReleaseNativeLibs NO-SOURCE"
+      },
+      {
+        "zeile": 159,
+        "text": "> Task :app:stripReleaseDebugSymbols NO-SOURCE"
+      },
+      {
+        "zeile": 160,
+        "text": "> Task :app:extractReleaseNativeSymbolTables NO-SOURCE"
+      },
+      {
+        "zeile": 161,
+        "text": "> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE"
+      },
+      {
+        "zeile": 162,
+        "text": "> Task :capacitor-android:generateReleaseResources"
+      },
+      {
+        "zeile": 163,
+        "text": "> Task :capacitor-android:packageReleaseResources"
+      },
+      {
+        "zeile": 164,
+        "text": "> Task :capacitor-android:processReleaseNavigationResources"
+      },
+      {
+        "zeile": 165,
+        "text": "> Task :capacitor-cordova-android-plugins:generateReleaseResValues"
+      },
+      {
+        "zeile": 166,
+        "text": "> Task :capacitor-android:javaPreCompileRelease"
+      },
+      {
+        "zeile": 167,
+        "text": "> Task :capacitor-cordova-android-plugins:generateReleaseResources"
+      },
+      {
+        "zeile": 168,
+        "text": "> Task :capacitor-cordova-android-plugins:packageReleaseResources"
+      },
+      {
+        "zeile": 169,
+        "text": "> Task :capacitor-cordova-android-plugins:processReleaseNavigationResources"
+      },
+      {
+        "zeile": 170,
+        "text": "> Task :capacitor-android:parseReleaseLocalResources"
+      },
+      {
+        "zeile": 171,
+        "text": "> Task :capacitor-cordova-android-plugins:parseReleaseLocalResources"
+      },
+      {
+        "zeile": 172,
+        "text": "> Task :capacitor-cordova-android-plugins:javaPreCompileRelease"
+      },
+      {
+        "zeile": 173,
+        "text": "> Task :capacitor-cordova-android-plugins:generateReleaseRFile"
+      },
+      {
+        "zeile": 174,
+        "text": "> Task :capacitor-android:generateReleaseRFile"
+      },
+      {
+        "zeile": 175,
+        "text": "> Task :app:checkReleaseDuplicateClasses"
+      },
+      {
+        "zeile": 177,
+        "text": "> Task :capacitor-android:compileReleaseJavaWithJavac"
+      },
+      {
+        "zeile": 178,
+        "text": "Note: Some input files use unchecked or unsafe operations."
+      },
+      {
+        "zeile": 179,
+        "text": "Note: Recompile with -Xlint:unchecked for details."
+      },
+      {
+        "zeile": 181,
+        "text": "> Task :capacitor-cordova-android-plugins:compileReleaseJavaWithJavac NO-SOURCE"
+      },
+      {
+        "zeile": 182,
+        "text": "> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToDirRelease"
+      },
+      {
+        "zeile": 183,
+        "text": "> Task :app:javaPreCompileRelease"
+      },
+      {
+        "zeile": 184,
+        "text": "> Task :capacitor-cordova-android-plugins:writeReleaseAarMetadata"
+      },
+      {
+        "zeile": 185,
+        "text": "> Task :capacitor-android:writeReleaseAarMetadata"
+      },
+      {
+        "zeile": 186,
+        "text": "> Task :capacitor-android:bundleLibRuntimeToDirRelease"
+      },
+      {
+        "zeile": 187,
+        "text": "> Task :app:processReleaseNavigationResources"
+      },
+      {
+        "zeile": 188,
+        "text": "> Task :app:checkReleaseAarMetadata"
+      },
+      {
+        "zeile": 189,
+        "text": "> Task :app:generateReleaseResValues"
+      },
+      {
+        "zeile": 190,
+        "text": "> Task :app:compileReleaseNavigationResources"
+      },
+      {
+        "zeile": 191,
+        "text": "> Task :app:mapReleaseSourceSetPaths"
+      },
+      {
+        "zeile": 192,
+        "text": "> Task :app:generateReleaseResources"
+      },
+      {
+        "zeile": 193,
+        "text": "> Task :app:packageReleaseResources"
+      },
+      {
+        "zeile": 194,
+        "text": "> Task :app:parseReleaseLocalResources"
+      },
+      {
+        "zeile": 195,
+        "text": "> Task :app:createReleaseCompatibleScreenManifests"
+      },
+      {
+        "zeile": 196,
+        "text": "> Task :app:extractDeepLinksRelease"
+      },
+      {
+        "zeile": 197,
+        "text": "> Task :capacitor-android:extractDeepLinksRelease"
+      },
+      {
+        "zeile": 198,
+        "text": "> Task :capacitor-cordova-android-plugins:extractDeepLinksRelease"
+      },
+      {
+        "zeile": 199,
+        "text": "> Task :capacitor-cordova-android-plugins:compileReleaseLibraryResources"
+      },
+      {
+        "zeile": 200,
+        "text": "> Task :capacitor-android:compileReleaseLibraryResources"
+      },
+      {
+        "zeile": 201,
+        "text": "> Task :capacitor-cordova-android-plugins:bundleLibCompileToJarRelease"
+      },
+      {
+        "zeile": 202,
+        "text": "> Task :app:desugarReleaseFileDependencies"
+      },
+      {
+        "zeile": 203,
+        "text": "> Task :app:mergeReleaseStartupProfile"
+      },
+      {
+        "zeile": 204,
+        "text": "> Task :capacitor-android:processReleaseManifest"
+      },
+      {
+        "zeile": 205,
+        "text": "> Task :capacitor-android:bundleLibCompileToJarRelease"
+      },
+      {
+        "zeile": 206,
+        "text": "> Task :app:mergeReleaseResources"
+      },
+      {
+        "zeile": 207,
+        "text": "> Task :capacitor-cordova-android-plugins:processReleaseManifest"
+      },
+      {
+        "zeile": 208,
+        "text": "> Task :app:mergeExtDexRelease"
+      },
+      {
+        "zeile": 209,
+        "text": "> Task :app:processReleaseMainManifest"
+      },
+      {
+        "zeile": 210,
+        "text": "> Task :app:processReleaseManifest"
+      },
+      {
+        "zeile": 211,
+        "text": "> Task :capacitor-android:prepareReleaseArtProfile"
+      },
+      {
+        "zeile": 212,
+        "text": "> Task :capacitor-cordova-android-plugins:prepareReleaseArtProfile"
+      },
+      {
+        "zeile": 213,
+        "text": "> Task :app:mergeReleaseArtProfile"
+      },
+      {
+        "zeile": 214,
+        "text": "> Task :app:processReleaseManifestForPackage"
+      },
+      {
+        "zeile": 215,
+        "text": "> Task :capacitor-android:bundleLibRuntimeToJarRelease"
+      },
+      {
+        "zeile": 216,
+        "text": "> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarRelease"
+      },
+      {
+        "zeile": 217,
+        "text": "> Task :app:mergeReleaseShaders"
+      },
+      {
+        "zeile": 218,
+        "text": "> Task :app:compileReleaseShaders NO-SOURCE"
+      },
+      {
+        "zeile": 219,
+        "text": "> Task :app:generateReleaseAssets UP-TO-DATE"
+      },
+      {
+        "zeile": 220,
+        "text": "> Task :capacitor-android:mergeReleaseShaders"
+      },
+      {
+        "zeile": 221,
+        "text": "> Task :capacitor-android:compileReleaseShaders NO-SOURCE"
+      },
+      {
+        "zeile": 222,
+        "text": "> Task :capacitor-android:generateReleaseAssets UP-TO-DATE"
+      },
+      {
+        "zeile": 223,
+        "text": "> Task :capacitor-android:mergeReleaseAssets"
+      },
+      {
+        "zeile": 224,
+        "text": "> Task :capacitor-cordova-android-plugins:mergeReleaseShaders"
+      },
+      {
+        "zeile": 225,
+        "text": "> Task :capacitor-cordova-android-plugins:compileReleaseShaders NO-SOURCE"
+      },
+      {
+        "zeile": 226,
+        "text": "> Task :capacitor-cordova-android-plugins:generateReleaseAssets UP-TO-DATE"
+      },
+      {
+        "zeile": 227,
+        "text": "> Task :capacitor-cordova-android-plugins:mergeReleaseAssets"
+      },
+      {
+        "zeile": 228,
+        "text": "> Task :app:mergeReleaseAssets"
+      },
+      {
+        "zeile": 229,
+        "text": "> Task :app:compressReleaseAssets"
+      },
+      {
+        "zeile": 230,
+        "text": "> Task :app:processReleaseResources"
+      },
+      {
+        "zeile": 231,
+        "text": "> Task :app:extractReleaseVersionControlInfo"
+      },
+      {
+        "zeile": 232,
+        "text": "> Task :app:compileReleaseJavaWithJavac"
+      },
+      {
+        "zeile": 233,
+        "text": "> Task :app:dexBuilderRelease"
+      },
+      {
+        "zeile": 234,
+        "text": "> Task :app:mergeReleaseGlobalSynthetics"
+      },
+      {
+        "zeile": 235,
+        "text": "> Task :app:extractProguardFiles"
+      },
+      {
+        "zeile": 236,
+        "text": "> Task :capacitor-android:processReleaseJavaRes NO-SOURCE"
+      },
+      {
+        "zeile": 237,
+        "text": "> Task :capacitor-android:createFullJarRelease"
+      },
+      {
+        "zeile": 238,
+        "text": "> Task :capacitor-android:extractProguardFiles"
+      },
+      {
+        "zeile": 239,
+        "text": "> Task :capacitor-android:generateReleaseLintModel"
+      },
+      {
+        "zeile": 240,
+        "text": "> Task :capacitor-android:prepareLintJarForPublish"
+      },
+      {
+        "zeile": 241,
+        "text": "> Task :capacitor-cordova-android-plugins:processReleaseJavaRes NO-SOURCE"
+      },
+      {
+        "zeile": 242,
+        "text": "> Task :capacitor-cordova-android-plugins:createFullJarRelease"
+      },
+      {
+        "zeile": 243,
+        "text": "> Task :capacitor-cordova-android-plugins:extractProguardFiles"
+      },
+      {
+        "zeile": 244,
+        "text": "> Task :app:mergeDexRelease"
+      },
+      {
+        "zeile": 245,
+        "text": "> Task :capacitor-cordova-android-plugins:generateReleaseLintModel"
+      },
+      {
+        "zeile": 246,
+        "text": "> Task :capacitor-cordova-android-plugins:prepareLintJarForPublish"
+      },
+      {
+        "zeile": 247,
+        "text": "> Task :capacitor-android:checkReleaseAarMetadata"
+      },
+      {
+        "zeile": 248,
+        "text": "> Task :app:generateReleaseLintVitalReportModel"
+      },
+      {
+        "zeile": 249,
+        "text": "> Task :capacitor-android:stripReleaseDebugSymbols NO-SOURCE"
+      },
+      {
+        "zeile": 250,
+        "text": "> Task :capacitor-android:copyReleaseJniLibsProjectAndLocalJars"
+      },
+      {
+        "zeile": 251,
+        "text": "> Task :capacitor-android:extractDeepLinksForAarRelease"
+      },
+      {
+        "zeile": 252,
+        "text": "> Task :app:compileReleaseArtProfile"
+      },
+      {
+        "zeile": 253,
+        "text": "> Task :capacitor-android:extractReleaseAnnotations"
+      },
+      {
+        "zeile": 254,
+        "text": "> Task :capacitor-android:mergeReleaseGeneratedProguardFiles"
+      },
+      {
+        "zeile": 255,
+        "text": "> Task :capacitor-android:mergeReleaseConsumerProguardFiles"
+      },
+      {
+        "zeile": 256,
+        "text": "> Task :capacitor-cordova-android-plugins:checkReleaseAarMetadata"
+      },
+      {
+        "zeile": 257,
+        "text": "> Task :capacitor-cordova-android-plugins:stripReleaseDebugSymbols NO-SOURCE"
+      },
+      {
+        "zeile": 258,
+        "text": "> Task :capacitor-cordova-android-plugins:extractDeepLinksForAarRelease"
+      },
+      {
+        "zeile": 259,
+        "text": "> Task :capacitor-cordova-android-plugins:copyReleaseJniLibsProjectAndLocalJars"
+      },
+      {
+        "zeile": 260,
+        "text": "> Task :capacitor-android:mergeReleaseJavaResource"
+      },
+      {
+        "zeile": 261,
+        "text": "> Task :capacitor-cordova-android-plugins:extractReleaseAnnotations"
+      },
+      {
+        "zeile": 262,
+        "text": "> Task :capacitor-android:syncReleaseLibJars"
+      },
+      {
+        "zeile": 263,
+        "text": "> Task :capacitor-android:bundleReleaseLocalLintAar"
+      },
+      {
+        "zeile": 264,
+        "text": "> Task :capacitor-cordova-android-plugins:mergeReleaseGeneratedProguardFiles"
+      },
+      {
+        "zeile": 265,
+        "text": "> Task :capacitor-cordova-android-plugins:mergeReleaseConsumerProguardFiles"
+      },
+      {
+        "zeile": 266,
+        "text": "> Task :capacitor-cordova-android-plugins:mergeReleaseJavaResource"
+      },
+      {
+        "zeile": 267,
+        "text": "> Task :capacitor-cordova-android-plugins:syncReleaseLibJars"
+      },
+      {
+        "zeile": 268,
+        "text": "> Task :capacitor-cordova-android-plugins:bundleReleaseLocalLintAar"
+      },
+      {
+        "zeile": 269,
+        "text": "> Task :capacitor-android:writeReleaseLintModelMetadata"
+      },
+      {
+        "zeile": 270,
+        "text": "> Task :capacitor-cordova-android-plugins:writeReleaseLintModelMetadata"
+      },
+      {
+        "zeile": 271,
+        "text": "> Task :capacitor-android:generateReleaseLintVitalModel"
+      },
+      {
+        "zeile": 272,
+        "text": "> Task :capacitor-cordova-android-plugins:generateReleaseLintVitalModel"
+      },
+      {
+        "zeile": 273,
+        "text": "> Task :app:processReleaseJavaRes NO-SOURCE"
+      },
+      {
+        "zeile": 274,
+        "text": "> Task :app:writeReleaseAppMetadata"
+      },
+      {
+        "zeile": 275,
+        "text": "> Task :app:writeReleaseSigningConfigVersions"
+      },
+      {
+        "zeile": 276,
+        "text": "> Task :app:optimizeReleaseResources"
+      },
+      {
+        "zeile": 277,
+        "text": "> Task :app:mergeReleaseJavaResource"
+      },
+      {
+        "zeile": 278,
+        "text": "> Task :capacitor-cordova-android-plugins:lintVitalAnalyzeRelease"
+      },
+      {
+        "zeile": 279,
+        "text": "> Task :capacitor-android:lintVitalAnalyzeRelease"
+      },
+      {
+        "zeile": 280,
+        "text": "> Task :app:lintVitalAnalyzeRelease"
+      },
+      {
+        "zeile": 281,
+        "text": "> Task :app:lintVitalReportRelease"
+      },
+      {
+        "zeile": 282,
+        "text": "> Task :app:lintVitalRelease"
+      },
+      {
+        "zeile": 283,
+        "text": "> Task :app:packageRelease"
+      },
+      {
+        "zeile": 284,
+        "text": "> Task :app:createReleaseApkListingFileRedirect"
+      },
+      {
+        "zeile": 285,
+        "text": "> Task :app:assembleRelease"
+      },
+      {
+        "zeile": 287,
+        "text": "[Incubating] Problems report is available at: file:///lauf/build/de.baremos.fristenrechner/app/android/build/reports/problems/problems-report.html"
+      },
+      {
+        "zeile": 289,
+        "text": "BUILD SUCCESSFUL in 1m 52s"
+      },
+      {
+        "zeile": 290,
+        "text": "113 actionable tasks: 113 executed"
+      },
+      {
+        "zeile": 291,
+        "text": "2026-09-30 18:55:25,733 INFO: Successfully built version 0.1.0 of de.baremos.fristenrechner from f272140294ee270e82e2d549cf0c6765801b602c"
+      },
+      {
+        "zeile": 294,
+        "text": "2026-09-30 18:55:25,822 INFO: success: de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 295,
+        "text": "2026-09-30 18:55:25,822 INFO: Finished"
+      },
+      {
+        "zeile": 296,
+        "text": "2026-09-30 18:55:25,822 INFO: 1 build succeeded"
+      }
+    ],
+    "lauf-zhqctq16-gezielt-scandelete": [
+      {
+        "zeile": 13,
+        "text": "2026-09-30 18:55:29,137 INFO: Building version 0.1.0 (100) of de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 14,
+        "text": "2026-09-30 18:55:29,137 WARNING: NoSuchPathError: build/de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 16,
+        "text": "2026-09-30 18:55:29,141 INFO: Getting source for revision f272140294ee270e82e2d549cf0c6765801b602c"
+      },
+      {
+        "zeile": 17,
+        "text": "2026-09-30 18:55:29,142 DEBUG: > git clone -- file:///quelle build/de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 18,
+        "text": "Cloning into 'build/de.baremos.fristenrechner'..."
+      },
+      {
+        "zeile": 36,
+        "text": "2026-09-30 18:55:30,262 DEBUG: > bash -e -u -o pipefail -x -c -- cd ../../..; npm ci --ignore-scripts --no-audit --no-fund; cp package-lock.json \"$FR_FDROID_LAUF/package-lock-app.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-vor-web.json\"; node scripts/fdroid/app-vorbereiten.mjs; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-web.json\"; python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe \"$FR_FDROID_LAUF/bereinigung.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-bereinigung.json\"; python3 \"$FR_FDROID_INVENTAR\" --alle node_modules \"$FR_FDROID_LAUF/npm-dateien-vor-scanner.json\""
+      },
+      {
+        "zeile": 37,
+        "text": "+ cd ../../.."
+      },
+      {
+        "zeile": 38,
+        "text": "+ npm ci --ignore-scripts --no-audit --no-fund"
+      },
+      {
+        "zeile": 39,
+        "text": "npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028)."
+      },
+      {
+        "zeile": 41,
+        "text": "added 416 packages in 18s"
+      },
+      {
+        "zeile": 42,
+        "text": "+ cp package-lock.json /lauf/package-lock-app.json"
+      },
+      {
+        "zeile": 43,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-vor-web.json"
+      },
+      {
+        "zeile": 44,
+        "text": "Inventar: 43 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 45,
+        "text": "+ node scripts/fdroid/app-vorbereiten.mjs"
+      },
+      {
+        "zeile": 46,
+        "text": "== Rechenkern bauen"
+      },
+      {
+        "zeile": 48,
+        "text": "> @baremos/fristenrechner-kern@0.0.0 build"
+      },
+      {
+        "zeile": 49,
+        "text": "> tsc -p tsconfig.build.json"
+      },
+      {
+        "zeile": 51,
+        "text": "== Seite der App bauen"
+      },
+      {
+        "zeile": 52,
+        "text": "\u001b[2m18:56:02\u001b[22m \u001b[34m[types]\u001b[39m Generated \u001b[2m158ms\u001b[22m"
+      },
+      {
+        "zeile": 53,
+        "text": "\u001b[2m18:56:02\u001b[22m \u001b[34m[build]\u001b[39m output: \u001b[34m\"static\"\u001b[39m"
+      },
+      {
+        "zeile": 54,
+        "text": "\u001b[2m18:56:02\u001b[22m \u001b[34m[build]\u001b[39m mode: \u001b[34m\"static\"\u001b[39m"
+      },
+      {
+        "zeile": 55,
+        "text": "\u001b[2m18:56:02\u001b[22m \u001b[34m[build]\u001b[39m directory: \u001b[34m/lauf/build/de.baremos.fristenrechner/app/dist/\u001b[39m"
+      },
+      {
+        "zeile": 56,
+        "text": "\u001b[2m18:56:02\u001b[22m \u001b[34m[build]\u001b[39m Collecting build info..."
+      },
+      {
+        "zeile": 57,
+        "text": "\u001b[2m18:56:02\u001b[22m \u001b[34m[build]\u001b[39m \u001b[32m✓ Completed in 200ms.\u001b[39m"
+      },
+      {
+        "zeile": 58,
+        "text": "\u001b[2m18:56:02\u001b[22m \u001b[34m[build]\u001b[39m Building static entrypoints..."
+      },
+      {
+        "zeile": 59,
+        "text": "\u001b[2m18:56:02\u001b[22m \u001b[34m[vite]\u001b[39m \u001b[32m✓ built in 306ms\u001b[39m"
+      },
+      {
+        "zeile": 60,
+        "text": "\u001b[2m18:56:03\u001b[22m \u001b[34m[vite]\u001b[39m \u001b[32m✓ built in 475ms\u001b[39m"
+      },
+      {
+        "zeile": 61,
+        "text": "\u001b[2m18:56:03\u001b[22m \u001b[34m[build]\u001b[39m Rearranging server assets..."
+      },
+      {
+        "zeile": 63,
+        "text": "\u001b[42m\u001b[30m generating static routes \u001b[39m\u001b[49m"
+      },
+      {
+        "zeile": 64,
+        "text": "\u001b[2m18:56:03\u001b[22m   \u001b[34m├─\u001b[39m \u001b[2m/index.html\u001b[22m \u001b[2m(+24ms)\u001b[22m "
+      },
+      {
+        "zeile": 65,
+        "text": "\u001b[2m18:56:03\u001b[22m \u001b[32m✓ Completed in 51ms."
+      },
+      {
+        "zeile": 66,
+        "text": "\u001b[39m"
+      },
+      {
+        "zeile": 67,
+        "text": "\u001b[2m18:56:03\u001b[22m \u001b[34m[build]\u001b[39m \u001b[32m✓ Completed in 894ms.\u001b[39m"
+      },
+      {
+        "zeile": 68,
+        "text": "\u001b[2m18:56:03\u001b[22m \u001b[34m[build]\u001b[39m 1 page(s) built in \u001b[1m1.10s\u001b[22m"
+      },
+      {
+        "zeile": 69,
+        "text": "\u001b[2m18:56:03\u001b[22m \u001b[34m[build]\u001b[39m \u001b[1mComplete!\u001b[22m"
+      },
+      {
+        "zeile": 70,
+        "text": "== K1 Konfiguration: bestanden"
+      },
+      {
+        "zeile": 71,
+        "text": "== K2 dist (13 Dateien): bestanden"
+      },
+      {
+        "zeile": 72,
+        "text": "✔ Copying web assets from dist to android/app/src/main/assets/public in 12.54ms"
+      },
+      {
+        "zeile": 73,
+        "text": "✔ Creating capacitor.config.json in android/app/src/main/assets in 896.67μs"
+      },
+      {
+        "zeile": 74,
+        "text": "✔ copy android in 24.86ms"
+      },
+      {
+        "zeile": 75,
+        "text": "✔ Updating Android plugins in 145.71μs"
+      },
+      {
+        "zeile": 76,
+        "text": "✔ update android in 35.07ms"
+      },
+      {
+        "zeile": 77,
+        "text": "[info] Sync finished in 0.066s"
+      },
+      {
+        "zeile": 78,
+        "text": "K3 Sync: bestanden"
+      },
+      {
+        "zeile": 79,
+        "text": "K4 Gradle: bestanden"
+      },
+      {
+        "zeile": 80,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-nach-web.json"
+      },
+      {
+        "zeile": 81,
+        "text": "Inventar: 43 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 82,
+        "text": "+ python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe /lauf/bereinigung.json"
+      },
+      {
+        "zeile": 83,
+        "text": "Bereinigung: 21 Pakete, 1580 Dateien entfernt; 0 zugelassene Restfunde."
+      },
+      {
+        "zeile": 84,
+        "text": "+ python3 /lauf/npm-inventar.py node_modules /lauf/npm-vorgebaut-nach-bereinigung.json"
+      },
+      {
+        "zeile": 85,
+        "text": "Inventar: 0 Dateien; JS-WASM heuristisch, keine Vollständigkeitsgarantie."
+      },
+      {
+        "zeile": 86,
+        "text": "+ python3 /lauf/npm-inventar.py --alle node_modules /lauf/npm-dateien-vor-scanner.json"
+      },
+      {
+        "zeile": 87,
+        "text": "Inventar: 18312 Dateien; alle regulären Dateien, ohne Verweise."
+      },
+      {
+        "zeile": 90,
+        "text": "2026-09-30 18:57:19,807 DEBUG: > /werkzeug/gradlew-fdroid/c7227d147483979bb5c408048cee3533a8814fb0/gradlew.py clean"
+      },
+      {
+        "zeile": 91,
+        "text": "CACHEDIR set to /lauf/fdroid-cache"
+      },
+      {
+        "zeile": 92,
+        "text": "Update checksum from gradle-transparency-log"
+      },
+      {
+        "zeile": 93,
+        "text": "Found 8.14.5 via distributionUrl"
+      },
+      {
+        "zeile": 94,
+        "text": "Downloading missing gradle version 8.14.5"
+      },
+      {
+        "zeile": 95,
+        "text": "Using cache directory /lauf/fdroid-cache"
+      },
+      {
+        "zeile": 96,
+        "text": "Running /lauf/fdroid-cache/versions/8.14.5/bin/gradle clean"
+      },
+      {
+        "zeile": 98,
+        "text": "Welcome to Gradle 8.14.5!"
+      },
+      {
+        "zeile": 100,
+        "text": "Here are the highlights of this release:"
+      },
+      {
+        "zeile": 101,
+        "text": " - Java 24 support"
+      },
+      {
+        "zeile": 102,
+        "text": " - GraalVM Native Image toolchain selection"
+      },
+      {
+        "zeile": 103,
+        "text": " - Enhancements to test reporting"
+      },
+      {
+        "zeile": 104,
+        "text": " - Build Authoring improvements"
+      },
+      {
+        "zeile": 106,
+        "text": "For more details see https://docs.gradle.org/8.14.5/release-notes.html"
+      },
+      {
+        "zeile": 108,
+        "text": "Starting a Gradle Daemon (subsequent builds will be faster)"
+      },
+      {
+        "zeile": 110,
+        "text": "> Configure project :capacitor-cordova-android-plugins"
+      },
+      {
+        "zeile": 111,
+        "text": "WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats."
+      },
+      {
+        "zeile": 113,
+        "text": "> Task :app:clean UP-TO-DATE"
+      },
+      {
+        "zeile": 115,
+        "text": "BUILD SUCCESSFUL in 1m 30s"
+      },
+      {
+        "zeile": 116,
+        "text": "1 actionable task: 1 up-to-date"
+      },
+      {
+        "zeile": 117,
+        "text": "2026-09-30 18:58:56,940 INFO: Scanning source for common problems..."
+      },
+      {
+        "zeile": 119,
+        "text": "2026-09-30 18:58:58,113 INFO: Removing gradle-wrapper.jar at app/android/gradle/wrapper/gradle-wrapper.jar"
+      },
+      {
+        "zeile": 120,
+        "text": "2026-09-30 18:58:58,117 ERROR: Unused scandelete path: node_modules"
+      },
+      {
+        "zeile": 121,
+        "text": "2026-09-30 18:58:58,118 ERROR: Could not build app de.baremos.fristenrechner: Can't build due to 1 error while scanning"
+      },
+      {
+        "zeile": 124,
+        "text": "2026-09-30 18:58:58,131 INFO: Finished"
+      },
+      {
+        "zeile": 125,
+        "text": "2026-09-30 18:58:58,132 INFO: 1 build failed"
+      }
+    ]
+  }
+}
