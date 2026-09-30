@@ -186,7 +186,7 @@ export async function stelleEinstellungZurueck(ctx, table, key, value) {
   return beleg;
 }
 
-function repositories() {
+export function repositories() {
   const repos = [wurzel], git = join(wurzel, '.git');
   if (existsSync(git)) {
     try {

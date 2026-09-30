@@ -205,7 +205,7 @@ Auf `fr-api36` erschien nach dem Systemstart der Dialog „System UI isn't respo
 
 **Dokumentierte Grenzen, je Abbild sechs:** Fünf Navigationsfälle (`mailto:`, `intent:`, `file:`, `content:`, `data:`) haben auf den AOSP-Abbildern keine wirksame Gegenprobe für das Plugin. Die Prüfung auf einen offenen Devtools-Socket erlaubt auf Abbildern vom Build-Typ `userdebug` keine Aussage über einen Release-Build. Einzelheiten stehen unter „Grenzen und Bewertung“.
 
-**Ausstehend:** Auf einem echten Gerät mit Build-Typ `user`: Nachweis, dass das Debugging der WebView im Release-Build aus ist, sowie Ansage der Namen und Bedienung mit TalkBack. Dateiimport, Exporte, Teilen und Bestätigungsdialog gehören zur gesonderten Geräteprüfung.
+**Ausstehend:** Auf einem echten Gerät mit Build-Typ `user`: Nachweis, dass das Debugging der WebView im Release-Build aus ist (vorbereitet, siehe „Prüfung auf einem Gerät“), sowie Ansage der Namen und Bedienung mit TalkBack. Dateiimport, Exporte, Teilen und Bestätigungsdialog gehören zur gesonderten Geräteprüfung.
 
 ### Ablauf und Nachweise
 
@@ -277,3 +277,38 @@ Sie stellt ursprüngliche und neue Einzelbefunde gegenüber und nennt ihre Rohbe
 Eine erfolgte Sichtprüfung wird ohne erneuten Gerätelauf in `sichtpruefung.json` im ursprünglichen Laufordner festgehalten. Das Format lautet `{"schema":1,"pruefungen":[…]}`. Jeder Eintrag enthält `bild` (Dateiname), `ergebnis` (`bestanden` oder `nicht bestanden`), `wer`, `wann` (Datum `JJJJ-MM-TT` oder UTC-Zeitstempel), `bemerkung` und `sha256` (64 kleine Hexadezimalzeichen). Die Prüfsumme bindet das Urteil an genau die geprüften Bildbytes. Die Neuauswertung nennt diese Angaben und die noch offenen Bilder in der Zusammenfassung.
 
 Zugelassen sind nur die erwarteten A8- und B-Bilder als reguläre PNG-Dateien unmittelbar im Laufordner. Unbekannte oder doppelte Bilder, Pfade in Unterordner oder außerhalb des Laufordners, symbolische Verknüpfungen, fehlende Bilder, abweichende Prüfsummen und ungültige Angaben erzeugen einen ungültigen Befund zum Sichtprüfprotokoll. Ein negatives Bildurteil führt zu „nicht bestanden“. Solange in einer Gruppe noch für ein Bild ein gültiges Urteil fehlt, bleibt sie „Sichtprüfung ausstehend“; erst vollständig positive Urteile ergeben „bestanden“. Eine Sichtprüfung ändert weder dokumentierte Grenzen noch technische Fehler anderer Prüfungen.
+
+## Prüfung auf einem Gerät
+
+Stand 30.09.2026: Das Skript ist vorbereitet. Ein Lauf auf einem Gerät hat noch nicht stattgefunden; dieser Abschnitt beschreibt den Ablauf, keine Ergebnisse.
+
+`scripts/geraet-lauf.mjs` ergänzt den Emulatorlauf um die Frage, die die Testabbilder nicht beantworten: ob das Debugging der WebView im Release-Build auf einem Gerät mit Build-Typ `user` aus ist. Das Skript läuft unter Windows gegen ein über USB angeschlossenes Gerät mit eingeschaltetem USB-Debugging. Es braucht keine Root-Rechte und ändert keine Einstellung des Geräts.
+
+```sh
+node scripts/geraet-lauf.mjs --seriennummer <Seriennummer aus adb devices> --ausgabe scratchpad/geraet/lauf-1
+```
+
+`--seriennummer` und `--ausgabe` sind Pflicht. Für den Ausgabeordner gelten die Regeln des Emulatorlaufs. `--apk-debug <Datei>` und `--apk-release <Datei>` ersetzen die Vorgaben. Mit `--app-behalten` bleibt die Release-Kopie nach dem Lauf installiert, etwa für die Prüfung von Hand; ohne den Schalter deinstalliert der Lauf die App wieder.
+
+Der Lauf bricht vor jeder Installation ab, wenn das Gerät diesen Rechner noch nicht zugelassen hat, wenn die ADB-Shell als root läuft, wenn es ein Emulator ist, wenn die API unter 30 liegt oder wenn die App schon installiert ist. Vorhandene Daten der App bleiben dann erhalten.
+
+| Befund | Inhalt |
+|---|---|
+| `G-Gerät` | Hersteller, Modell, Android-Version, API, Build-Typ und WebView-Version |
+| `G-Devtools-Gegenprobe`, `G-Socket-Gegenprobe`, `G-Flags-Gegenprobe` | Am Debug-Build müssen die Devtools der WebView antworten, ihr Socket muss in `/proc/net/unix` stehen, und das Paket muss `DEBUGGABLE` tragen. Sonst sind die entsprechenden Prüfungen am Release-Build ungültig. |
+| `G-Activity`, `G-Start` | Die Release-Kopie startet, das Formular steht in der nativen Ansicht, die Fehlerfalle ist nicht sichtbar. |
+| `G-Flags` | Paketkennzeichen ohne `DEBUGGABLE` und `ALLOW_BACKUP` |
+| `G-Socket` | Drei Proben im Abstand von fünf Sekunden bei laufendem Prozess der App: kein Devtools-Socket der WebView in `/proc/net/unix` |
+| `G-Devtools` | Zu denselben Zeitpunkten: Weiterleitung auf den Devtools-Socket des Prozesses und Abfrage von `/json/version`; es darf keine Antwort kommen. |
+
+Die Rückgabewerte entsprechen dem Emulatorlauf. Auf einem Gerät mit anderem Build-Typ als `user` bleiben `G-Socket` und `G-Devtools` dokumentierte Grenzen. Die Release-Datei wird wie im Emulatorlauf nur für die Prüfung mit dem Debug-Schlüssel der Android-Werkzeuge signiert.
+
+Erprobt sind die Annahmen des Laufs am 30.09.2026 auf dem Abbild `fr-api36` ohne Root: Die ADB-Shell liest `/proc/net/unix`, `adb pull` liest die installierte APK, die Devtools des Debug-Builds antworten über die Weiterleitung, und eine Weiterleitung auf einen Socket, den es nicht gibt, bleibt ohne Antwort. Ob ein Gerät eines Herstellers dasselbe zulässt, zeigt erst der Lauf dort.
+
+Grenzen:
+
+- Die Socketliste erfasst alle Apps des Geräts. Ein Devtools-Socket der WebView einer anderen App führt ebenfalls zu „nicht bestanden“ und ist über die aufgezeichneten Prozessnummern zu klären.
+- Ein Lauf belegt ein Gerät mit einer Android- und einer WebView-Version, nicht andere Geräte.
+- Netz, Navigation, Sicherung und Darstellung wiederholt der Lauf nicht. Das Bild `g-start.png` ist ein ergänzender Rohbeleg und von Hand zu sichten.
+- Die Bedienung mit TalkBack und die Dateiabläufe prüft der Lauf nicht; sie sind von Hand zu prüfen und mit Gerät, Version und Datum festzuhalten.
+- Die Laufbelege enthalten Angaben des Geräts, darunter die Seriennummer und die Socketnamen anderer Apps. Sie gehören nicht in das öffentliche Repository.
