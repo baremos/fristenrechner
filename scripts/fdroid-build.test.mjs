@@ -10,7 +10,7 @@ import test from 'node:test';
 
 const hier = dirname(fileURLToPath(import.meta.url));
 const python = ['python3', 'python'].find((name) => spawnSync(name, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)']).status === 0);
-const scratchpad = resolve(hier, '../scratchpad');
+const scratchpad = resolve(hier, '../scratchpad/paket-2.8-f5/tmp');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'fdroid-build-test-'));
 test.after(() => rmSync(arbeit, { recursive: true, force: true }));
