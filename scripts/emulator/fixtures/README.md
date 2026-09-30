@@ -2,6 +2,8 @@
 
 Die JSON- und Textausschnitte stammen aus der Emulatorprobe vom 29.09.2026 sowie den Läufen der App vom 30.09.2026 auf Android API 24, 30 und 36. Übernommen sind nur die für die Auswertung nötigen Felder und Zeilen. Rechnerpfade, Benutzernamen, Rechnernamen und Geräteseriennummern gehören nicht zu den Prüfdaten. Android-Paketnamen, generische Emulator-Adressen und die geprüften Android-Datenpfade bleiben als technische Testwerte erhalten.
 
+Der Quellvertrag erwartet inzwischen die native Dateiausgabe für „Speichern unter“ und „Teilen“; Import und Rücksetzen verwenden weiter den Webadapter. Seine Tests enthalten konstruierte Änderungen an der Adapterkomposition, den Brückenaufrufen und den Erfolgstexten. Die aufgezeichneten Prüfdaten bleiben unverändert und belegen keinen erneuten Emulatorlauf mit diesem Anschluss. Die Fälle der nativen Dateiausgabe sind bis zu neuen Läufen auf API 30 und 36 offen.
+
 | Dateien | Ursprüngliche Aufzeichnung und Auswahl |
 |---|---|
 | `netz-api*.json` | `p4-ergebnis.json`, `schritte.gueltigkeitVorher`, `gueltigkeitNachher`, `appAngriffe`, `gegenAngriffe`; Annahmen, Ergebnis und einschlägige CDP-Meldungen. |

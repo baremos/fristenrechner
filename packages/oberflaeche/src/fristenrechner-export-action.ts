@@ -77,6 +77,7 @@ export async function runDateiAusgabe(
         ? error.message
         : transport
           ? optionen.texte.ausgabeFehler?.[weg]?.[kind]
+            ?? (error instanceof PlattformFehler ? error.message : undefined)
             ?? `Die ${copy.name} konnte nicht zum ${weg === 'teilen' ? 'Teilen' : 'Speichern'} bereitgestellt werden. Bitte versuchen Sie es erneut.`
           : optionen.texte.erzeugungsFehler?.[kind] ?? copy.error;
     }

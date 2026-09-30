@@ -179,6 +179,53 @@ const SAUBER = {
   '_astro/a.AbCdEfGh.css': '.a{background:url(data:image/png;base64,AA==)}',
 };
 
+// Konstruierter Ausschnitt mit denselben sechs Aufrufstellen wie der Appadapter.
+// Der zweite gleichnamige Parameter zeigt, dass die Oberfläche nicht mitzählt.
+const DATEIAUSGABE = `
+function adapter(p = dateiablauf) {
+  async function ausgeben() {
+    await p.ausgabeBeginnen({ name, mime, anzahlBytes });
+    await p.ausgabeBlock({ auftragId, offset, base64 });
+    await p.ausgabeAbschliessen({ auftragId });
+    await p.speichernUnter({ auftragId });
+    await p.teilen({ auftragId });
+    await p.ausgabeVerwerfen({ auftragId });
+  }
+}
+function oberflaeche(p) { p.teilen(datei); }
+`;
+const BRUECKENZAHLEN = { ausgabeBeginnen: 1, ausgabeBlock: 1, ausgabeAbschliessen: 1, speichernUnter: 1, teilen: 1, ausgabeVerwerfen: 1 };
+
+test('K2: native Ausgabe zählt nur die sechs Aufrufstellen am Plugin und die UTF-8-Bytes', () => {
+  const name = '_astro/app.AbCdEfGh.js';
+  const inhalt = `${DATEIAUSGABE}\nconst meldung = 'Größe';`;
+  const { fehler, bericht } = pruefeDist(ordner({ ...SAUBER, [name]: inhalt }));
+  assert.deepEqual(fehler, []);
+  assert.deepEqual(bericht.dateiausgabe, { app: BRUECKENZAHLEN });
+  assert.equal(bericht.skriptBytes[name], Buffer.byteLength(inhalt));
+  assert.ok(bericht.skriptBytes[name] > inhalt.length);
+});
+
+for (const [titel, vorher, nachher] of [
+  ['fehlendes Anfangsfeld', '{ name, mime, anzahlBytes }', '{ name, mime }'],
+  ['zusätzliches Anfangsfeld', '{ name, mime, anzahlBytes }', '{ name, mime, anzahlBytes, pfad }'],
+  ['fehlender Blockoffset', '{ auftragId, offset, base64 }', '{ auftragId, base64 }'],
+  ['zusätzliches Schlussfeld', 'ausgabeAbschliessen({ auftragId })', 'ausgabeAbschliessen({ auftragId, name })'],
+  ['zusätzliches Speicherfeld', 'speichernUnter({ auftragId })', 'speichernUnter({ auftragId, mime })'],
+  ['falsches Teilenfeld', 'teilen({ auftragId })', 'teilen({ id: auftragId })'],
+  ['zusätzliches Verwerfenfeld', 'ausgabeVerwerfen({ auftragId })', 'ausgabeVerwerfen({ auftragId, force: true })'],
+  ['zweites Argument', 'teilen({ auftragId })', 'teilen({ auftragId }, true)'],
+  ['ausgebreitete Felder', 'teilen({ auftragId })', 'teilen({ ...kennung })'],
+  ['doppeltes Feld', 'teilen({ auftragId })', 'teilen({ auftragId, auftragId })'],
+  ['Methode fehlt', 'await p.ausgabeBlock({ auftragId, offset, base64 });', ''],
+  ['Methode doppelt', 'await p.teilen({ auftragId });', 'await p.teilen({ auftragId }); await p.teilen({ auftragId });'],
+  ['andere Pluginmethode', 'await p.teilen({ auftragId });', 'await p.andereMethode({ auftragId });'],
+  ['berechnete Pluginmethode', 'await p.teilen({ auftragId });', 'await p[methodenname]({ auftragId });'],
+]) test(`K2 Dateiausgabe: ${titel} wird abgewiesen`, () => {
+  const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/app.AbCdEfGh.js': DATEIAUSGABE.replace(vorher, nachher) }));
+  assert.ok(fehler.some(f => /Dateiablauf[.:]/.test(f)), fehler.join('\n'));
+});
+
 test('K2: sauberer Ordner besteht', () => {
   const { fehler, bericht } = pruefeDist(ordner(SAUBER));
   assert.deepEqual(fehler, []);

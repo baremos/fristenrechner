@@ -134,13 +134,63 @@ function adressenIn(text) {
   return [...treffer, ...[...rest.matchAll(OHNE_SCHEMA)].map((m) => m[0])];
 }
 
+const DATEIAUSGABE_FELDER = {
+  ausgabeBeginnen: ['anzahlBytes', 'mime', 'name'],
+  ausgabeBlock: ['auftragId', 'base64', 'offset'],
+  ausgabeAbschliessen: ['auftragId'],
+  speichernUnter: ['auftragId'],
+  teilen: ['auftragId'],
+  ausgabeVerwerfen: ['auftragId'],
+};
+
+// Der Adapter nutzt einen Plugin-Parameter und direkte Aufrufe. Gleichnamige
+// Methoden der Oberfläche (teilen) oder anderer Funktionen zählen nicht mit.
+// Dynamische Empfänger, Aliase und berechnete Methodennamen bildet dies nicht ab.
+function dateiausgabeAufrufe(ast, fehler) {
+  const eltern = new WeakMap(), aufrufe = [], empfaenger = new Set(), anzahl = {};
+  besuche(ast.program, (k, p) => { if (p) eltern.set(k, p); });
+  const bindung = (k, name) => {
+    for (let p = k; p; p = eltern.get(p)) {
+      if (FUNKTIONEN.has(p.type) && p.params?.some(a => (a.type === 'AssignmentPattern' ? a.left : a)?.name === name)) return `${p.start}:${name}`;
+    }
+    return `global:${name}`;
+  };
+  besuche(ast.program, k => {
+    if (!['CallExpression', 'OptionalCallExpression'].includes(k.type)) return;
+    const c = k.callee;
+    if (!['MemberExpression', 'OptionalMemberExpression'].includes(c?.type) || c.object?.type !== 'Identifier') return;
+    const name = eigenschaftsname(c), schluessel = bindung(k, c.object.name);
+    aufrufe.push({ k, name, schluessel });
+    if (name !== 'teilen' && Object.hasOwn(DATEIAUSGABE_FELDER, name)) empfaenger.add(schluessel);
+  });
+  for (const { k, name, schluessel } of aufrufe) {
+    if (!empfaenger.has(schluessel)) continue;
+    if (!Object.hasOwn(DATEIAUSGABE_FELDER, name)) {
+      fehler.push(`Dateiablauf: unbekannte Methode ${name ?? '(berechnet)'}.`);
+      continue;
+    }
+    anzahl[name] = (anzahl[name] ?? 0) + 1;
+    const arg = k.arguments[0];
+    const felder = arg?.type === 'ObjectExpression' ? arg.properties.map(p => p.type !== 'ObjectProperty' ? null
+      : p.computed ? konstanterText(p.key) : p.key.type === 'Identifier' ? p.key.name : konstanterText(p.key)) : [];
+    if (k.arguments.length !== 1 || arg?.type !== 'ObjectExpression' || felder.some(f => f === null)
+      || !isDeepStrictEqual(felder.sort(), DATEIAUSGABE_FELDER[name])) {
+      fehler.push(`Dateiablauf.${name}: genau ein Objekt mit ${DATEIAUSGABE_FELDER[name].join(', ')} erwartet.`);
+    }
+  }
+  if (empfaenger.size) for (const name of Object.keys(DATEIAUSGABE_FELDER)) {
+    if (anzahl[name] !== 1) fehler.push(`Dateiablauf.${name}: genau eine Aufrufstelle erwartet, gefunden ${anzahl[name] ?? 0}.`);
+  }
+  return anzahl;
+}
+
 /**
  * Wertet ein Skript aus. art: "module" oder "script".
  * Ergebnis: { syntax: {Merkmal: Anzahl}, laufzeit: {Name: Anzahl}, dynamisch: {Name: Anzahl},
  *            adressen: [Wortlaut], fehler }
  */
 export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufzeitNamen } = {}) {
-  const ergebnis = { syntax: {}, laufzeit: {}, dynamisch: {}, adressen: [], fehler: [] };
+  const ergebnis = { syntax: {}, laufzeit: {}, dynamisch: {}, dateiausgabe: {}, adressen: [], fehler: [] };
   let ast;
   try {
     ast = parse(quelltext, {
@@ -153,6 +203,7 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
     ergebnis.fehler.push(`Nicht lesbar: ${fehler.message}`);
     return ergebnis;
   }
+  ergebnis.dateiausgabe = dateiausgabeAufrufe(ast, ergebnis.fehler);
   const zaehle = (feld, name) => { ergebnis[feld][name] = (ergebnis[feld][name] ?? 0) + 1; };
   const methoden = new Set(laufzeitNamen.filter((n) => n.art === 'methode').map((n) => n.name));
   const globale = new Set(laufzeitNamen.filter((n) => n.art === 'global').map((n) => n.name));
@@ -393,7 +444,7 @@ function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
  */
 export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorgabe = VORGABE, quellOrdner = [] } = {}) {
   const fehler = [];
-  const bericht = { dateien: 0, syntax: {}, laufzeit: {}, dynamisch: {}, adressen: {} };
+  const bericht = { dateien: 0, skriptBytes: {}, syntax: {}, laufzeit: {}, dynamisch: {}, dateiausgabe: {}, adressen: {} };
   // Jeder Eintrag der Regeldatei braucht Datei, eine Höchstzahl ab 1 und einen Grund.
   for (const liste of ['laufzeitAusnahmen', 'dynamischerCode', 'adressen']) {
     if (!Array.isArray(vorgabe[liste])) { fehler.push(`app-pruefungen.json: ${liste} fehlt oder ist keine Liste.`); continue; }
@@ -422,6 +473,7 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
     for (const [name, n] of Object.entries(a.syntax)) zaehle('syntax', stamm, name, n);
     for (const [name, n] of Object.entries(a.laufzeit)) zaehle('laufzeit', stamm, name, n);
     for (const [name, n] of Object.entries(a.dynamisch)) zaehle('dynamisch', stamm, name, n);
+    for (const [name, n] of Object.entries(a.dateiausgabe)) zaehle('dateiausgabe', stamm, name, n);
     for (const adresse of a.adressen) zaehle('adressen', stamm, adresse, 1);
   };
   for (const datei of dateien) {
@@ -429,7 +481,9 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
     const endung = extname(datei).toLowerCase();
     if (endung === '.map') { fehler.push(`${datei}: Source-Maps gehören nicht in die App.`); continue; }
     if (endung === '.js' || endung === '.mjs') {
-      werteSkriptAus(readFileSync(pfad, 'utf8'), 'module', dateistamm(datei), datei);
+      const inhalt = readFileSync(pfad);
+      bericht.skriptBytes[datei] = inhalt.length;
+      werteSkriptAus(inhalt.toString('utf8'), 'module', dateistamm(datei), datei);
     } else if (endung === '.css') {
       pruefeCss(readFileSync(pfad, 'utf8'), datei, fehler);
     } else if (endung === '.html') {

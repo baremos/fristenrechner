@@ -11,6 +11,10 @@ const texte = {
   datenschutzTitel: 'Ihre Daten bleiben auf diesem Gerät.',
   datenschutzText: 'Die App hat keinen Internetzugriff. Weitergegeben wird nur, was Sie selbst exportieren.',
   speicherNichtVerfuegbar: 'Lokales Speichern ist auf diesem Gerät nicht verfügbar.',
+  ausgabeErfolg: {
+    exportieren: { projekt: 'Projektdatei gespeichert.', excel: 'Excel-Datei gespeichert.', pdf: 'PDF gespeichert.' },
+    teilen: { projekt: 'Projektdatei zum Teilen bereitgestellt.', excel: 'Excel-Datei zum Teilen bereitgestellt.', pdf: 'PDF zum Teilen bereitgestellt.' },
+  },
 };
 ---
 <!doctype html>
@@ -57,6 +61,7 @@ const texte = {
   </main>
   <script>
     import '../rechtsstand-anzeige';
+    import { erzeugeNativeDateiAusgabe } from '../adapters/dateiausgabe';
     import { erzeugeWebPlattform, initFristenrechner } from '@baremos/fristenrechner-ui/ui';
     import type { ExportInhalt, GastgeberTexte } from '@baremos/fristenrechner-ui/ui';
 
@@ -64,7 +69,8 @@ const texte = {
     if (root) {
       const texte = JSON.parse(root.dataset.gastgeberTexte!) as GastgeberTexte;
       const exportInhalt = JSON.parse(root.dataset.exportInhalt!) as ExportInhalt;
-      initFristenrechner(root, { plattform: erzeugeWebPlattform(root), texte, exportInhalt });
+      const plattform = { ...erzeugeWebPlattform(root), ausgabe: erzeugeNativeDateiAusgabe() };
+      initFristenrechner(root, { plattform, texte, exportInhalt });
     }
   </script>
 </body>

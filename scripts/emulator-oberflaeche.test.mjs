@@ -22,6 +22,7 @@ const quelldateien = [
   'packages/oberflaeche/src/Fristenrechner.astro', 'app/src/pages/index.astro',
   'packages/oberflaeche/src/fristenrechner-ui.ts', 'packages/kern/src/fristen.ts',
   'packages/oberflaeche/src/web-plattform.ts',
+  'app/src/adapters/dateiausgabe.ts',
 ];
 let nummer = 0;
 function quellkopie(datei, ersetzen, durch) {
@@ -54,6 +55,15 @@ for (const [titel, datei, ersetzen, durch] of [
   ['Speicherschlüssel fehlt', quelldateien[4], 'const WEB_SPEICHERSCHLUESSEL =', 'const ANDERER_KEY ='],
   ['Webadapter nutzt anderen Schlüssel', quelldateien[4], 'getItem(WEB_SPEICHERSCHLUESSEL)', "getItem('anderer-schluessel')"],
   ['Initialisierung fehlt', quelldateien[1], 'initFristenrechner(root,', 'andereInitialisierung(root,'],
+  ['Native Ausgabe nicht komponiert', quelldateien[1], 'ausgabe: erzeugeNativeDateiAusgabe()', 'ausgabe: andereAusgabe()'],
+  ['Import bereits anders komponiert', quelldateien[1], 'ausgabe: erzeugeNativeDateiAusgabe()', 'ausgabe: erzeugeNativeDateiAusgabe(), projektImport: andererImport'],
+  ['Adapterimport fehlt', quelldateien[1], "from '../adapters/dateiausgabe'", "from '../adapters/andere'"],
+  ['Pluginregistrierung anders', quelldateien[5], "registerPlugin<DateiablaufPlugin>('Dateiablauf')", "registerPlugin<DateiablaufPlugin>('AnderesPlugin')"],
+  ['Speichererfolg anders', quelldateien[1], 'PDF gespeichert.', 'PDF heruntergeladen.'],
+  ['Teilenerfolg anders', quelldateien[1], 'PDF zum Teilen bereitgestellt.', 'PDF geteilt.'],
+  ...['ausgabeBeginnen', 'ausgabeBlock', 'ausgabeAbschliessen', 'speichernUnter', 'teilen', 'ausgabeVerwerfen'].map(name => [
+    `Native Methode ${name} fehlt`, quelldateien[5], `await plugin.${name}({`, 'await plugin.andereMethode({',
+  ]),
   ['Importmeldung fehlt', quelldateien[0], 'id="import-message"', 'id="andere-meldung"'],
   ['Rücksetzmeldung fehlt', quelldateien[0], 'id="reset-message"', 'id="andere-meldung"'],
   ['Importstatus nicht live', quelldateien[0], 'id="import-message" class="action-message" role="status" aria-live="polite"', 'id="import-message"'],

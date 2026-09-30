@@ -410,14 +410,16 @@ describe('Ausgabe über die Plattform', () => {
     expect(env.el('save-json').disabled).toBe(false);
   });
 
-  it.each(['abgebrochen', 'Fehler'])('meldet Ausgabe-%s passend und gibt den Projektbutton frei', async fall => {
+  it.each(['abgebrochen', 'Plattformfehler', 'unbekannter Fehler'])('meldet Ausgabe-%s passend und gibt den Projektbutton frei', async fall => {
     const env = vorbereiten(json()); env.start(); await warten();
     if (fall === 'abgebrochen') env.exportieren.mockResolvedValue({ status: 'abgebrochen' });
-    else env.exportieren.mockRejectedValue(new PlattformFehler('kein-ziel', 'Probe'));
+    else if (fall === 'Plattformfehler') env.exportieren.mockRejectedValue(new PlattformFehler('kein-ziel', 'Es ist keine passende App zum Speichern oder Teilen verfügbar.'));
+    else env.exportieren.mockRejectedValue(new Error('EIO: /privater/pfad/projekt.json'));
     env.click('save-json'); await warten();
     expect(env.el('save-json').disabled).toBe(false);
     if (fall === 'abgebrochen') expect(env.el('export-message').textContent).toBe('');
-    else expect(env.el('export-message').textContent).toContain('nicht zum Speichern bereitgestellt');
+    else if (fall === 'Plattformfehler') expect(env.el('export-message').textContent).toBe('Es ist keine passende App zum Speichern oder Teilen verfügbar.');
+    else expect(env.el('export-message').textContent).toBe('Die Projektdatei konnte nicht zum Speichern bereitgestellt werden. Bitte versuchen Sie es erneut.');
   });
 
   it('verhindert Doppelklick und späte Statusänderung nach dispose während der Projektausgabe', async () => {
