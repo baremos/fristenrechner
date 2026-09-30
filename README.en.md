@@ -82,7 +82,7 @@ All versions and the reasons for them are in [docs/toolchain.md](docs/toolchain.
 | Check the licenses of the dependencies | `npm run lizenzen` | see [docs/lizenzen.md](docs/lizenzen.md) |
 | Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the JDK and the project SDK |
 | Build the Android app, debug | `node scripts/app-bauen.mjs --android` | web build, transfer to Android, Gradle and the checks of the build chain in one run |
-| Build the Android app, unsigned release | `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` | with `--streng` only with the reference versions of the tools |
+| Build the Android app, unsigned release | `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` | with `--streng` only if Node, the JDK and the SDK packages match the pinned versions; the build does not check the npm version |
 | Check the app in the emulator | `node scripts/emulator-lauf.mjs` | under Windows; call and scope in [docs/app.md](docs/app.md) |
 
 Build and tests need no private files. `npm ci` downloads the dependencies from the network; the Android build additionally downloads its tools. The app itself has no permission for network access. What has been checked in the emulator in this respect, and what has not, is described in [docs/app.md](docs/app.md).

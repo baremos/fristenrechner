@@ -82,7 +82,7 @@ Alle Versionen und ihre Begründung stehen in [docs/toolchain.md](docs/toolchain
 | Lizenzen der Abhängigkeiten prüfen | `npm run lizenzen` | siehe [docs/lizenzen.md](docs/lizenzen.md) |
 | Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht JDK und Projekt-SDK |
 | Android-App bauen, Debug | `node scripts/app-bauen.mjs --android` | Web-Build, Übertragung nach Android, Gradle und die Prüfungen der Build-Kette in einem Lauf |
-| Android-App bauen, Release ohne Signatur | `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` | mit `--streng` nur mit den Referenzversionen der Werkzeuge |
+| Android-App bauen, Release ohne Signatur | `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` | mit `--streng` nur, wenn Node, JDK und die Pakete des SDK der Festlegung entsprechen; die Version von npm prüft der Build nicht |
 | App im Emulator prüfen | `node scripts/emulator-lauf.mjs` | unter Windows, Aufruf und Umfang in [docs/app.md](docs/app.md) |
 
 Build und Tests brauchen keine privaten Dateien. `npm ci` lädt die Abhängigkeiten aus dem Netz, der Android-Build lädt zusätzlich seine Werkzeuge. Die App selbst hat keine Berechtigung für den Netzwerkzugriff. Was dazu im Emulator geprüft ist und was nicht, steht in [docs/app.md](docs/app.md).
