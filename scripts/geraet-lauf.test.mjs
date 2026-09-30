@@ -6,7 +6,7 @@ import { createServer as tcpServer } from 'node:net';
 import { dirname, join, relative, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { KONTROLLSOCKET, argumente, evaluiereDevtoolsVerbindung, evaluiereSocketProben, geraetZustand, holeDevtoolsVersion, lauf, main, probeGueltig, unguenstigster } from './geraet-lauf.mjs';
+import { KONTROLLSOCKET, PROBEN, argumente, evaluiereDevtoolsVerbindung, evaluiereSocketProben, geraetZustand, holeDevtoolsVersion, lauf, main, probeGueltig, prozessStart, unguenstigster } from './geraet-lauf.mjs';
 import { APP, innen } from './emulator/rahmen.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -53,10 +53,10 @@ test('main meldet Argumentfehler mit Rückgabewert 64', async () => {
 });
 
 test('adb devices: Zustand nur bei genau einer Zeile für die Seriennummer', () => {
-  const liste = `List of devices attached\r\n${SERIE}\tdevice\r\nemulator-5554\toffline\r\n\r\n`;
-  assert.equal(geraetZustand(liste, SERIE), 'device');
-  assert.equal(geraetZustand(liste, 'emulator-5554'), 'offline');
-  assert.equal(geraetZustand(liste, 'R58'), null);
+  const geraete = `List of devices attached\r\n${SERIE}\tdevice\r\nemulator-5554\toffline\r\n\r\n`;
+  assert.equal(geraetZustand(geraete, SERIE), 'device');
+  assert.equal(geraetZustand(geraete, 'emulator-5554'), 'offline');
+  assert.equal(geraetZustand(geraete, 'R58'), null);
   assert.equal(geraetZustand(`${SERIE}\tunauthorized\n`, SERIE), 'unauthorized');
   assert.equal(geraetZustand(`${SERIE}\tdevice\n${SERIE}\tdevice\n`, SERIE), null);
 });
@@ -70,44 +70,85 @@ test('Mehrere Proben: das ungünstigste Ergebnis gilt', () => {
   assert.equal(unguenstigster([]).status, 'ungültig');
 });
 
-// Wie am Abbild fr-api36 beobachtet: Der Abruf an einem Socket, den es nicht gibt, endet mit UND_ERR_SOCKET.
-const KEIN_SOCKET = { art: 'fehler', name: 'TypeError', code: 'UND_ERR_SOCKET', meldung: 'fetch failed', ms: 90 };
-const ANTWORT = { art: 'antwort', status: 200, browser: 'Chrome/140.0.7339.51', paket: APP, ms: 170 };
-const guteProbe = (mehr = {}) => ({ pidVor: '4321', pidNach: '4321', vordergrundVor: true, vordergrundNach: true, abruf: KEIN_SOCKET, kontrolle: KEIN_SOCKET, ...mehr });
+// Zeile aus /proc/<pid>/stat, wie am Abbild fr-api36 beobachtet (gekürzt): Feld 22 ist die Startzeit.
+const stat = (pid, start, name = 'emos.fristenrechner') => `${pid} (${name}) S 300 300 0 0 -1 1077952832 9000 0 12 0 40 20 0 0 10 -10 45 0 ${start} 15000000000 30000 18446744073709551615 1 1 0 0 0 0 4612 1 1073775864 0 0 0 17 3 0 0 0 0 0`;
 
-test('Probe am Release-Build: gleicher Prozess vor und nach der Probe, App im Vordergrund', () => {
-  assert.equal(probeGueltig(guteProbe()), null);
-  assert.match(probeGueltig(guteProbe({ pidNach: '' })), /läuft während der Probe nicht/);
-  assert.match(probeGueltig(guteProbe({ pidVor: '' })), /läuft während der Probe nicht/);
-  assert.match(probeGueltig(guteProbe({ pidNach: '5000' })), /gewechselt/);
-  assert.match(probeGueltig(guteProbe({ vordergrundNach: false })), /nicht im Vordergrund/);
-  assert.match(probeGueltig(guteProbe({ vordergrundVor: undefined })), /nicht im Vordergrund/);
-  assert.match(probeGueltig(null), /fehlt/);
+test('Startzeit aus /proc/<pid>/stat: Feld 22, auch bei Klammern und Leerzeichen im Namen', () => {
+  assert.equal(prozessStart(stat('4321', '987654'), '4321'), '987654');
+  assert.equal(prozessStart(stat('4321', '987654', 'a b) (c'), '4321'), '987654');
+  assert.equal(prozessStart(stat('4321', '987654'), '4322'), null);
+  assert.equal(prozessStart('4321 (kurz) S 1 2', '4321'), null);
+  assert.equal(prozessStart('', '4321'), null);
+  assert.equal(prozessStart(stat('4321', 'x'), '4321'), null);
+  assert.equal(prozessStart(undefined, '4321'), null);
+  assert.equal(prozessStart(stat('4321', '1'), ''), null);
+});
+
+// Wie am Abbild fr-api36 beobachtet: Der Abruf an einem Socket, den es nicht gibt, endet mit UND_ERR_SOCKET.
+const KEIN_SOCKET = { art: 'fehler', name: 'TypeError', code: 'UND_ERR_SOCKET', meldung: 'fetch failed', ms: 90, weiterleitungBelegt: true };
+const ANTWORT = { art: 'antwort', status: 200, browser: 'Chrome/140.0.7339.51', paket: APP, ms: 170, weiterleitungBelegt: true };
+const ZEIT = { art: 'fehler', name: 'TimeoutError', code: null, meldung: 'timeout', ms: 3000, weiterleitungBelegt: true };
+const K = '4321@987654';
+const guteProbe = (mehr = {}) => ({ pidVor: '4321', pidNach: '4321', kennungVor: K, kennungNach: K, vordergrundVor: true, vordergrundNach: true, abruf: KEIN_SOCKET, kontrolle: KEIN_SOCKET, ...mehr });
+const drei = (...abweichend) => [0, 1, 2].map(i => abweichend[i] ?? guteProbe());
+
+test('Probe am Release-Build: derselbe Prozess wie beim Startbeleg, davor und danach, App im Vordergrund', () => {
+  assert.equal(probeGueltig(guteProbe(), K), null);
+  assert.match(probeGueltig(guteProbe({ kennungNach: '' }), K), /läuft während der Probe nicht/);
+  assert.match(probeGueltig(guteProbe({ kennungVor: '' }), K), /läuft während der Probe nicht/);
+  assert.match(probeGueltig(guteProbe({ kennungVor: '4321@', kennungNach: '4321@' }), K), /Startzeit ist nicht lesbar/);
+  assert.match(probeGueltig(guteProbe({ kennungNach: '5000@987654' }), K), /gewechselt/);
+  // Gleiche Nummer, andere Startzeit: ein neu gestarteter Prozess.
+  assert.match(probeGueltig(guteProbe({ kennungNach: '4321@999999' }), K), /gewechselt/);
+  assert.match(probeGueltig(guteProbe({ kennungVor: '5000@1', kennungNach: '5000@1' }), K), /anderen Prozess als der Beleg von Start und Formular/);
+  assert.match(probeGueltig(guteProbe(), ''), /anderen Prozess als der Beleg/);
+  assert.match(probeGueltig(guteProbe({ vordergrundNach: false }), K), /nicht im Vordergrund/);
+  assert.match(probeGueltig(guteProbe({ vordergrundVor: undefined }), K), /nicht im Vordergrund/);
+  assert.match(probeGueltig({ fehler: 'ADB-Weiterleitung nicht bestätigt.' }, K), /Die Messung brach ab: ADB-Weiterleitung/);
+  assert.match(probeGueltig(null, K), /fehlt/);
 });
 
 test('Devtools-Verbindung: Antwort geht vor, sonst zählen Gegenprobe, Start, Prozess und Kontrollsocket', () => {
-  const s = (mehr = {}) => evaluiereDevtoolsVerbindung({ gegenprobeErreichbar: true, startBelegt: true, proben: [guteProbe(), guteProbe(), guteProbe()], buildType: 'user', ...mehr }).status;
+  const s = (mehr = {}) => evaluiereDevtoolsVerbindung({ gegenprobeErreichbar: true, debugKontrolle: KEIN_SOCKET, startBelegt: true, kennung: K, proben: drei(), buildType: 'user', ...mehr }).status;
   assert.equal(s(), 'bestanden');
-  assert.equal(s({ proben: [guteProbe(), guteProbe({ abruf: ANTWORT })] }), 'nicht bestanden');
-  // Eine belegte Antwort wird durch eine später unbrauchbare Probe nicht abgeschwächt.
-  assert.equal(s({ proben: [guteProbe({ abruf: ANTWORT }), guteProbe({ pidNach: '' })] }), 'nicht bestanden');
-  assert.equal(s({ proben: [guteProbe({ abruf: ANTWORT })], gegenprobeErreichbar: false, startBelegt: false }), 'nicht bestanden');
+  assert.equal(PROBEN, 3);
+  assert.equal(s({ proben: drei(undefined, guteProbe({ abruf: ANTWORT })) }), 'nicht bestanden');
+  // Eine belegte Antwort wird durch spätere unbrauchbare oder fehlende Proben nicht abgeschwächt.
+  assert.equal(s({ proben: [guteProbe({ abruf: ANTWORT }), guteProbe({ kennungNach: '' })] }), 'nicht bestanden');
+  assert.equal(s({ proben: [guteProbe({ abruf: ANTWORT }), { fehler: 'ADB-Weiterleitung nicht bestätigt.' }] }), 'nicht bestanden');
+  assert.equal(s({ proben: [guteProbe({ abruf: ANTWORT })], gegenprobeErreichbar: false, startBelegt: false, debugKontrolle: null }), 'nicht bestanden');
   assert.equal(s({ gegenprobeErreichbar: false }), 'ungültig');
   assert.equal(s({ startBelegt: false }), 'ungültig');
   assert.equal(s({ proben: [] }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe(), guteProbe({ pidNach: '' })] }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe({ pidNach: '5000' })] }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe({ vordergrundVor: false })] }), 'ungültig');
+  assert.equal(s({ proben: [guteProbe(), guteProbe()] }), 'ungültig');
+  assert.equal(s({ proben: drei(undefined, guteProbe({ kennungNach: '' })) }), 'ungültig');
+  assert.equal(s({ proben: drei(guteProbe({ kennungNach: '4321@999999' })) }), 'ungültig');
+  assert.equal(s({ proben: drei(guteProbe({ vordergrundVor: false })) }), 'ungültig');
+  assert.equal(s({ proben: drei(undefined, undefined, { fehler: 'abgebrochen' }) }), 'ungültig');
+  // Drei in sich stabile, aber verschiedene Prozesse: Der Startbeleg gilt nur für den ersten.
+  assert.equal(s({ proben: drei(undefined, guteProbe({ kennungVor: '6000@2', kennungNach: '6000@2' }), guteProbe({ kennungVor: '7000@3', kennungNach: '7000@3' })) }), 'ungültig');
+  assert.equal(s({ kennung: '' }), 'ungültig');
   // Etwas antwortet, aber nicht als Devtools; oder der Abruf scheitert anders als am Kontrollsocket.
-  assert.equal(s({ proben: [guteProbe({ abruf: { art: 'unerwartet', status: 200, grund: 'kein JSON', ms: 5 } })] }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe({ abruf: { ...KEIN_SOCKET, code: 'ECONNREFUSED' } })] }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe({ abruf: { art: 'fehler', name: 'TimeoutError', code: null, meldung: 'timeout', ms: 3000 } })] }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe({ abruf: null })] }), 'ungültig');
-  // Ohne eindeutig gescheiterten Abruf am Kontrollsocket ist der Verbindungsweg nicht belegt.
-  assert.equal(s({ proben: [guteProbe({ kontrolle: ANTWORT })] }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe({ kontrolle: { art: 'fehler', name: 'TimeoutError', code: null, meldung: 'timeout', ms: 3000 }, abruf: { art: 'fehler', name: 'TimeoutError', code: null, meldung: 'timeout', ms: 3000 } })] }), 'ungültig');
+  assert.equal(s({ proben: drei(guteProbe({ abruf: { art: 'unerwartet', status: 200, grund: 'kein JSON', ms: 5, weiterleitungBelegt: true } })) }), 'ungültig');
+  assert.equal(s({ proben: drei(guteProbe({ abruf: { ...KEIN_SOCKET, code: 'ECONNRESET' } })) }), 'ungültig');
+  assert.equal(s({ proben: drei(guteProbe({ abruf: ZEIT })) }), 'ungültig');
+  assert.equal(s({ proben: drei(guteProbe({ abruf: null })) }), 'ungültig');
+  // Gleiche Fehler auf beiden Seiten genügen nicht: Niemand hört am Port des Rechners, oder die Zeit läuft ab.
+  const verweigert = { ...KEIN_SOCKET, code: 'ECONNREFUSED' };
+  assert.equal(s({ proben: drei(guteProbe({ abruf: verweigert, kontrolle: verweigert })) }), 'ungültig');
+  assert.equal(s({ proben: [0, 1, 2].map(() => guteProbe({ abruf: verweigert, kontrolle: verweigert })), debugKontrolle: verweigert }), 'ungültig');
+  assert.equal(s({ proben: drei(guteProbe({ abruf: ZEIT, kontrolle: ZEIT })) }), 'ungültig');
+  // Ohne belegte Weiterleitung sagt ein gescheiterter Abruf nichts über das Gerät.
+  const unbelegt = { ...KEIN_SOCKET, weiterleitungBelegt: false };
+  assert.equal(s({ proben: drei(guteProbe({ abruf: unbelegt })) }), 'ungültig');
+  assert.equal(s({ proben: drei(guteProbe({ kontrolle: unbelegt })) }), 'ungültig');
+  // Der Kontrollabruf muss so enden wie in der Debugphase, in der der Weg nachweislich funktionierte.
+  assert.equal(s({ proben: drei(guteProbe({ kontrolle: ANTWORT })) }), 'ungültig');
+  assert.equal(s({ debugKontrolle: { ...KEIN_SOCKET, code: 'ECONNRESET' } }), 'ungültig');
+  assert.equal(s({ debugKontrolle: ZEIT }), 'ungültig');
+  assert.equal(s({ debugKontrolle: undefined }), 'ungültig');
   assert.equal(s({ buildType: 'userdebug' }), 'dokumentierte Grenze');
-  assert.equal(s({ buildType: 'eng', proben: [guteProbe({ abruf: ANTWORT })] }), 'dokumentierte Grenze');
+  assert.equal(s({ buildType: 'eng', proben: drei(guteProbe({ abruf: ANTWORT })) }), 'dokumentierte Grenze');
   assert.equal(s({ buildType: undefined }), 'ungültig');
   assert.equal(evaluiereDevtoolsVerbindung(null).status, 'ungültig');
 });
@@ -117,16 +158,28 @@ const zeile = pfad => `0000000000000000: 00000002 00000000 00010000 0001 01 1234
 const liste = (...mehr) => [KOPF, zeile('/dev/socket/logdw'), zeile('@jdwp-control'), ...mehr].join('\n') + '\n';
 
 test('Socketliste: Fund geht vor, sonst zählen Gegenprobe, Lesbarkeit, Start und Prozess', () => {
-  const s = (mehr = {}) => evaluiereSocketProben({ debugSocketNachgewiesen: true, startBelegt: true, proben: [guteProbe({ text: liste() }), guteProbe({ text: liste() })], buildType: 'user', ...mehr }).status;
+  const gut = () => guteProbe({ text: liste() });
+  const s = (mehr = {}) => evaluiereSocketProben({ debugSocketNachgewiesen: true, startBelegt: true, kennung: K, proben: [gut(), gut(), gut()], buildType: 'user', ...mehr }).status;
+  const eigener = guteProbe({ text: liste(zeile('@webview_devtools_remote_4321')) });
   assert.equal(s(), 'bestanden');
-  assert.equal(s({ proben: [guteProbe({ text: liste() }), guteProbe({ text: liste(zeile('@webview_devtools_remote_4321')), pidNach: '' })], startBelegt: false }), 'nicht bestanden');
+  assert.equal(s({ proben: [gut(), { ...eigener, kennungNach: '' }], startBelegt: false }), 'nicht bestanden');
+  // Der Socket des eigenen Prozesses zählt auch ohne wirksame Gegenprobe.
+  assert.equal(s({ proben: [eigener], debugSocketNachgewiesen: false }), 'nicht bestanden');
+  // Ein Devtools-Socket eines anderen Prozesses zählt nur mit wirksamer Gegenprobe als Fund.
+  const fremder = guteProbe({ text: liste(zeile('@webview_devtools_remote_9999')) });
+  assert.equal(s({ proben: [gut(), fremder, gut()] }), 'nicht bestanden');
+  assert.equal(s({ proben: [gut(), fremder, gut()], debugSocketNachgewiesen: false }), 'ungültig');
   assert.equal(s({ debugSocketNachgewiesen: false }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe({ text: null })] }), 'ungültig');
+  assert.equal(s({ proben: [gut(), guteProbe({ text: null }), gut()] }), 'ungültig');
   assert.equal(s({ startBelegt: false }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe({ text: liste(), pidNach: '' })] }), 'ungültig');
-  assert.equal(s({ proben: [guteProbe({ text: liste(), vordergrundNach: false })] }), 'ungültig');
+  assert.equal(s({ proben: [gut(), gut()] }), 'ungültig');
+  assert.equal(s({ proben: [gut(), guteProbe({ text: liste(), kennungNach: '' }), gut()] }), 'ungültig');
+  assert.equal(s({ proben: [gut(), gut(), guteProbe({ text: liste(), kennungVor: '6000@2', kennungNach: '6000@2' })] }), 'ungültig');
+  assert.equal(s({ proben: [gut(), gut(), guteProbe({ text: liste(), vordergrundNach: false })] }), 'ungültig');
+  assert.equal(s({ proben: [gut(), gut(), { fehler: 'abgebrochen' }] }), 'ungültig');
   assert.equal(s({ proben: [] }), 'ungültig');
   assert.equal(s({ buildType: 'userdebug' }), 'dokumentierte Grenze');
+  assert.equal(s({ buildType: '' }), 'ungültig');
 });
 
 async function mitServer(server, fn) {
@@ -149,9 +202,13 @@ test('Abruf der Versionsauskunft: Antwort, unerwartete Antwort, Abbruch der Gege
     assert.equal(r.art, 'unerwartet');
     assert.equal(typeof r.status, 'number');
   }
+  // Der Antwortkopf ist schon da, dann bricht der Körper ab: Etwas hat geantwortet, aber keine Auskunft geliefert.
+  const halb = await mitServer(http(res => { res.writeHead(200, { 'content-length': '100' }); res.write('{"Bro'); setTimeout(() => res.socket.destroy(), 100); }), holeDevtoolsVersion);
+  assert.deepEqual([halb.art, halb.status], ['unerwartet', 200]);
+  assert.match(halb.grund, /Antwort nicht lesbar/);
   // Die Gegenseite nimmt an und schließt sofort: so verhält sich die Weiterleitung ohne Socket.
   const zu = await mitServer(tcpServer(socket => socket.destroy()), holeDevtoolsVersion);
-  assert.equal(zu.art, 'fehler'); assert.equal(zu.name, 'TypeError'); assert.equal(typeof zu.code, 'string');
+  assert.equal(zu.art, 'fehler'); assert.equal(zu.name, 'TypeError'); assert.ok(['UND_ERR_SOCKET', 'ECONNRESET'].includes(zu.code), zu.code);
   const haengt = await mitServer(tcpServer(() => {}), port => holeDevtoolsVersion(port, 200));
   assert.deepEqual([haengt.art, haengt.name], ['fehler', 'TimeoutError']);
   let frei;
@@ -164,17 +221,21 @@ const paket = flags => `Packages:\n  Package [${APP}] (1a2b3c):\n    versionCode
 const baum = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node text="Fristenrechner Vergabe" bounds="[0,0][100,50]" /><node text="Vergabeordnung" bounds="[0,60][100,100]" /></hierarchy>`;
 const REMOTE = '/data/local/tmp/fristenrechner-emulator.xml';
 const PFAD = `/data/app/~~Zufall==/${APP}-Zufall==/base.apk`;
+const VERWEIGERT = { art: 'fehler', name: 'TypeError', code: 'ECONNREFUSED', meldung: 'fetch failed', ms: 3 };
 
-// Stellt adb, aapt2, apksigner und den Abruf nach. Jeder Aufruf wird mit seiner vollständigen Argumentliste geprüft.
+// Stellt adb, aapt2, apksigner und den Abruf nach. Aufrufe von adb und aapt2 werden mit ihrer vollständigen
+// Argumentliste geprüft, die von apksigner mit den Argumenten, auf die es ankommt.
 function geraeteProbe(wahl = {}) {
-  const { buildType = 'user', unixLesbar = true, releaseSocket = false, releaseDevtools = releaseSocket, releaseAbruf = KEIN_SOCKET,
-    schonInstalliert = false, root = false, zustand = 'device', api = '35', qemu = '', appBehalten = false, fremdesPaket = null,
-    installFehler = null, installHalb = null, pullAbweichung = false, forwardFehler = false, debugFlags = 'DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA',
-    releaseFlags = 'HAS_CODE ALLOW_CLEAR_USER_DATA', releasePids = [], fremdeActivityAb = Infinity, ansicht = baum, debugDevtools = true,
+  const { buildType = 'user', unixLesbar = true, debugSocket = true, releaseSocket = false, releaseDevtools = releaseSocket, releaseAbruf = KEIN_SOCKET,
+    releaseKontrolle = KEIN_SOCKET, schonInstalliert = false, root = false, zustand = 'device', api = '35', qemu = '', appBehalten = false, fremdesPaket = null,
+    installFehler = null, installHalb = null, installVorhanden = false, fremdNachDebug = false, signalBeiInstallation = false, pullAbweichung = false,
+    forwardFehlerAb = Infinity, listeOhneWeiterleitung = false, deinstallationFehler = false,
+    debugFlags = 'DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA', releaseFlags = 'HAS_CODE ALLOW_CLEAR_USER_DATA',
+    releasePids = [], starts = {}, statFehler = false, fremdeActivityAb = Infinity, ansicht = baum, debugDevtools = true,
     signalBeimBaum = false, startFehler = false } = wahl;
   const ort = mkdtempSync(join(arbeit, 'geraet-'));
   const local = join(ort, 'local'), sdk = join(local, 'fristenrechner/android-sdk');
-  const adb = join(sdk, 'platform-tools/adb.exe'), aapt2 = join(sdk, 'build-tools/35.0.0/aapt2.exe');
+  const adb = join(sdk, 'platform-tools/adb.exe'), aapt2 = join(sdk, 'build-tools/35.0.0/aapt2.exe'), apksigner = join(sdk, 'build-tools/35.0.0/lib/apksigner.jar');
   mkdirSync(dirname(adb), { recursive: true }); writeFileSync(adb, 'Wird niemals ausgeführt.');
   const debug = join(ort, 'debug.apk'), release = join(ort, 'release.apk'), debugKey = join(ort, 'debug.keystore');
   writeFileSync(debug, 'Debug-Testdatei'); writeFileSync(release, 'Release-Testdatei'); writeFileSync(debugKey, 'kein Schlüssel');
@@ -183,18 +244,26 @@ function geraeteProbe(wahl = {}) {
   const java = 'java-nachgestellt.exe';
   const app = { apk: null, debug: false, laeuft: false };
   const calls = [], weiterleitungen = new Map();
-  let port = 40000, releasePidAufruf = 0, activityAufruf = 0;
+  let port = 40000, releasePidAufruf = 0, activityAufruf = 0, forwardAufruf = 0, fremdGesetzt = false;
   const ok = out => ({ code: 0, out, err: '' });
   const art = apk => (apk === debug ? 'debug' : apk === signiert ? 'release' : null);
   const run = async (exe, argv, opts = {}) => {
     calls.push({ exe, args: argv });
     if (exe === java) {
-      if (argv.includes('sign')) { assert.equal(argv.at(-1), release); writeFileSync(argv[argv.indexOf('--out') + 1], `${readFileSync(release, 'utf8')} signiert`); return ok(''); }
-      assert.ok(argv.includes('verify'));
+      assert.deepEqual(argv.slice(0, 2), ['-jar', apksigner]);
+      if (argv[2] === 'sign') {
+        const wert = name => argv[argv.indexOf(name) + 1];
+        assert.deepEqual([wert('--ks'), wert('--ks-key-alias'), wert('--v2-signing-enabled'), wert('--v3-signing-enabled'), wert('--alignment-preserved'), wert('--out'), argv.at(-1)], [debugKey, 'androiddebugkey', 'true', 'true', 'true', signiert, release]);
+        assert.match(wert('--ks-pass'), /^file:/); assert.match(wert('--key-pass'), /^file:/);
+        writeFileSync(signiert, `${readFileSync(release, 'utf8')} signiert`); return ok('');
+      }
+      assert.deepEqual(argv.slice(2), ['verify', '--verbose', '--print-certs', '--min-sdk-version', '24', signiert]);
       return ok('Verified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): true\n');
     }
     if (exe === aapt2) {
       assert.deepEqual(argv.slice(0, 2), ['dump', 'packagename']); assert.equal(argv.length, 3); assert.ok(art(argv[2]), `aapt2 mit unerwarteter Datei: ${argv[2]}`);
+      // Zwischen der Deinstallation des Debug-Builds und der Release-Installation kommt das Paket von außen.
+      if (fremdNachDebug && art(argv[2]) === 'release' && !fremdGesetzt) { fremdGesetzt = true; Object.assign(app, { apk: 'fremd', debug: false, laeuft: false }); }
       return ok(`${fremdesPaket === art(argv[2]) ? 'com.example.fremd' : APP}\r\n`);
     }
     assert.equal(exe, adb);
@@ -203,20 +272,23 @@ function geraeteProbe(wahl = {}) {
     const a = argv.slice(2), text = a.join(' ');
     if (a[0] === 'install') {
       assert.equal(a.length, 2); assert.ok(art(a[1]), 'Installation einer unerwarteten Datei');
+      if (installVorhanden && art(a[1]) === 'release') { Object.assign(app, { apk: 'fremd', debug: false, laeuft: false }); return { code: 1, out: `Failure [INSTALL_FAILED_ALREADY_EXISTS: Attempt to re-install ${APP} without first uninstalling.]\n`, err: '' }; }
       assert.equal(app.apk, null, 'Installation über ein vorhandenes Paket');
       if (installFehler === art(a[1])) return { code: 1, out: 'Failure [INSTALL_FAILED_VERIFICATION_FAILURE]\n', err: '' };
       Object.assign(app, { apk: a[1], debug: a[1] === debug, laeuft: false });
+      if (signalBeiInstallation) { process.emit('SIGINT'); return { code: null, out: '', err: 'Prozesslauf unterbrochen' }; }
       return installHalb === art(a[1]) ? { code: 1, out: '', err: 'adb: Verbindung während der Rückmeldung verloren' } : ok('Performing Streamed Install\nSuccess\n');
     }
-    if (text === `uninstall ${APP}`) { Object.assign(app, { apk: null, laeuft: false }); return ok('Success\n'); }
+    if (text === `uninstall ${APP}`) { if (deinstallationFehler) return { code: 1, out: 'Failure [DELETE_FAILED_INTERNAL_ERROR]\n', err: '' }; Object.assign(app, { apk: null, laeuft: false }); return ok('Success\n'); }
     if (a[0] === 'pull') { assert.equal(a.length, 3); assert.equal(a[1], PFAD); if (pullAbweichung) writeFileSync(a[2], 'anderer Inhalt'); else copyFileSync(app.apk, a[2]); return ok('1 file pulled'); }
     if (text === 'exec-out screencap -p') { assert.equal(opts.binary, true); return { code: 0, out: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]), err: '' }; }
     if (a[0] === 'logcat') { assert.match(text, /^logcat -d -v time --pid=\d+$/); return ok('Protokoll der App'); }
     if (a[0] === 'forward') {
+      if (text === 'forward --list') return ok(listeOhneWeiterleitung ? '' : [...weiterleitungen].map(([p, s]) => `${SERIE} tcp:${p} localabstract:${s}`).join('\n') + '\n');
       if (a[1] === '--remove') { assert.equal(a.length, 3); const p = a[2].replace(/^tcp:/, ''); assert.ok(weiterleitungen.has(p), 'Unbekannte Weiterleitung entfernt'); weiterleitungen.delete(p); return ok(''); }
       assert.equal(a.length, 3); assert.equal(a[1], 'tcp:0');
       assert.match(a[2], new RegExp(`^localabstract:(?:webview_devtools_remote_\\d+|${KONTROLLSOCKET})$`));
-      if (forwardFehler) return { code: 1, out: '', err: 'adb: error: cannot bind listener' };
+      if (++forwardAufruf >= forwardFehlerAb) return { code: 1, out: '', err: 'adb: error: cannot bind listener' };
       weiterleitungen.set(String(++port), a[2].replace(/^localabstract:/, '')); return ok(`${port}\n`);
     }
     assert.deepEqual([a[0], a.length], ['shell', 2], `Unerwarteter ADB-Aufruf: ${text}`);
@@ -233,10 +305,16 @@ function geraeteProbe(wahl = {}) {
       const pid = app.debug ? '4321' : releasePids[releasePidAufruf++] ?? '4321';
       return pid === '' ? { code: 1, out: '', err: '' } : ok(`${pid}\n`);
     }
-    if (/^ps -o PID,STIME,ETIME,ARGS -p \d+$/.test(c)) return ok(`  PID STIME     ELAPSED ARGS\n ${c.split(' ').at(-1)} 18:40:01    0:12 ${APP}\n`);
+    const lies = /^cat \/proc\/(\d+)\/stat$/.exec(c);
+    if (lies) {
+      if (statFehler) return { code: 1, out: '', err: `cat: /proc/${lies[1]}/stat: Permission denied` };
+      const start = starts[lies[1]];
+      // Eine Liste gibt die Startzeit je Aufruf vor; der letzte Wert gilt für alle weiteren Aufrufe.
+      return ok(`${stat(lies[1], Array.isArray(start) ? (start.length > 1 ? start.shift() : start[0]) : start ?? '987654')}\n`);
+    }
     if (c === 'cat /proc/net/unix') {
       if (!unixLesbar) return { code: 1, out: '', err: 'cat: /proc/net/unix: Permission denied' };
-      return ok(liste(...(app.laeuft && (app.debug || releaseSocket) ? [zeile('@webview_devtools_remote_4321')] : [])));
+      return ok(liste(...(app.laeuft && ((app.debug && debugSocket) || (!app.debug && releaseSocket)) ? [zeile('@webview_devtools_remote_4321')] : [])));
     }
     if (c === `dumpsys package ${APP}`) return ok(paket(app.debug ? debugFlags : releaseFlags));
     if (c === 'dumpsys activity activities') {
@@ -245,16 +323,20 @@ function geraeteProbe(wahl = {}) {
     }
     if (c === `rm -f ${REMOTE}`) return ok('');
     if (c === `uiautomator dump ${REMOTE}`) { if (signalBeimBaum) process.emit('SIGINT'); return ok(`UI hierchary dumped to: ${REMOTE}\n`); }
-    if (c === `cat ${REMOTE}`) return ok(ansicht);
+    // Eine Liste gibt den Ansichtsbaum je Abzug vor; der letzte Wert gilt für alle weiteren Abzüge.
+    if (c === `cat ${REMOTE}`) return ok(Array.isArray(ansicht) ? (ansicht.length > 1 ? ansicht.shift() : ansicht[0]) : ansicht);
     throw new Error(`Unbekannter nachgestellter Shell-Befehl: ${c}`);
   };
   // Antwortet wie die Devtools, wenn die WebView der laufenden App das Debugging zulässt; sonst wie ohne Socket.
+  let releaseAbrufNr = 0;
   const holen = async p => {
     assert.ok(weiterleitungen.has(p), 'Abruf ohne Weiterleitung');
     const socket = weiterleitungen.get(p);
-    if (socket === KONTROLLSOCKET) return KEIN_SOCKET;
+    if (socket === KONTROLLSOCKET) return app.debug ? KEIN_SOCKET : releaseKontrolle;
     if (app.laeuft && app.debug) return debugDevtools ? ANTWORT : KEIN_SOCKET;
-    return app.laeuft && releaseDevtools ? ANTWORT : releaseAbruf;
+    const nr = ++releaseAbrufNr;
+    const offen = Array.isArray(releaseDevtools) ? releaseDevtools.includes(nr) : releaseDevtools;
+    return app.laeuft && offen ? ANTWORT : releaseAbruf;
   };
   return { local, optionen, run, java, debugKey, holen, calls, app, weiterleitungen, signiert, sleep: async () => {} };
 }
@@ -269,6 +351,8 @@ const ergebnis = p => JSON.parse(readFileSync(join(p.optionen.ausgabe, 'ergebnis
 const status = (p, id) => ergebnis(p).befund.find(b => b.id === id)?.status;
 const grund = (p, id) => ergebnis(p).befund.find(b => b.id === id)?.grund;
 const adbAufrufe = (p, befehl) => p.calls.filter(c => c.args[2] === befehl);
+const aufgeraeumt = p => ergebnis(p).aufraeumen.map(r => [r.name, r.status]);
+const ALLES_AUFGERAEUMT = [['App deinstallieren', 'bestanden'], ['Ansichtsdatei entfernen', 'bestanden'], ['ADB-Weiterleitungen entfernen', 'bestanden']];
 
 test('Gerät mit Build-Typ user: alle Befunde bestanden, App danach entfernt', nurWindows, async () => {
   const p = geraeteProbe();
@@ -277,16 +361,16 @@ test('Gerät mit Build-Typ user: alle Befunde bestanden, App danach entfernt', n
   assert.equal(e.ergebnis, 'bestanden');
   assert.deepEqual(e.befund.map(b => [b.id, b.status]), [['G-Gerät', 'bestanden'], ['G-Devtools-Gegenprobe', 'bestanden'], ['G-Socket-Gegenprobe', 'bestanden'], ['G-Flags-Gegenprobe', 'bestanden'], ['G-Activity', 'bestanden'], ['G-Start', 'bestanden'], ['G-Flags', 'bestanden'], ['G-Socket', 'bestanden'], ['G-Devtools', 'bestanden']]);
   assert.match(e.befund[0].grund, /samsung SM-A176B, Android 15 \(API 35\), Build-Typ user, WebView 140\.0\.7339\.51/);
-  assert.deepEqual(e.aufraeumen.map(r => [r.name, r.status]), [['App deinstallieren', 'bestanden'], ['Ansichtsdatei entfernen', 'bestanden'], ['ADB-Weiterleitungen entfernen', 'bestanden']]);
+  assert.deepEqual(aufgeraeumt(p), ALLES_AUFGERAEUMT);
   assert.equal(p.app.apk, null);
   assert.equal(p.weiterleitungen.size, 0);
   assert.equal(e.appInstalliert, false);
   // Installiert wurden genau der Debug-Build und die signierte Kopie des Release-Builds, ohne Ersetzen.
   assert.deepEqual(adbAufrufe(p, 'install').map(c => c.args.slice(2)), [['install', p.optionen.debug], ['install', p.signiert]]);
   assert.deepEqual(e.installationen.map(i => [i.name, i.eingang === i.installiert]), [['debug', true], ['release', true]]);
-  const proben = JSON.parse(readFileSync(join(p.optionen.ausgabe, 'g-proben.json'), 'utf8'));
-  assert.equal(proben.length, 3);
-  assert.equal(proben.every(x => x.pidVor === '4321' && x.pidNach === '4321' && x.vordergrundVor && x.vordergrundNach && x.socketlisteLesbar && x.abruf.code === 'UND_ERR_SOCKET' && x.kontrolle.code === 'UND_ERR_SOCKET'), true);
+  const beleg = JSON.parse(readFileSync(join(p.optionen.ausgabe, 'g-proben.json'), 'utf8'));
+  assert.deepEqual([beleg.kennung, beleg.startBelegt, beleg.proben.length], [K, true, 3]);
+  assert.equal(beleg.proben.every(x => x.kennungVor === K && x.kennungNach === K && x.vordergrundVor && x.vordergrundNach && x.socketlisteLesbar && x.abruf.code === 'UND_ERR_SOCKET' && x.abruf.weiterleitungBelegt && x.kontrolle.code === 'UND_ERR_SOCKET'), true);
   assert.ok(readFileSync(join(p.optionen.ausgabe, 'g-start.png')).length > 8);
   assert.match(readFileSync(join(p.optionen.ausgabe, 'zusammenfassung.txt'), 'utf8'), /Rückgabewert 0/);
   // Das Kennwort des Debug-Schlüssels steht nie in einem Prozessargument, die Kennwortdatei ist wieder weg.
@@ -301,6 +385,13 @@ test('Offener Devtools-Socket im Release-Build ist ein Fehler', nurWindows, asyn
   assert.equal(p.app.apk, null);
 });
 
+test('Socket des eigenen Prozesses im Release-Build bleibt ein Fehler, auch ohne wirksame Gegenprobe', nurWindows, async () => {
+  const p = geraeteProbe({ debugSocket: false, releaseSocket: true, releaseDevtools: false });
+  assert.equal(await nachgestellterLauf(p), 1);
+  assert.deepEqual([status(p, 'G-Socket-Gegenprobe'), status(p, 'G-Socket')], ['ungültig', 'nicht bestanden']);
+  assert.match(grund(p, 'G-Socket'), /Devtools-Socket des Prozesses der App/);
+});
+
 test('Antwortende Devtools im Release-Build sind ein Fehler, auch ohne Eintrag in der Socketliste', nurWindows, async () => {
   const p = geraeteProbe({ releaseDevtools: true });
   assert.equal(await nachgestellterLauf(p), 1);
@@ -309,20 +400,38 @@ test('Antwortende Devtools im Release-Build sind ein Fehler, auch ohne Eintrag i
 });
 
 test('Antwort erhalten, danach Prozess weg: bleibt ein Fehler', nurWindows, async () => {
-  const p = geraeteProbe({ releaseDevtools: true, releasePids: ['4321', '4321', '4321', ''] });
+  const p = geraeteProbe({ releaseDevtools: true, releasePids: ['4321', '4321', '4321', '4321', '4321', ''] });
   assert.equal(await nachgestellterLauf(p), 1);
   assert.equal(status(p, 'G-Devtools'), 'nicht bestanden');
 });
 
-for (const [name, releaseAbruf] of [
-  ['JSON ohne Versionsauskunft', { art: 'unerwartet', status: 200, grund: 'Antwort ist keine Versionsauskunft der Devtools.', text: '{}', ms: 4 }],
-  ['Zeitüberschreitung', { art: 'fehler', name: 'TimeoutError', code: null, meldung: 'The operation was aborted due to timeout', ms: 3000 }],
-  ['anderer Verbindungsfehler als am Kontrollsocket', { art: 'fehler', name: 'TypeError', code: 'ECONNREFUSED', meldung: 'fetch failed', ms: 3 }],
+test('Antwort in der ersten Probe, danach scheitert die Weiterleitung: Die Antwort wird bewertet', nurWindows, async () => {
+  // Weiterleitungen: eine je Versuch der Gegenprobe (hier einer), Kontrolle, dann je Probe zwei. Die fünfte scheitert.
+  const p = geraeteProbe({ releaseDevtools: [1], forwardFehlerAb: 5 });
+  assert.equal(await nachgestellterLauf(p), 1);
+  assert.deepEqual([status(p, 'G-Devtools'), status(p, 'G-Socket'), status(p, 'Laufrahmen')], ['nicht bestanden', 'ungültig', 'ungültig']);
+  assert.match(grund(p, 'Laufrahmen'), /ADB-Weiterleitung nicht bestätigt/);
+  assert.equal(p.app.apk, null);
+  assert.deepEqual(aufgeraeumt(p), ALLES_AUFGERAEUMT);
+});
+
+for (const [name, wahl, muster] of [
+  ['JSON ohne Versionsauskunft', { releaseAbruf: { art: 'unerwartet', status: 200, grund: 'Antwort ist keine Versionsauskunft der Devtools.', text: '{}', ms: 4 } }, /anders als am Kontrollsocket/],
+  ['Zeitüberschreitung', { releaseAbruf: { art: 'fehler', name: 'TimeoutError', code: null, meldung: 'The operation was aborted due to timeout', ms: 3000 } }, /anders als am Kontrollsocket/],
+  ['anderer Verbindungsfehler als am Kontrollsocket', { releaseAbruf: VERWEIGERT }, /anders als am Kontrollsocket/],
+  ['niemand hört am Port, bei App und Kontrollsocket gleich', { releaseAbruf: VERWEIGERT, releaseKontrolle: VERWEIGERT }, /Kontrollsocket endete nicht wie in der Debugphase/],
+  ['Zeitüberschreitung bei App und Kontrollsocket', { releaseAbruf: { art: 'fehler', name: 'TimeoutError', code: null, meldung: 'timeout', ms: 3000 }, releaseKontrolle: { art: 'fehler', name: 'TimeoutError', code: null, meldung: 'timeout', ms: 3000 } }, /Kontrollsocket endete nicht wie in der Debugphase/],
 ]) test(`Release-Abruf nicht eindeutig (${name}): ungültig statt bestanden`, nurWindows, async () => {
-  const p = geraeteProbe({ releaseAbruf });
+  const p = geraeteProbe(wahl);
   assert.equal(await nachgestellterLauf(p), 2);
   assert.deepEqual([status(p, 'G-Socket'), status(p, 'G-Devtools')], ['bestanden', 'ungültig']);
-  assert.match(grund(p, 'G-Devtools'), /anders als am Kontrollsocket/);
+  assert.match(grund(p, 'G-Devtools'), muster);
+});
+
+test('Weiterleitung steht nicht in adb forward --list: Verbindungsprüfung ungültig', nurWindows, async () => {
+  const p = geraeteProbe({ listeOhneWeiterleitung: true });
+  assert.equal(await nachgestellterLauf(p), 2);
+  assert.deepEqual([status(p, 'G-Devtools-Gegenprobe'), status(p, 'G-Devtools'), status(p, 'G-Socket')], ['ungültig', 'ungültig', 'bestanden']);
 });
 
 test('Nicht lesbares /proc/net/unix macht die Socketprüfung ungültig; die Verbindungsprüfung hängt nicht daran', nurWindows, async () => {
@@ -339,14 +448,23 @@ test('Debug-Build ohne antwortende Devtools: Gegenprobe ausgeschöpft, Verbindun
   assert.equal(p.calls.filter(c => c.args[3] === 'tcp:0' && c.args[4].includes('webview_devtools_remote_')).length, 20 + 3);
 });
 
-for (const [name, releasePids, muster] of [
-  ['stirbt während der letzten Probe', ['4321', '4321', '4321', '4321', '4321', ''], /Probe 3: Der Prozess der App läuft während der Probe nicht/],
-  ['läuft schon vor der ersten Probe nicht', [''], /Probe 1: Der Prozess der App läuft während der Probe nicht/],
-  ['wechselt während der zweiten Probe', ['4321', '4321', '4321', '5000'], /Probe 2: Der Prozess der App hat während der Probe gewechselt/],
+// Aufrufe von pidof am Release-Build: Startbeleg davor und danach, dann je Probe davor und danach.
+for (const [name, wahl, muster] of [
+  ['stirbt während der letzten Probe', { releasePids: ['4321', '4321', '4321', '4321', '4321', '4321', '4321', ''] }, /Probe 3: Der Prozess der App läuft während der Probe nicht/],
+  ['läuft schon beim Startbeleg nicht', { releasePids: [''] }, /Start und Formular der Release-Kopie sind nicht für einen durchgehend laufenden Prozess belegt/],
+  ['wechselt während der zweiten Probe', { releasePids: ['4321', '4321', '4321', '4321', '4321', '5000'] }, /Probe 2: Der Prozess der App hat während der Probe gewechselt/],
+  ['wechselt zwischen Startbeleg und erster Probe', { releasePids: ['4321', '4321', '5000', '5000', '5000', '5000', '5000', '5000'] }, /Probe 1: Die Probe betrifft einen anderen Prozess als der Beleg von Start und Formular/],
+  ['ist in jeder Probe ein anderer, in sich stabiler Prozess', { releasePids: ['4321', '4321', '5000', '5000', '6000', '6000', '7000', '7000'] }, /Probe 1: Die Probe betrifft einen anderen Prozess/],
+  ['wechselt zwischen zweiter und dritter Probe', { releasePids: ['4321', '4321', '4321', '4321', '4321', '4321', '7000', '7000'] }, /Probe 3: Die Probe betrifft einen anderen Prozess/],
+  // Die Startzeit wird am Release-Build gelesen: Startbeleg davor und danach, dann je Probe davor und danach.
+  ['startet während der ersten Probe unter derselben Nummer neu', { starts: { 4321: ['987654', '987654', '987654', '999999'] } }, /Probe 1: Der Prozess der App hat während der Probe gewechselt/],
+  ['startet zwischen erster und zweiter Probe unter derselben Nummer neu', { starts: { 4321: ['987654', '987654', '987654', '987654', '999999'] } }, /Probe 2: Die Probe betrifft einen anderen Prozess als der Beleg von Start und Formular/],
+  ['startet während des Startbelegs unter derselben Nummer neu', { starts: { 4321: ['987654', '999999'] } }, /Start und Formular der Release-Kopie sind nicht für einen durchgehend laufenden Prozess belegt/],
+  ['hat keine lesbare Startzeit', { statFehler: true }, /Start und Formular der Release-Kopie sind nicht für einen durchgehend laufenden Prozess belegt/],
 ]) test(`Prozess der App ${name}: kein Bestehen`, nurWindows, async () => {
-  const p = geraeteProbe({ releasePids });
+  const p = geraeteProbe(wahl);
   assert.equal(await nachgestellterLauf(p), 2);
-  assert.deepEqual([status(p, 'G-Socket-Gegenprobe'), status(p, 'G-Socket'), status(p, 'G-Devtools')], ['bestanden', 'ungültig', 'ungültig']);
+  assert.deepEqual([status(p, 'G-Socket-Gegenprobe'), status(p, 'G-Devtools-Gegenprobe'), status(p, 'G-Socket'), status(p, 'G-Devtools')], ['bestanden', 'bestanden', 'ungültig', 'ungültig']);
   assert.match(grund(p, 'G-Devtools'), muster);
 });
 
@@ -358,17 +476,35 @@ test('Fremde Activity oben beim Start: Start nicht belegt, Debugging-Prüfungen 
 });
 
 test('Fremde Activity erst während der Proben: Proben ungültig', nurWindows, async () => {
-  // Aufrufe am Release-Build: 1 für G-Activity, dann je Probe zwei. Ab dem vierten liegt eine andere App oben.
-  const p = geraeteProbe({ fremdeActivityAb: 4 });
+  // Aufrufe am Release-Build: zwei für den Startbeleg, dann je Probe zwei. Ab dem fünften liegt eine andere App oben.
+  const p = geraeteProbe({ fremdeActivityAb: 5 });
   assert.equal(await nachgestellterLauf(p), 2);
   assert.deepEqual([status(p, 'G-Activity'), status(p, 'G-Socket'), status(p, 'G-Devtools')], ['bestanden', 'ungültig', 'ungültig']);
   assert.match(grund(p, 'G-Socket'), /Probe 2: Die App liegt während der Probe nicht im Vordergrund/);
 });
 
-test('Ansicht ohne Formular: Start nicht belegt, Debugging-Prüfungen ungültig', nurWindows, async () => {
+const abzuege = p => p.calls.filter(c => c.args[3] === `uiautomator dump ${REMOTE}`).length;
+// Wie am Abbild fr-api36 beobachtet: Der erste Abzug zeigt die WebView noch ohne Inhalt.
+const leereWebView = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node text="" class="android.webkit.WebView" package="${APP}" bounds="[0,128][1080,2274]" /></hierarchy>`;
+
+test('Ansicht ohne Formular: nach drei Abzügen Start nicht belegt, Debugging-Prüfungen ungültig', nurWindows, async () => {
   const p = geraeteProbe({ ansicht: `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node text="Sperrbildschirm" bounds="[0,0][100,50]" /></hierarchy>` });
   assert.equal(await nachgestellterLauf(p), 2);
   assert.deepEqual([status(p, 'G-Start'), status(p, 'G-Socket'), status(p, 'G-Devtools')], ['ungültig', 'ungültig', 'ungültig']);
+  assert.equal(abzuege(p), 3);
+});
+
+test('WebView liefert ihren Inhalt erst im zweiten Abzug des Ansichtsbaums: Start belegt', nurWindows, async () => {
+  const p = geraeteProbe({ ansicht: [leereWebView, baum] });
+  assert.equal(await nachgestellterLauf(p), 0);
+  assert.equal(status(p, 'G-Start'), 'bestanden');
+  assert.equal(abzuege(p), 2);
+});
+
+test('Formular im ersten Abzug: kein weiterer Abzug', nurWindows, async () => {
+  const p = geraeteProbe();
+  assert.equal(await nachgestellterLauf(p), 0);
+  assert.equal(abzuege(p), 1);
 });
 
 test('Release-Kopie mit DEBUGGABLE ist ein Fehler', nurWindows, async () => {
@@ -394,12 +530,14 @@ test('Vorhandene Installation: Abbruch ohne Installation und ohne Deinstallation
   assert.equal(await nachgestellterLauf(p), 2);
   assert.match(grund(p, 'Laufrahmen'), /schon installiert/);
   assert.equal(p.calls.some(c => ['install', 'uninstall'].includes(c.args[2])), false);
+  assert.deepEqual(aufgeraeumt(p), ALLES_AUFGERAEUMT);
 });
 
 for (const [name, wahl, muster] of [
   ['Nicht zugelassener Rechner', { zustand: 'unauthorized' }, /USB-Debugging bestätigen/],
   ['Gerät nicht bereit', { zustand: 'offline' }, /nicht angeschlossen oder nicht bereit \(offline\)/],
   ['Root-Shell', { root: true }, /läuft als root/],
+  ['Root-Shell bei vorhandener Installation', { root: true, schonInstalliert: true }, /läuft als root/],
   ['Emulator mit fremder Seriennummer', { qemu: '1' }, /ist ein Emulator/],
   ['Zu alte Android-Version', { api: '29' }, /mindestens API 30/],
   ['Unlesbarer Build-Typ', { buildType: '' }, /nicht vollständig lesbar/],
@@ -409,6 +547,7 @@ for (const [name, wahl, muster] of [
   assert.equal(await nachgestellterLauf(p), 2);
   assert.match(grund(p, 'Laufrahmen'), muster);
   assert.equal(p.calls.some(c => ['install', 'uninstall'].includes(c.args[2])), false);
+  assert.equal(ergebnis(p).aufraeumen.every(r => r.status === 'bestanden'), true);
 });
 
 test('Release-Datei eines fremden Pakets: nicht installiert, Debug-Build ist wieder entfernt', nurWindows, async () => {
@@ -424,6 +563,7 @@ test('Abgelehnte Installation: nichts installiert, also auch keine Deinstallatio
   assert.equal(await nachgestellterLauf(p), 2);
   assert.match(grund(p, 'Laufrahmen'), /Installation fehlgeschlagen: Failure \[INSTALL_FAILED_VERIFICATION_FAILURE\]/);
   assert.equal(adbAufrufe(p, 'uninstall').length, 0);
+  assert.deepEqual(aufgeraeumt(p), ALLES_AUFGERAEUMT);
 });
 
 test('Installation meldet Fehler, das Paket ist aber da: Der Lauf räumt seine eigene Installation auf', nurWindows, async () => {
@@ -432,6 +572,41 @@ test('Installation meldet Fehler, das Paket ist aber da: Der Lauf räumt seine e
   assert.match(grund(p, 'Laufrahmen'), /Installation fehlgeschlagen/);
   assert.equal(adbAufrufe(p, 'uninstall').length, 1);
   assert.equal(p.app.apk, null);
+});
+
+test('Unterbrechung unmittelbar nach der Installation: Die eigene Installation wird entfernt', nurWindows, async () => {
+  const p = geraeteProbe({ signalBeiInstallation: true });
+  assert.equal(await nachgestellterLauf(p), 2);
+  assert.equal(adbAufrufe(p, 'uninstall').length, 1);
+  assert.equal(p.app.apk, null);
+  assert.deepEqual(aufgeraeumt(p), ALLES_AUFGERAEUMT);
+});
+
+test('Paket kommt zwischen Debug-Deinstallation und Release-Installation von außen: bleibt unberührt', nurWindows, async () => {
+  const p = geraeteProbe({ fremdNachDebug: true });
+  assert.equal(await nachgestellterLauf(p), 2);
+  assert.match(grund(p, 'Laufrahmen'), /vor der Installation schon vorhanden\. Nichts installiert; das vorhandene Paket bleibt unberührt/);
+  // Deinstalliert wurde nur der eigene Debug-Build.
+  assert.equal(adbAufrufe(p, 'uninstall').length, 1);
+  assert.deepEqual(adbAufrufe(p, 'install').map(c => c.args[3]), [p.optionen.debug]);
+  assert.equal(p.app.apk, 'fremd');
+  assert.deepEqual(aufgeraeumt(p), ALLES_AUFGERAEUMT);
+});
+
+test('Installation scheitert, weil das Paket inzwischen vorhanden ist: bleibt unberührt', nurWindows, async () => {
+  const p = geraeteProbe({ installVorhanden: true });
+  assert.equal(await nachgestellterLauf(p), 2);
+  assert.match(grund(p, 'Laufrahmen'), /INSTALL_FAILED_ALREADY_EXISTS/);
+  assert.equal(adbAufrufe(p, 'uninstall').length, 1);
+  assert.equal(p.app.apk, 'fremd');
+});
+
+test('Deinstallation scheitert: Das Aufräumen meldet den Rest', nurWindows, async () => {
+  const p = geraeteProbe({ deinstallationFehler: true });
+  assert.equal(await nachgestellterLauf(p), 1);
+  assert.equal(aufgeraeumt(p)[0][1], 'nicht bestanden');
+  assert.equal(status(p, 'Aufräumen: App deinstallieren'), 'nicht bestanden');
+  assert.equal(p.app.apk, p.optionen.debug);
 });
 
 test('Installierte Datei weicht von der Eingabe ab: ungültig, App entfernt', nurWindows, async () => {
@@ -448,8 +623,8 @@ test('Start nicht bestätigt: ungültig, App entfernt', nurWindows, async () => 
   assert.equal(p.app.apk, null);
 });
 
-test('Weiterleitung lässt sich nicht anlegen: ungültig, App entfernt', nurWindows, async () => {
-  const p = geraeteProbe({ forwardFehler: true });
+test('Weiterleitung lässt sich von Anfang an nicht anlegen: ungültig, App entfernt', nurWindows, async () => {
+  const p = geraeteProbe({ forwardFehlerAb: 1 });
   assert.equal(await nachgestellterLauf(p), 2);
   assert.match(grund(p, 'Laufrahmen'), /ADB-Weiterleitung nicht bestätigt/);
   assert.equal(p.app.apk, null);
@@ -473,8 +648,7 @@ test('--app-behalten nach einem Fehler vor der Release-Installation: Der Debug-B
 test('Unterbrechung während des Ansichtsbaums: App, Ansichtsdatei und Weiterleitungen werden aufgeräumt', nurWindows, async () => {
   const p = geraeteProbe({ signalBeimBaum: true });
   assert.equal(await nachgestellterLauf(p), 2);
-  const e = ergebnis(p);
-  assert.deepEqual(e.aufraeumen.map(r => [r.name, r.status]), [['App deinstallieren', 'bestanden'], ['Ansichtsdatei entfernen', 'bestanden'], ['ADB-Weiterleitungen entfernen', 'bestanden']]);
+  assert.deepEqual(aufgeraeumt(p), ALLES_AUFGERAEUMT);
   assert.equal(p.app.apk, null);
   assert.equal(p.weiterleitungen.size, 0);
   // Der letzte Aufruf auf dem Gerät ist das Entfernen der Ansichtsdatei in der Aufräumphase.

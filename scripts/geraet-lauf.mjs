@@ -18,7 +18,10 @@ const PNG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const RANG = ['nicht bestanden', 'ungültig', 'dokumentierte Grenze', 'bestanden'];
 // Diesen Socket gibt es auf keinem Gerät. Der Abruf dorthin zeigt, wie „kein Socket“ auf diesem Weg aussieht.
 export const KONTROLLSOCKET = 'fristenrechner_geraetelauf_ohne_socket';
-const PROBEN = 3;
+export const PROBEN = 3;
+// So endet ein Abruf, den die Weiterleitung annimmt und das Gerät sofort wieder schließt. Andere Fehler
+// (niemand hört am Port des Rechners, Zeitüberschreitung) sagen nichts über das Gerät.
+const CODES_OHNE_SOCKET = ['UND_ERR_SOCKET', 'ECONNRESET'];
 
 export function argumente(argv, wurzelOrdner, repos = [wurzelOrdner]) {
   const o = {};
@@ -55,6 +58,16 @@ export function unguenstigster(befunde) {
   return [...befunde].sort((a, b) => RANG.indexOf(a.status) - RANG.indexOf(b.status))[0];
 }
 
+// Startzeit eines Prozesses aus /proc/<pid>/stat: Feld 22, Ticks seit dem Systemstart. Zusammen mit der
+// Prozessnummer unterscheidet sie einen neu gestarteten Prozess auch dann, wenn er dieselbe Nummer erhält.
+// Der Name in Klammern kann Leerzeichen und Klammern enthalten; gezählt wird deshalb ab der letzten Klammer.
+export function prozessStart(stat, pid) {
+  if (typeof stat !== 'string' || typeof pid !== 'string' || !/^\d+$/.test(pid) || !stat.startsWith(`${pid} (`)) return null;
+  const ende = stat.lastIndexOf(')');
+  const start = stat.slice(ende + 1).trim().split(/\s+/)[19];
+  return /^\d+$/.test(start ?? '') ? start : null;
+}
+
 // Fragt die Versionsauskunft der Devtools ab und wirft nie. Drei Ausgänge:
 // antwort (gültige Auskunft), unerwartet (etwas antwortet, aber anders), fehler (kein Abruf möglich).
 export async function holeDevtoolsVersion(port, timeoutMs = 3000) {
@@ -74,56 +87,78 @@ export async function holeDevtoolsVersion(port, timeoutMs = 3000) {
   return { art: 'unerwartet', status: antwort.status, grund: 'Antwort ist keine Versionsauskunft der Devtools.', text: text.slice(0, 200), ms: dauer() };
 }
 
-const abrufFehler = a => a !== null && typeof a === 'object' && a.art === 'fehler' && typeof a.name === 'string';
-// Eine Zeitüberschreitung sagt nichts darüber, ob ein Socket da ist.
-const signatur = a => (abrufFehler(a) && a.name !== 'TimeoutError' && a.name !== 'AbortError' ? `${a.name}:${a.code ?? ''}` : null);
+const objekt = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const pidGueltig = pid => typeof pid === 'string' && /^\d+$/.test(pid);
+const kennungGueltig = k => typeof k === 'string' && /^\d+@\d+$/.test(k);
+const buildTypLesbar = t => typeof t === 'string' && /^[a-z][a-z0-9_-]*$/.test(t);
+// „Kein Socket“ gilt nur, wenn die Weiterleitung nachweislich bestand und die Gegenseite die Verbindung schloss.
+const ohneSocket = a => objekt(a) && a.art === 'fehler' && a.name === 'TypeError' && CODES_OHNE_SOCKET.includes(a.code) && a.weiterleitungBelegt === true;
 
-// Gemeinsame Voraussetzungen einer Probe am Release-Build: derselbe Prozess vor und nach der Probe, App im Vordergrund.
-export function probeGueltig(p) {
-  if (p === null || typeof p !== 'object') return 'Probe fehlt oder ist unlesbar.';
-  if (!pidGueltig(p.pidVor) || !pidGueltig(p.pidNach)) return 'Der Prozess der App läuft während der Probe nicht.';
-  if (p.pidVor !== p.pidNach) return 'Der Prozess der App hat während der Probe gewechselt.';
+// Voraussetzungen einer Probe am Release-Build: derselbe Prozess wie beim Beleg von Start und Formular,
+// vor und nach der Probe, und die App im Vordergrund. kennung ist Prozessnummer@Startzeit.
+export function probeGueltig(p, kennung) {
+  if (!objekt(p)) return 'Probe fehlt oder ist unlesbar.';
+  if (typeof p.fehler === 'string') return `Die Messung brach ab: ${p.fehler}`;
+  if (!kennungGueltig(p.kennungVor) || !kennungGueltig(p.kennungNach)) return 'Der Prozess der App läuft während der Probe nicht, oder seine Startzeit ist nicht lesbar.';
+  if (p.kennungVor !== p.kennungNach) return 'Der Prozess der App hat während der Probe gewechselt.';
+  if (!kennungGueltig(kennung) || p.kennungVor !== kennung) return 'Die Probe betrifft einen anderen Prozess als der Beleg von Start und Formular.';
   if (p.vordergrundVor !== true || p.vordergrundNach !== true) return 'Die App liegt während der Probe nicht im Vordergrund.';
+  return null;
+}
+
+function probenMangel(proben, kennung, anzahl) {
+  if (proben.length !== anzahl) return `Es liegen ${proben.length} von ${anzahl} Proben vor.`;
+  for (const [i, p] of proben.entries()) {
+    const mangel = probeGueltig(p, kennung);
+    if (mangel) return `Probe ${i + 1}: ${mangel}`;
+  }
   return null;
 }
 
 // Zweiter Beleg neben der Socketliste: Lässt sich eine Verbindung zu den Devtools der WebView aufbauen?
 // Eine erhaltene Antwort geht jeder anderen Bewertung vor. „Bestanden“ verlangt, dass der Abruf am Prozess der
-// App genauso scheitert wie der Abruf an einem Socket, den es nicht gibt, gemessen in derselben Probe.
+// App so endet wie der Abruf an einem Socket, den es nicht gibt: in derselben Probe und wie schon in der
+// Debugphase, in der die Devtools über denselben Weg geantwortet haben. Das belegt, wie der Verbindungsversuch
+// endet; dass kein Socket vorhanden ist, belegt die Socketliste.
 export function evaluiereDevtoolsVerbindung(messung) {
-  const { gegenprobeErreichbar, startBelegt, proben, buildType } = messung !== null && typeof messung === 'object' ? messung : {};
-  if (typeof buildType !== 'string' || !/^[a-z][a-z0-9_-]*$/.test(buildType)) return befund('ungültig', 'Build-Typ des Geräts fehlt oder ist unlesbar.');
-  if (!Array.isArray(proben) || !proben.length || proben.some(p => p === null || typeof p !== 'object')) return befund('ungültig', 'Proben der Devtools-Verbindung fehlen oder sind unlesbar.');
+  const { gegenprobeErreichbar, debugKontrolle, startBelegt, kennung, proben, buildType, anzahl = PROBEN } = objekt(messung) ? messung : {};
+  if (!buildTypLesbar(buildType)) return befund('ungültig', 'Build-Typ des Geräts fehlt oder ist unlesbar.');
+  if (!Array.isArray(proben) || proben.some(p => !objekt(p))) return befund('ungültig', 'Proben der Devtools-Verbindung fehlen oder sind unlesbar.');
   if (buildType !== 'user') return befund('dokumentierte Grenze', `Build-Typ ${buildType}: WebView-Debugging lässt sich hier nicht als Release-Eigenschaft prüfen.`, { buildType, proben });
   if (proben.some(p => p.abruf?.art === 'antwort')) return befund('nicht bestanden', 'Die Devtools der WebView sind im Release-Build erreichbar.', { buildType, proben });
   if (gegenprobeErreichbar !== true) return befund('ungültig', 'Im Debug-Build kam keine Verbindung zu den Devtools zustande; die Gegenprobe ist ohne Wirkung.');
-  if (startBelegt !== true) return befund('ungültig', 'Start und Formular der Release-Kopie sind nicht belegt; die Verbindungsprüfung sagt dann nichts aus.');
+  if (!ohneSocket(debugKontrolle)) return befund('ungültig', 'Der Kontrollabruf in der Debugphase endete nicht wie an einem Socket, den es nicht gibt; der Verbindungsweg ist nicht belegt.', { debugKontrolle });
+  if (startBelegt !== true) return befund('ungültig', 'Start und Formular der Release-Kopie sind nicht für einen durchgehend laufenden Prozess belegt; die Verbindungsprüfung sagt dann nichts aus.');
+  const mangel = probenMangel(proben, kennung, anzahl);
+  if (mangel) return befund('ungültig', mangel, { proben });
   for (const [i, p] of proben.entries()) {
-    const mangel = probeGueltig(p);
-    if (mangel) return befund('ungültig', `Probe ${i + 1}: ${mangel}`, { proben });
-    const erwartet = signatur(p.kontrolle);
-    if (erwartet === null) return befund('ungültig', `Probe ${i + 1}: Der Abruf am Kontrollsocket scheiterte nicht eindeutig; der Verbindungsweg ist nicht belegt.`, { proben });
-    if (signatur(p.abruf) !== erwartet) return befund('ungültig', `Probe ${i + 1}: Der Abruf am Prozess der App endete anders als am Kontrollsocket (${p.abruf?.art ?? 'fehlt'}); nicht eindeutig.`, { proben });
+    if (!ohneSocket(p.kontrolle) || p.kontrolle.code !== debugKontrolle.code) return befund('ungültig', `Probe ${i + 1}: Der Abruf am Kontrollsocket endete nicht wie in der Debugphase; der Verbindungsweg ist nicht belegt.`, { proben, debugKontrolle });
+    if (!ohneSocket(p.abruf) || p.abruf.code !== p.kontrolle.code) return befund('ungültig', `Probe ${i + 1}: Der Abruf am Prozess der App endete anders als am Kontrollsocket (${p.abruf?.art ?? 'fehlt'}); nicht eindeutig.`, { proben });
   }
-  return befund('bestanden', 'Keine Verbindung zu den Devtools der WebView im Release-Build: Der Abruf scheitert wie an einem Socket, den es nicht gibt; im Debug-Build kam die Verbindung zustande.', { buildType });
+  return befund('bestanden', 'Keine Antwort der Devtools im Release-Build: Der Abruf endet in jeder Probe wie an einem Socket, den es nicht gibt; im Debug-Build kam die Verbindung über denselben Weg zustande.', { buildType });
 }
 
-// Socketliste je Probe. Ein gefundener Socket geht jeder anderen Bewertung vor.
+// Socketliste je Probe. Ein gefundener Socket geht jeder anderen Bewertung vor; der Socket des eigenen
+// Prozesses zählt auch dann, wenn die Gegenprobe am Debug-Build ohne Wirkung war.
 export function evaluiereSocketProben(messung) {
-  const { debugSocketNachgewiesen, startBelegt, proben, buildType } = messung !== null && typeof messung === 'object' ? messung : {};
-  if (!Array.isArray(proben) || !proben.length || proben.some(p => p === null || typeof p !== 'object')) return befund('ungültig', 'Proben der Socketliste fehlen oder sind unlesbar.');
-  const einzeln = proben.map(p => evaluiereUnixSockets({ text: p.text ?? undefined, debugSocketNachgewiesen, buildType }));
+  const { debugSocketNachgewiesen, startBelegt, kennung, proben, buildType, anzahl = PROBEN } = objekt(messung) ? messung : {};
+  if (!buildTypLesbar(buildType)) return befund('ungültig', 'Build-Typ des Geräts fehlt oder ist unlesbar.');
+  if (!Array.isArray(proben) || proben.some(p => !objekt(p))) return befund('ungültig', 'Proben der Socketliste fehlen oder sind unlesbar.');
+  if (buildType !== 'user') return befund('dokumentierte Grenze', `Build-Typ ${buildType}: WebView-Debugging lässt sich hier nicht als Release-Eigenschaft prüfen; Nachweis auf einem echten Gerät mit Build-Typ user ausstehend.`, { buildType });
+  for (const [i, p] of proben.entries()) {
+    const pids = [p.pidVor, p.pidNach].filter(pidGueltig);
+    if (typeof p.text === 'string' && pids.some(pid => new RegExp(`@webview_devtools_remote_${pid}\\b`).test(p.text))) {
+      return befund('nicht bestanden', `Probe ${i + 1}: Der Devtools-Socket des Prozesses der App steht in /proc/net/unix.`, { buildType, pids });
+    }
+  }
+  const einzeln = proben.map(p => evaluiereUnixSockets({ text: typeof p.text === 'string' ? p.text : undefined, debugSocketNachgewiesen, buildType }));
   const fund = einzeln.find(b => b.status === 'nicht bestanden');
   if (fund) return fund;
-  const schlechtester = unguenstigster(einzeln);
-  if (schlechtester.status !== 'bestanden') return schlechtester;
-  if (startBelegt !== true) return befund('ungültig', 'Start und Formular der Release-Kopie sind nicht belegt; die Socketliste sagt dann nichts aus.');
-  for (const [i, p] of proben.entries()) {
-    const mangel = probeGueltig(p);
-    if (mangel) return befund('ungültig', `Probe ${i + 1}: ${mangel}`);
-  }
-  return schlechtester;
+  if (einzeln.length && unguenstigster(einzeln).status !== 'bestanden') return unguenstigster(einzeln);
+  if (startBelegt !== true) return befund('ungültig', 'Start und Formular der Release-Kopie sind nicht für einen durchgehend laufenden Prozess belegt; die Socketliste sagt dann nichts aus.');
+  const mangel = probenMangel(proben, kennung, anzahl);
+  if (mangel) return befund('ungültig', mangel);
+  return befund('bestanden', 'Kein Devtools-Socket in /proc/net/unix, in jeder Probe.', { buildType });
 }
 
 export async function geraeteDaten(ctx) {
@@ -136,7 +171,7 @@ export async function geraeteDaten(ctx) {
   };
   geraet.webviewVersion = /Current WebView package \(name, version\): \([^,]+, (\d+(?:\.\d+)*)\)/.exec(geraet.webview)?.[1] ?? null;
   ctx.save('geraet.json', geraet);
-  if (!geraet.fingerprint || !/^[a-z][a-z0-9_-]*$/.test(geraet.buildType) || !/^\d+$/.test(geraet.api) || !geraet.webviewVersion) {
+  if (!geraet.fingerprint || !buildTypLesbar(geraet.buildType) || !/^\d+$/.test(geraet.api) || !geraet.webviewVersion) {
     throw new Error('Gerätefingerabdruck, Build-Typ, API oder WebView-Version nicht vollständig lesbar.');
   }
   return geraet;
@@ -153,12 +188,15 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
   const adbExe = join(sdk, 'platform-tools/adb.exe');
   const daten = { schema: 1, art: 'gerät', beginn: new Date().toISOString(), auswahl: optionen, node: process.version, befund: [], installationen: [], aufraeumen: [], grenzen: [
     'Der Lauf prüft Installation, Start, Paketkennzeichen und das Debugging der WebView (Socketliste und Verbindungsversuch). Netz, Navigation, Sicherung und Darstellung prüft der Emulatorlauf.',
+    'Die Proben sind Stichproben zu drei Zeitpunkten. Zwischen den Zeitpunkten ist der Prozess über Nummer und Startzeit als derselbe belegt, sein Verhalten dazwischen nicht.',
     'Die Socketliste erfasst alle Apps des Geräts. Ein Devtools-Socket der WebView einer anderen App führt ebenfalls zu „nicht bestanden“ und ist über die aufgezeichneten Prozessnummern zu klären.',
     'Das Bild g-start.png ist ein ergänzender Rohbeleg und von Hand zu sichten.',
     'Die Release-Datei ist für diesen Lauf mit dem Debug-Schlüssel der Android-Werkzeuge signiert. Diese Signatur dient keinem Vertrieb.',
     'Bedienung mit TalkBack und die Dateiabläufe sind nicht Teil dieses Laufs.',
   ] };
-  let befehlNummer = 0, verbunden = false, eigen = false, releaseInstalliert = false, ansichtBenutzt = false, abbruch = false, cleaning = false;
+  // eigen: Der Lauf hat eine Installation begonnen, nachdem das Paket nachweislich fehlte, und sie noch nicht
+  // wieder entfernt. fremdVorhanden: Das Paket war da, ohne dass der Lauf es installiert hat; es bleibt unberührt.
+  let befehlNummer = 0, verbunden = false, eigen = false, fremdVorhanden = false, releaseInstalliert = false, ansichtBenutzt = false, abbruch = false, cleaning = false;
   const forwards = new Set();
   const controller = new AbortController();
   const signal = () => { abbruch = true; controller.abort(); };
@@ -186,14 +224,16 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
       return r.out.replaceAll('\r\n', '\n').trim();
     },
     async installiert() { return (await ctx.shell(`pm list packages ${APP}`)).split('\n').includes(`package:${APP}`); },
-    // Installiert nur Dateien des eigenen Pakets und ersetzt nichts. Deinstallieren darf der Lauf erst,
-    // wenn belegt ist, dass er selbst installiert hat: vorher fehlte das Paket, danach ist es da.
+    // Installiert nur Dateien des eigenen Pakets und ersetzt nichts. Ein Paket, das schon da ist, bleibt unberührt.
     async install(apk, name) {
       const id = (await ctx.command(ctx.aapt2, ['dump', 'packagename', apk], `${name}-paketname`)).out.trim();
       if (id !== APP) throw new Error(`Die Datei für ${name} gehört zum Paket „${id}“, erwartet ist ${APP}. Nichts installiert.`);
-      if (await ctx.installiert()) throw new Error(`Das Paket ${APP} ist vor der Installation schon vorhanden. Nichts installiert.`);
+      if (await ctx.installiert()) { fremdVorhanden = true; throw new Error(`Das Paket ${APP} ist vor der Installation schon vorhanden. Nichts installiert; das vorhandene Paket bleibt unberührt.`); }
+      // Ab hier gehört ein vorhandenes Paket zu diesem Lauf, auch wenn der Aufruf unterbrochen wird:
+      // Es fehlte eben noch, und installiert wird ohne Ersetzen. Das Aufräumen klärt den Zustand.
+      eigen = true;
       const r = await ctx.adb(['install', apk], { timeoutMs: 180000 });
-      if (await ctx.installiert()) eigen = true;
+      if (r.code !== 0 && /INSTALL_FAILED_ALREADY_EXISTS/.test(`${r.out}${r.err}`)) { eigen = false; fremdVorhanden = true; }
       if (r.code !== 0 || !/^Success\s*$/m.test(r.out)) throw new Error(`Installation fehlgeschlagen: ${r.out} ${r.err}`.trim());
       const m = /^package:(\/[^\r\n]+\.apk)$/.exec(await ctx.shell(`pm path ${APP}`));
       if (!m) throw new Error('Installierte APK nicht eindeutig gefunden.');
@@ -206,11 +246,15 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
       save('installationen.json', daten.installationen);
       if (installiert !== eingang) throw new Error('Installierte APK weicht von der Eingabedatei ab.');
     },
+    // Nur für Installationen dieses Laufs. Danach ist die Berechtigung verbraucht.
     async uninstall() {
-      if (!await ctx.installiert()) return;
-      const r = await ctx.adb(['uninstall', APP]);
-      if (r.code !== 0 || !/^Success\s*$/m.test(r.out)) throw new Error('Deinstallation fehlgeschlagen.');
-      if (await ctx.installiert()) throw new Error('Das Paket ist nach der Deinstallation noch vorhanden.');
+      if (!eigen) throw new Error('Deinstallation ohne eigene Installation.');
+      if (await ctx.installiert()) {
+        const r = await ctx.adb(['uninstall', APP]);
+        if (r.code !== 0 || !/^Success\s*$/m.test(r.out)) throw new Error('Deinstallation fehlgeschlagen.');
+        if (await ctx.installiert()) throw new Error('Das Paket ist nach der Deinstallation noch vorhanden.');
+      }
+      eigen = false;
     },
     async start() {
       const out = await ctx.shell(`am start -W -n ${ACTIVITY}`);
@@ -224,15 +268,16 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
       const pid = r.out.trim();
       return r.code === 0 && /^\d+$/.test(pid) ? pid : '';
     },
-    // Prozess und oberste Activity zu einem Zeitpunkt, mit Rohbelegen.
+    // Prozess (Nummer und Startzeit) und oberste Activity zu einem Zeitpunkt, mit Rohbelegen.
     async zustand(name) {
       const pid = await ctx.pid();
       const activity = await ctx.adb(['shell', 'dumpsys activity activities']);
       save(`${name}-activity.txt`, activity.out);
-      const prozess = pid === '' ? null : await ctx.adb(['shell', `ps -o PID,STIME,ETIME,ARGS -p ${pid}`]);
-      const stand = { zeit: new Date().toISOString(), pid, vordergrund: activity.code === 0 && evaluiereActivity(activity.out, APP).status === 'bestanden', prozess: prozess ? prozess.out.trim() : null };
-      save(`${name}.json`, stand);
-      return stand;
+      const stat = pid === '' ? null : await ctx.adb(['shell', `cat /proc/${pid}/stat`]);
+      const start = stat && stat.code === 0 ? prozessStart(stat.out.trim(), pid) : null;
+      const stand = { zeit: new Date().toISOString(), pid, start, kennung: start === null ? '' : `${pid}@${start}`, vordergrund: activity.code === 0 && evaluiereActivity(activity.out, APP).status === 'bestanden' };
+      save(`${name}.json`, { ...stand, stat: stat ? { code: stat.code, out: stat.out.trim(), err: stat.err } : null });
+      return { ...stand, activity: activity.code === 0 ? activity.out : '' };
     },
     // Leitet einen freien Port des Rechners auf einen abstrakten Socket des Geräts und fragt die Version ab.
     // Die Weiterleitung lässt sich auch ohne Socket anlegen; erst der Abruf zeigt, ob jemand antwortet.
@@ -241,7 +286,9 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
       const port = f.out.trim();
       if (f.code !== 0 || !/^\d+$/.test(port)) throw new Error('ADB-Weiterleitung nicht bestätigt.');
       forwards.add(port);
-      const abruf = await holen(port);
+      const liste = await ctx.adb(['forward', '--list']);
+      const weiterleitungBelegt = liste.code === 0 && liste.out.split(/\r?\n/).some(z => z.trim() === `${optionen.seriennummer} tcp:${port} localabstract:${socket}`);
+      const abruf = { ...await holen(port), weiterleitungBelegt };
       const r = await ctx.adb(['forward', '--remove', `tcp:${port}`]);
       if (r.code === 0) forwards.delete(port);
       save(`${name}.json`, { zeit: new Date().toISOString(), socket, port, abruf, weiterleitungEntfernt: r.code === 0 });
@@ -257,9 +304,11 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
   };
   const cleanup = [
     ['App deinstallieren', async () => {
-      if (!verbunden || !eigen) return;
+      if (!verbunden) return;
       if (optionen.appBehalten && releaseInstalliert) { ctx.log('Die App bleibt auf Wunsch installiert: Release-Build, mit dem Debug-Schlüssel signiert.'); return; }
-      await ctx.uninstall();
+      if (eigen) await ctx.uninstall();
+      // Ein Paket, das sich der Lauf nicht zurechnen kann, entfernt er nicht. Er meldet es aber.
+      if (!fremdVorhanden && await ctx.installiert()) throw new Error(`Das Paket ${APP} ist nach dem Lauf vorhanden, ohne dass der Lauf es sich zurechnen kann. Bitte von Hand prüfen.`);
     }],
     ['Ansichtsdatei entfernen', async () => { if (verbunden && ansichtBenutzt) await ctx.shell(`rm -f ${ANSICHT_REMOTE}`); }],
     ['ADB-Weiterleitungen entfernen', async () => {
@@ -285,11 +334,14 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
         if (zustand === 'unauthorized') throw new Error('Das Gerät hat diesen Rechner noch nicht zugelassen. Am Gerät die Abfrage zum USB-Debugging bestätigen.');
         if (zustand !== 'device') throw new Error(`Das Gerät ${optionen.seriennummer} ist nicht angeschlossen oder nicht bereit (${zustand ?? 'nicht gefunden'}).`);
         verbunden = true;
+        // Bis zur Klärung gilt ein vorhandenes Paket als fremd; so meldet das Aufräumen nach einem frühen Abbruch nichts Falsches.
+        fremdVorhanden = true;
         const geraet = daten.geraet = ctx.geraet = await geraeteDaten(ctx);
         if (/uid=0\(root\)/.test(geraet.id)) throw new Error('Die ADB-Shell läuft als root. Der Gerätelauf ist für ein unverändertes Gerät vorgesehen.');
         if (geraet.qemu === '1') throw new Error('Das Gerät ist ein Emulator. Dafür ist scripts/emulator-lauf.mjs vorgesehen.');
         if (Number(geraet.api) < 30) throw new Error(`Das Gerät hat API ${geraet.api}. Die App verlangt mindestens API 30.`);
         if (await ctx.installiert()) throw new Error(`Das Paket ${APP} ist schon installiert. Lauf abgebrochen, vorhandene Daten bleiben erhalten.`);
+        fremdVorhanden = false;
         ctx.befund('G-Gerät', befund('bestanden', `${geraet.hersteller} ${geraet.modell}, Android ${geraet.android} (API ${geraet.api}), Build-Typ ${geraet.buildType}, WebView ${geraet.webviewVersion}.`));
         await ctx.unix('g-unix-vorher');
 
@@ -308,14 +360,14 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
           if (!gegenprobeErreichbar && pid !== '') {
             const abruf = await ctx.devtools(`webview_devtools_remote_${pid}`, 'g-debug-devtools');
             // Die Auskunft muss von der eigenen App stammen, soweit sie das Paket nennt.
-            gegenprobeErreichbar = abruf.art === 'antwort' && (abruf.paket === null || abruf.paket === APP);
+            gegenprobeErreichbar = abruf.art === 'antwort' && abruf.weiterleitungBelegt && (abruf.paket === null || abruf.paket === APP);
           }
         }
         const debugKontrolle = await ctx.devtools(KONTROLLSOCKET, 'g-debug-kontrolle');
-        if (gegenprobeErreichbar && debugKontrolle.art === 'antwort') gegenprobeErreichbar = false;
-        ctx.befund('G-Devtools-Gegenprobe', gegenprobeErreichbar
-          ? befund('bestanden', 'Im Debug-Build antworten die Devtools der WebView, am Kontrollsocket antwortet niemand; die Verbindungsprüfung wirkt auf diesem Gerät.')
-          : befund('ungültig', 'Im Debug-Build kam keine eindeutige Verbindung zu den Devtools zustande; die Verbindungsprüfung ist auf diesem Gerät nicht belegt.'));
+        const gegenprobeWirksam = gegenprobeErreichbar && ohneSocket(debugKontrolle);
+        ctx.befund('G-Devtools-Gegenprobe', gegenprobeWirksam
+          ? befund('bestanden', 'Im Debug-Build antworten die Devtools der WebView, und der Abruf am Kontrollsocket endet wie ohne Socket; die Verbindungsprüfung wirkt auf diesem Gerät.')
+          : befund('ungültig', 'Im Debug-Build kam keine eindeutige Verbindung zu den Devtools zustande, oder der Kontrollabruf endete nicht wie ohne Socket; die Verbindungsprüfung ist auf diesem Gerät nicht belegt.'));
         ctx.befund('G-Socket-Gegenprobe', debugSocketNachgewiesen
           ? befund('bestanden', 'Im Debug-Build ist der Devtools-Socket der WebView sichtbar; die Erkennung wirkt auf diesem Gerät.')
           : befund('ungültig', lesbar ? 'Im Debug-Build wurde kein Devtools-Socket gefunden; die Erkennung ist auf diesem Gerät nicht belegt.' : '/proc/net/unix ist auf diesem Gerät nicht lesbar; die Socketprüfung ist hier nicht möglich.'));
@@ -330,37 +382,53 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
         const apk = await signiereRelease(ctx, optionen.release);
         await ctx.install(apk, 'release'); releaseInstalliert = true;
         await ctx.start();
-        const activity = await ctx.shell('dumpsys activity activities');
-        save('g-activity.txt', activity);
-        const obersteActivity = evaluiereActivity(activity, APP);
+        // Der Beleg von Start und Formular gilt für einen Prozess: Nummer und Startzeit davor und danach.
+        const startVor = await ctx.zustand('g-start-vor');
+        const obersteActivity = evaluiereActivity(startVor.activity, APP);
         ctx.befund('G-Activity', obersteActivity);
         const bild = await ctx.adb(['exec-out', 'screencap', '-p'], { binary: true });
         if (bild.code === 0 && Buffer.isBuffer(bild.out) && bild.out.subarray(0, 8).equals(PNG)) save('g-start.png', bild.out);
         else ctx.log('Bildschirmfoto nicht lesbar; der Lauf geht ohne Bild weiter.');
-        let xml = '';
-        try { xml = await ctx.uiBaum('g-start', { timeoutMs: 60000 }); } catch (e) { ctx.log(`Ansichtsbaum: ${e.message}`); }
-        const start = evaluiereReleaseStart({ xml });
+        // Die WebView gibt ihren Inhalt erst an den Ansichtsbaum, nachdem er einmal angefragt wurde:
+        // Der erste Abzug zeigt dann nur den leeren WebView-Knoten. Deshalb bis zu drei Abzüge.
+        let start = evaluiereReleaseStart({ xml: '' });
+        for (let versuch = 0; versuch < 3 && start.status === 'ungültig'; versuch++) {
+          if (versuch) await ctx.sleep(2000);
+          let xml = '';
+          try { xml = await ctx.uiBaum(`g-start-${versuch}`, { timeoutMs: 60000 }); } catch (e) { if (abbruch) throw e; ctx.log(`Ansichtsbaum: ${e.message}`); }
+          start = evaluiereReleaseStart({ xml });
+        }
+        const startNach = await ctx.zustand('g-start-nach');
         ctx.befund('G-Start', start);
-        const startBelegt = obersteActivity.status === 'bestanden' && start.status === 'bestanden';
+        const kennung = startVor.kennung;
+        const startBelegt = obersteActivity.status === 'bestanden' && start.status === 'bestanden' && kennung !== '' && startNach.kennung === kennung && startNach.vordergrund;
         const releasePackage = await ctx.shell(`dumpsys package ${APP}`);
         save('g-package.txt', releasePackage);
         const flags = evaluiereReleaseFlags({ dumpsys: releasePackage, paket: APP });
         // Ein gefundenes Kennzeichen bleibt ein Fehler; „bestanden“ verlangt die wirksame Gegenprobe.
         ctx.befund('G-Flags', flags.status === 'bestanden' && !flagsGegenWirksam ? befund('ungültig', 'Kennzeichen unauffällig, aber die Gegenprobe am Debug-Build war ohne Wirkung.') : flags);
         // Je Probe: Zustand davor, Socketliste, Abruf am Prozess der App, Abruf am Kontrollsocket, Zustand danach.
+        // Scheitert ein Schritt, bleiben die schon erhobenen Belege erhalten und werden bewertet.
         const proben = [];
-        for (let i = 0; i < PROBEN; i++) {
-          if (i) await ctx.sleep(5000);
-          const vor = await ctx.zustand(`g-probe-${i}-vor`);
-          const text = await ctx.unix(`g-unix-${i}`);
-          const abruf = vor.pid === '' ? null : await ctx.devtools(`webview_devtools_remote_${vor.pid}`, `g-devtools-${i}`);
-          const kontrolle = await ctx.devtools(KONTROLLSOCKET, `g-kontrolle-${i}`);
-          const nach = await ctx.zustand(`g-probe-${i}-nach`);
-          proben.push({ pidVor: vor.pid, pidNach: nach.pid, vordergrundVor: vor.vordergrund, vordergrundNach: nach.vordergrund, text, abruf, kontrolle });
+        let messfehler = null;
+        for (let i = 0; i < PROBEN && !messfehler; i++) {
+          const p = {};
+          proben.push(p);
+          try {
+            if (i) await ctx.sleep(5000);
+            const vor = await ctx.zustand(`g-probe-${i}-vor`);
+            Object.assign(p, { pidVor: vor.pid, kennungVor: vor.kennung, vordergrundVor: vor.vordergrund });
+            p.text = await ctx.unix(`g-unix-${i}`);
+            p.abruf = vor.pid === '' ? null : await ctx.devtools(`webview_devtools_remote_${vor.pid}`, `g-devtools-${i}`);
+            p.kontrolle = await ctx.devtools(KONTROLLSOCKET, `g-kontrolle-${i}`);
+            const nach = await ctx.zustand(`g-probe-${i}-nach`);
+            Object.assign(p, { pidNach: nach.pid, kennungNach: nach.kennung, vordergrundNach: nach.vordergrund });
+          } catch (e) { p.fehler = e.message; messfehler = e; }
         }
-        save('g-proben.json', proben.map(({ text, ...rest }) => ({ ...rest, socketlisteLesbar: text !== null })));
-        ctx.befund('G-Socket', evaluiereSocketProben({ debugSocketNachgewiesen, startBelegt, proben, buildType: geraet.buildType }));
-        ctx.befund('G-Devtools', evaluiereDevtoolsVerbindung({ gegenprobeErreichbar, startBelegt, proben: proben.map(({ text, ...rest }) => rest), buildType: geraet.buildType }));
+        save('g-proben.json', { kennung, startBelegt, proben: proben.map(({ text, ...rest }) => ({ ...rest, socketlisteLesbar: typeof text === 'string' })) });
+        ctx.befund('G-Socket', evaluiereSocketProben({ debugSocketNachgewiesen, startBelegt, kennung, proben, buildType: geraet.buildType }));
+        ctx.befund('G-Devtools', evaluiereDevtoolsVerbindung({ gegenprobeErreichbar: gegenprobeWirksam, debugKontrolle, startBelegt, kennung, proben: proben.map(({ text, ...rest }) => rest), buildType: geraet.buildType }));
+        if (messfehler) throw messfehler;
         const pid = await ctx.pid();
         if (pid !== '') { const r = await ctx.adb(['logcat', '-d', '-v', 'time', `--pid=${pid}`]); save('g-logcat.txt', `${r.out}\n${r.err}`); }
       } finally { cleaning = true; }
