@@ -150,12 +150,15 @@ export function evaluiereReleaseFlags(messung) {
 }
 
 export function evaluiereUnixSockets(messung) {
-  const { text: ausgabe, debugSocketNachgewiesen } = objekt(messung) ? messung : {};
+  const { text: ausgabe, debugSocketNachgewiesen, buildType } = objekt(messung) ? messung : {};
   if (!text(ausgabe) || debugSocketNachgewiesen !== true) return ungueltig('Unix-Socket-Ausgabe oder wirksame Debug-Gegenprobe fehlt.');
+  if (!text(buildType) || !/^[a-z][a-z0-9_-]*$/.test(buildType)) return ungueltig('Build-Typ des Geräts fehlt oder ist unlesbar.');
   const zeilen = ausgabe.trim().split(/\r?\n/);
   if (!/^Num\s+RefCount\s+Protocol\s+Flags\s+Type\s+St\s+Inode\s+Path\s*$/.test(zeilen.shift() ?? '')) return ungueltig('Unbekannter Kopf von /proc/net/unix.');
   if (zeilen.some((z) => !/^[\da-f]+:\s+[\da-f]+\s+[\da-f]+\s+[\da-f]+\s+[\da-f]+\s+[\da-f]+\s+\d+(?:\s+.*)?$/i.test(z))) return ungueltig('Unlesbare Zeile in /proc/net/unix.');
-  return zeilen.some((z) => /(?:@|\b)webview_devtools_remote(?:_\d+)?\b/.test(z)) ? nein('Ein Devtools-Socket der WebView ist offen.') : ok('Kein Devtools-Socket in /proc/net/unix.');
+  const sockets = zeilen.filter((z) => /(?:@|\b)webview_devtools_remote(?:_\d+)?\b/.test(z));
+  if (buildType !== 'user') return grenze(`Build-Typ ${buildType}: WebView-Debugging lässt sich hier nicht als Release-Eigenschaft prüfen; Nachweis auf einem echten Gerät mit Build-Typ user ausstehend.`, { buildType, sockets });
+  return sockets.length ? nein('Ein Devtools-Socket der WebView ist offen.', { buildType, sockets }) : ok('Kein Devtools-Socket in /proc/net/unix.', { buildType });
 }
 
 /** Header und Datensätze werden geprüft, bevor nach der UID gefiltert wird. */
@@ -248,17 +251,38 @@ export function evaluiereInstallation(messung) {
 export function evaluiereUeberlauf(messung) {
   const { scrollWidth, clientWidth } = objekt(messung) ? messung : {};
   if (!zahl(scrollWidth) || !zahl(clientWidth) || clientWidth === 0 || scrollWidth === 0) return ungueltig('Breiten der sichtbaren Seite fehlen.');
-  return scrollWidth > clientWidth ? nein('Waagerechter Überlauf.', { scrollWidth, clientWidth }) : ok('Kein waagerechter Überlauf.', { scrollWidth, clientWidth });
+  const details = { scrollWidth, clientWidth, ...(Array.isArray(messung.ueberlaufElemente) ? { ueberlaufElemente: messung.ueberlaufElemente } : {}) };
+  return scrollWidth > clientWidth ? nein('Waagerechter Überlauf.', details) : ok('Kein waagerechter Überlauf.', details);
 }
 
-export function evaluiereBarrierebaum(antwort) {
+export function evaluiereBarrierebaum(antwort, { webviewVersion = antwort?.webviewVersion } = {}) {
   if (!objekt(antwort) || !Array.isArray(antwort.nodes) || !antwort.nodes.length || antwort.nodes.some((n) => !objekt(n) || typeof n.ignored !== 'boolean' || !text(n.nodeId) || (n.properties !== undefined && (!Array.isArray(n.properties) || n.properties.some((p) => !objekt(p)))))) return ungueltig('WebView liefert keinen auswertbaren Barrierebaum; auf dem Gerät nachzuprüfen.');
   const sichtbar = antwort.nodes.filter((n) => !n.ignored);
-  if (!sichtbar.some((n) => n.role?.value === 'RootWebArea')) return ungueltig('Wurzel des Barrierebaums fehlt.');
+  const kinder = new Set(antwort.nodes.flatMap(n => Array.isArray(n.childIds) ? n.childIds : []));
+  // Nur WebView 83 ist mit dem alten Rollennamen belegt. Ein WebArea-Kind
+  // oder ein unbekannter Versionsstand darf keine fehlende Wurzel ersetzen.
+  const wurzelRolle = /^83\./.test(webviewVersion ?? '') ? 'WebArea' : 'RootWebArea';
+  const wurzeln = sichtbar.filter(n => n.role?.value === wurzelRolle && !n.parentId && !kinder.has(n.nodeId));
+  if (wurzeln.length !== 1) return ungueltig('Eindeutige Wurzel des Barrierebaums fehlt.', { webviewVersion, erwartet: wurzelRolle });
   const rollen = ['button', 'textbox', 'combobox', 'checkbox', 'radio', 'spinbutton', 'slider', 'listbox', 'searchbox', 'switch', 'link', 'menuitem', 'menuitemcheckbox', 'menuitemradio', 'tab', 'treeitem', 'Date', 'DateTime', 'InputTime', 'DisclosureTriangle'];
-  const bedienung = sichtbar.filter((n) => rollen.includes(n.role?.value) || (n.role?.value !== 'RootWebArea' && n.properties?.some((p) => p.name === 'focusable' && p.value?.value === true)));
+  const bedienung = sichtbar.filter((n) => n !== wurzeln[0] && (rollen.includes(n.role?.value) || n.properties?.some((p) => p.name === 'focusable' && p.value?.value === true)));
   if (!bedienung.length) return ungueltig('Keine Bedienelemente im Barrierebaum.');
-  if (bedienung.some((n) => !text(n.name?.value) || !n.name.value.trim())) return nein('Ein Bedienelement im Barrierebaum hat keinen zugänglichen Namen.');
+  const ohneNamen = bedienung.filter(n => !text(n.name?.value) || !n.name.value.trim()).map(n => {
+    const eltern = antwort.nodes.find(p => p.nodeId === n.parentId || p.childIds?.includes(n.nodeId));
+    const dom = antwort.domKnoten?.find(d => d.backendDOMNodeId === n.backendDOMNodeId);
+    return { nodeId: n.nodeId, rolle: n.role?.value, elternName: eltern?.name?.value ?? '',
+      elternRolle: eltern?.role?.value ?? '', backendDOMNodeId: n.backendDOMNodeId,
+      dom: dom ?? { hinweis: 'DOM-Beschreibung nicht aufgezeichnet; backendDOMNodeId ist der Bezug zum DOM.' } };
+  });
+  if (ohneNamen.length) {
+    const beschreibung = ohneNamen.map(n => {
+      const attribute = Array.isArray(n.dom.attributes) ? n.dom.attributes : [];
+      const attr = name => { const i = attribute.indexOf(name); return i >= 0 ? attribute[i + 1] : ''; };
+      const dom = n.dom.nodeName ? `${n.dom.nodeName.toLowerCase()}${attr('id') ? `#${attr('id')}` : ''}${attr('class') ? `.${attr('class').trim().replace(/\s+/g, '.')}` : ''}` : 'Beschreibung nicht aufgezeichnet';
+      return `Knoten ${n.nodeId}, Rolle ${n.rolle}, Elternname „${n.elternName}“, DOM ${dom} (backendDOMNodeId ${n.backendDOMNodeId ?? 'fehlt'})`;
+    });
+    return nein(`Bedienelemente ohne zugänglichen Namen: ${beschreibung.join('; ')}.`, ohneNamen);
+  }
   return ok('Barrierebaum mit benannten Bedienelementen; ersetzt keinen TalkBack-Lauf.');
 }
 
@@ -318,10 +342,37 @@ export function evaluiereReleaseStart(messung) {
 }
 
 export function evaluiereTastatur(ausgabe) {
+  if (objekt(ausgabe)) {
+    const { inputMethod, fenster, nachher } = ausgabe;
+    if (!text(inputMethod) || !text(fenster)) return ungueltig('Eingabedienst oder Fensterbeleg der Tastatur fehlt.');
+    const signal = (name) => [...inputMethod.matchAll(new RegExp(`\\b${name}=(true|false)\\b`, 'g'))].map(m => m[1]);
+    const shown = signal('mInputShown'), view = signal('mIsInputViewShown');
+    if (!shown.length || !view.length || new Set([...shown, ...view]).size !== 1) return ungueltig('Eingabedienst und Tastaturansicht bestätigen keinen eindeutigen gemeinsamen Zustand.');
+    if (shown[0] === 'false') return nein('Eingabedienst und Tastaturansicht melden die Tastatur als verborgen.');
+    if (nachher?.aktivesElement?.name !== 'projektname' || nachher.aktivesElement.tag !== 'input' ||
+        !/\bmCurrentFocus=Window\{[^\r\n}]*\bde\.baremos\.fristenrechner\//.test(fenster)) return ungueltig('Fokus auf Projektname und App-Fenster ist nicht gemeinsam belegt.');
+    // API 30/36: sichtbare IME-Inset-Fläche. Eine leere Fläche kann trotz
+    // mInputShown=true auftreten, wenn die Hardwaretastatur aktiv ist.
+    const flaechen = [...fenster.matchAll(/\b(?:type=ime|type=ITYPE_IME)\s+frame=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]([^\r\n]*?)\bvisible=(true|false)\b/g)]
+      .map(m => {
+        const sichtbar = /\bvisibleFrame=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]/.exec(m[5]);
+        return { breite: Number(m[3]) - Number(m[1]), hoehe: Number(m[4]) - Number(m[2]), sichtbar: m[6] === 'true',
+          ...(sichtbar ? { sichtbareBreite: Number(sichtbar[3]) - Number(sichtbar[1]), sichtbareHoehe: Number(sichtbar[4]) - Number(sichtbar[2]) } : {}) };
+      });
+    if (!flaechen.length) {
+      for (const abschnitt of fenster.split(/(?=^\s*Window #\d+ Window\{)/m)) {
+        if (!/^\s*Window #\d+ Window\{[^\r\n}]*\bInputMethod\}/.test(abschnitt)) continue;
+        const frame = /(?:mFrame=|\bframe=)\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]/.exec(abschnitt);
+        if (frame && /\bisOnScreen=true\b/.test(abschnitt) && /\bisVisible=true\b/.test(abschnitt)) flaechen.push({ breite: Number(frame[3]) - Number(frame[1]), hoehe: Number(frame[4]) - Number(frame[2]), sichtbar: true });
+      }
+    }
+    if (!flaechen.length || flaechen.some(f => !f.sichtbar || f.hoehe <= 0 || f.breite <= 0 || f.sichtbareHoehe <= 0 || f.sichtbareBreite <= 0)) return ungueltig('Keine eindeutig sichtbare Tastaturfläche mit positiver Höhe aufgezeichnet.', { flaechen });
+    return ok('Tastaturansicht und Eingabedienst sichtbar; IME-Fläche mit positiver Höhe und Fokus auf Projektname belegt.', { flaechen, vorher: ausgabe.vorher, nachher });
+  }
   if (!text(ausgabe)) return ungueltig('Ausgabe des Eingabedienstes fehlt.');
   const werte = [...ausgabe.matchAll(/\b(?:mInputShown|mIsInputViewShown)=(true|false)\b/g)].map((m) => m[1]);
   if (!werte.length || new Set(werte).size > 1) return ungueltig('Sichtbarkeit der Tastatur ist nicht eindeutig belegt.');
-  return werte[0] === 'true' ? ok('Tastatur wird vom Eingabedienst als sichtbar gemeldet.') : nein('Tastatur wird vom Eingabedienst als verborgen gemeldet.');
+  return werte[0] === 'true' ? ungueltig('Eingabedienst meldet die Tastatur als sichtbar; unabhängiger Beleg der sichtbaren Fensterfläche und des Fokus fehlt.') : nein('Tastatur wird vom Eingabedienst als verborgen gemeldet.');
 }
 
 export function evaluiereFehlerseiteGegenprobe(messung) {
@@ -358,6 +409,27 @@ export async function werteLaufAus(lauf) {
     neuAusgewertet.push({ id, quellen });
   };
   const vorhanden = new Set(await readdir(lauf));
+  const neu = async (id, quellen, auswerten) => {
+    try { setzen(id, await auswerten(), quellen); }
+    catch (e) { setzen(id, ungueltig(`Rohbeleg nicht auswertbar: ${e.message}`), quellen); }
+  };
+  if (vorhanden.has('b-unix.txt')) await neu('B-Socket', ['b-unix.txt', 'b-debug-unix.txt', 'geraet.json'], async () => {
+    const g = await json('geraet.json');
+    const buildType = g.buildType ?? /:([^/:]+)\/[^/]+$/.exec(g.fingerprint ?? '')?.[1];
+    const wert = evaluiereUnixSockets({ text: await lesen('b-unix.txt'), debugSocketNachgewiesen: /@webview_devtools_remote_\d+\b/.test(await lesen('b-debug-unix.txt')), buildType });
+    return { ...wert, details: { ...wert.details, buildTypeQuelle: g.buildType ? 'getprop ro.build.type' : 'Historischer Gerätefingerabdruck; ro.build.type damals nicht gesondert erhoben.' } };
+  });
+  if (vorhanden.has('b-package.txt')) await neu('B-Flags', ['b-package.txt'], async () => evaluiereReleaseFlags({ dumpsys: await lesen('b-package.txt') }));
+  for (const name of ['schrift-1-3', 'schrift-2-0', 'nacht', 'gedreht', 'tastatur']) {
+    if (vorhanden.has(`a8-${name}.json`)) await neu(`A8-${name}`, [`a8-${name}.json`], async () => evaluiereUeberlauf(await json(`a8-${name}.json`)));
+  }
+  if (vorhanden.has('a8-tastatur-nachweis.json')) await neu('A8-Tastatur', ['a8-tastatur-nachweis.json'], async () => evaluiereTastatur(await json('a8-tastatur-nachweis.json')));
+  else if (vorhanden.has('a8-tastatur.txt')) await neu('A8-Tastatur', ['a8-tastatur.txt'], async () => evaluiereTastatur(await lesen('a8-tastatur.txt')));
+  if (vorhanden.has('a10-barrierebaum.json')) await neu('A10', ['a10-barrierebaum.json', 'geraet.json'], async () => {
+    const g = await json('geraet.json');
+    const webviewVersion = /Current WebView package \(name, version\): \([^,]+, (\d+(?:\.\d+)+)\)/.exec(g.webview ?? '')?.[1];
+    return evaluiereBarrierebaum(await json('a10-barrierebaum.json'), { webviewVersion });
+  });
   const navigationen = new Set(original.befund.filter((b) => b.id.startsWith('navigation-')).map((b) => b.id.slice('navigation-'.length)));
   for (const name of ['href', 'open', 'blank', 'mailto', 'tel', 'intent', 'file', 'content', 'data']) {
     if (vorhanden.has(`navigation-app-${name}.json`) && vorhanden.has(`navigation-gegen-${name}.json`)) navigationen.add(name);

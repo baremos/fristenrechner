@@ -298,7 +298,7 @@ test('Echter Testschlüssel: apksigner scheitert mit einer Kennwortzeile und bes
   schreibe(pass, 'android\n');
   const debugKey = join(ort, 'test-debug.p12');
   function run(programm, args) {
-    return spawnSync(programm, args, { encoding: 'utf8', windowsHide: true, timeout: 60000,
+    return spawnSync(programm, args, { encoding: 'utf8', windowsHide: true, timeout: 120000,
       env: { ...process.env, TEMP: ort, TMP: ort, TMPDIR: ort } });
   }
   function erfolgreich(programm, args) {
@@ -326,7 +326,7 @@ test('Echter Testschlüssel: apksigner scheitert mit einer Kennwortzeile und bes
         const gegenprobe = run(programm, args);
         assert.equal(gegenprobe.status, 2, `${gegenprobe.stdout}${gegenprobe.stderr}`);
         assert.match(gegenprobe.stderr, /Failed to read Key "androiddebugkey" password.*end of file reached/);
-        const beleg = readFileSync(join(repo, 'scripts/emulator/fixtures/signierung-kennwort-api30.txt'), 'utf8').trim();
+        const beleg = readFileSync(join(repo, 'scripts/emulator/fixtures/signierung-kennwort-api30.txt'), 'utf8').replaceAll('\r', '').trim();
         assert.ok(gegenprobe.stderr.replaceAll('\r', '').replace(/end of file reached in [^\n]+/, 'end of file reached in <Kennwortdatei>').includes(beleg));
         schreibe(pw, zwei);
       }

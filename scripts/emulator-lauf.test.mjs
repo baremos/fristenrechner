@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { dirname, join, relative, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { lauf, variantePlan, avdName, geraeteDaten, stelleEinstellungZurueck } from './emulator-lauf.mjs';
+import { lauf, variantePlan, avdName, geraeteDaten, stelleEinstellungZurueck, systemDialog, warteAufSystemoberflaeche } from './emulator-lauf.mjs';
 import { APP, argumente, ausgabePruefen, echterPfad, innen, mitAufraeumen, prozess, schreiber, websocketPruefen } from './emulator/rahmen.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,7 +35,7 @@ test('API-24-Installation fordert keine nicht verfügbaren WebView- und UID-Meta
   const calls = [];
   const ctx = { save() {}, shell: async command => {
     calls.push(command);
-    return ({ 'getprop ro.build.fingerprint': original.fingerprint, 'dumpsys webviewupdate': original.webview,
+    return ({ 'getprop ro.build.fingerprint': original.fingerprint, 'getprop ro.build.type': 'userdebug', 'dumpsys webviewupdate': original.webview,
       'pm list packages -f -U': original.packagesMitUid,
       // Nur dieser Fallback ist konstruiert: der echte Lauf kam nicht bis hier.
       'pm list packages -f': 'package:/system/app/WebView/WebView.apk=com.android.webview' })[command];
@@ -43,9 +43,65 @@ test('API-24-Installation fordert keine nicht verfügbaren WebView- und UID-Meta
   const d = await geraeteDaten(ctx, 24, ['installation']);
   assert.equal(d.webviewVerfuegbar, false);
   assert.equal(d.paketUidsVerfuegbar, false);
+  assert.equal(d.buildType, 'userdebug');
   assert.ok(calls.includes('pm list packages -f'));
   await assert.rejects(geraeteDaten(ctx, 30, ['a']), /nicht vollständig lesbar/);
   await assert.rejects(geraeteDaten(ctx, 24, ['installation', 'a']), /nicht vollständig lesbar/);
+});
+
+test('ANR-Fokus der Systemoberfläche gilt trotz oberster App-Activity als verdeckt', () => {
+  const original = JSON.parse(readFileSync(join(repo, 'scripts/emulator/fixtures/systemui-api36-r3.json'), 'utf8'));
+  assert.equal(systemDialog(original), true);
+  assert.match(original.logcat, /failed to complete startup/);
+  const app = 'topResumedActivity=ActivityRecord{1 de.baremos.fristenrechner/.MainActivity}';
+  assert.equal(systemDialog({ activity: `${app}\nmCurrentFocus=Window{2 u0 Application Not Responding: com.android.systemui}` }), true);
+  assert.equal(systemDialog({ activity: `${app}\nmCurrentFocus=Window{2 u0 de.baremos.fristenrechner/.MainActivity}` }), false);
+  assert.equal(systemDialog({ xml: '<node text="System UI isn\'t responding" />' }), true);
+  assert.equal(systemDialog({ xml: '<node text="Systemoberfläche reagiert nicht" />' }), true);
+});
+
+function systemUiProbe(verdecktBis, { nurXml = false } = {}) {
+  let probes = 0;
+  const saved = new Map(), sleeps = [], calls = [];
+  return { saved, sleeps, calls, ctx: {
+    shell: async (command, options) => {
+      calls.push(command); assert.equal(command, 'dumpsys activity activities'); assert.equal(options.timeoutMs, 10000);
+      probes++;
+      return !nurXml && probes <= verdecktBis ? 'mCurrentFocus=Window{2 u0 Application Not Responding: com.android.systemui}' : 'mCurrentFocus=Window{3 u0 App}';
+    },
+    uiBaum: async (name, options) => {
+      assert.equal(options.timeoutMs, 10000);
+      const xml = nurXml && probes <= verdecktBis ? '<hierarchy><node text="System UI isn\'t responding" /></hierarchy>' : '<hierarchy />';
+      saved.set(`${name}-ansicht.xml`, xml); return xml;
+    },
+    sleep: async ms => { sleeps.push(ms); }, log() {}, save: (name, value) => { saved.set(name, structuredClone(value)); },
+  } };
+}
+
+test('SystemUI wird nach erneutem Warten wieder geprüft und jeder Versuch belegt', async () => {
+  const p = systemUiProbe(2);
+  const r = await warteAufSystemoberflaeche(p.ctx, 'start-probe');
+  assert.match(r.activity, /u0 App/);
+  assert.deepEqual(p.sleeps, [10000, 10000]);
+  assert.deepEqual(p.saved.get('start-probe-systemui.json').map(v => v.verdeckt), [true, true, false]);
+  assert.ok(p.saved.has('start-probe-systemui-0.activity.txt'));
+});
+
+test('Dialog nur im UI-Baum löst ebenfalls erneutes Warten aus', async () => {
+  const p = systemUiProbe(1, { nurXml: true });
+  await warteAufSystemoberflaeche(p.ctx, 'bild', { ui: true });
+  assert.deepEqual(p.sleeps, [10000]);
+  assert.ok(p.saved.has('bild-systemui-0-ansicht.xml'));
+});
+
+test('Dauerhafter SystemUI-Dialog endet nach sechs Wartezeiten ungültig ohne Eingabe', async () => {
+  const p = systemUiProbe(Infinity);
+  await assert.rejects(warteAufSystemoberflaeche(p.ctx, 'dauer'), /nach sechs weiteren Wartezeiten/);
+  assert.equal(p.calls.length, 7);
+  assert.equal(p.sleeps.length, 6);
+  assert.equal(p.sleeps.reduce((a, b) => a + b), 60000);
+  assert.equal(p.saved.get('dauer-systemui.json').length, 7);
+  assert.equal(p.calls.some(c => c.startsWith('input ')), false);
 });
 
 test('Wiederverwendung und gezielte A8/A10-Läufe benötigen keinen Variantenbau', () => {
@@ -232,6 +288,7 @@ function geraeteProbe({ installCode = 1, rootFehler = false, vorhandenerEmulator
     if (c === 'id') return ok(rootFehler ? 'uid=2000(shell)' : 'uid=0(root)');
     if (c === 'getprop ro.build.version.sdk') return ok('24');
     if (c === 'getprop ro.build.fingerprint') return ok('test/device/fingerprint');
+    if (c === 'getprop ro.build.type') return ok('userdebug');
     if (c === 'dumpsys webviewupdate') return ok('');
     if (c === 'pm list packages -f -U') return ok('Error: Unknown option: -U');
     if (c === 'pm list packages -f') return ok('package:/system/app/WebView/WebView.apk=com.android.webview');

@@ -905,9 +905,9 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       if (disposed) return;
       setInput(parsed.datei.input);
       // Über das Formular normalisiert rendern — readInput wendet die
-      // Relevanz-Guards an (z. B. zwischenbewertungAT ohne Präsentation/
-      // Verhandlung), damit Restwerte aus der Datei weder den Kern erreichen
-      // noch reexportiert werden
+      // Relevanz-Guards an (z. B. zwischenbewertungAT ohne Präsentation,
+      // Verhandlung und optimierte Angebotsrunde), damit Restwerte aus der
+      // Datei weder den Kern erreichen noch reexportiert werden
       render(readInput(), false);
       showProjectFileMeta(parsed.datei);
       speichernGesperrt = false;
@@ -984,8 +984,11 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       persist(readInput());
     } catch (error) {
       speichernGesperrt = true;
-      if (!disposed) storageStatus.textContent = groessenOderFehler(error, texte.speicherNichtVerfuegbar)
-        + ' Ein vorhandenes Projekt bleibt erhalten. Importieren Sie eine Projektdatei oder setzen Sie das Projekt zurück.';
+      if (!disposed) {
+        storageStatus.textContent = error instanceof PlattformFehler && error.code === 'zu-gross'
+          ? error.message + ' Ein vorhandenes Projekt bleibt erhalten. Importieren Sie eine Projektdatei oder setzen Sie das Projekt zurück.'
+          : texte.speicherNichtVerfuegbar + ' Ein vorhandenes Projekt bleibt erhalten. Sie können weiter rechnen und die Eingaben als Projektdatei exportieren.';
+      }
     } finally { geladen = true; }
   })();
 

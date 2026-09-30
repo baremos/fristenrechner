@@ -20,7 +20,7 @@ export const avdName = text => text.split(/\r*\n/)[0].trim();
 
 export async function geraeteDaten(ctx, api, phasen) {
   const installation = api === 24 && phasen.every(p => p === 'installation');
-  const geraet = { api: String(api), fingerprint: await ctx.shell('getprop ro.build.fingerprint'), webview: await ctx.shell('dumpsys webviewupdate'), packages: await ctx.shell('pm list packages -f -U') };
+  const geraet = { api: String(api), fingerprint: await ctx.shell('getprop ro.build.fingerprint'), buildType: await ctx.shell('getprop ro.build.type'), webview: await ctx.shell('dumpsys webviewupdate'), packages: await ctx.shell('pm list packages -f -U') };
   if (installation && /Error: Unknown option: -U/.test(geraet.packages)) {
     geraet.packagesMitUid = geraet.packages;
     geraet.packages = await ctx.shell('pm list packages -f');
@@ -28,10 +28,37 @@ export async function geraeteDaten(ctx, api, phasen) {
   geraet.webviewVerfuegbar = /Current WebView package \(name, version\): \([^,]+, \d+(?:\.\d+)*\)/.test(geraet.webview);
   geraet.paketUidsVerfuegbar = /\buid:\d+/.test(geraet.packages);
   ctx.save('geraet.json', geraet);
-  if (!geraet.fingerprint || !/^package:\/.+=\S+/m.test(geraet.packages) || (!installation && (!geraet.webviewVerfuegbar || !geraet.paketUidsVerfuegbar))) {
-    throw new Error('Gerätefingerabdruck, WebView-Version oder Paket-UIDs nicht vollständig lesbar.');
+  if (!geraet.fingerprint || !/^[a-z][a-z0-9_-]*$/.test(geraet.buildType ?? '') || !/^package:\/.+=\S+/m.test(geraet.packages) || (!installation && (!geraet.webviewVerfuegbar || !geraet.paketUidsVerfuegbar))) {
+    throw new Error('Gerätefingerabdruck, Build-Typ, WebView-Version oder Paket-UIDs nicht vollständig lesbar.');
   }
   return geraet;
+}
+
+export function systemDialog({ activity = '', xml = '' }) {
+  return /^\s*m(?:CurrentFocus|FocusedWindow)=.*Application Not Responding:\s*com\.android\.systemui\b/im.test(activity)
+    || /System UI isn.t responding|Systemoberfläche[^"<>]*(?:reagiert|antwortet) nicht/i.test(xml);
+}
+
+// Die App kann die oberste Activity sein, obwohl der ANR-Dialog darüber liegt.
+// Maximal sechs weitere Wartezeiten; alle Prüfungen behalten ihre Rohbelege.
+export async function warteAufSystemoberflaeche(ctx, name, { ui = false } = {}) {
+  const versuche = [];
+  for (let versuch = 0; versuch <= 6; versuch++) {
+    const belegName = `${name}-systemui-${versuch}`;
+    const activity = await ctx.shell('dumpsys activity activities', { timeoutMs: 10000 });
+    ctx.save(`${belegName}.activity.txt`, activity);
+    // Ein bekannter ANR kann auch uiautomator blockieren. Der Fokusbeleg reicht
+    // dann für den erneuten Warteversuch; den Baum erst bei freiem Fokus lesen.
+    const baumLesen = ui && !systemDialog({ activity });
+    const xml = baumLesen ? await ctx.uiBaum(belegName, { timeoutMs: 10000 }) : '';
+    const verdeckt = systemDialog({ activity, xml });
+    versuche.push({ versuch, verdeckt, wartezeitMs: versuch * 10000, activity: `${belegName}.activity.txt`, ...(baumLesen ? { xml: `${belegName}-ansicht.xml` } : {}) });
+    ctx.save(`${name}-systemui.json`, versuche);
+    if (!verdeckt) return { activity, xml };
+    if (versuch === 6) throw new Error('Dialog der Systemoberfläche nach sechs weiteren Wartezeiten (60 s) weiterhin sichtbar; Prüfung ungültig.');
+    ctx.log(`Dialog der Systemoberfläche sichtbar; warte erneut 10 Sekunden (${versuch + 1}/6).`);
+    await ctx.sleep(10000);
+  }
 }
 
 export async function stelleEinstellungZurueck(ctx, table, key, value) {
@@ -99,7 +126,7 @@ export async function ablaufB(ctx) {
   const unix = await ctx.shell('cat /proc/net/unix');
   ctx.save('b-package.txt', releasePackage); ctx.save('b-unix.txt', unix);
   ctx.befund('B-Flags', evaluiereReleaseFlags({ dumpsys: releasePackage, paket: ctx.app }));
-  ctx.befund('B-Socket', evaluiereUnixSockets({ text: unix, debugSocketNachgewiesen }));
+  ctx.befund('B-Socket', evaluiereUnixSockets({ text: unix, debugSocketNachgewiesen, buildType: ctx.geraet.buildType }));
   ctx.befund('B-Start', evaluiereReleaseStart({ xml }));
   for (let i = 0; i < 3; i++) { ctx.log(`Release: Ruhebeobachtung ${i * 20}–${(i + 1) * 20} s`); await ctx.sleep(20000); }
   const ruhe = ctx.netz.count - countVorher;
@@ -130,7 +157,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
   ] };
   const verbindungen = new Map(), forwards = new Set(), owned = new Set(), deferred = [];
   let emulator = null, emuFd = null, logcat = null, logcatFd = null, deviceOwned = false, gestartet = false, abbruch = false, cleaning = false, snapshot = null;
-  let befehlNummer = 0, logcatFehler = null;
+  let befehlNummer = 0, startNummer = 0, logcatFehler = null;
   const controller = new AbortController();
   const signal = () => { abbruch = true; controller.abort(); };
   process.once('SIGINT', signal); process.once('SIGTERM', signal);
@@ -163,7 +190,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
       const out = await ctx.shell(`am start -W -n ${pkg}/de.baremos.fristenrechner.MainActivity`);
       if (!/^Status: ok$/m.test(out)) throw new Error(`Activity-Start nicht bestätigt: ${out}`);
       await ctx.sleep(2000);
-      const top = await ctx.shell('dumpsys activity activities');
+      const { activity: top } = await warteAufSystemoberflaeche(ctx, `start-${++startNummer}`);
       const a = evaluiereActivity(top, pkg);
       if (a.status !== 'bestanden') throw new Error(`Activity nicht oben: ${a.grund}`);
     },
@@ -223,23 +250,23 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
       await ctx.sleep(1200);
       return c;
     },
-    async uiBaum(name) {
+    async uiBaum(name, { timeoutMs = 120000 } = {}) {
       const remote = '/data/local/tmp/fristenrechner-emulator.xml';
       try {
-        await ctx.shell(`uiautomator dump ${remote}`);
-        const xml = await ctx.shell(`cat ${remote}`); save(`${name}-ansicht.xml`, xml);
+        await ctx.shell(`uiautomator dump ${remote}`, { timeoutMs });
+        const xml = await ctx.shell(`cat ${remote}`, { timeoutMs }); save(`${name}-ansicht.xml`, xml);
         if (!xml.includes('<hierarchy') || !xml.includes('</hierarchy>')) throw new Error('Ansichtsbaum nicht lesbar.');
         return xml;
-      } finally { await ctx.shell(`rm -f ${remote}`); }
+      } finally { await ctx.shell(`rm -f ${remote}`, { timeoutMs }); }
     },
     async shot(name, { ui = true } = {}) {
+      await warteAufSystemoberflaeche(ctx, name.replace(/\.png$/, ''), { ui });
       const r = await ctx.adb(['exec-out', 'screencap', '-p'], { binary: true });
       if (r.code !== 0 || !Buffer.isBuffer(r.out) || !r.out.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new Error('Bildschirmfoto nicht lesbar.');
       save(name, r.out);
       const top = await ctx.shell('dumpsys activity activities'); save(`${name}.activity.txt`, top);
-      if (!ui) return;
-      const xml = await ctx.uiBaum(name.replace(/\.png$/, ''));
-      if (/System UI isn.t responding|Systemoberfläche.*(?:reagiert|antwortet) nicht/i.test(xml)) throw new Error('Dialog der Systemoberfläche verdeckt die App; Bild nicht gültig.');
+      const xml = ui ? await ctx.uiBaum(name.replace(/\.png$/, '')) : '';
+      if (systemDialog({ activity: top, xml })) throw new Error('Dialog der Systemoberfläche verdeckt die App; Bild nicht gültig.');
     },
     async restoreClock() {
       if (!snapshot) return;
@@ -349,6 +376,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
         const id = await ctx.shell('id'); if (!/uid=0\(root\)/.test(id)) throw new Error('Root-Shell nicht bestätigt.');
         const api = await ctx.shell('getprop ro.build.version.sdk'); if (api !== String(optionen.api)) throw new Error('API des gestarteten Geräts stimmt nicht.');
         daten.geraet = { ...await geraeteDaten(ctx, optionen.api, optionen.phasen), id };
+        ctx.geraet = daten.geraet;
         save('geraet.json', daten.geraet);
         for (const pkg of [APP, GEGEN]) if ((await ctx.shell(`pm list packages ${pkg}`)).split('\n').includes(`package:${pkg}`)) throw new Error(`Paket ${pkg} ist schon installiert. Lauf abgebrochen, vorhandene Daten bleiben erhalten.`);
         logcatFd = openSync(join(optionen.ausgabe, 'logcat.txt'), 'w');

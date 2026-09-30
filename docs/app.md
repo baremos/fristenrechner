@@ -197,13 +197,13 @@ node scripts/emulator-lauf.mjs --api 24 --ablauf installation --ausgabe scratchp
 | `fr-api30` | 83.0.4103.120 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `sicherung`, `fehlerseite`, `alle`; Sicherung ohne Gerätewechsel |
 | `fr-api24` | 52 | `installation`, `alle`; erwartete Ablehnung mit `INSTALL_FAILED_OLDER_SDK` |
 
-Der Lauf verwendet jeweils nur einen Emulator auf Port 5554 mit `-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect`. Nach dem Systemstart wird auf die Bereitschaft der Oberfläche gewartet. Für die oberste Activity wird `topResumedActivity` verwendet. Navigationsfotos benötigen keinen UI-Automator-Baum; sie sind ergänzende Rohbelege. In den übrigen Bildprüfungen wird ein verdeckender Systemdialog zusätzlich über den Ansichtsbaum geprüft. Umgebungsvariablen für SDK und Testgeräte gelten nur für den gestarteten Prozess.
+Der Lauf verwendet jeweils nur einen Emulator auf Port 5554 mit `-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect`. Nach dem Systemstart wartet er zunächst 45 Sekunden. Ein SystemUI-ANR kann danach weiter sichtbar sein, obwohl die App die oberste Activity ist. Deshalb werden vor der Activity-Wertung und vor Fotos zusätzlich Fokus und bei den Bildprüfungen der Ansichtsbaum geprüft. Bei einem SystemUI-Dialog folgen höchstens sechs weitere Wartezeiten zu zehn Sekunden mit erneuter Prüfung; bleibt er sichtbar, ist der Ablauf ungültig. Kein Dialogbutton wird betätigt. Navigationsfotos benötigen keinen UI-Automator-Baum; sie sind ergänzende Rohbelege. Umgebungsvariablen für SDK und Testgeräte gelten nur für den gestarteten Prozess.
 
 | Prüfung | Umfang |
 |---|---|
 | Ablauf A, Debug über CDP | Start und Fehlerfalle, Formular und Berechnung mit Regelversion und Rechtsstand, Brückenaufruf, gespeicherte Eingaben nach `force-stop` und deren Löschung nach `pm clear`, Rechtsstandhinweis an der Grenze und am Folgetag, Navigation, Netz, Darstellung, Zurück-Taste und Barrierebaum. |
-| Darstellung innerhalb von A | Bildschirmfotos bei Schriftgröße 1,3 und 2,0, Nachtmodus, gedrehtem Bildschirm und eingeblendeter Tastatur. Automatischer Vergleich von `scrollWidth` und `clientWidth` auf waagerechten Überlauf; ergänzende Sichtprüfung der Bilder. |
-| Ablauf B, Release | Signierte Kopie der Release-APK im Ausgabeordner, Startbild und Fehlerfalle, Paketkennzeichen ohne `DEBUGGABLE` und `ALLOW_BACKUP`, keine WebView-Devtools-Sockets; Netzmelder nach 60 Sekunden Ruhe, Hintergrund und Rückkehr. |
+| Darstellung innerhalb von A | Bildschirmfotos bei Schriftgröße 1,3 und 2,0, Nachtmodus, gedrehtem Bildschirm und eingeblendeter Tastatur. Vergleich von `scrollWidth` und `clientWidth`; bei Überlauf zusätzlich Elemente mit Text und Maßen, außer dem zulässigen Tabelleninnenraum. Rotation mit begrenzten Wiederholungen und tatsächlicher Ansichtsrichtung. Tastatur mit Eingabedienst, sichtbarer IME-Fläche und Fokus auf dem Eingabefeld; ergänzende Sichtprüfung der Bilder. |
+| Ablauf B, Release | Signierte Kopie der Release-APK im Ausgabeordner, Startbild und Fehlerfalle, Paketkennzeichen ohne `DEBUGGABLE` und `ALLOW_BACKUP`. Devtools-Sockets sind nur beim Build-Typ `user` als Release-Eigenschaft bewertbar. Netzmelder nach 60 Sekunden Ruhe, Hintergrund und Rückkehr. |
 | Netz | TCP-Netzmelder, Gegenprobe vor und nach der App sowie je nutzbarem Zugriffsweg: Fetch, XHR, Bild, Iframe, WebSocket, Beacon, EventSource, Prefetch und CapacitorHttp. Eine `.invalid`-Adresse ergänzt die Fehlerbeobachtung. Dazu `/proc/net`, auf API 36 die UID-Tabelle von `netstats` und eine nicht automatisch ausgewertete Paketaufzeichnung. |
 | Navigation | `location.href`, `window.open`, Link mit `target=_blank`, `mailto:`, `tel:`, `intent:`, `file:`, `content:` und `data:`; Prüfung von oberster Activity, lokaler Herkunft, Netzmelder und Protokollmeldungen. |
 | Sicherung | App vor `backupnow` starten und `stopped=false` prüfen. LocalTransport darf keine App-Daten ablegen; die Gegenprobe muss den gespeicherten Marker unter `app_webview/Default/Local Storage` sichern. Auf API 36 zusätzlich Gerätewechsel. |
@@ -216,7 +216,7 @@ Vor und nach den Varianten-Builds werden die Datei-Prüfsummen unter `app/androi
 
 Die Release-Kopie wird ausschließlich mit dem Debug-Schlüssel der Android-Werkzeuge unter `%USERPROFILE%\.android\debug.keystore` und mit v2, v3 sowie `--alignment-preserved true` signiert. Die vorübergehende Kennwortdatei enthält je eine Zeile für Store und Schlüssel; apksigner liest sie nacheinander. Die Datei wird anschließend gelöscht. Die Signaturprüfung beginnt ausdrücklich bei API 24, damit v2 und v3 geprüft werden. Diese Signatur dient nur dem Emulatorlauf und keinem Vertrieb.
 
-Der Ausgabeordner enthält `ergebnis.json`, `zusammenfassung.txt`, `logcat.txt`, Bildschirmfotos und weitere Rohbelege. Dazu gehören Gerätefingerabdruck, Pakete mit UID, WebView-Version und SHA-256 der installierten APKs. Diese Laufbelege können lokale Angaben enthalten und gehören nicht ungeprüft in das öffentliche Repository. Öffentliche Prüfdaten unter `scripts/emulator/fixtures` enthalten nur gekürzte und bereinigte Ausschnitte.
+Der Ausgabeordner enthält `ergebnis.json`, `zusammenfassung.txt`, `logcat.txt`, Bildschirmfotos und weitere Rohbelege. Dazu gehören Gerätefingerabdruck, Build-Typ (`ro.build.type`), Pakete mit UID, WebView-Version und SHA-256 der installierten APKs. Diese Laufbelege können lokale Angaben enthalten und gehören nicht ungeprüft in das öffentliche Repository. Öffentliche Prüfdaten unter `scripts/emulator/fixtures` enthalten nur gekürzte und bereinigte Ausschnitte.
 
 Auch nach einem Fehler räumt der Lauf auf: App und Gegenprobe deinstallieren, geänderte Uhr-, Schrift-, Nachtmodus- und Sicherungseinstellungen zurücksetzen, Emulator beenden, dessen `snapshots` löschen und eigene ADB-Weiterleitungen entfernen. Fehler beim Aufräumen gehören zum Ergebnis.
 
@@ -240,7 +240,41 @@ node scripts/emulator-auswertung.mjs --lauf scratchpad/emulator/api30 --ausgabe 
 
 Sie stellt ursprüngliche und neue Einzelbefunde gegenüber und nennt ihre Rohbelege. Unverändert übernommene Befunde und rekonstruierte Zusatzbefunde sind gekennzeichnet. Ein neuer Geräteversuch wird dadurch nicht ersetzt. LocalTransport-Dateien dürfen nur dann ohne TAR-Endblöcke ausgewertet werden, wenn alle Einträge vollständig sind, das Paket erfolgreich gesichert wurde und die Bytezahlen von `backupnow`, `adb pull` und Datei übereinstimmen. Normale TAR-Dateien werden weiterhin streng geprüft.
 
-### Ergebnisse der vollständigen Läufe
+### Ergebnisse der dritten Serie und Nacharbeit
+
+Die dritte Serie vom **30.09.2026** lief weiterhin mit der **alten Oberfläche vor Paket 2.4 Teil 2**. Sie belegt weder den neuen App-Text noch die folgenden Korrekturen an Überschrift, Rollbereich und Plattformanbindung. Debug-APK: `5b305d7dac933c1fad83f03b298edfaff1a0d54126cdd548df25e8985506cfea`. Die Rohbelege liegen je Lauf in `r3/<Lauf>/`. Die Offline-Neuauswertung ändert diese Dateien nicht.
+
+Die Zahlen bezeichnen **bestanden / nicht bestanden / ungültig / dokumentierte Grenze**, ohne Aufräumschritte. Sichtprüfungen werden unten getrennt als Beobachtung festgehalten; sie werden nicht nachträglich in ursprüngliche Maschinenbefunde geschrieben.
+
+| Lauf | WebView | Vorher: Anzahl; Code | Neuauswertung: Anzahl; Code | Befund und Rohbeleg |
+|---|---|---|---|---|
+| `api24-installation` | nicht erhoben | 1/0/0/0; 0 | 1/0/0/0; 0 | Installation wegen älterem API-Level abgelehnt. |
+| `api30-sicherung` | 83.0.4103.120 | 2/0/0/0; 0 | 2/0/0/0; 0 | Standardsicherung ausgeschlossen, Gegenprobe wirksam. |
+| `api36-sicherung` | 133.0.6943.137 | 3/0/0/0; 0 | 3/0/0/0; 0 | Standardsicherung und Gerätewechsel ausgeschlossen, Gegenproben wirksam. |
+| `api36-navigation` | 133.0.6943.137 | 5/0/0/5; 3 | 5/0/0/5; 3 | Fünf bekannte Grenzen; alle neun Navigationspaare aufgezeichnet. |
+| `api30-b` | 83.0.4103.120 | 5/1/1/0; 1 | 5/0/1/1; 2 | Socket des Release-Prozesses auf `userdebug` ist eine Grenze; maschineller Sichtprüfungsplatzhalter bleibt unverändert. `b-unix.txt:5`, `b-package.txt:56`, `geraet.json:3`. |
+| `api36-b` | 133.0.6943.137 | 1/0/1/0; 2 | 1/0/1/0; 2 | SystemUI-ANR verdeckt Startbild; kein gültiger Release-Lauf. `b-start.png.activity.txt:131`. |
+| `api30-a8` | 83.0.4103.120 | 8/2/1/0; 1 | 8/2/1/0; 1 | Schrift 2,0 läuft über, Rotation springt zurück, danach Touch-Zeitüberschreitung. Bilder unvollständig. |
+| `api36-a8` | 133.0.6943.137 | 10/1/2/0; 1 | 10/1/2/0; 1 | Schrift 2,0 läuft über; Tastatur nicht eindeutig sichtbar. Nur Teil-Sichtprüfung bestätigt. |
+| `api30-a10` | 83.0.4103.120 | 2/0/1/0; 2 | 2/1/0/0; 1 | Wurzel heißt `WebArea`; danach echter Befund: unbenannter fokussierbarer Rollbereich, Knoten 287. |
+| `api36-a10` | 133.0.6943.137 | 2/1/0/0; 1 | 2/1/0/0; 1 | Derselbe unbenannte Rollbereich, Knoten 500 unter „Termine und Rechenwege“. |
+
+**Sichtprüfung durch Claude am 30.09.2026:** `api30-b/b-start.png` zeigt den Rechner ohne Fehlerfalle, Status- und Navigationsleiste weiß mit dunklen Symbolen. `api36-a8/a8-gedreht.png` und `a8-nacht.png` zeigen ein geordnetes Layout und sichtbare Systemleisten; im Nachtmodus bleibt die App wie vorgesehen hell. Die API-30-Bilder zu A8 sind wegen der Zeitüberschreitung nicht vollständig. Diese Beobachtung gilt nur für die genannten Bilder der alten Oberfläche.
+
+Die Nacharbeit umfasst:
+
+- Quellvertrag auf den Webadapter und die ausdrückliche Initialisierung der App angepasst; `import-message` und `reset-message` bleiben Statuszeilen.
+- Schriftgröße 2,0: Die App-Überschrift erhielt `overflow-wrap: anywhere` und `hyphens: auto`. A8 erfasst künftig auch aus einer passenden Elementbox herausragenden Text. Alte Rohbelege enthalten nur die Seitenbreiten 549 und 412 und erlauben keine vollständige nachträgliche Zuordnung zu Elementen.
+- Der fokussierbare Tabellenrollbereich erhält `role="group" aria-labelledby="table-heading"`. Die umgebende Section bleibt die einzige gleichnamige Region. A10 nennt beanstandete Rolle, Elternnamen und DOM-Bezug; neue Läufe erfassen zusätzlich die DOM-Beschreibung. Nur für belegte WebView-Version 83 wird `WebArea` als Wurzel verwendet; die Prüfung von 133 bleibt bei `RootWebArea`.
+- Der SystemUI-ANR entstand bereits vor der 45-Sekunden-Pause (`api36-b/logcat.txt:13385–13387`: `failed to complete startup`). Wiederholtes Warten und Prüfen ersetzt die bisherige Annahme, die Pause allein reiche aus.
+- Rotation wird einzeln gesetzt und nachgelesen. Der API-30-Rücksprung von `ROTATION_90` nach `ROTATION_0` ist belegt, seine genaue Ursache nicht. Native Tippkoordinaten aus dem Ansichtsbaum ersetzen die CDP-Touch-Methode, deren Zeitüberschreitung keinen eindeutigen Ursachenbeleg liefert.
+- Tastatur: `mInputShown=true` neben `mIsInputViewShown=false` und einer leeren sichtbaren IME-Fläche reichen nicht. Künftig werden Eingabedienst, Fenstermaße und Eingabefokus zusammen geprüft. Die Bildschirmtastatur wird auch bei angeschlossener Hardwaretastatur angefordert; diese Einstellung wird anschließend wiederhergestellt.
+
+Die [Chromium-Quellen zu SharedStatics, AwInit und BuildInfo](https://chromium.googlesource.com/chromium/src/+/3546854f59..2e285ebae2) erklären das erzwungene WebView-Debugging auf `eng` und `userdebug`. Die genaue Zuordnung dieser Quellen zu den verwendeten WebView-Binärdateien wurde nicht geprüft. Die Release-App hat kein `DEBUGGABLE`; Capacitor übergibt deshalb ohne eigene Überschreibung `false`. Auf einem Abbild mit Build-Typ ungleich `user` bleibt die Socketprüfung unabhängig vom Socketfund eine dokumentierte Grenze. Bei historischen Läufen wird der Typ ausdrücklich aus dem Gerätefingerabdruck abgeleitet; neue Läufe erfassen `ro.build.type` direkt.
+
+**Noch zu prüfen:** neue Debug- und Release-APKs bauen und die betroffenen Abläufe mit der neuen Oberfläche wiederholen. Auf einem echten Gerät mit Build-Typ `user` sind insbesondere fehlendes WebView-Debugging sowie Namenansage und Bedienung mit TalkBack nachzuweisen. Der Emulatorrahmen verlangt `adb root` und ist dafür nicht direkt verwendbar. Dateiimport, Exporte und Teilen bleiben der gesonderten Geräteprüfung vorbehalten. Die Navigationsgrenzen mit fehlendem Empfänger oder früher Chromium-Sperre brauchen weiterhin eigene Bewertung oder ergänzende wirksame Gegenproben.
+
+### Ergebnisse der ersten Serie (historischer Zwischenstand)
 
 Beobachtet am **30.09.2026**, Quellstand **`c7a0cd8` mit uncommitteten Prüfskripten**. Debug-APK in allen fünf Läufen: SHA-256 **`5b305d7dac933c1fad83f03b298edfaff1a0d54126cdd548df25e8985506cfea`**. Die folgende Tabelle bezeichnet diese Prüfsumme mit „Debug 5b305d7d…cfea“. Gezählt werden die Einzelbefunde in `ergebnis.json`; die jeweils zwölf bestandenen Aufräumschritte und die Gesamtüberschrift werden nicht mitgezählt. Es wurde in keinem Lauf ein Einzelbefund „nicht bestanden“ gemeldet.
 

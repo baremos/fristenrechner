@@ -1,0 +1,2 @@
+  mCurrentFocus=Window{7ef08d6 u0 de.baremos.fristenrechner/de.baremos.fristenrechner.MainActivity}
+        mSource=InsetsSource id=3 type=ime frame=[0,2400][1080,2400] visibleFrame=[0,2400][1080,2400] visible=true flags= sideHint=NONE boundingRects=null

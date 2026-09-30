@@ -8,7 +8,8 @@ for (const api of [30, 36]) {
   test(`Echte /proc-Köpfe vom 30.09., API ${api}: UID-Prüfung und Debug-Gegenprobe`, () => {
     assert.equal(evaluiereProcNet({ uid: f.appUid, tabellen: f.procVorher, gegenprobe: { uid: f.gegenUid, tabellen: f.gegenTabellen } }).status, 'bestanden');
     assert.equal(evaluiereProcNet({ uid: f.gegenUid, tabellen: f.gegenTabellen, gegenprobe: { uid: f.gegenUid, tabellen: f.gegenTabellen } }).status, 'nicht bestanden');
-    assert.equal(evaluiereUnixSockets({ text: f.unix, debugSocketNachgewiesen: true }).status, 'nicht bestanden');
-    assert.equal(evaluiereUnixSockets({ text: f.unix.split('\n').slice(1).join('\n'), debugSocketNachgewiesen: true }).status, 'ungültig');
+    // Der angenommene user-Build ist eine Gegenprobe zum ursprünglichen Abbild.
+    assert.equal(evaluiereUnixSockets({ text: f.unix, debugSocketNachgewiesen: true, buildType: 'user' }).status, 'nicht bestanden');
+    assert.equal(evaluiereUnixSockets({ text: f.unix.split('\n').slice(1).join('\n'), debugSocketNachgewiesen: true, buildType: 'user' }).status, 'ungültig');
   });
 }

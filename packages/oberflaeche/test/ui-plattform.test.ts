@@ -108,10 +108,12 @@ describe('Initialisierung und Speicher über die Plattform', () => {
     expect(JSON.parse(env.gespeichert()!).input.projekt.projektname).toBe('Letzter Stand');
   });
 
-  it.each(['ungültig', 'zu groß', 'Lesefehler'])('erhält den Startspeicher bei %s und lässt Berechnung zu', async fall => {
+  it.each(['ungültig', 'zu groß', 'Speicher nicht verfügbar', 'Lesefehler', 'unbekannter Lesefehler'])('erhält den Startspeicher bei %s und lässt Berechnung zu', async fall => {
     const vorher = fall === 'zu groß' ? 'ä'.repeat(MAX_PROJEKT_BYTES / 2) + 'a' : '{kaputt';
     const env = vorbereiten(vorher);
-    if (fall === 'Lesefehler') env.lesen.mockRejectedValue(new PlattformFehler('nicht-verfuegbar', 'Probe'));
+    if (fall === 'Speicher nicht verfügbar') env.lesen.mockRejectedValue(new PlattformFehler('nicht-verfuegbar', 'Probe'));
+    if (fall === 'Lesefehler') env.lesen.mockRejectedValue(new PlattformFehler('lesen', 'Probe'));
+    if (fall === 'unbekannter Lesefehler') env.lesen.mockRejectedValue(new Error('Probe'));
     env.start(); await warten();
     env.aendern('projektname', 'Neue Eingabe');
     env.senden(env.el('schedule-form'), 'submit');
@@ -121,6 +123,17 @@ describe('Initialisierung und Speicher über die Plattform', () => {
     expect(env.gespeichert()).toBe(vorher);
     expect(env.el('storage-status').textContent).toContain('bleibt erhalten');
     if (fall === 'zu groß') expect(env.el('storage-status').textContent).toContain('1 MiB');
+    if (fall === 'ungültig' || fall === 'zu groß') {
+      expect(env.el('storage-status').textContent).toContain('Importieren Sie eine Projektdatei oder setzen Sie das Projekt zurück');
+    } else {
+      expect(env.el('storage-status').textContent).toContain('weiter rechnen');
+      expect(env.el('storage-status').textContent).toContain('als Projektdatei exportieren');
+      expect(env.el('storage-status').textContent).not.toContain('Importieren');
+      expect(env.el('storage-status').textContent).not.toContain('zurück');
+      env.click('save-json'); await warten();
+      const exportiert = new TextDecoder().decode(env.exportieren.mock.calls[0]![0].bytes);
+      expect(JSON.parse(exportiert).input.projekt.projektname).toBe('Neue Eingabe');
+    }
   });
 
   it('meldet einen Schreibfehler und speichert beim nächsten Versuch wieder', async () => {

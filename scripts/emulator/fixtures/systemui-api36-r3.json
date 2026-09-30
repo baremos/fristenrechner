@@ -1,0 +1,4 @@
+{
+  "activity": "    topResumedActivity=ActivityRecord{122969836 u0 de.baremos.fristenrechner/.MainActivity t37}\n  mCurrentFocus=Window{4b921db u0 Application Not Responding: com.android.systemui}",
+  "logcat": "09-30 11:41:33.170 E/ActivityManager(  686): ANR in com.android.systemui\n09-30 11:41:33.170 E/ActivityManager(  686): Reason: Process ProcessRecord{9b27084 927:com.android.systemui/u0a124} failed to complete startup"
+}

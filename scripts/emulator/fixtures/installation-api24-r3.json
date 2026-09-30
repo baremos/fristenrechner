@@ -1,0 +1,4 @@
+{
+  "ausgabe": "Failure [INSTALL_FAILED_OLDER_SDK: Failed parse during installPackageLI: /data/app/vmdl638998202.tmp/base.apk (at Binary XML file line #7): Requires newer sdk version #30 (current version is #24)]",
+  "code": 1
+}

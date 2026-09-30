@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { quellvertrag, formularWerte, datumBefehl, ablaufA, ablaufA8, ablaufA10, domAriaNamen, evaluiereDomAria } from './emulator/oberflaeche.mjs';
+import { quellvertrag, formularWerte, datumBefehl, ablaufA, ablaufA8, ablaufA10, domAriaNamen, evaluiereDomAria, ueberlaufMessung, tastaturTippPunkt } from './emulator/oberflaeche.mjs';
 import { runInNewContext } from 'node:vm';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -21,6 +21,7 @@ after(() => {
 const quelldateien = [
   'packages/oberflaeche/src/Fristenrechner.astro', 'app/src/pages/index.astro',
   'packages/oberflaeche/src/fristenrechner-ui.ts', 'packages/kern/src/fristen.ts',
+  'packages/oberflaeche/src/web-plattform.ts',
 ];
 let nummer = 0;
 function quellkopie(datei, ersetzen, durch) {
@@ -50,7 +51,13 @@ for (const [titel, datei, ersetzen, durch] of [
   ['Formularfeld fehlt', quelldateien[0], 'name="projektname"', 'name="anderes_feld"'],
   ['Ergebnistabelle fehlt', quelldateien[0], 'id="schedule-table-body"', 'id="andere_tabelle"'],
   ['App-Fehlerfalle fehlt', quelldateien[1], 'id="app-startfehler"', 'id="anderer_hinweis"'],
-  ['Speicherschlüssel fehlt', quelldateien[2], 'const STORAGE_KEY =', 'const ANDERER_KEY ='],
+  ['Speicherschlüssel fehlt', quelldateien[4], 'const WEB_SPEICHERSCHLUESSEL =', 'const ANDERER_KEY ='],
+  ['Webadapter nutzt anderen Schlüssel', quelldateien[4], 'getItem(WEB_SPEICHERSCHLUESSEL)', "getItem('anderer-schluessel')"],
+  ['Initialisierung fehlt', quelldateien[1], 'initFristenrechner(root,', 'andereInitialisierung(root,'],
+  ['Importmeldung fehlt', quelldateien[0], 'id="import-message"', 'id="andere-meldung"'],
+  ['Rücksetzmeldung fehlt', quelldateien[0], 'id="reset-message"', 'id="andere-meldung"'],
+  ['Importstatus nicht live', quelldateien[0], 'id="import-message" class="action-message" role="status" aria-live="polite"', 'id="import-message"'],
+  ['UI liest Rücksetzmeldung nicht', quelldateien[2], "('#reset-message')", "('#andere-meldung')"],
   ['Regelkonstante fehlt', quelldateien[3], 'export const REGELVERSION', 'export const ANDERE_VERSION'],
 ]) test(`Quellvertrag: ${titel} muss abbrechen`, () => {
   assert.throws(() => quellvertrag(quellkopie(datei, ersetzen, durch)), /geändert|nicht gefunden|nicht im Quelltext/);
@@ -65,7 +72,7 @@ for (const wert of [undefined, null, '17', 1.5, NaN, Infinity, Number.MAX_SAFE_I
 });
 
 /** Registriert die Phasen; kein Android-Befehl und kein CDP-Aufruf verlässt diesen Ersatz. */
-async function umgebung({ evaluate, shell, send, events = [] } = {}) {
+async function umgebung({ evaluate, shell, send, uiBaum, events = [] } = {}) {
   const schritte = new Map(), befunde = new Map(), gespeicherte = new Map(), aufrufe = [];
   let clock = 0, display = 0;
   const cdp = {
@@ -84,7 +91,8 @@ async function umgebung({ evaluate, shell, send, events = [] } = {}) {
     pruefung: async (name, fn) => { schritte.set(name, fn); },
     cdp: async (...args) => { aufrufe.push(['cdp', ...args]); return cdp; },
     shot: async (...args) => { aufrufe.push(['shot', ...args]); },
-    shell: async (code) => { aufrufe.push(['shell', code]); if (!shell) throw new Error('Unerwarteter Shell-Aufruf.'); return shell(code); },
+    uiBaum: async (...args) => { aufrufe.push(['uiBaum', ...args]); return uiBaum ? uiBaum(...args) : tastaturXml(); },
+    shell: async (code) => { aufrufe.push(['shell', code]); if (code === 'dumpsys webviewupdate' && !shell) return 'Current WebView package (name, version): (com.android.webview, 133.0.6943.127)'; if (!shell) throw new Error('Unerwarteter Shell-Aufruf.'); return shell(code); },
     restoreClock: async () => { clock++; aufrufe.push(['restoreClock']); },
     restoreDisplay: async () => { display++; aufrufe.push(['restoreDisplay']); },
   };
@@ -242,28 +250,62 @@ test('A8 und A10 lassen sich ohne andere Prüfungen registrieren', async () => {
   assert.deepEqual(schritte, ['A8', 'A10']);
 });
 
-test('A8 verbindet nach jedem Anzeigenwechsel eine neue CDP-Seite und stellt anschließend zurück', async () => {
-  let schrift = '1.0', rotation = '0', nacht = 'no';
-  const u = await umgebung({
-    evaluate: (code) => code.includes('checkValidity()') ? formularWerte : code.includes('getBoundingClientRect') ? { x: 10, y: 20 } : code.includes('scrollWidth') ? { scrollWidth: 400, clientWidth: 400 } : undefined,
+const tastaturXml = (patch = '') => `<hierarchy><node class="android.widget.EditText" package="de.baremos.fristenrechner" text="Gespeichertes Testprojekt" enabled="true" bounds="[10,100][110,150]" ${patch}/></hierarchy>`;
+async function anzeigeUmgebung({ rotationZurueck = false, tippenFehler = false } = {}) {
+  let schrift = '1.0', rotation = '0', nacht = 'no', tastatur = '0', getippt = false, setRotation = 0;
+  return umgebung({
+    evaluate: (code) => {
+      if (code.includes('checkValidity()')) return formularWerte;
+      if (code.includes('ueberlaufMessung')) return { scrollWidth: 400, clientWidth: 400, ueberlaufElemente: [] };
+      if (code.includes('ausrichtung:screen.orientation')) return { breite: rotation === '1' ? 800 : 400, hoehe: rotation === '1' ? 400 : 800, ausrichtung: rotation === '1' ? 'landscape-primary' : 'portrait-primary' };
+      if (code.includes('tastaturViewport')) return { innerHeight: getippt ? 400 : 700, clientHeight: getippt ? 400 : 700, visualViewportHeight: getippt ? 400 : 700, aktivesElement: getippt ? { tag: 'input', id: '', name: 'projektname' } : { tag: 'body', id: '', name: '' } };
+      return undefined;
+    },
     shell: (code) => {
-      for (const teil of code.split('; ')) {
-        if (teil.startsWith('settings put system font_scale ')) schrift = teil.split(' ').at(-1);
-        if (teil.startsWith('settings put system user_rotation ')) rotation = teil.split(' ').at(-1);
-        if (teil.startsWith('cmd uimode night ')) nacht = teil.split(' ').at(-1);
+      assert.ok(!code.includes(';'), 'Anzeigewechsel werden einzeln ausgeführt.');
+      if (code.startsWith('settings put system font_scale ')) schrift = code.split(' ').at(-1);
+      if (code.startsWith('settings put system user_rotation ')) {
+        rotation = code.split(' ').at(-1);
+        if (rotation === '1' && rotationZurueck && ++setRotation === 1) rotation = '0';
       }
+      if (code.startsWith('cmd uimode night ')) nacht = code.split(' ').at(-1);
+      if (code.startsWith('settings put secure show_ime_with_hard_keyboard ')) tastatur = code.split(' ').at(-1);
+      if (code === 'settings get secure show_ime_with_hard_keyboard') return tastatur;
       if (code === 'settings get system font_scale') return schrift;
       if (code === 'settings get system user_rotation') return rotation;
       if (code === 'cmd uimode night') return `Night mode: ${nacht}`;
-      if (code === 'dumpsys input_method') return 'mInputShown=true';
+      if (code === 'dumpsys input_method') return 'mInputShown=true\nmIsInputViewShown=true';
+      if (code === 'dumpsys window windows') return 'Window #0 Window{abc u0 InputMethod}:\n  mFrame=[0,1200][1080,2300]\n  isOnScreen=true isVisible=true\n  mCurrentFocus=Window{def u0 de.baremos.fristenrechner/de.baremos.fristenrechner.MainActivity}';
+      if (code.startsWith('input tap ')) { if (tippenFehler) throw new Error('Nativer Tipp fehlgeschlagen.'); getippt = true; }
       return '';
     },
   });
+}
+
+test('A8 verbindet neu, tippt mit nativen Koordinaten und stellt alle Einstellungen zurück', async () => {
+  const u = await anzeigeUmgebung();
   status(await u.schritte.get('A8')(), 'ungültig');
   assert.equal(u.aufrufe.filter(a => a[0] === 'cdp' && a[2]?.neu === true).length, 5);
   assert.equal(u.aufrufe.filter(a => a[0] === 'shot').length, 5);
   assert.equal(u.display(), 1);
+  assert.equal(u.aufrufe.filter(a => a[0] === 'send' && a[1] === 'Input.dispatchTouchEvent').length, 0);
+  assert.ok(u.aufrufe.some(a => a[0] === 'shell' && a[1] === 'input tap 60 125'));
+  assert.deepEqual(u.gespeicherte.get('a8-tastatur-wiederherstellung.json'), { vorher: '0', nachher: '0' });
   for (const [name, b] of u.befunde) status(b, 'bestanden');
+});
+
+test('A8 wiederholt eine zurückgesetzte Rotation und belegt den zweiten Wert', async () => {
+  const u = await anzeigeUmgebung({ rotationZurueck: true });
+  await u.schritte.get('A8')();
+  assert.deepEqual(u.gespeicherte.get('a8-gedreht-einstellungen.json').versuche, [{ versuch: 1, rotation: '0' }, { versuch: 2, rotation: '1' }]);
+  status(u.befunde.get('A8-gedreht-Einstellungen'), 'bestanden');
+});
+
+test('A8 räumt die zusätzliche IME-Einstellung auch bei einem fehlgeschlagenen Tipp auf', async () => {
+  const u = await anzeigeUmgebung({ tippenFehler: true });
+  await assert.rejects(u.schritte.get('A8')(), /Nativer Tipp fehlgeschlagen/);
+  assert.deepEqual(u.gespeicherte.get('a8-tastatur-wiederherstellung.json'), { vorher: '0', nachher: '0' });
+  assert.equal(u.display(), 1);
 });
 
 test('A8 behält den CDP-Fehler, wenn zusätzlich die Wiederherstellung scheitert', async () => {
@@ -320,3 +362,56 @@ test('DOM-Namenprobe erkennt label, ARIA und unbenannte Elemente ohne Eingabewer
 for (const unbekannt of [null, [], [{}], [{ element: 'input', name: 1, quelle: 'label' }]]) {
   test('DOM-Namenprobe benötigt vollständige Daten', () => status(evaluiereDomAria(unbekannt), 'ungültig'));
 }
+
+test('Überlaufdiagnose benennt sichtbare Elemente, lässt Tabelleninhalt aus und prüft den Tabellenrahmen', () => {
+  const element = (tag, rechts, patch = {}) => ({ tagName: tag, id: '', textContent: 'x'.repeat(200), getAttribute: () => '', getClientRects: () => [{}], closest: () => null, getBoundingClientRect: () => ({ left: 0, right: rechts, top: 0, bottom: 30, width: rechts, height: 30 }), ...patch });
+  const rahmen = element('DIV', 420, { getAttribute: () => 'table-scroll' }); rahmen.closest = () => rahmen;
+  const innen = element('TD', 900, { closest: () => rahmen });
+  const hidden = element('H2', 800, { getClientRects: () => [] });
+  const daten = JSON.parse(JSON.stringify(runInNewContext(`(${ueberlaufMessung.toString()})()`, {
+    document: { documentElement: { clientWidth: 412, scrollWidth: 549 }, body: { scrollWidth: 549 }, querySelectorAll: () => [element('H1', 549), element('P', 400), rahmen, innen, hidden] },
+    getComputedStyle: () => ({ visibility: 'visible' }),
+  })));
+  assert.deepEqual(daten.ueberlaufElemente.map(e => [e.tag, e.rechts]), [['h1', 549], ['div', 420]]);
+  assert.equal(daten.ueberlaufElemente[0].text.length, 160);
+  assert.equal(daten.scrollWidth, 549);
+});
+
+test('Überlaufdiagnose erkennt ein langes Wort außerhalb einer passend breiten Überschrift', () => {
+  const text = { nodeType: 3, textContent: 'Fristenrechner', rechts: 549 };
+  const h1 = { tagName: 'H1', id: '', textContent: text.textContent, childNodes: [text], getAttribute: () => '', getClientRects: () => [{}], closest: () => null, getBoundingClientRect: () => ({ left: 16, right: 396, top: 0, bottom: 100, width: 380, height: 100 }) };
+  const daten = JSON.parse(JSON.stringify(runInNewContext(`(${ueberlaufMessung.toString()})()`, {
+    document: { documentElement: { clientWidth: 412, scrollWidth: 549 }, body: { scrollWidth: 549 }, querySelectorAll: () => [h1], createRange: () => { let knoten; return { selectNodeContents: n => { knoten = n; }, getBoundingClientRect: () => ({ right: knoten.rechts }) }; } },
+    getComputedStyle: () => ({ visibility: 'visible' }),
+  })));
+  assert.equal(daten.ueberlaufElemente.length, 1);
+  assert.deepEqual([daten.ueberlaufElemente[0].rechts, daten.ueberlaufElemente[0].textRechts], [396, 549]);
+});
+
+test('Nativer Tipp benötigt genau ein sichtbares Projektfeld und keine DOM-Pixelrechnung', () => {
+  assert.deepEqual(tastaturTippPunkt(tastaturXml(), 'de.baremos.fristenrechner'), { x: 60, y: 125, bounds: [10, 100, 110, 150] });
+  for (const xml of ['', tastaturXml().replace('[10,100][110,150]', '[0,0][0,0]'), tastaturXml().replace('Gespeichertes Testprojekt', 'Anderes Projekt'), tastaturXml() + tastaturXml()]) {
+    assert.throws(() => tastaturTippPunkt(xml, 'de.baremos.fristenrechner'), /nicht eindeutig sichtbar/);
+  }
+});
+
+test('A10 sichert DOM-Knoten des unbenannten fokussierbaren Elements mit WebView-Version', async () => {
+  const u = await umgebung({ evaluate: () => namen, send: (methode, params) => {
+    if (methode === 'Accessibility.getFullAXTree') return { nodes: [{ nodeId: '1', ignored: false, role: { value: 'RootWebArea' }, name: { value: 'App' } }, { nodeId: '2', ignored: false, role: { value: 'generic' }, name: { value: '' }, backendDOMNodeId: 12, properties: [{ name: 'focusable', value: { value: true } }] }] };
+    if (methode === 'DOM.describeNode') { assert.equal(params.backendNodeId, 12); return { node: { nodeName: 'DIV', attributes: ['class', 'table-scroll', 'tabindex', '0'] } }; }
+    return {};
+  } });
+  await u.schritte.get('A10')();
+  const baum = u.gespeicherte.get('a10-barrierebaum.json');
+  assert.equal(baum.webviewVersion, '133.0.6943.127');
+  assert.deepEqual(baum.domKnoten, [{ backendDOMNodeId: 12, nodeName: 'DIV', attributes: ['class', 'table-scroll', 'tabindex', '0'] }]);
+});
+
+test('DOM-Namenprobe zählt Tabelleninhalt nicht als Namen eines fokussierbaren Rollbereichs', () => {
+  const rollen = [{ role: null, label: null }, { role: 'group', label: 'Termintabelle horizontal verschieben' }];
+  const daten = JSON.parse(JSON.stringify(runInNewContext(`(${domAriaNamen.toString()})()`, {
+    document: { querySelectorAll: () => rollen.map(({ role, label }) => ({ tagName: 'DIV', textContent: 'Termine Inhalt', getClientRects: () => [{}], closest: () => null, getAttribute: n => ({ role, 'aria-label': label }[n] || null) })), getElementById: () => null }, getComputedStyle: () => ({ visibility: 'visible' }),
+  })));
+  assert.equal(daten[0].name, '');
+  assert.equal(daten[1].name, 'Termintabelle horizontal verschieben');
+});

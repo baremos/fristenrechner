@@ -237,8 +237,8 @@ test('netstats API 36: echter Tabellenausschnitt; Appverkehr scheitert', () => {
   status(evaluiereNetstats({ ...m, uid: 1020 }), NEIN);
   const unveraendert = evaluiereNetstats({ ...m, uid: 10143 });
   status(unveraendert, OK); assert.deepEqual(unveraendert.details.delta, [0, 0, 0, 0]);
-  status(evaluiereNetstats({ ...m, vorher: m.vorher.replace('    10143 5749 11 1652 12\n', ''), uid: 10143 }), NEIN);
-  status(evaluiereNetstats({ ...m, nachher: m.nachher.replace('    10143 5749 11 1652 12\n', ''), uid: 10143 }), UNGUELTIG);
+  status(evaluiereNetstats({ ...m, vorher: m.vorher.replace(/    10143 5749 11 1652 12\r?\n/, ''), uid: 10143 }), NEIN);
+  status(evaluiereNetstats({ ...m, nachher: m.nachher.replace(/    10143 5749 11 1652 12\r?\n/, ''), uid: 10143 }), UNGUELTIG);
   status(evaluiereNetstats({ ...m, nachher: m.nachher.replace('10143 5749 11 1652 12', '10143 5748 11 1652 12'), uid: 10143 }), UNGUELTIG);
   status(evaluiereNetstats({ ...m, gegenUid: 10999 }), UNGUELTIG);
   status(evaluiereNetstats({ ...m, nachher: m.nachher.replace('  mStatsMapA:', '') }), UNGUELTIG);
@@ -246,15 +246,81 @@ test('netstats API 36: echter Tabellenausschnitt; Appverkehr scheitert', () => {
   status(evaluiereNetstats({ ...m, api: 30 }), UNGUELTIG);
 });
 
-// Formatgegenproben, noch keine echten Release-/API-24-/AX-Aufzeichnungen vorhanden.
+// Konstruierte Ergänzungen zu den echten Aufzeichnungen der dritten Serie.
 test('Unix-Sockets: Header ist Pflicht; offene WebView und fehlende Gegenprobe', () => {
   const header = 'Num       RefCount Protocol Flags    Type St Inode Path\n';
   const socket = '0000000000000000: 00000002 00000000 00010000 0001 01 30122 @webview_devtools_remote_2365\n';
-  status(evaluiereUnixSockets({ text: header, debugSocketNachgewiesen: true }), OK);
-  status(evaluiereUnixSockets({ text: header + socket, debugSocketNachgewiesen: true }), NEIN);
+  status(evaluiereUnixSockets({ text: header, debugSocketNachgewiesen: true, buildType: 'user' }), OK);
+  status(evaluiereUnixSockets({ text: header + socket, debugSocketNachgewiesen: true, buildType: 'user' }), NEIN);
   status(evaluiereUnixSockets({ text: '', debugSocketNachgewiesen: true }), UNGUELTIG);
   status(evaluiereUnixSockets({ text: header, debugSocketNachgewiesen: false }), UNGUELTIG);
   status(evaluiereUnixSockets({ text: header + 'kaputt', debugSocketNachgewiesen: true }), UNGUELTIG);
+});
+
+test('Release API 30: echter userdebug-Socket ist Grenze, fehlender Typ bleibt ungültig', () => {
+  const roh = json('release-api30-r3.json');
+  const m = { ...roh, debugSocketNachgewiesen: /@webview_devtools_remote_\d+/.test(roh.debugUnix), buildType: 'userdebug' };
+  status(evaluiereReleaseFlags(roh), OK);
+  for (const buildType of ['userdebug', 'eng']) status(evaluiereUnixSockets({ ...m, buildType }), GRENZE);
+  status(evaluiereUnixSockets({ ...m, buildType: 'user' }), NEIN);
+  status(evaluiereUnixSockets({ ...m, buildType: undefined }), UNGUELTIG);
+  status(evaluiereUnixSockets({ ...m, text: 'kaputt' }), UNGUELTIG);
+  status(evaluiereUnixSockets({ ...m, debugSocketNachgewiesen: false }), UNGUELTIG);
+});
+
+for (const api of [30, 36]) test(`AX API ${api}: echte Wurzel und Diagnose des unbenannten Rollbereichs`, () => {
+  const m = json(`barrierebaum-api${api}-r3.json`);
+  const wert = evaluiereBarrierebaum(m);
+  status(wert, NEIN);
+  assert.equal(wert.details.length, 1);
+  assert.equal(wert.details[0].rolle, 'generic');
+  assert.equal(wert.details[0].elternName, 'Termine und Rechenwege');
+  assert.ok(wert.details[0].backendDOMNodeId > 0);
+  // Die Korrektur ist eine Gegenprobe, keine Gerätebeobachtung.
+  const knoten = m.nodes.find(n => n.nodeId === wert.details[0].nodeId);
+  m.domKnoten = [{ backendDOMNodeId: knoten.backendDOMNodeId, nodeName: 'DIV', attributes: ['class', 'table-scroll', 'tabindex', '0'] }];
+  assert.equal(evaluiereBarrierebaum(m).details[0].dom.nodeName, 'DIV');
+  knoten.role.value = 'group'; knoten.name.value = 'Termine und Rechenwege';
+  status(evaluiereBarrierebaum(m), OK);
+  if (api === 30) {
+    status(evaluiereBarrierebaum(m, { webviewVersion: '133.0.6943.137' }), UNGUELTIG);
+    delete m.webviewVersion; status(evaluiereBarrierebaum(m), UNGUELTIG);
+    m.webviewVersion = '83.0.4103.120'; m.nodes[0].parentId = 'fremder-knoten'; status(evaluiereBarrierebaum(m), UNGUELTIG);
+  } else {
+    m.nodes[0].role.value = 'WebArea'; status(evaluiereBarrierebaum(m), UNGUELTIG);
+  }
+});
+
+test('Tastatur API 36: widersprüchliche Anzeige und Nullhöhe bleiben ungültig', () => {
+  const inputMethod = fixture('tastatur-api36-r3.txt'), fenster = fixture('tastatur-fenster-api36-r3.txt');
+  const nachher = { aktivesElement: { tag: 'input', name: 'projektname' } };
+  status(evaluiereTastatur(inputMethod), UNGUELTIG);
+  status(evaluiereTastatur({ inputMethod, fenster, nachher }), UNGUELTIG);
+  const sichtbar = inputMethod.replace('mIsInputViewShown=false', 'mIsInputViewShown=true');
+  status(evaluiereTastatur({ inputMethod: sichtbar, fenster, nachher }), UNGUELTIG);
+  status(evaluiereTastatur({ inputMethod: sichtbar, fenster: fenster.replace('frame=[0,2400]', 'frame=[0,1600]'), nachher }), UNGUELTIG);
+  const mitHoehe = fenster.replaceAll('[0,2400][1080,2400]', '[0,1600][1080,2400]');
+  status(evaluiereTastatur({ inputMethod: sichtbar, fenster: mitHoehe, nachher }), OK);
+  status(evaluiereTastatur({ inputMethod: sichtbar, fenster: mitHoehe.replace('visible=true', 'visible=false'), nachher }), UNGUELTIG);
+  status(evaluiereTastatur({ inputMethod: sichtbar, fenster: mitHoehe, nachher: {} }), UNGUELTIG);
+  status(evaluiereTastatur({ inputMethod: sichtbar, fenster: mitHoehe.replaceAll('de.baremos.fristenrechner', 'fremde.app'), nachher }), UNGUELTIG);
+});
+
+test('Neuauswertung der dritten Serie belegt Version und bewahrt Abbrüche', async (t) => {
+  const tmp = resolve('scratchpad/paket-2.5-c4/tmp'); await mkdir(tmp, { recursive: true });
+  const dir = await mkdtemp(join(tmp, 'offline-r3-')); t.after(() => rm(dir, { recursive: true, force: true }));
+  const roh = json('release-api30-r3.json'), ax = json('barrierebaum-api30-r3.json');
+  delete ax.webviewVersion;
+  await writeFile(join(dir, 'ergebnis.json'), JSON.stringify({ code: 2, ergebnis: UNGUELTIG, befund: [{ id: 'A10', status: UNGUELTIG, grund: 'Wurzel fehlt.' }, { id: 'A8', status: UNGUELTIG, grund: 'Zeitüberschreitung' }] }));
+  await writeFile(join(dir, 'geraet.json'), JSON.stringify({ fingerprint: roh.fingerprint, webview: 'Current WebView package (name, version): (com.android.webview, 83.0.4103.120)' }));
+  await writeFile(join(dir, 'a10-barrierebaum.json'), JSON.stringify(ax));
+  await writeFile(join(dir, 'b-unix.txt'), roh.text); await writeFile(join(dir, 'b-debug-unix.txt'), roh.debugUnix);
+  const e = await werteLaufAus(dir);
+  status(e.nachher.befund.find(b => b.id === 'A10'), NEIN);
+  status(e.nachher.befund.find(b => b.id === 'B-Socket'), GRENZE);
+  status(e.nachher.befund.find(b => b.id === 'A8'), UNGUELTIG);
+  assert.match(e.nachher.befund.find(b => b.id === 'B-Socket').details.buildTypeQuelle, /Historischer/);
+  assert.equal(e.nachher.code, 1);
 });
 test('Fehlerseite aus echter Probe; falscher Pfad, fehlender Text und Syntaxfehler', () => {
   const m = json('fehlerseite-api30.json'); status(evaluiereFehlerseite(m), OK);
@@ -262,12 +328,14 @@ test('Fehlerseite aus echter Probe; falscher Pfad, fehlender Text und Syntaxfehl
   status(evaluiereFehlerseite({ ...m, logcat: '' }), UNGUELTIG);
 });
 test('API 24: formale Fehlerkennung; erfolgreiche Installation scheitert', () => {
+  status(evaluiereInstallation(json('installation-api24-r3.json')), OK);
   status(evaluiereInstallation({ code: 1, ausgabe: 'Failure [INSTALL_FAILED_OLDER_SDK: Requires newer sdk version #30 (current version is #24)]' }), OK);
   status(evaluiereInstallation({ code: 0, ausgabe: 'Success' }), NEIN);
   status(evaluiereInstallation({ code: 1, ausgabe: 'adb: device offline' }), UNGUELTIG);
   status(evaluiereInstallation({ code: 1, ausgabe: 'INSTALL_FAILED_OLDER_SDK' }), UNGUELTIG);
 });
 test('Überlauf: sichtbare Maße erforderlich, Überlauf scheitert', () => {
+  for (const api of [30, 36]) status(evaluiereUeberlauf(json(`ueberlauf-api${api}-r3.json`)), NEIN);
   status(evaluiereUeberlauf({ scrollWidth: 400, clientWidth: 400 }), OK);
   status(evaluiereUeberlauf({ scrollWidth: 401, clientWidth: 400 }), NEIN);
   status(evaluiereUeberlauf({ scrollWidth: 0, clientWidth: 0 }), UNGUELTIG);
@@ -317,8 +385,8 @@ test('Release-Start: vollständiger UIA-Baum mit Formular, Fehlerfalle scheitert
   for (const unlesbar of [xml.slice(0, -12), '<hierarchy>Fristenrechner Vergabe Vergabeordnung</hierarchy>', xml.replace('text="Vergabeordnung"', 'unbekannt="Vergabeordnung"'), xml.replace('text="Vergabeordnung"', 'text="Vergabeordnung" visible-to-user="false"'), xml.replace('</hierarchy>', '</node></hierarchy>')]) status(evaluiereReleaseStart({ xml: unlesbar }), UNGUELTIG);
 });
 test('Tastatur: sichtbarer, verborgener und unbekannter Zustand sind getrennt', () => {
-  status(evaluiereTastatur('  mInputShown=true'), OK);
-  status(evaluiereTastatur('  mIsInputViewShown=true'), OK);
+  status(evaluiereTastatur('  mInputShown=true'), UNGUELTIG);
+  status(evaluiereTastatur('  mIsInputViewShown=true'), UNGUELTIG);
   status(evaluiereTastatur('  mInputShown=false'), NEIN);
   status(evaluiereTastatur('mInputShown=true\nmIsInputViewShown=false'), UNGUELTIG);
   status(evaluiereTastatur('mInputShown=unknown'), UNGUELTIG);

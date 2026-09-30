@@ -6,18 +6,27 @@ import { navigation, netz } from './pruefungen.mjs';
 
 // Selektoren belegt durch packages/oberflaeche/src/Fristenrechner.astro:
 // #schedule-form, name=..., submit, #schedule-table-body, #result-regelstand.
-// Speichern/Wiederherstellen: fristenrechner-ui.ts persist(), Startabschnitt.
+// Speichern/Wiederherstellen: fristenrechner-ui.ts und Webadapter web-plattform.ts.
 // Hinweis/Fehlerfalle: app/src/pages/index.astro und rechtsstand-anzeige.ts.
 export function quellvertrag(wurzel) {
   const markup = readFileSync(join(wurzel, 'packages/oberflaeche/src/Fristenrechner.astro'), 'utf8');
   const app = readFileSync(join(wurzel, 'app/src/pages/index.astro'), 'utf8');
   const ui = readFileSync(join(wurzel, 'packages/oberflaeche/src/fristenrechner-ui.ts'), 'utf8');
+  const web = readFileSync(join(wurzel, 'packages/oberflaeche/src/web-plattform.ts'), 'utf8');
   for (const s of ['id="schedule-form"', 'id="result-regelstand"', 'id="schedule-table-body"', 'type="submit"', 'name="kunde"', 'name="projektname"', 'name="vergabenummer"', 'name="vergabeordnung"', 'name="verfahrensart"', 'name="bundesland"', 'name="bekanntmachung"']) {
     if (!markup.includes(s)) throw new Error(`Oberflächenvertrag geändert: ${s}`);
   }
   for (const s of ['id="app-startfehler"', 'id="app-rechtsstand-hinweis"']) if (!app.includes(s)) throw new Error(`App-Markup geändert: ${s}`);
-  const storage = /const STORAGE_KEY = '([^']+)';/.exec(ui)?.[1];
+  for (const id of ['import-message', 'reset-message']) {
+    if (!new RegExp(`<p\\s[^>]*id="${id}"[^>]*role="status"[^>]*aria-live="polite"`).test(markup)
+      || !ui.includes(`('#${id}')`)) throw new Error(`Statuszeile geändert: ${id}`);
+  }
+  if (!app.includes("'[data-fristenrechner]'") || !/initFristenrechner\(root,\s*\{\s*plattform:\s*erzeugeWebPlattform\(root\),\s*texte,\s*exportInhalt\s*\}\)/.test(app)) {
+    throw new Error('Ausdrückliche Initialisierung der App geändert.');
+  }
+  const storage = /export const WEB_SPEICHERSCHLUESSEL = '([^']+)';/.exec(web)?.[1];
   if (!storage) throw new Error('Schlüssel zum Speichern nicht im Quelltext gefunden.');
+  for (const aktion of ['getItem', 'setItem', 'removeItem']) if (!web.includes(`localStorage.${aktion}(WEB_SPEICHERSCHLUESSEL`)) throw new Error(`Web-Speichervertrag geändert: ${aktion}`);
   const kern = readFileSync(join(wurzel, 'packages/kern/src/fristen.ts'), 'utf8');
   const konstante = name => {
     const m = new RegExp(`export const ${name}(?:: [A-Za-z]+)? = '([^']+)';`).exec(kern);
@@ -29,6 +38,42 @@ export function quellvertrag(wurzel) {
 
 export const formularWerte = { kunde: 'Emulatorprüfung', projektname: 'Gespeichertes Testprojekt', vergabenummer: 'EMU-42', vergabeordnung: 'vob_a_eu', verfahrensart: 'offen', bundesland: 'BY', bekanntmachung: '2026-10-01' };
 const valuesJS = `Object.fromEntries(${JSON.stringify(Object.keys(formularWerte))}.map(function(n){var e=document.querySelector('#schedule-form [name="'+n+'"]'); if(!e)throw Error('Formularfeld fehlt: '+n);return [n,e.value]}))`;
+
+/** Die Tabelle darf innen rollen, ihr eigener Rahmen muss in die Seite passen. */
+export function ueberlaufMessung() {
+  var breite = document.documentElement.clientWidth;
+  var gesamt = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+  var elemente = gesamt > breite ? Array.from(document.querySelectorAll('body *')).filter(function (e) {
+    var rolle = e.closest('.table-scroll');
+    return (!rolle || rolle === e) && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
+  }).map(function (e) {
+    var r = e.getBoundingClientRect();
+    // Ein langes Wort kann aus einer passend breiten Blockbox hinausragen.
+    // Nur direkte Textknoten messen; Tabelleninhalt zählt nicht bei Vorfahren mit.
+    var textRechts = Array.from(e.childNodes || []).filter(function (n) { return n.nodeType === 3 && String(n.textContent || '').trim(); }).reduce(function (rechts, n) {
+      var range = document.createRange(); range.selectNodeContents(n);
+      return Math.max(rechts, range.getBoundingClientRect().right);
+    }, r.right);
+    return { tag: e.tagName.toLowerCase(), id: e.id || '', klassen: e.getAttribute('class') || '', text: String(e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160), links: r.left, rechts: r.right, textRechts: textRechts, oben: r.top, unten: r.bottom, breite: r.width, hoehe: r.height };
+  }).filter(function (e) { return e.rechts > breite || e.textRechts > breite; }) : [];
+  return { scrollWidth: gesamt, clientWidth: breite, ueberlaufElemente: elemente };
+}
+
+/** Native Koordinaten stammen aus demselben Ansichtsbaum wie das Eingabefeld. */
+export function tastaturTippPunkt(xml, paket) {
+  const treffer = [...String(xml).matchAll(/<node\b[^>]*>/g)].map(([node]) => Object.fromEntries([...node.matchAll(/([\w-]+)="([^"]*)"/g)].map(([, k, v]) => [k, v])))
+    .filter(a => a.package === paket && a.class === 'android.widget.EditText' && a.text === formularWerte.projektname && a.enabled === 'true')
+    .map(a => /^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(a.bounds || ''))
+    .filter(m => m && Number(m[3]) > Number(m[1]) && Number(m[4]) > Number(m[2]));
+  if (treffer.length !== 1) throw new Error('Projektname ist in der nativen Ansicht nicht eindeutig sichtbar.');
+  const [, l, o, r, u] = treffer[0].map(Number);
+  return { x: Math.floor((l + r) / 2), y: Math.floor((o + u) / 2), bounds: [l, o, r, u] };
+}
+
+export function tastaturViewport() {
+  var e = document.activeElement;
+  return { innerHeight: innerHeight, clientHeight: document.documentElement.clientHeight, visualViewportHeight: window.visualViewport ? window.visualViewport.height : null, aktivesElement: e ? { tag: e.tagName.toLowerCase(), id: e.id || '', name: e.getAttribute('name') || '' } : null };
+}
 
 async function ausfuellen(c) {
   return c.evaluate(`(function(){var f=document.querySelector('#schedule-form');if(!f)throw Error('Formular fehlt');var w=${JSON.stringify(formularWerte)};Object.keys(w).forEach(function(n){var e=f.elements.namedItem(n);if(!e)throw Error(n);e.value=w[n];e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));});if(!f.checkValidity())throw Error('Formular ungültig');f.querySelector('button[type="submit"]').click();return ${valuesJS};})()`);
@@ -145,15 +190,27 @@ export async function ablaufA8(ctx) {
   await ctx.pruefung('A8', async () => {
     await ctx.start(ctx.app); await ausfuellen(await ctx.cdp(ctx.app));
     const varianten = [
-      ['schrift-1-3', 'settings put system font_scale 1.3'],
-      ['schrift-2-0', 'settings put system font_scale 2.0'],
-      ['nacht', 'settings put system font_scale 1.0; cmd uimode night yes'],
-      ['gedreht', 'cmd uimode night no; settings put system accelerometer_rotation 0; settings put system user_rotation 1'],
-      ['tastatur', 'settings put system user_rotation 0'],
+      ['schrift-1-3', ['settings put system font_scale 1.3']],
+      ['schrift-2-0', ['settings put system font_scale 2.0']],
+      ['nacht', ['settings put system font_scale 1.0', 'cmd uimode night yes']],
+      ['gedreht', ['cmd uimode night no', 'settings put system accelerometer_rotation 0', 'settings put system user_rotation 1']],
+      ['tastatur', ['settings put system user_rotation 0']],
     ];
-    let fehler;
-    try { for (const [name, befehl] of varianten) {
-      await ctx.shell(befehl); await ctx.sleep(2500);
+    let fehler, hardwareTastatur;
+    try { for (const [name, befehle] of varianten) {
+      for (const befehl of befehle) { await ctx.shell(befehl); await ctx.sleep(500); }
+      await ctx.sleep(2500);
+      const versuche = [];
+      if (name === 'gedreht' || name === 'tastatur') {
+        const soll = name === 'gedreht' ? '1' : '0';
+        for (let versuch = 0; versuch < 3; versuch++) {
+          const rotation = (await ctx.shell('settings get system user_rotation')).trim();
+          versuche.push({ versuch: versuch + 1, rotation });
+          if (rotation === soll || versuch === 2) break;
+          await ctx.shell('settings put system accelerometer_rotation 0');
+          await ctx.shell(`settings put system user_rotation ${soll}`); await ctx.sleep(2500);
+        }
+      }
       // fontScale erzeugt in den aufgezeichneten Läufen eine neue Activity und
       // WebView. Die Prozesskennung allein erkennt den Wechsel der Seite nicht.
       const c = await ctx.cdp(ctx.app, { neu: true });
@@ -161,29 +218,58 @@ export async function ablaufA8(ctx) {
         schrift: await ctx.shell('settings get system font_scale'),
         nacht: await ctx.shell('cmd uimode night'),
         rotation: await ctx.shell('settings get system user_rotation'),
+        versuche,
+        viewport: await c.evaluate('({breite:innerWidth,hoehe:innerHeight,ausrichtung:screen.orientation?screen.orientation.type:null})'),
       };
       const checks = [];
       if (name.startsWith('schrift-')) checks.push({ name: 'Schriftgröße', ist: Number(einstellungen.schrift), soll: name === 'schrift-1-3' ? 1.3 : 2 });
       if (name === 'nacht') checks.push({ name: 'Nachtmodus', ist: /Night mode: yes\b/i.test(einstellungen.nacht), soll: true });
-      if (name === 'gedreht' || name === 'tastatur') checks.push({ name: 'Rotation', ist: einstellungen.rotation, soll: name === 'gedreht' ? '1' : '0' });
+      if (name === 'gedreht' || name === 'tastatur') {
+        checks.push({ name: 'Rotation', ist: einstellungen.rotation.trim(), soll: name === 'gedreht' ? '1' : '0' });
+        checks.push({ name: 'Ausrichtung der Ansicht', ist: einstellungen.viewport?.ausrichtung?.split('-')[0], soll: name === 'gedreht' ? 'landscape' : 'portrait' });
+      }
       ctx.befund(`A8-${name}-Einstellungen`, evaluiereBeobachtungen(checks));
       ctx.save(`a8-${name}-einstellungen.json`, einstellungen);
       await c.evaluate('window.scrollTo(0,0)');
       if (name === 'tastatur') {
-        const p = await c.evaluate(`(function(){var e=document.querySelector('[name="projektname"]');e.scrollIntoView();var b=e.getBoundingClientRect();return {x:b.x+b.width/2,y:b.y+b.height/2};})()`);
-        await c.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }] });
-        await c.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-        await ctx.sleep(1500);
-        const ime = await ctx.shell('dumpsys input_method'); ctx.save('a8-tastatur.txt', ime);
-        ctx.befund('A8-Tastatur', evaluiereTastatur(ime));
+        const hardwareVorher = (await ctx.shell('settings get secure show_ime_with_hard_keyboard')).trim();
+        if (!['0', '1', 'null'].includes(hardwareVorher)) throw new Error('Einstellung der Bildschirmtastatur nicht lesbar.');
+        hardwareTastatur = hardwareVorher;
+        await ctx.shell('settings put secure show_ime_with_hard_keyboard 1');
+        if ((await ctx.shell('settings get secure show_ime_with_hard_keyboard')).trim() !== '1') throw new Error('Bildschirmtastatur trotz Hardwaretastatur nicht eingeschaltet.');
+        await c.evaluate(`document.querySelector('[name="projektname"]').scrollIntoView({block:'center'})`);
+        const vorher = await c.evaluate(`(${tastaturViewport.toString()})()`);
+        const p = tastaturTippPunkt(await ctx.uiBaum('a8-tastatur-ziel'), ctx.app);
+        ctx.save('a8-tastatur-tipp.json', p);
+        await ctx.shell(`input tap ${p.x} ${p.y}`);
+        let nachweis;
+        const messungen = [];
+        for (let versuch = 0; versuch < 5; versuch++) {
+          await ctx.sleep(1000);
+          nachweis = { inputMethod: await ctx.shell('dumpsys input_method'), fenster: await ctx.shell('dumpsys window windows'), vorher, nachher: await c.evaluate(`(${tastaturViewport.toString()})()`) };
+          messungen.push(nachweis);
+          if (evaluiereTastatur(nachweis).status === 'bestanden') break;
+        }
+        ctx.save('a8-tastatur-messungen.json', messungen);
+        ctx.save('a8-tastatur.txt', nachweis.inputMethod); ctx.save('a8-tastatur-fenster.txt', nachweis.fenster);
+        ctx.save('a8-tastatur-nachweis.json', nachweis);
+        ctx.befund('A8-Tastatur', evaluiereTastatur(nachweis));
       }
-      const groesse = await c.evaluate('({scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),clientWidth:document.documentElement.clientWidth})');
+      const groesse = await c.evaluate(`(${ueberlaufMessung.toString()})()`);
       ctx.save(`a8-${name}.json`, groesse); await ctx.shot(`a8-${name}.png`);
       ctx.befund(`A8-${name}`, evaluiereUeberlauf(groesse));
     }
     await ctx.shell('input keyevent KEYCODE_BACK');
     } catch (e) { fehler = e; }
     finally {
+      if (hardwareTastatur !== undefined) {
+        try {
+          await ctx.shell(hardwareTastatur === 'null' ? 'settings delete secure show_ime_with_hard_keyboard' : `settings put secure show_ime_with_hard_keyboard ${hardwareTastatur}`);
+          const nachher = (await ctx.shell('settings get secure show_ime_with_hard_keyboard')).trim();
+          ctx.save('a8-tastatur-wiederherstellung.json', { vorher: hardwareTastatur, nachher });
+          if (nachher !== hardwareTastatur) throw new Error('Einstellung der Bildschirmtastatur wurde nicht wiederhergestellt.');
+        } catch (e) { ctx.befund('A8-Tastatur-Wiederherstellung', befund('ungültig', e.message)); fehler = fehler ? new Error(`${fehler.message}; Wiederherstellung: ${e.message}`) : e; }
+      }
       try { await ctx.restoreDisplay(); }
       catch (e) {
         ctx.befund('A8-Wiederherstellung', befund('ungültig', e.message));
@@ -198,7 +284,7 @@ export async function ablaufA8(ctx) {
 /** Namenquellen im DOM; kein Ersatz für den berechneten Barrierebaum. */
 export function domAriaNamen() {
   var text = function (s) { return String(s || '').replace(/\s+/g, ' ').trim(); };
-  return Array.from(document.querySelectorAll('button,input,select,textarea,a[href],[role="button"],[role="link"],[role="checkbox"],[role="radio"],[role="textbox"],[role="combobox"]'))
+  return Array.from(document.querySelectorAll('button,input,select,textarea,a[href],[role="button"],[role="link"],[role="checkbox"],[role="radio"],[role="textbox"],[role="combobox"],[tabindex]'))
     .filter(function (e) { return e.type !== 'hidden' && e.getClientRects().length && !e.closest('[hidden],[aria-hidden="true"]') && getComputedStyle(e).visibility !== 'hidden'; })
     .map(function (e) {
       var refs = text(e.getAttribute('aria-labelledby')).split(' ').filter(Boolean).map(function (id) { return document.getElementById(id); }).filter(Boolean);
@@ -207,12 +293,12 @@ export function domAriaNamen() {
         ['aria-label', e.getAttribute('aria-label')],
         ['label', Array.from(e.labels || []).map(function (r) { return text(r.textContent); }).join(' ')],
         ['alt', e.type === 'image' ? e.getAttribute('alt') : ''],
-        ['text', e.tagName !== 'INPUT' && e.tagName !== 'SELECT' && e.tagName !== 'TEXTAREA' ? e.textContent : ''],
+        ['text', /^(BUTTON|A|SUMMARY)$/.test(e.tagName) || /^(button|link|checkbox|radio)$/.test(e.getAttribute('role') || '') ? e.textContent : ''],
         ['value', e.tagName === 'INPUT' && /^(button|submit|reset)$/.test(e.type) ? e.value : ''],
         ['title', e.getAttribute('title')],
       ];
       var quelle = quellen.find(function (q) { return text(q[1]); });
-      return { element: e.tagName.toLowerCase(), typ: e.type || e.getAttribute('role') || '', name: quelle ? text(quelle[1]) : '', quelle: quelle ? quelle[0] : '' };
+      return { element: e.tagName.toLowerCase(), id: e.id || '', klassen: e.getAttribute('class') || '', typ: e.type || e.getAttribute('role') || '', name: quelle ? text(quelle[1]) : '', quelle: quelle ? quelle[0] : '' };
     });
 }
 
@@ -235,8 +321,23 @@ export async function ablaufA10(ctx) {
     ctx.befund('A10-DOM-ARIA', evaluiereDomAria(namen));
     try {
       await c.send('Accessibility.enable');
-      const baum = await c.send('Accessibility.getFullAXTree'); ctx.save('a10-barrierebaum.json', baum);
-      return evaluiereBarrierebaum(baum);
+      const baum = await c.send('Accessibility.getFullAXTree');
+      const webview = await ctx.shell('dumpsys webviewupdate'); ctx.save('a10-webview.txt', webview);
+      baum.webviewVersion = /Current WebView package \(name, version\): \([^,]+, (\d+(?:\.\d+)*)\)/.exec(webview)?.[1];
+      baum.domKnoten = [];
+      const diagnose = evaluiereBarrierebaum(baum, { webviewVersion: baum.webviewVersion });
+      for (const node of Array.isArray(diagnose.details) ? diagnose.details : []) {
+        if (!node.backendDOMNodeId) continue;
+        try {
+          const dom = await c.send('DOM.describeNode', { backendNodeId: node.backendDOMNodeId, depth: 0 });
+          baum.domKnoten.push({ backendDOMNodeId: node.backendDOMNodeId, nodeName: dom.node?.nodeName, attributes: dom.node?.attributes });
+        } catch (e) {
+          baum.domKnoten.push({ backendDOMNodeId: node.backendDOMNodeId, fehler: e.message });
+          // Der berechnete Baum bleibt bei fehlender DOM-Diagnose auswertbar.
+        }
+      }
+      ctx.save('a10-barrierebaum.json', baum);
+      return evaluiereBarrierebaum(baum, { webviewVersion: baum.webviewVersion });
     } catch (e) {
       ctx.save('a10-barrierebaum-fehler.json', { fehler: e.message, domErreichbar: true });
       if (/^CDP-Zeitüberschreitung: Accessibility\.(?:enable|getFullAXTree)$|^CDP -32601:/.test(e.message)) {

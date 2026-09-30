@@ -1,0 +1,272 @@
+{
+  "nodes": [
+    {
+      "nodeId": "1",
+      "ignored": false,
+      "role": {
+        "type": "internalRole",
+        "value": "RootWebArea"
+      },
+      "name": {
+        "value": "Fristenrechner Vergabe"
+      },
+      "properties": [
+        {
+          "name": "focusable",
+          "value": {
+            "type": "booleanOrUndefined",
+            "value": true
+          }
+        }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 1
+    },
+    {
+      "nodeId": "77",
+      "ignored": true,
+      "role": {
+        "type": "role",
+        "value": "none"
+      },
+      "name": {
+        "value": null
+      },
+      "properties": [],
+      "childIds": [
+        "81"
+      ],
+      "backendDOMNodeId": 77
+    },
+    {
+      "nodeId": "81",
+      "ignored": false,
+      "role": {
+        "type": "role",
+        "value": "button"
+      },
+      "name": {
+        "value": "Neues Projekt"
+      },
+      "properties": [
+        {
+          "name": "focusable",
+          "value": {
+            "type": "booleanOrUndefined",
+            "value": true
+          }
+        }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 81,
+      "parentId": "77"
+    },
+    {
+      "nodeId": "395",
+      "ignored": true,
+      "role": {
+        "type": "role",
+        "value": "none"
+      },
+      "name": {
+        "value": null
+      },
+      "properties": [],
+      "childIds": [
+        "396"
+      ],
+      "backendDOMNodeId": 395
+    },
+    {
+      "nodeId": "396",
+      "ignored": false,
+      "role": {
+        "type": "role",
+        "value": "button"
+      },
+      "name": {
+        "value": "Terminplan berechnen"
+      },
+      "properties": [
+        {
+          "name": "focusable",
+          "value": {
+            "type": "booleanOrUndefined",
+            "value": true
+          }
+        }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 396,
+      "parentId": "395"
+    },
+    {
+      "nodeId": "498",
+      "ignored": false,
+      "role": {
+        "type": "role",
+        "value": "region"
+      },
+      "name": {
+        "value": "Termine und Rechenwege"
+      },
+      "properties": [],
+      "childIds": [
+        "500"
+      ],
+      "backendDOMNodeId": 498
+    },
+    {
+      "nodeId": "414",
+      "ignored": false,
+      "role": {
+        "type": "role",
+        "value": "generic"
+      },
+      "name": {
+        "value": "Projekt- und Exportaktionen"
+      },
+      "properties": [],
+      "childIds": [
+        "415",
+        "416",
+        "419",
+        "420"
+      ],
+      "backendDOMNodeId": 414
+    },
+    {
+      "nodeId": "500",
+      "ignored": false,
+      "role": {
+        "type": "role",
+        "value": "generic"
+      },
+      "name": {
+        "value": ""
+      },
+      "properties": [
+        {
+          "name": "focusable",
+          "value": {
+            "type": "booleanOrUndefined",
+            "value": true
+          }
+        }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 500,
+      "parentId": "498"
+    },
+    {
+      "nodeId": "415",
+      "ignored": false,
+      "role": {
+        "type": "role",
+        "value": "button"
+      },
+      "name": {
+        "value": "Projekt exportieren"
+      },
+      "properties": [
+        {
+          "name": "focusable",
+          "value": {
+            "type": "booleanOrUndefined",
+            "value": true
+          }
+        }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 415,
+      "parentId": "414"
+    },
+    {
+      "nodeId": "416",
+      "ignored": false,
+      "role": {
+        "type": "internalRole",
+        "value": "LabelText"
+      },
+      "name": {
+        "value": ""
+      },
+      "properties": [],
+      "childIds": [
+        "52"
+      ],
+      "backendDOMNodeId": 416,
+      "parentId": "414"
+    },
+    {
+      "nodeId": "419",
+      "ignored": false,
+      "role": {
+        "type": "role",
+        "value": "button"
+      },
+      "name": {
+        "value": "Excel exportieren"
+      },
+      "properties": [
+        {
+          "name": "focusable",
+          "value": {
+            "type": "booleanOrUndefined",
+            "value": true
+          }
+        }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 419,
+      "parentId": "414"
+    },
+    {
+      "nodeId": "420",
+      "ignored": false,
+      "role": {
+        "type": "role",
+        "value": "button"
+      },
+      "name": {
+        "value": "PDF exportieren"
+      },
+      "properties": [
+        {
+          "name": "focusable",
+          "value": {
+            "type": "booleanOrUndefined",
+            "value": true
+          }
+        }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 420,
+      "parentId": "414"
+    },
+    {
+      "nodeId": "52",
+      "ignored": false,
+      "role": {
+        "type": "role",
+        "value": "button"
+      },
+      "name": {
+        "value": "Projekt importieren"
+      },
+      "properties": [
+        {
+          "name": "focusable",
+          "value": {
+            "type": "booleanOrUndefined",
+            "value": true
+          }
+        }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 52,
+      "parentId": "416"
+    }
+  ],
+  "webviewVersion": "133.0.6943.137"
+}

@@ -1,0 +1,4 @@
+      mInputShown=true
+  mDecorViewVisible=true mDecorViewWasVisible=true mWindowVisible=true mInShowWindow=false
+  mIsInputViewShown=false mStatusIcon=0
+    contentTopInsets=2272 visibleTopInsets=2272 touchableInsets=2 touchableRegion=SkRegion()
