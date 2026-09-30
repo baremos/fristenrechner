@@ -10,7 +10,7 @@ import { findeJdk } from './werkzeuge.mjs';
 import { befund, zusammenfassen, rueckgabewert, zaehleBefunde, evaluiereActivity, evaluiereReleaseFlags, evaluiereUnixSockets, evaluiereReleaseStart } from './emulator-auswertung.mjs';
 import { APP, ausgabePruefen, dateiNoetig, mitAufraeumen, pause, prozess, schreiber, sha256 } from './emulator/rahmen.mjs';
 import { signiereRelease } from './emulator/bauen.mjs';
-import { ANSICHT_REMOTE, leseAnsichtsbaum, repositories } from './emulator-lauf.mjs';
+import { ANSICHT_REMOTE, ansichtsKnoten, leseAnsichtsbaum, repositories } from './emulator-lauf.mjs';
 
 export const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ACTIVITY = `${APP}/de.baremos.fristenrechner.MainActivity`;
@@ -66,6 +66,14 @@ export function prozessStart(stat, pid) {
   const ende = stat.lastIndexOf(')');
   const start = stat.slice(ende + 1).trim().split(/\s+/)[19];
   return /^\d+$/.test(start ?? '') ? start : null;
+}
+
+// Die Formulartexte müssen aus Knoten des eigenen Pakets stammen; die Ansicht kann auch fremde Fenster enthalten.
+export function formularAusEigenemPaket(xml) {
+  const knoten = ansichtsKnoten(xml);
+  if (!knoten) return false;
+  const texte = knoten.filter(k => k.package === APP && k['visible-to-user'] !== 'false').map(k => `${k.text ?? ''} ${k['content-desc'] ?? ''}`);
+  return texte.some(t => t.includes('Fristenrechner Vergabe')) && texte.some(t => /Vergabeverfahren konfigurieren|Vergabeordnung/.test(t));
 }
 
 // Fragt die Versionsauskunft der Devtools ab und wirft nie. Drei Ausgänge:
@@ -196,7 +204,7 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
   ] };
   // eigen: Der Lauf hat eine Installation begonnen, nachdem das Paket nachweislich fehlte, und sie noch nicht
   // wieder entfernt. fremdVorhanden: Das Paket war da, ohne dass der Lauf es installiert hat; es bleibt unberührt.
-  let befehlNummer = 0, verbunden = false, eigen = false, fremdVorhanden = false, releaseInstalliert = false, ansichtBenutzt = false, abbruch = false, cleaning = false;
+  let befehlNummer = 0, verbunden = false, eigen = false, installOffen = false, fremdVorhanden = false, releaseInstalliert = false, ansichtBenutzt = false, abbruch = false, cleaning = false;
   const forwards = new Set();
   const controller = new AbortController();
   const signal = () => { abbruch = true; controller.abort(); };
@@ -231,8 +239,11 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
       if (await ctx.installiert()) { fremdVorhanden = true; throw new Error(`Das Paket ${APP} ist vor der Installation schon vorhanden. Nichts installiert; das vorhandene Paket bleibt unberührt.`); }
       // Ab hier gehört ein vorhandenes Paket zu diesem Lauf, auch wenn der Aufruf unterbrochen wird:
       // Es fehlte eben noch, und installiert wird ohne Ersetzen. Das Aufräumen klärt den Zustand.
-      eigen = true;
+      if (abbruch) throw new Error('Lauf unterbrochen.');
+      eigen = true; installOffen = true;
       const r = await ctx.adb(['install', apk], { timeoutMs: 180000 });
+      // Ohne Rückgabewert (Aufruf unterbrochen oder abgebrochen) kann die Installation auf dem Gerät noch laufen.
+      installOffen = r.code === null;
       if (r.code !== 0 && /INSTALL_FAILED_ALREADY_EXISTS/.test(`${r.out}${r.err}`)) { eigen = false; fremdVorhanden = true; }
       if (r.code !== 0 || !/^Success\s*$/m.test(r.out)) throw new Error(`Installation fehlgeschlagen: ${r.out} ${r.err}`.trim());
       const m = /^package:(\/[^\r\n]+\.apk)$/.exec(await ctx.shell(`pm path ${APP}`));
@@ -246,13 +257,15 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
       save('installationen.json', daten.installationen);
       if (installiert !== eingang) throw new Error('Installierte APK weicht von der Eingabedatei ab.');
     },
-    // Nur für Installationen dieses Laufs. Danach ist die Berechtigung verbraucht.
+    // Nur für Installationen dieses Laufs. Mit der bestätigten Deinstallation ist die Berechtigung verbraucht,
+    // noch vor der Nachkontrolle: Ein Paket, das danach auftaucht, ist nicht mehr das eigene.
     async uninstall() {
       if (!eigen) throw new Error('Deinstallation ohne eigene Installation.');
       if (await ctx.installiert()) {
         const r = await ctx.adb(['uninstall', APP]);
         if (r.code !== 0 || !/^Success\s*$/m.test(r.out)) throw new Error('Deinstallation fehlgeschlagen.');
-        if (await ctx.installiert()) throw new Error('Das Paket ist nach der Deinstallation noch vorhanden.');
+        eigen = false;
+        if (await ctx.installiert()) { fremdVorhanden = true; throw new Error('Das Paket ist nach der bestätigten Deinstallation vorhanden; es gilt als fremd und bleibt unberührt.'); }
       }
       eigen = false;
     },
@@ -289,9 +302,14 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
       const liste = await ctx.adb(['forward', '--list']);
       const weiterleitungBelegt = liste.code === 0 && liste.out.split(/\r?\n/).some(z => z.trim() === `${optionen.seriennummer} tcp:${port} localabstract:${socket}`);
       const abruf = { ...await holen(port), weiterleitungBelegt };
-      const r = await ctx.adb(['forward', '--remove', `tcp:${port}`]);
-      if (r.code === 0) forwards.delete(port);
-      save(`${name}.json`, { zeit: new Date().toISOString(), socket, port, abruf, weiterleitungEntfernt: r.code === 0 });
+      save(`${name}.json`, { zeit: new Date().toISOString(), socket, port, abruf });
+      // Eine erhaltene Antwort darf nicht verloren gehen, wenn der Lauf genau jetzt unterbrochen wird:
+      // Das Entfernen übernimmt sonst das Aufräumen.
+      let entfernt = false;
+      try { entfernt = (await ctx.adb(['forward', '--remove', `tcp:${port}`])).code === 0; }
+      catch (e) { if (!abbruch) throw e; }
+      if (entfernt) forwards.delete(port);
+      save(`${name}.json`, { zeit: new Date().toISOString(), socket, port, abruf, weiterleitungEntfernt: entfernt });
       return abruf;
     },
     // Auf einem unveränderten Gerät kann das Lesen scheitern; das ist dann kein Abbruch, sondern ein ungültiger Befund.
@@ -305,6 +323,13 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
   const cleanup = [
     ['App deinstallieren', async () => {
       if (!verbunden) return;
+      if (installOffen) {
+        // Ein unterbrochener Installationsaufruf kann auf dem Gerät noch zu Ende laufen. Erst abwarten.
+        let da = false;
+        for (let i = 0; i < 30 && !da; i++) { if (i) await ctx.sleep(2000); da = await ctx.installiert(); }
+        if (!da) throw new Error(`Ein Installationsversuch wurde unterbrochen, und das Paket ${APP} ist innerhalb von 60 Sekunden nicht erschienen. Bitte später prüfen, ob es installiert wurde.`);
+        installOffen = false;
+      }
       if (optionen.appBehalten && releaseInstalliert) { ctx.log('Die App bleibt auf Wunsch installiert: Release-Build, mit dem Debug-Schlüssel signiert.'); return; }
       if (eigen) await ctx.uninstall();
       // Ein Paket, das sich der Lauf nicht zurechnen kann, entfernt er nicht. Er meldet es aber.
@@ -397,6 +422,7 @@ export async function lauf(optionen, { run = prozess, sleep = pause, java, debug
           let xml = '';
           try { xml = await ctx.uiBaum(`g-start-${versuch}`, { timeoutMs: 60000 }); } catch (e) { if (abbruch) throw e; ctx.log(`Ansichtsbaum: ${e.message}`); }
           start = evaluiereReleaseStart({ xml });
+          if (start.status === 'bestanden' && !formularAusEigenemPaket(xml)) start = befund('ungültig', 'Die Formulartexte in der nativen Ansicht stammen nicht aus dem eigenen Paket.');
         }
         const startNach = await ctx.zustand('g-start-nach');
         ctx.befund('G-Start', start);
