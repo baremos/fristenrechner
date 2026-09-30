@@ -398,12 +398,15 @@ export function evaluiereTastatur(ausgabe) {
     const shown = signal('mInputShown'), view = signal('mIsInputViewShown');
     if (!shown.length || !view.length || new Set([...shown, ...view]).size !== 1) return ungueltig('Eingabedienst und Tastaturansicht bestätigen keinen eindeutigen gemeinsamen Zustand.');
     if (shown[0] === 'false') return nein('Eingabedienst und Tastaturansicht melden die Tastatur als verborgen.');
-    // API 30 gibt in "window windows" den IME-Eingabeempfänger aus; der
-    // mCurrentFocus-Eintrag steht dort nicht. Auf API 36 ist er vorhanden.
+    // "window windows" nennt den Eingabeempfänger der Tastatur je nach Android-
+    // Version anders: API 30 "mInputMethodInputTarget in display# 0", API 36
+    // "imeInputTarget in display# 0" (Lauf vom 2026-09-30). mCurrentFocus steht
+    // in beiden Ausgaben nicht und dient nur als Rückfall für andere Formate.
     // Ein IME-Fensterfokus allein belegt keinen Empfänger für die Eingabe.
-    const empfaenger = [...fenster.matchAll(/^\s*(?:mInputMethodInputTarget in display# \d+ |mImeInputTarget=)Window\{[^\r\n}]*?\bu\d+\s+([^\r\n}]+)\}/gm)].map(m => m[1].trim());
+    const empfaengerKopf = '(?:mInputMethodInputTarget in display# \\d+ |imeInputTarget in display# \\d+ |mImeInputTarget=)';
+    const empfaenger = [...fenster.matchAll(new RegExp(`^\\s*${empfaengerKopf}Window\\{[^\\r\\n}]*?\\bu\\d+\\s+([^\\r\\n}]+)\\}`, 'gm'))].map(m => m[1].trim());
     const fokus = [...fenster.matchAll(/^\s*mCurrentFocus=Window\{[^\r\n}]*?\bu\d+\s+([^\r\n}]+)\}/gm)].map(m => m[1].trim());
-    const empfaengerZeilen = fenster.match(/^\s*(?:mInputMethodInputTarget in display# \d+ |mImeInputTarget=)[^\r\n]*$/gm) ?? [];
+    const empfaengerZeilen = fenster.match(new RegExp(`^\\s*${empfaengerKopf}[^\\r\\n]*$`, 'gm')) ?? [];
     const ziele = empfaengerZeilen.length ? empfaenger : fokus;
     const fokusquelle = empfaengerZeilen.length ? 'IME-Eingabeempfänger' : 'mCurrentFocus';
     if (nachher?.aktivesElement?.name !== 'projektname' || nachher.aktivesElement.tag !== 'input' ||

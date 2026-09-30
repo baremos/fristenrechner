@@ -172,36 +172,40 @@ Im zweiten Klon wurde das Ausführungsrecht des Wrappers zur Gegenprobe entfernt
 
 Ergänzend bestand am selben Tag eine saubere Windows-Kopie desselben Stands mit Node.js 22.23.2, npm 10.9.8 und `core.autocrlf=true`: `npm ci`, `npm test`, `npm run check`, `npm run build` und `npm run lizenzen`, jeweils mit Rückgabewert 0. Die Skripttests meldeten 1.089 bestanden und vier übersprungen; Rechenkern, Oberfläche und App bestanden mit 134, 86 und neun Tests. Die Arbeitskopie blieb unverändert.
 
+Am selben Tag wurde der Nachweis am Quellstand `a1e7821` wiederholt, mit der Oberfläche über die Plattformschnittstelle: wieder zwei Klone, derselbe Befehl mit `--streng --ohne-testgruppe`, K1 bis K5 bestanden, Arbeitskopie danach unverändert. Die beiden unsignierten Release-APKs waren bytegleich, 7.715.483 Bytes, SHA-256 `776bba301220d1d9b3f5e4f5d4841f37449609e72d6622b8ebdab065fcab93b3`, und entsprechen der Windows-APK dieses Stands. Web-Build und Sync bestanden erneut ohne Netzwerk, die Gegenprobe zum Ausführungsrecht meldete `EACCES`. `npm test` meldete 1.445 Skripttests, davon 1.433 bestanden und zwölf übersprungen (die Prüfungen mit dem Emulator laufen nur unter Windows), `npm run lizenzen` bestand.
+
 Der Vergleich gilt für zwei Klone auf demselben Rechner und für den genannten Tag. Nicht geprüft sind ein Debug-Build unter Linux, die Gegenprobe mit geändertem `versionName`, ein zweiter Rechner und ein Build dieser App mit dem Scanner oder dem Buildserver von F-Droid.
 
 ## Prüfung im Emulator
 
-### Stand der vierten Serie vom 30.09.2026
+### Stand vom 30.09.2026
 
-Die vierte Serie verwendet die **neue Oberfläche am Quellstand `a1e7821`**, einschließlich der Korrektur für große Schrift. Auf API 30 sind Berechnung, Speicherung, Brücke, Netz, Standardsicherung, Release-Start und Barrierebaum belegt. Auf API 24 wurde die Installation wie vorgesehen abgelehnt. Der vollständige Lauf auf API 36 bleibt wegen eines Dialogs der Systemoberfläche ungültig. Die gesonderte Überlaufmessung auf API 36 ist davon unabhängig.
+Geprüft ist die App am Quellstand `a1e7821` mit der Oberfläche über die Plattformschnittstelle und der Korrektur für große Schrift, auf den Abbildern `fr-api30`, `fr-api36` und `fr-api24`.
 
 | APK | SHA-256 |
 |---|---|
 | Debug | `181bf245e67de628347067e7b8974b5babe0462a98c3ab6a85c97cc3d0185bbe` |
 | Release, unsigniert | `776bba301220d1d9b3f5e4f5d4841f37449609e72d6622b8ebdab065fcab93b3` |
 
-Die Zahlen zählen **bestanden / nicht bestanden / ungültig / dokumentierte Grenze / Sichtprüfung ausstehend**, jeweils ohne die zwölf bestandenen Aufräumschritte. Die 48 bestandenen Einzelbefunde von API 30 entsprechen somit 60 bestandenen Einträgen einschließlich Aufräumen. Die Neuauswertung liest dieselben Rohbelege und ergänzt das Protokoll der Sichtprüfung; sie führt keinen Gerätelauf aus.
+| Abbild, Auswahl | WebView | bestanden | nicht bestanden | ungültig | dokumentierte Grenze | Rückgabewert |
+|---|---|---|---|---|---|---|
+| `fr-api30`, alle | 83.0.4103.120 | 52 | 0 | 0 | 6 | 3 |
+| `fr-api36`, alle | 133.0.6943.137 | 52 | 0 | 0 | 6 | 3 |
+| `fr-api24`, installation | nicht erhoben | 1 | 0 | 0 | 0 | 0 |
 
-| Abbild / Auswahl | WebView | Ursprüngliche Auswertung; Code | Neuauswertung; Code | Belegter Stand und Einschränkung |
-|---|---|---|---|---|
-| API 30 / alle | 83.0.4103.120 | 48/0/4/6/0; `2` | 51/0/0/6/1; `4` | A1 bis A7, A9 und A10 bestanden; A8 ohne Seitenüberlauf, Releaseflags und Start, Netz, Standardsicherung und Fehlerseite bestanden. Tastatur und Gegenprobe ohne Fehlerseite sind anhand der Rohbelege bestanden. Drei A8-Bilder bleiben zu sichten; B ist gesichtet. Dauer 2.294 Sekunden einschließlich Variantenbau. |
-| API 36 / alle | 133.0.6943.137 | 0/0/3/0/0; `2` | 0/0/3/0/0; `2` | „System UI isn't responding“ bleibt vor A, B und Sicherung trotz je sechs weiteren Wartezeiten sichtbar. Keine Aussage dieser Serie über die dadurch ausgefallenen Abläufe. |
-| API 24 / installation | nicht erhoben | 1/0/0/0/0; `0` | unverändert | APK wegen älterem API-Level abgelehnt. |
+Die Zahlen sind Einzelbefunde ohne die zwölf Aufräumschritte je Lauf, nach der Neuauswertung der Rohbelege und mit festgehaltener Sichtprüfung. Rückgabewert 3 heißt: Alles Geprüfte ist bestanden, es bleiben nur dokumentierte Grenzen. Das ist kein vollständiges Bestehen.
 
-**Darstellung bei 412 CSS-Pixeln:** Die gesonderte Nachmessung durch Claude am 30.09.2026 bestätigt auf API 30 und API 36 bei den Schriftfaktoren 1,0, 1,3 und 2,0 jeweils `scrollWidth = clientWidth = 412`, ohne überragendes Element außerhalb des Tabelleninnenraums. Der Bildvergleich in Edge ohne Fenster war bei 1.280 und 768 Pixeln bytegleich zur Fassung vor der CSS-Korrektur. Bei 412 und 320 Pixeln änderten sich die Karten mit den Ankreuzfeldern; sie passen nun in die Breite. Für 320 CSS-Pixel liegt damit ein Bildvergleich im Browser, aber keine Breitenmessung im Emulator vor.
+**Belegt auf beiden Abbildern:** Start ohne Fehlerfalle, Ausfüllen und Berechnen mit Anzeige von Regelversion und Rechtsstand, Aufruf über die Brücke, gespeicherte Eingaben nach erzwungenem Beenden und deren Löschung mit den App-Daten, Hinweis zum Rechtsstand erst am Tag nach der Grenze, keine Verbindung über zehn Zugriffswege bei wirksamer Gegenprobe, gesperrte Navigation nach außen in den vier Fällen mit wirksamer Gegenprobe, Darstellung ohne waagerechten Überlauf bei Schrift 1,3 und 2,0, im Nachtmodus, gedreht und mit Tastatur, Zurück-Taste, Barrierebaum mit benannten Bedienelementen, Release-Build ohne `DEBUGGABLE` und `ALLOW_BACKUP` mit Ruhephase ohne Verbindung, Sicherung ohne Daten der App. **Nur auf `fr-api36`:** Gerätewechsel ohne Daten der App. **Nur auf `fr-api30`:** Fehlerseite bei zu alter WebView, mit der Gegenprobe ohne diese Datei. **Auf `fr-api24`:** Android lehnt die Installation wegen der Mindest-API ab.
 
-**Sichtprüfung durch Claude am 30.09.2026, API 30:** `a8-schrift-2-0.png` zeigt die mit Trennstrich umgebrochene Überschrift ohne Überlauf und den neuen Hinweistext. In `a8-tastatur.png` sind die Tastatur und das fokussierte Feld „Projektname“ sichtbar; das Feld liegt oberhalb der Tastatur. `b-start.png` zeigt den Rechner ohne Fehlerfalle und weiße Systemleisten mit dunklen Symbolen. Diese drei Bilder sind mit Prüfsumme im Sichtprüfungsprotokoll bestätigt. Die Bilder `a8-schrift-1-3.png`, `a8-nacht.png` und `a8-gedreht.png` bleiben ausstehend.
+Auf `fr-api36` erschien nach dem Systemstart der Dialog „System UI isn't responding“ des Abbilds. Die Prüfung hat ihn einmal mit „Wait“ geschlossen und das im Ergebnis ausgewiesen. In einem früheren Lauf desselben Tages blieb der Dialog stehen und machte den Lauf ungültig; er gehört zum Abbild, nicht zur App.
 
-**Weiter geltende Grenzen:** Fünf Navigationsfälle liefern keine wirksame Gegenprobe für das Plugin; die Socketprüfung auf `userdebug` erlaubt keine Aussage über das Debugging eines Release-Builds auf einem Gerät mit Build-Typ `user`. Diese sechs Grenzen sind keine fehlgeschlagenen App-Prüfungen und kein vollständiges Bestehen. Einzelheiten stehen unten unter „Grenzen und Bewertung“.
+**Darstellung bei 412 CSS-Pixeln:** Eine gesonderte Messung durch Claude am 30.09.2026 bestätigt auf beiden Abbildern bei den Schriftfaktoren 1,0, 1,3 und 2,0 jeweils `scrollWidth = clientWidth = 412`, ohne überragendes Element außerhalb des Rollbereichs der Tabelle. Vor der Korrektur waren es bei Faktor 2,0 548 Pixel. Ein Bildvergleich in Edge ohne Fenster war bei 1.280 und 768 Pixeln bytegleich zur Fassung vor der Korrektur. Bei 412 und 320 Pixeln änderten sich die Karten mit den Ankreuzfeldern, sie passen nun in die Breite. Für 320 CSS-Pixel gibt es damit einen Bildvergleich im Browser, aber keine Messung im Emulator.
 
-**Ausstehend:** vollständiger API-36-Lauf mit der neuen Dialogbehandlung, die drei genannten Sichtprüfungen und die Emulatorprüfung bei 320 CSS-Pixeln. Auf einem echten Gerät mit Build-Typ `user` fehlen der Nachweis zum WebView-Debugging sowie Namenansage und Bedienung mit TalkBack. Dateiimport, Exporte, Teilen und Bestätigungsdialog gehören zur gesonderten Geräteprüfung.
+**Sichtprüfung durch Claude am 30.09.2026:** Auf beiden Abbildern sind die sechs Bilder je Lauf gesichtet und mit Prüfsumme im Laufordner festgehalten: Schrift 1,3 und 2,0 (die Überschrift bricht um, bei 2,0 mit Trennstrich, nichts ist abgeschnitten), Nachtmodus (die App bleibt wie festgelegt hell, die Systemleisten sind sichtbar), Querformat, Tastatur (das fokussierte Feld liegt über der Tastatur) und der Start des Release-Builds (Rechner ohne Fehlerfalle, Hinweistext der App sichtbar).
 
-Aus der dritten Serie mit alter Oberfläche gelten ergänzend die belegte Standardsicherung auf API 30 sowie Standardsicherung und Gerätewechsel auf API 36 mit jeweils wirksamer Gegenprobe. Auf API 36 waren außerdem alle neun Navigationspaare aufgezeichnet, davon fünf als dokumentierte Grenzen. Diese älteren Ergebnisse ersetzen die ausstehende Wiederholung mit der neuen Oberfläche nicht. Die damaligen Layoutbilder und Überlaufbefunde beschreiben den alten Stand und werden nicht auf die neue Oberfläche übertragen.
+**Dokumentierte Grenzen, je Abbild sechs:** Fünf Navigationsfälle (`mailto:`, `intent:`, `file:`, `content:`, `data:`) haben auf den AOSP-Abbildern keine wirksame Gegenprobe für das Plugin. Die Prüfung auf einen offenen Devtools-Socket erlaubt auf Abbildern vom Build-Typ `userdebug` keine Aussage über einen Release-Build. Einzelheiten stehen unter „Grenzen und Bewertung“.
+
+**Ausstehend:** Messung bei 320 CSS-Pixeln im Emulator. Auf einem echten Gerät mit Build-Typ `user`: Nachweis, dass das Debugging der WebView im Release-Build aus ist, sowie Ansage der Namen und Bedienung mit TalkBack. Dateiimport, Exporte, Teilen und Bestätigungsdialog gehören zur gesonderten Geräteprüfung.
 
 ### Ablauf und Nachweise
 

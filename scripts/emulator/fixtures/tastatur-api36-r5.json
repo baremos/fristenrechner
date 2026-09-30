@@ -1,0 +1,25 @@
+{
+  "herkunft": "Lauf vom 2026-09-30 auf fr-api36 (WebView 133.0.6943.137), gekürzt auf die ausgewerteten Zeilen",
+  "inputMethod": "      mInputShown=true\n  mIsInputViewShown=true mStatusIcon=0\n",
+  "fenster": "  Window #7 Window{d55661a u0 InputMethod}:\n    Frames: parent=[0,128][1080,2400] display=[0,128][1080,2400] frame=[0,128][1080,2400] last=[0,128][1080,2400] insetsChanged=false\n    isOnScreen=true\n    isVisible=true\n  imeLayeringTarget in display# 0 Window{3626df1 u0 de.baremos.fristenrechner/de.baremos.fristenrechner.MainActivity}\n  imeInputTarget in display# 0 Window{3626df1 u0 de.baremos.fristenrechner/de.baremos.fristenrechner.MainActivity}\n",
+  "vorher": {
+    "innerHeight": 818,
+    "clientHeight": 818,
+    "visualViewportHeight": 818.2857055664062,
+    "aktivesElement": {
+      "tag": "body",
+      "id": "",
+      "name": ""
+    }
+  },
+  "nachher": {
+    "innerHeight": 523,
+    "clientHeight": 523,
+    "visualViewportHeight": 523.047607421875,
+    "aktivesElement": {
+      "tag": "input",
+      "id": "",
+      "name": "projektname"
+    }
+  }
+}
