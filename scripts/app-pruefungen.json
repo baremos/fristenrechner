@@ -285,5 +285,61 @@
       "hoechstzahl": 2,
       "grund": "Namensraum des W3C in DOMPurify, kein Abruf."
     }
-  ]
+  ],
+  "sync": {
+    "leereDateien": [
+      "cordova.js",
+      "cordova_plugins.js"
+    ],
+    "configXml": "<?xml version='1.0' encoding='utf-8'?>\n<widget version=\"1.0.0\" xmlns=\"http://www.w3.org/ns/widgets\" xmlns:cdv=\"http://cordova.apache.org/ns/1.0\">\n  <access origin=\"*\" />\n  \n  \n</widget>"
+  },
+  "gradle": {
+    "dateienMitVerboten": [
+      "app/build.gradle",
+      "build.gradle"
+    ],
+    "verboten": [
+      "signingConfig",
+      "google-services",
+      "flatDir"
+    ]
+  },
+  "apk": {
+    "berechtigung": "de.baremos.fristenrechner.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+    "sprachen": [
+      "de"
+    ],
+    "webViewMetadaten": {
+      "android.webkit.WebView.MetricsOptOut": true,
+      "android.webkit.WebView.EnableSafeBrowsing": false
+    },
+    "verbotenerInitializer": "androidx.emoji2.text.EmojiCompatInitializer",
+    "exportierteKomponenten": [
+      {
+        "art": "activity",
+        "name": "de.baremos.fristenrechner.MainActivity",
+        "berechtigung": null
+      },
+      {
+        "art": "receiver",
+        "name": "androidx.profileinstaller.ProfileInstallReceiver",
+        "berechtigung": "android.permission.DUMP"
+      }
+    ],
+    "sicherungsDomaenen": [
+      "root",
+      "file",
+      "database",
+      "sharedpref",
+      "external",
+      "device_root",
+      "device_file",
+      "device_database",
+      "device_sharedpref"
+    ],
+    "verboteneDexBytes": [
+      "Lcom/google/android/gms/",
+      "Lcom/google/firebase/"
+    ]
+  }
 }

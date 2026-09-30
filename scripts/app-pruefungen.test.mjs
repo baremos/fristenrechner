@@ -1,13 +1,19 @@
-// Tests der Prüfungen K1 und K2 der App mit Gegenproben, die scheitern müssen.
+// Tests der Prüfungen K1 bis K5 mit Gegenproben, die scheitern müssen.
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { crc32 } from 'node:zlib';
 import { after, test } from 'node:test';
-import { analysiereSkript, attributeVon, dateistamm, pruefeDist, pruefeKonfiguration, skriptArt, VORGABE } from './app-pruefungen.mjs';
+import { analysiereSkript, attributeVon, dateistamm, leseApkEintraege, ohneGradleKommentare, pruefeApk, pruefeDist, pruefeGradle, pruefeKonfiguration, pruefeSync, skriptArt, VORGABE } from './app-pruefungen.mjs';
+import { standardSdk, windows } from './werkzeuge.mjs';
 
 const echteKonfiguration = JSON.parse(readFileSync(new URL('../app/capacitor.config.json', import.meta.url), 'utf8'));
-const arbeit = mkdtempSync(join(tmpdir(), 'app-pruefungen-'));
+const projekt = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const scratchpad = join(projekt, 'scratchpad/paket-2.5-c3');
+mkdirSync(scratchpad, { recursive: true });
+const arbeit = mkdtempSync(join(scratchpad, 'app-pruefungen-'));
 after(() => rmSync(arbeit, { recursive: true, force: true }));
 
 let zaehler = 0;
@@ -351,3 +357,320 @@ test('Regeldatei: jede Ausnahme und jede Adresse hat Datei, Höchstzahl und Grun
   for (const a of VORGABE.laufzeitAusnahmen) assert.ok(namen.has(a.name), a.name);
   for (const n of VORGABE.laufzeitNamen) assert.ok(n.ab > VORGABE.konfiguration.minWebViewVersion, n.name);
 });
+
+// K3 und K4 ------------------------------------------------------------------
+
+const gegenproben = [];
+after(() => writeFileSync(join(scratchpad, 'gegenproben-k3-k5.json'), JSON.stringify(gegenproben, null, 2) + '\n'));
+function erwartetFehler(titel, fehler, muster) {
+  const passende = fehler.filter((f) => muster.test(f));
+  assert.ok(passende.length, `Erwartet ${muster}, erhalten:\n${fehler.join('\n')}`);
+  gegenproben.push({ titel, erwartet: String(muster), meldungen: passende });
+}
+const toolchain = JSON.parse(readFileSync(join(projekt, 'scripts/toolchain.json'), 'utf8'));
+const appVersion = JSON.parse(readFileSync(join(projekt, 'app/package.json'), 'utf8')).version;
+const codeFuer = (version) => version.split('.').reduce((a, n, i) => a + Number(n) * [10000, 100, 1][i], 0);
+function schreibe(w, name, text) {
+  mkdirSync(dirname(join(w, name)), { recursive: true });
+  writeFileSync(join(w, name), text);
+}
+function syncProbe() {
+  const w = ordner({
+    'app/dist/index.html': '<head></head>',
+    'app/dist/dateien/a.js': 'const x = 1;',
+    'app/capacitor.config.json': JSON.stringify(echteKonfiguration),
+    'app/android/app/src/main/assets/public/index.html': '<head></head>',
+    'app/android/app/src/main/assets/public/dateien/a.js': 'const x = 1;',
+    'app/android/app/src/main/assets/public/cordova.js': '',
+    'app/android/app/src/main/assets/public/cordova_plugins.js': '',
+    'app/android/app/src/main/assets/capacitor.plugins.json': '[]\n',
+    'app/android/app/src/main/assets/capacitor.config.json': JSON.stringify(echteKonfiguration, null, 2),
+    'app/android/app/src/main/res/xml/config.xml': VORGABE.sync.configXml,
+    // Ein neu angelegtes Testrepository braucht keinen Testcommit. Nur Android
+    // wird von K3 abgefragt; die positiven Quelldateien sind hier ausgeschlossen.
+    '.gitignore': '/app/android/\n',
+  });
+  const git = spawnSync('git', ['init', '--quiet', w], { encoding: 'utf8', windowsHide: true });
+  assert.equal(git.status, 0, git.stderr);
+  return w;
+}
+
+test('K3: bytegleicher Baum, zwei leere Dateien und geparstes JSON bestehen', () => {
+  assert.deepEqual(pruefeSync({ wurzel: syncProbe() }), []);
+});
+const mainPfad = 'app/android/app/src/main/';
+for (const [titel, aendern, muster] of [
+  ['dritte zusätzliche Datei', (w) => schreibe(w, mainPfad + 'assets/public/zusatz.js', ''), /zusatz.js: zusätzliche Datei/],
+  ...VORGABE.sync.leereDateien.flatMap((name) => [
+    [`${name} enthält Bytes`, (w) => schreibe(w, mainPfad + 'assets/public/' + name, 'x'), new RegExp(`${name}: muss genau 0 Bytes`)],
+    [`${name} fehlt`, (w) => rmSync(join(w, mainPfad, 'assets/public', name)), new RegExp(`${name}: Datei fehlt`)],
+  ]),
+  ['Quelldatei fehlt', (w) => rmSync(join(w, mainPfad, 'assets/public/dateien/a.js')), /dateien\/a.js: Datei fehlt/],
+  ['Quelldatei geändert', (w) => schreibe(w, mainPfad + 'assets/public/dateien/a.js', 'anders'), /dateien\/a.js: Inhalt weicht/],
+  ['Pluginliste nicht leer', (w) => schreibe(w, mainPfad + 'assets/capacitor.plugins.json', '[{}]'), /capacitor.plugins.json muss inhaltlich \[\]/],
+  ['Konfiguration abweichend', (w) => schreibe(w, mainPfad + 'assets/capacitor.config.json', '{}'), /capacitor.config.json weicht inhaltlich/],
+  ['Konfiguration ungültiges JSON', (w) => schreibe(w, mainPfad + 'assets/capacitor.config.json', '{'), /K3 Dateien:/],
+  ['config.xml geändert', (w) => schreibe(w, mainPfad + 'res/xml/config.xml', VORGABE.sync.configXml.replace('origin="*"', 'origin="x"')), /config.xml weicht/],
+  ['config.xml zusätzlicher Zeilenumbruch', (w) => schreibe(w, mainPfad + 'res/xml/config.xml', VORGABE.sync.configXml + '\n'), /config.xml weicht/],
+  ['reservierter Cordova-Name in dist', (w) => schreibe(w, 'app/dist/cordova.js', ''), /reservierter Name/],
+  ['Git-Status nicht leer', (w) => schreibe(w, '.gitignore', ''), /git status.*ist nicht leer/],
+  ['Quellarchiv ohne .git in umgebendem Repository', (w) => rmSync(join(w, '.git'), { recursive: true }), /Kein zugehöriges Git-Repository/],
+]) {
+  test(`K3 Gegenprobe: ${titel}`, () => {
+    const w = syncProbe(); aendern(w);
+    erwartetFehler(`K3 ${titel}`, pruefeSync({ wurzel: w }), muster);
+  });
+}
+
+function gradleProbe() {
+  const w = ordner({ 'scripts/toolchain.json': JSON.stringify(toolchain), 'app/package.json': JSON.stringify({ version: appVersion }) });
+  for (const datei of ['app/build.gradle', 'build.gradle', 'variables.gradle', 'gradle/wrapper/gradle-wrapper.properties']) {
+    const ziel = join(w, 'app/android', datei);
+    mkdirSync(dirname(ziel), { recursive: true });
+    copyFileSync(join(projekt, 'app/android', datei), ziel);
+  }
+  return w;
+}
+function ersetze(w, datei, von, nach) {
+  const pfad = join(w, datei);
+  const alt = readFileSync(pfad, 'utf8');
+  assert.notEqual(alt.replace(von, nach), alt, `Teständerung fehlt: ${von}`);
+  writeFileSync(pfad, alt.replace(von, nach));
+}
+
+test('K4: eingecheckte Gradle-Werte, SDK-Bindungen und bin-Wrapper bestehen', () => {
+  assert.deepEqual(pruefeGradle({ wurzel: gradleProbe() }), []);
+});
+for (const datei of VORGABE.gradle.dateienMitVerboten) {
+  for (const verboten of VORGABE.gradle.verboten) {
+    for (const form of [verboten, `def x = "https://beispiel.invalid/${verboten}"`, `def x = '/* ${verboten} */'`, `def x = '''// ${verboten}'''`, `def x = $/https://beispiel.invalid/${verboten}/$`, `def x = /a ${verboten}/`]) {
+      test(`K4 Gegenprobe: ${datei}: ${form}`, () => {
+        const w = gradleProbe();
+        const pfad = `app/android/${datei}`;
+        schreibe(w, pfad, readFileSync(join(w, pfad), 'utf8') + `\n${form}\n`);
+        erwartetFehler(`K4 ${datei} ${form}`, pruefeGradle({ wurzel: w }), new RegExp(`${verboten} ist nicht erlaubt`));
+      });
+    }
+    test(`K4: ${datei}: ${verboten} in echten Kommentaren ist kein Fund`, () => {
+      const w = gradleProbe();
+      const pfad = `app/android/${datei}`;
+      schreibe(w, pfad, readFileSync(join(w, pfad), 'utf8') + `\n// ${verboten}\n/* ${verboten}\n${verboten} */\n`);
+      assert.deepEqual(pruefeGradle({ wurzel: w }), []);
+    });
+  }
+}
+for (const [titel, datei, von, nach, muster] of [
+  ...['minSdk', 'compileSdk', 'targetSdk'].map((name) => [name, 'variables.gradle', new RegExp(`(${name}Version\\s*=\\s*)\\d+`), '$199', new RegExp(`${name}Version muss`)]),
+  ...['minSdk', 'compileSdk', 'targetSdk'].map((name) => [`${name} in App überschrieben`, 'app/build.gradle', `rootProject.ext.${name}Version`, '99', new RegExp(`${name}.*muss`)]),
+  ['buildToolsVersion', 'app/build.gradle', toolchain.android.buildTools, '1.0.0', /buildToolsVersion muss/],
+  ['versionName', 'app/build.gradle', `versionName "${appVersion}"`, 'versionName "8.9.10"', /versionName muss/],
+  ['versionCode', 'app/build.gradle', /versionCode \d+/, 'versionCode 999', /versionCode muss/],
+  ['versionCode fehlt', 'app/build.gradle', /versionCode \d+/, '// versionCode 100', /versionCode muss/],
+  ['versionCode doppelt', 'app/build.gradle', /versionCode \d+/, `versionCode ${codeFuer(appVersion)}\nversionCode ${codeFuer(appVersion)}`, /versionCode muss/],
+  ['versionCode zweite Inline-Zuweisung', 'app/build.gradle', /versionCode \d+/, `versionCode ${codeFuer(appVersion)}\nif (true) { versionCode 999 }`, /versionCode muss/],
+  ['versionCode nur in mehrzeiliger Zeichenkette', 'app/build.gradle', /versionCode \d+/, `def text = '''\nversionCode ${codeFuer(appVersion)}\n'''`, /versionCode muss/],
+  ['versionName nur in mehrzeiliger Zeichenkette', 'app/build.gradle', /versionName "[^"]+"/, `versionName unbekannt\ndef text = '''\nversionName "${appVersion}"\n'''`, /versionName muss/],
+  ['Wrapper all', 'gradle/wrapper/gradle-wrapper.properties', '-bin.zip', '-all.zip', /distributionUrl muss/],
+  ['Wrapper fremde Herkunft', 'gradle/wrapper/gradle-wrapper.properties', 'services.gradle.org', 'beispiel.invalid', /distributionUrl muss/],
+  ['Wrapper Prüfsumme', 'gradle/wrapper/gradle-wrapper.properties', toolchain.gradle.sha256.bin, '0'.repeat(64), /distributionSha256Sum muss/],
+  ['Wrapper Prüfsumme fehlt', 'gradle/wrapper/gradle-wrapper.properties', /^distributionSha256Sum=.*$/m, '# fehlt', /distributionSha256Sum muss/],
+]) {
+  test(`K4 Gegenprobe: ${titel}`, () => {
+    const w = gradleProbe(); ersetze(w, `app/android/${datei}`, von, nach);
+    erwartetFehler(`K4 ${titel}`, pruefeGradle({ wurzel: w }), muster);
+  });
+}
+for (const version of ['1.100.0', '1.0.100', '1.0.0-beta', '999999999.0.0']) {
+  test(`K4 Gegenprobe: Versionsschema ${version}`, () => {
+    const w = gradleProbe(); schreibe(w, 'app/package.json', JSON.stringify({ version }));
+    erwartetFehler(`K4 Versionsschema ${version}`, pruefeGradle({ wurzel: w }), /app\/package.json:/);
+  });
+}
+test('K4: Versionsformel Haupt*10000 + Neben*100 + Patch', () => {
+  const w = gradleProbe(); schreibe(w, 'app/package.json', '{"version":"2.3.4"}');
+  ersetze(w, 'app/android/app/build.gradle', /versionCode \d+/, 'versionCode 20304');
+  ersetze(w, 'app/android/app/build.gradle', /versionName "[^"]+"/, 'versionName "2.3.4"');
+  assert.deepEqual(pruefeGradle({ wurzel: w }), []);
+});
+test('K4: nicht geschlossene Kommentare und Zeichenketten werden abgelehnt', () => {
+  assert.throws(() => ohneGradleKommentare('/* x'), /Nicht abgeschlossener/);
+  assert.throws(() => ohneGradleKommentare('"x'), /Nicht abgeschlossene/);
+});
+for (const kommentar of ['//', '/*']) {
+  test(`K4 Gegenprobe: verschachtelte GString-Interpolation mit ${kommentar}`, () => {
+    const w = gradleProbe();
+    const pfad = 'app/android/app/build.gradle';
+    schreibe(w, pfad, readFileSync(join(w, pfad), 'utf8') + '\ndef text = "${"' + kommentar + '"} signingConfig"\n');
+    erwartetFehler(`K4 GString ${kommentar}`, pruefeGradle({ wurzel: w }), /Gradle-Interpolation.*wird nicht unterstützt/);
+  });
+}
+
+// K5: echte Ressourcen und binäre Manifeste aus aapt2, synthetische DEX-Bytes.
+// Die Tests übersetzen keinen Java-Code und führen Gradle nicht aus.
+const sdk = process.env.ANDROID_HOME ?? standardSdk();
+const aapt2 = join(sdk, 'build-tools', toolchain.android.buildTools, windows ? 'aapt2.exe' : 'aapt2');
+const plattform = join(sdk, 'platforms', `android-${toolchain.android.compileSdk}`, 'android.jar');
+const fehlt = !existsSync(aapt2) ? `Build-Tools ${toolchain.android.buildTools} mit aapt2 fehlen`
+  : !existsSync(plattform) ? `Plattform android-${toolchain.android.compileSdk} fehlt` : false;
+const nurMitSdk = { skip: fehlt };
+
+// Einfacher ZIP-Schreiber nur für Testdaten. AndroidManifest.xml und resources.arsc
+// stammen weiterhin aus aapt2 link; danach kommen synthetische APK-Einträge dazu.
+function schreibeZip(pfad, eintraege) {
+  const teile = []; const verzeichnis = []; let offset = 0;
+  for (const [name, text] of eintraege) {
+    const inhalt = Buffer.isBuffer(text) ? text : Buffer.from(text);
+    const n = Buffer.from(name); const crc = crc32(inhalt);
+    const lokal = Buffer.alloc(30);
+    lokal.writeUInt32LE(0x04034b50); lokal.writeUInt16LE(20, 4); lokal.writeUInt32LE(crc, 14);
+    lokal.writeUInt32LE(inhalt.length, 18); lokal.writeUInt32LE(inhalt.length, 22); lokal.writeUInt16LE(n.length, 26);
+    const zentral = Buffer.alloc(46);
+    zentral.writeUInt32LE(0x02014b50); zentral.writeUInt16LE(20, 4); zentral.writeUInt16LE(20, 6);
+    zentral.writeUInt32LE(crc, 16); zentral.writeUInt32LE(inhalt.length, 20); zentral.writeUInt32LE(inhalt.length, 24);
+    zentral.writeUInt16LE(n.length, 28); zentral.writeUInt32LE(offset, 42);
+    teile.push(lokal, n, inhalt); verzeichnis.push(zentral, n); offset += lokal.length + n.length + inhalt.length;
+  }
+  const ende = Buffer.alloc(22); ende.writeUInt32LE(0x06054b50);
+  ende.writeUInt16LE(eintraege.size ?? eintraege.length, 8); ende.writeUInt16LE(eintraege.size ?? eintraege.length, 10);
+  ende.writeUInt32LE(verzeichnis.reduce((n, b) => n + b.length, 0), 12); ende.writeUInt32LE(offset, 16);
+  writeFileSync(pfad, Buffer.concat([...teile, ...verzeichnis, ende]));
+}
+function aapt(args) {
+  const r = spawnSync(aapt2, args, { encoding: 'utf8', windowsHide: true });
+  assert.equal(r.status, 0, `aapt2 ${args.join(' ')}\n${r.stdout}\n${r.stderr}`);
+}
+function apkProbe(optionen = {}) {
+  const w = ordner({
+    'scripts/toolchain.json': JSON.stringify(toolchain), 'app/package.json': JSON.stringify({ version: appVersion }),
+    'app/capacitor.config.json': JSON.stringify(echteKonfiguration), 'app/dist/index.html': '<head></head>',
+    'res/values/strings.xml': '<resources><string name="titel">Test</string></resources>',
+    'res/values-de/strings.xml': '<resources><string name="titel">Deutsch</string></resources>',
+  });
+  const erlaubt = VORGABE.apk.berechtigung;
+  const ausschluesse = VORGABE.apk.sicherungsDomaenen.map((domain) => `<exclude domain="${domain}" path="."/>`).join('');
+  let regeln = `<data-extraction-rules><cloud-backup>${ausschluesse}</cloud-backup><device-transfer>${ausschluesse}</device-transfer></data-extraction-rules>`;
+  if (optionen.regeln) regeln = optionen.regeln(regeln);
+  schreibe(w, 'res/xml/data_extraction_rules.xml', regeln);
+  if (optionen.regelVariante) schreibe(w, 'res/xml-v31/data_extraction_rules.xml', '<data-extraction-rules><cloud-backup/><device-transfer/></data-extraction-rules>');
+  if (optionen.sprache) schreibe(w, 'res/values-en/strings.xml', '<resources><string name="titel">English</string></resources>');
+  let manifest = `<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="de.baremos.fristenrechner" android:versionCode="${codeFuer(appVersion)}" android:versionName="${appVersion}">
+<uses-sdk android:minSdkVersion="${toolchain.android.minSdk}" android:targetSdkVersion="${toolchain.android.targetSdk}"/>
+<permission android:name="${erlaubt}" android:protectionLevel="signature"/><uses-permission android:name="${erlaubt}"/>
+<application android:label="@string/titel" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules"${optionen.debug === false ? '' : ' android:debuggable="true"'}>
+<meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true"/>
+<meta-data android:name="android.webkit.WebView.EnableSafeBrowsing" android:value="false"/>
+<activity android:name="de.baremos.fristenrechner.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
+<receiver android:name="androidx.profileinstaller.ProfileInstallReceiver" android:exported="true" android:permission="android.permission.DUMP"/>
+<provider android:name="androidx.startup.InitializationProvider" android:exported="false" android:authorities="de.baremos.test"/>
+</application></manifest>`;
+  if (optionen.manifest) manifest = optionen.manifest(manifest);
+  schreibe(w, 'AndroidManifest.xml', manifest);
+  aapt(['compile', '--dir', join(w, 'res'), '-o', join(w, 'ressourcen.zip')]);
+  const apk = join(w, 'probe.apk');
+  aapt(['link', '-o', apk, '--manifest', join(w, 'AndroidManifest.xml'), '-I', plattform, join(w, 'ressourcen.zip')]);
+  const eintraege = leseApkEintraege(apk);
+  eintraege.set('classes.dex', Buffer.from('dex\n035\0synthetische Testbytes'));
+  eintraege.set('assets/public/index.html', Buffer.from('<head></head>'));
+  for (const name of VORGABE.sync.leereDateien) eintraege.set(`assets/public/${name}`, Buffer.alloc(0));
+  eintraege.set('assets/capacitor.plugins.json', Buffer.from('[]\n'));
+  eintraege.set('assets/capacitor.config.json', Buffer.from(JSON.stringify(echteKonfiguration)));
+  optionen.eintraege?.(eintraege);
+  schreibeZip(apk, eintraege);
+  return { w, apk };
+}
+for (const debug of [true, false]) {
+  test(`K5: gültige synthetische ${debug ? 'Debug' : 'Release'}-APK besteht`, nurMitSdk, () => {
+    const { w, apk } = apkProbe({ debug });
+    assert.deepEqual(pruefeApk(apk, { wurzel: w, debug, sdk }), []);
+  });
+}
+const manifestAendern = (von, nach) => ({ manifest: (text) => { assert.ok(text.includes(von)); return text.replace(von, nach); } });
+const permissionTag = `<uses-permission android:name="${VORGABE.apk.berechtigung}"/>`;
+const faelleApk = [
+  ['INTERNET statt erlaubter Berechtigung', manifestAendern(permissionTag, '<uses-permission android:name="android.permission.INTERNET"/>'), /Berechtigungen: erwartet ausschließlich/],
+  ['zweite Berechtigung INTERNET', manifestAendern(permissionTag, permissionTag + '<uses-permission android:name="android.permission.INTERNET"/>'), /Berechtigungen: erwartet ausschließlich/],
+  ['zweite Berechtigung CAMERA', manifestAendern(permissionTag, permissionTag + '<uses-permission android:name="android.permission.CAMERA"/>'), /Berechtigungen: erwartet ausschließlich/],
+  ['Berechtigung fehlt', manifestAendern(permissionTag, ''), /Berechtigungen: erwartet ausschließlich/],
+  ['zusätzliche deklarierte Berechtigung', manifestAendern('</manifest>', '<permission android:name="de.baremos.test.EXTRA"/></manifest>'), /Berechtigungen: erwartet ausschließlich/],
+  ['Berechtigung mit maxSdkVersion', manifestAendern(permissionTag, permissionTag.replace('/>', ' android:maxSdkVersion="30"/>')), /genau eine unbedingte uses-permission/],
+  ['Paket anders', manifestAendern('package="de.baremos.fristenrechner"', 'package="de.baremos.anders"'), /Paket und Versionen/],
+  ['versionCode anders', manifestAendern(`android:versionCode="${codeFuer(appVersion)}"`, 'android:versionCode="9"'), /Paket und Versionen/],
+  ['versionName anders', manifestAendern(`android:versionName="${appVersion}"`, 'android:versionName="9.0.0"'), /Paket und Versionen/],
+  ['minSdk anders', manifestAendern(`android:minSdkVersion="${toolchain.android.minSdk}"`, 'android:minSdkVersion="29"'), /minSdk: erwartet/],
+  ['targetSdk anders', manifestAendern(`android:targetSdkVersion="${toolchain.android.targetSdk}"`, 'android:targetSdkVersion="35"'), /targetSdk: erwartet/],
+  ['allowBackup=true', manifestAendern('android:allowBackup="false"', 'android:allowBackup="true"'), /allowBackup muss false/],
+  ['allowBackup fehlt', manifestAendern('android:allowBackup="false"', ''), /allowBackup muss false/],
+  ['usesCleartextTraffic=true', manifestAendern('<application ', '<application android:usesCleartextTraffic="true" '), /usesCleartextTraffic darf nur/],
+  ['dataExtractionRules fehlt', manifestAendern('android:dataExtractionRules="@xml/data_extraction_rules"', ''), /dataExtractionRules muss/],
+  ['zusätzliche Sicherungsvariante ab API 31', { regelVariante: true }, /zusätzliche Varianten sind nicht erlaubt/],
+  ['cloud-backup ein Ausschluss fehlt', { regeln: (r) => r.replace('<exclude domain="root" path="."/>', '') }, /dataExtractionRules cloud-backup:/],
+  ['device-transfer ein Ausschluss fehlt', { regeln: (r) => r.replace('<device-transfer><exclude domain="root" path="."/>', '<device-transfer>') }, /dataExtractionRules device-transfer:/],
+  ['Sicherungsregel anderer Pfad', { regeln: (r) => r.replace('path="."', 'path="anders"') }, /dataExtractionRules cloud-backup:/],
+  ['zusätzliche include-Regel', { regeln: (r) => r.replace('</cloud-backup>', '<include domain="root" path="."/></cloud-backup>') }, /dataExtractionRules cloud-backup:/],
+  ['zweite Sprache', { sprache: true }, /Sprachen: erwartet/],
+  ['fehlendes MetricsOptOut', manifestAendern('<meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true"/>', ''), /WebView-Metadatum android.webkit.WebView.MetricsOptOut/],
+  ['MetricsOptOut=false', manifestAendern('MetricsOptOut" android:value="true"', 'MetricsOptOut" android:value="false"'), /WebView-Metadatum android.webkit.WebView.MetricsOptOut/],
+  ['EnableSafeBrowsing=true', manifestAendern('EnableSafeBrowsing" android:value="false"', 'EnableSafeBrowsing" android:value="true"'), /WebView-Metadatum android.webkit.WebView.EnableSafeBrowsing/],
+  ['Metadatum unter falschem Elternknoten', manifestAendern('<meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true"/>', '<service android:name="de.baremos.Falsch" android:exported="false"><meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true"/></service>'), /WebView-Metadatum android.webkit.WebView.MetricsOptOut/],
+  ['EmojiCompatInitializer', manifestAendern('</application>', `<meta-data android:name="${VORGABE.apk.verbotenerInitializer}" android:value="androidx.startup"/></application>`), /Initializer .* ist nicht erlaubt/],
+  ['zusätzlicher Export', manifestAendern('</application>', '<service android:name="de.baremos.Extra" android:exported="true"/></application>'), /Exportierte Komponenten/],
+  ['MainActivity nicht exportiert', manifestAendern('MainActivity" android:exported="true"', 'MainActivity" android:exported="false"'), /Exportierte Komponenten/],
+  ['Receiver ohne DUMP', manifestAendern('android:permission="android.permission.DUMP"', ''), /Exportierte Komponenten/],
+  ['Receiver andere Berechtigung', manifestAendern('android:permission="android.permission.DUMP"', 'android:permission="android.permission.INTERNET"'), /Exportierte Komponenten/],
+  ['Komponente implizit exportiert', manifestAendern('InitializationProvider" android:exported="false"', 'InitializationProvider"'), /exported muss ausdrücklich/],
+  ['Debug ohne debuggable', { debug: false }, /debuggable: erwartet true/],
+  ['Release mit debuggable', { alsRelease: true }, /debuggable: erwartet fehlend oder false/],
+  ...VORGABE.apk.verboteneDexBytes.flatMap((bytes) => ['classes.dex', 'classes2.dex', 'classes-extra.dex'].map((name) => [`${bytes} in ${name}`, { eintraege: (e) => e.set(name, Buffer.from(`dex\0${bytes}Probe;`)) }, /verbotene Bytefolge/])),
+  ['lib-Eintrag', { eintraege: (e) => e.set('lib/x86_64/probe', Buffer.from('x')) }, /Native Bibliothek/],
+  ['so außerhalb lib', { eintraege: (e) => e.set('assets/probe.so', Buffer.from('x')) }, /Native Bibliothek/],
+  ['keine DEX-Datei', { eintraege: (e) => e.delete('classes.dex') }, /Keine classes\*\.dex/],
+  ['dritte Datei in assets/public', { eintraege: (e) => e.set('assets/public/extra.js', Buffer.alloc(0)) }, /extra.js: zusätzliche Datei/],
+  ['Datei in assets/public fehlt', { eintraege: (e) => e.delete('assets/public/index.html') }, /index.html: Datei fehlt/],
+  ['Datei in assets/public geändert', { eintraege: (e) => e.set('assets/public/index.html', Buffer.from('x')) }, /index.html: Inhalt weicht/],
+  ...VORGABE.sync.leereDateien.flatMap((name) => [
+    [`${name} mit Inhalt`, { eintraege: (e) => e.set(`assets/public/${name}`, Buffer.from('x')) }, /muss genau 0 Bytes/],
+    [`${name} fehlt`, { eintraege: (e) => e.delete(`assets/public/${name}`) }, /Datei fehlt/],
+  ]),
+  ['Pluginliste nicht leer', { eintraege: (e) => e.set('assets/capacitor.plugins.json', Buffer.from('[{}]')) }, /capacitor.plugins.json muss/],
+  ['Pluginliste fehlt', { eintraege: (e) => e.delete('assets/capacitor.plugins.json') }, /capacitor.plugins.json muss/],
+  ['Konfiguration anders', { eintraege: (e) => e.set('assets/capacitor.config.json', Buffer.from('{}')) }, /capacitor.config.json weicht/],
+];
+for (const [titel, optionen, muster] of faelleApk) {
+  test(`K5 Gegenprobe: ${titel}`, nurMitSdk, () => {
+    const { w, apk } = apkProbe(optionen);
+    erwartetFehler(`K5 ${titel}`, pruefeApk(apk, { wurzel: w, debug: !optionen.alsRelease, sdk }), muster);
+  });
+}
+test('K5 Gegenprobe: aapt2 fehlt, kein stilles Bestehen', () => {
+  erwartetFehler('K5 aapt2 fehlt', pruefeApk('fehlt.apk', { wurzel: projekt, debug: true, sdk: join(arbeit, 'ohne-sdk') }), /aapt2 .* fehlt; K5 ist nicht ausgeführt/);
+});
+test('K5 Gegenprobe: Build-Art nicht angegeben', () => {
+  erwartetFehler('K5 Build-Art fehlt', pruefeApk('fehlt.apk', { wurzel: projekt }), /Build-Art muss/);
+});
+test('K5 Gegenprobe: aapt2 meldet fehlerhafte APK', nurMitSdk, () => {
+  const w = ordner({ 'kaputt.apk': 'kein ZIP' });
+  erwartetFehler('K5 APK kaputt', pruefeApk(join(w, 'kaputt.apk'), { wurzel: projekt, debug: true, sdk }), /aapt2 permissions fehlgeschlagen/);
+});
+test('ZIP: doppelte Namen und CRC-Fehler werden abgelehnt', () => {
+  const w = ordner({ 'probe.apk': '' }); const p = join(w, 'probe.apk');
+  schreibeZip(p, [['a', 'x'], ['a', 'y']]);
+  assert.throws(() => leseApkEintraege(p), /doppelter.*ZIP-Name/);
+  schreibeZip(p, new Map([['a', Buffer.from('x')]]));
+  const b = readFileSync(p); b[31] ^= 1; writeFileSync(p, b);
+  assert.throws(() => leseApkEintraege(p), /ZIP-Prüfsumme/);
+});
+for (const trennzeichen of ['=', ':', ' ']) {
+  test(`K5: local.properties (${JSON.stringify(trennzeichen)}) hat Vorrang vor ANDROID_HOME`, nurMitSdk, () => {
+    const { w, apk } = apkProbe();
+    schreibe(w, 'app/android/local.properties', '# Kommentar\nsdk.dir' + trennzeichen + sdk.replace(/\\/g, '\\\\').replace(/:/g, '\\:') + '\n');
+    assert.deepEqual(pruefeApk(apk, { wurzel: w, debug: true, umgebung: { ...process.env, ANDROID_HOME: join(arbeit, 'fehlt') } }), []);
+    if (windows) assert.deepEqual(pruefeApk(apk, { wurzel: w, debug: true, sdk: sdk.toUpperCase() }), []);
+    erwartetFehler('K5 SDK-Konflikt', pruefeApk(apk, { wurzel: w, debug: true, sdk: join(arbeit, 'anderes-sdk') }), /SDK-Angabe weicht/);
+  });
+}
+for (const [text, muster] of [['sdk.dir=', /sdk.dir.*ist leer/], ['sdk.dir=foo\\\nbar', /Fortsetzungszeile/]]) {
+  test(`K5 Gegenprobe: local.properties ${JSON.stringify(text)}`, () => {
+    const w = ordner({ 'app/android/local.properties': text, 'scripts/toolchain.json': JSON.stringify(toolchain), 'app/package.json': JSON.stringify({ version: appVersion }) });
+    erwartetFehler('K5 local.properties ungültig', pruefeApk('fehlt.apk', { wurzel: w, debug: true }), muster);
+  });
+}

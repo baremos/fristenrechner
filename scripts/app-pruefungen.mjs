@@ -1,4 +1,4 @@
-// Prüfungen der Build-Kette der App, als reine Funktionen.
+// Prüfungen der Build-Kette der App. K3 bis K5 lesen auch Dateien und Werkzeuge.
 // K1: capacitor.config.json gegen die Festlegungen: nur bekannte Schlüssel,
 //     Herkunft, Fehlerseite, keine Netzfreigaben, Mindestversion der WebView.
 // K2: der gebaute Ordner dist: Pflichtdateien, keine Source-Maps, keine Syntax und
@@ -17,9 +17,13 @@
 // als Text. Dass die App keine Verbindung aufbaut und nicht nach außen navigiert,
 // belegen die Läufe im Emulator mit Netzmelder und Gegenprobe.
 // Aufruf über scripts/app-bauen.mjs. Die Regeln stehen in scripts/app-pruefungen.json.
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { basename, extname, join, relative, sep } from 'node:path';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { basename, extname, join, relative, resolve, sep } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { isDeepStrictEqual } from 'node:util';
+import { crc32, inflateRawSync } from 'node:zlib';
 import { parse } from '@babel/parser';
+import { standardSdk, windows } from './werkzeuge.mjs';
 
 const HIER = new URL('.', import.meta.url);
 export const VORGABE = JSON.parse(readFileSync(new URL('app-pruefungen.json', HIER), 'utf8'));
@@ -470,4 +474,355 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
     }
   }
   return { fehler, bericht };
+}
+
+// K3: Ausgabe von cap sync ----------------------------------------------------
+
+function dateiBaum(ordner) {
+  if (!statSync(ordner).isDirectory()) throw new Error(`${ordner}: kein Ordner.`);
+  return new Map(alleDateien(ordner).map((name) => [name, readFileSync(join(ordner, name))]));
+}
+
+function pruefePublic(ist, soll, leereDateien) {
+  const fehler = [];
+  for (const name of leereDateien) {
+    if (soll.has(name)) fehler.push(`dist/${name}: reservierter Name der leeren Cordova-Datei.`);
+  }
+  const erwartet = new Map([...soll, ...leereDateien.map((name) => [name, Buffer.alloc(0)])]);
+  for (const [name, inhalt] of erwartet) {
+    if (!ist.has(name)) fehler.push(`assets/public/${name}: Datei fehlt.`);
+    else if (!ist.get(name).equals(inhalt)) fehler.push(`assets/public/${name}: ${leereDateien.includes(name) ? 'muss genau 0 Bytes haben' : 'Inhalt weicht von dist ab'}.`);
+  }
+  for (const name of ist.keys()) {
+    if (!erwartet.has(name)) fehler.push(`assets/public/${name}: zusätzliche Datei.`);
+  }
+  return fehler;
+}
+
+function jsonDatei(pfad) { return JSON.parse(readFileSync(pfad, 'utf8')); }
+function versucht(fehler, name, funktion) {
+  try { funktion(); } catch (e) { fehler.push(`${name}: ${e.message}`); }
+}
+
+/** K3 liefert wie K1 eine Liste der Fehler; [] bedeutet bestanden. Ohne Git kein Bestehen. */
+export function pruefeSync({ wurzel, vorgabe = VORGABE, umgebung = process.env } = {}) {
+  const fehler = [];
+  versucht(fehler, 'K3 Dateien', () => {
+    const haupt = join(wurzel, 'app/android/app/src/main');
+    fehler.push(...pruefePublic(dateiBaum(join(haupt, 'assets/public')), dateiBaum(join(wurzel, 'app/dist')), vorgabe.sync.leereDateien));
+    if (!isDeepStrictEqual(jsonDatei(join(haupt, 'assets/capacitor.plugins.json')), [])) fehler.push('assets/capacitor.plugins.json muss inhaltlich [] sein.');
+    if (!isDeepStrictEqual(jsonDatei(join(haupt, 'assets/capacitor.config.json')), jsonDatei(join(wurzel, 'app/capacitor.config.json')))) {
+      fehler.push('assets/capacitor.config.json weicht inhaltlich von app/capacitor.config.json ab.');
+    }
+    if (readFileSync(join(haupt, 'res/xml/config.xml'), 'utf8') !== vorgabe.sync.configXml) {
+      fehler.push('res/xml/config.xml weicht vom erwarteten Inhalt von cap sync ab.');
+    }
+  });
+  versucht(fehler, 'K3 Git', () => {
+    // Ein Archiv unter einem fremden Repository darf dessen sauberen Status nicht erben.
+    const ohneGit = 'Kein zugehöriges Git-Repository: K3 kann die unveränderten Android-Quellen nicht belegen. Für Quellarchive ist ein unabhängig vertrauenswürdiges Dateimanifest nötig; derzeit bitte einen Git-Checkout verwenden.';
+    if (!existsSync(join(wurzel, '.git'))) throw new Error(ohneGit);
+    const optionen = { cwd: wurzel, encoding: 'utf8', windowsHide: true, env: { ...umgebung, CI: '1', ASTRO_TELEMETRY_DISABLED: '1' } };
+    const git = spawnSync('git', ['rev-parse', '--show-toplevel'], optionen);
+    if (git.status !== 0 || realpathSync(git.stdout.trim()) !== realpathSync(wurzel)) throw new Error(ohneGit);
+    const status = spawnSync('git', ['status', '--porcelain', '--', 'app/android'], optionen);
+    if (status.status !== 0) throw new Error(`git status ist fehlgeschlagen (Rückgabewert ${status.status}).`);
+    if (status.stdout.trim()) fehler.push(`git status --porcelain -- app/android ist nicht leer:\n${status.stdout.trimEnd()}`);
+  });
+  return fehler;
+}
+
+// K4: Gradle-Quellen ----------------------------------------------------------
+
+/** Entfernt Groovy-Kommentare, erhält aber Zeichenketten einschließlich // und /*.
+ * Kein Groovy-Interpreter: geprüfte Versionsangaben müssen einfache Literale sein.
+ * Slashy- und Dollar-Slashy-Zeichenketten bleiben ebenfalls erhalten. */
+export function ohneGradleKommentare(text, { zeichenkettenAusblenden = false } = {}) {
+  let aus = '';
+  let i = 0;
+  while (i < text.length) {
+    if (text.startsWith('//', i)) {
+      const ende = text.indexOf('\n', i);
+      aus += ' '.repeat((ende < 0 ? text.length : ende) - i);
+      i = ende < 0 ? text.length : ende;
+    } else if (text.startsWith('/*', i)) {
+      const ende = text.indexOf('*/', i + 2);
+      if (ende < 0) throw new Error('Nicht abgeschlossener Gradle-Kommentar.');
+      aus += text.slice(i, ende + 2).replace(/[^\r\n]/g, ' ');
+      i = ende + 2;
+    } else {
+      const start = i;
+      const dollar = text.startsWith('$/', i);
+      const quote = ['"""', "'''", '"', "'"].find((q) => text.startsWith(q, i));
+      // Slashy ist an einer Ausdrucksposition möglich; Division bleibt Quelltext.
+      const slashy = text[i] === '/' && /(?:^|[=(:,\[!~])\s*$/.test(aus);
+      const oeffner = dollar ? '$/' : quote ?? (slashy ? '/' : null);
+      if (!oeffner) { aus += text[i++]; continue; }
+      const schliesser = dollar ? '/$' : oeffner;
+      i += oeffner.length;
+      let fertig = false;
+      while (i < text.length) {
+        if ((dollar || slashy || quote?.startsWith('"')) && text.startsWith('${', i)) throw new Error('Gradle-Interpolation mit ${...} wird nicht unterstützt; geprüfte Werte müssen statisch sein.');
+        if (dollar && text[i] === '$' && ['$', '/'].includes(text[i + 1])) { i += 2; continue; }
+        if (!dollar && text[i] === '\\') { i += 2; continue; }
+        if (text.startsWith(schliesser, i)) { i += schliesser.length; fertig = true; break; }
+        i += 1;
+      }
+      if (!fertig) throw new Error('Nicht abgeschlossene Gradle-Zeichenkette.');
+      aus += zeichenkettenAusblenden ? text.slice(start, i).replace(/[^\r\n]/g, ' ') : text.slice(start, i);
+    }
+  }
+  return aus;
+}
+
+function versionscode(version) {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('app/package.json: version muss Haupt.Neben.Patch sein.');
+  const [haupt, neben, patch] = version.split('.').map(Number);
+  if (neben > 99 || patch > 99) throw new Error('app/package.json: Neben und Patch müssen für versionCode kleiner als 100 sein.');
+  const code = haupt * 10000 + neben * 100 + patch;
+  if (!Number.isSafeInteger(code) || code < 1 || code > 2100000000) throw new Error('app/package.json: versionCode außerhalb des Android-Bereichs.');
+  return code;
+}
+
+export function pruefeGradle({ wurzel, vorgabe = VORGABE } = {}) {
+  const fehler = [];
+  versucht(fehler, 'K4', () => {
+    const werkzeuge = jsonDatei(join(wurzel, 'scripts/toolchain.json'));
+    const version = jsonDatei(join(wurzel, 'app/package.json')).version;
+    const android = join(wurzel, 'app/android');
+    const texte = {};
+    const code = {};
+    for (const name of ['app/build.gradle', 'build.gradle', 'variables.gradle']) {
+      texte[name] = ohneGradleKommentare(readFileSync(join(android, name), 'utf8'));
+      code[name] = ohneGradleKommentare(readFileSync(join(android, name), 'utf8'), { zeichenkettenAusblenden: true });
+    }
+    for (const name of vorgabe.gradle.dateienMitVerboten) {
+      for (const verboten of vorgabe.gradle.verboten) {
+        if (texte[name].includes(verboten)) fehler.push(`${name}: ${verboten} ist nicht erlaubt (außer in Kommentaren).`);
+      }
+    }
+    const erwarte = (datei, namen, soll) => {
+      const muster = new RegExp(`^\\s*(?:${namen.join('|')})\\b\\s*(?:=\\s*)?([^\\r\\n]+)`, 'gm');
+      const funde = [...code[datei].matchAll(muster)].map((m) => m[1].trim().replace(/;$/, '').trim());
+      const alle = [...code[datei].matchAll(new RegExp(`(?<![\\w.$])(?:${namen.join('|')})\\b`, 'g'))];
+      if (funde.length !== 1 || alle.length !== 1 || funde[0] !== soll) fehler.push(`${datei}: ${namen.join('/')} muss genau einmal ${soll} sein, gefunden ${JSON.stringify(funde)}.`);
+    };
+    for (const [schluessel, variable, namen] of [['minSdk', 'minSdkVersion', ['minSdk', 'minSdkVersion']], ['compileSdk', 'compileSdkVersion', ['compileSdk', 'compileSdkVersion']], ['targetSdk', 'targetSdkVersion', ['targetSdk', 'targetSdkVersion']]]) {
+      if (werkzeuge.android[schluessel] !== undefined) {
+        erwarte('variables.gradle', [variable], String(werkzeuge.android[schluessel]));
+        erwarte('app/build.gradle', namen, `rootProject.ext.${variable}`);
+      }
+    }
+    const erwarteText = (datei, name, soll) => {
+      const funde = [...texte[datei].matchAll(new RegExp(`^\\s*${name}\\s*(?:=\\s*)?(['"])(.*?)\\1\\s*;?\\s*$`, 'gm'))]
+        .filter((m) => new RegExp(`^\\s*${name}\\b`).test(code[datei].slice(m.index, m.index + m[0].length)));
+      const alle = [...code[datei].matchAll(new RegExp(`(?<![\\w.$])${name}\\b`, 'g'))];
+      if (funde.length !== 1 || alle.length !== 1 || funde[0][2] !== soll) fehler.push(`${datei}: ${name} muss genau einmal ${JSON.stringify(soll)} sein.`);
+    };
+    erwarteText('app/build.gradle', 'buildToolsVersion', werkzeuge.android.buildTools);
+    erwarteText('app/build.gradle', 'versionName', version);
+    erwarte('app/build.gradle', ['versionCode'], String(versionscode(version)));
+    const wrapper = readFileSync(join(android, 'gradle/wrapper/gradle-wrapper.properties'), 'utf8');
+    for (const [name, soll] of Object.entries({ distributionUrl: `https://services.gradle.org/distributions/gradle-${werkzeuge.gradle.version}-bin.zip`, distributionSha256Sum: werkzeuge.gradle.sha256.bin })) {
+      const funde = [...wrapper.matchAll(new RegExp(`^\\s*${name}\\s*[=:]\\s*(.*?)\\s*$`, 'gm'))].map((m) => m[1].replace(/\\:/g, ':'));
+      if (!isDeepStrictEqual(funde, [soll])) fehler.push(`gradle-wrapper.properties: ${name} muss genau einmal ${soll} sein.`);
+    }
+  });
+  return fehler;
+}
+
+// K5: APK und die Textausgaben von aapt2 ---------------------------------------
+
+/** Liest nur das eingerückte Ausgabeformat von aapt2 dump xmltree, kein XML. */
+function aaptBaum(text) {
+  const wurzel = { name: '#', tiefe: -1, attribute: {}, kinder: [] };
+  const stapel = [wurzel];
+  for (const zeile of text.split(/\r?\n/)) {
+    if (!zeile.trim()) continue;
+    const m = /^( *)([EAN]): (.+)$/.exec(zeile);
+    if (!m) throw new Error(`aapt2 xmltree: unbekannte Ausgabe ${zeile.trim()}.`);
+    if (m[2] === 'N') continue;
+    const tiefe = m[1].length;
+    while (stapel.at(-1).tiefe >= tiefe) stapel.pop();
+    const eltern = stapel.at(-1);
+    if (!eltern) throw new Error('aapt2 xmltree: fehlerhafte Einrückung.');
+    if (m[2] === 'E') {
+      const element = /^([^ ]+) \(line=\d+\)$/.exec(m[3]);
+      if (!element) throw new Error('aapt2 xmltree: Element nicht lesbar.');
+      const knoten = { name: element[1], tiefe, attribute: {}, kinder: [] };
+      eltern.kinder.push(knoten);
+      stapel.push(knoten);
+    } else {
+      const a = /^(?:(http:\/\/schemas.android.com\/apk\/res\/android):)?([A-Za-z][A-Za-z0-9_.-]*)(?:\(0x[0-9a-f]+\))?=(.*)$/.exec(m[3]);
+      if (!a) throw new Error('aapt2 xmltree: Attribut nicht lesbar.');
+      const name = `${a[1] ? 'android:' : ''}${a[2]}`;
+      if (Object.hasOwn(eltern.attribute, name)) throw new Error(`aapt2 xmltree: doppeltes Attribut ${name}.`);
+      const roh = a[3].replace(/ \(Raw: .*\)$/, '');
+      eltern.attribute[name] = roh.startsWith('"') ? JSON.parse(roh) : roh;
+    }
+  }
+  return wurzel;
+}
+function nachfahren(knoten, name) {
+  return knoten.kinder.flatMap((kind) => [...(kind.name === name ? [kind] : []), ...nachfahren(kind, name)]);
+}
+const aWahr = (wert) => ['true', '(type 0x12)0xffffffff'].includes(wert);
+const aFalsch = (wert) => ['false', '(type 0x12)0x0'].includes(wert);
+
+/** APKs sind ZIPs mit Stored/Deflate. Keine Extraktion, keine neuen Werkzeuge.
+ * ZIP64, Mehrdatenträgerarchive, doppelte Namen und beschädigte Einträge sind Fehler. */
+export function leseApkEintraege(pfad) {
+  const bytes = readFileSync(pfad);
+  let ende = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i -= 1) {
+    if (bytes.readUInt32LE(i) === 0x06054b50 && i + 22 + bytes.readUInt16LE(i + 20) === bytes.length) { ende = i; break; }
+  }
+  if (ende < 0) throw new Error('APK: ZIP-Verzeichnis fehlt.');
+  const zahl = bytes.readUInt16LE(ende + 10);
+  const start = bytes.readUInt32LE(ende + 16);
+  if (bytes.readUInt32LE(ende + 4) !== 0 || bytes.readUInt16LE(ende + 8) !== zahl || zahl === 65535 || start + bytes.readUInt32LE(ende + 12) !== ende) throw new Error('APK: ZIP64 oder ungültiges ZIP-Verzeichnis.');
+  const eintraege = new Map();
+  let pos = start;
+  let gesamt = 0;
+  for (let i = 0; i < zahl; i += 1) {
+    if (pos + 46 > ende || bytes.readUInt32LE(pos) !== 0x02014b50) throw new Error('APK: beschädigter ZIP-Eintrag.');
+    const flags = bytes.readUInt16LE(pos + 8);
+    const methode = bytes.readUInt16LE(pos + 10);
+    const summe = bytes.readUInt32LE(pos + 16);
+    const gepackt = bytes.readUInt32LE(pos + 20);
+    const groesse = bytes.readUInt32LE(pos + 24);
+    const namenLaenge = bytes.readUInt16LE(pos + 28);
+    const name = bytes.subarray(pos + 46, pos + 46 + namenLaenge).toString('utf8');
+    const lokal = bytes.readUInt32LE(pos + 42);
+    if (eintraege.has(name) || !name || name.includes('\\') || name.startsWith('/') || name.split('/').some((teil) => teil === '..' || teil === '.')) throw new Error(`APK: doppelter oder ungültiger ZIP-Name ${name}.`);
+    if ((flags & 1) || ![0, 8].includes(methode) || groesse > 128 * 1024 * 1024 || (gesamt += groesse) > 512 * 1024 * 1024) throw new Error(`APK: ZIP-Eintrag nicht unterstützt: ${name}.`);
+    if (lokal + 30 > start || bytes.readUInt32LE(lokal) !== 0x04034b50 || bytes.readUInt16LE(lokal + 8) !== methode || bytes.readUInt16LE(lokal + 6) !== flags) throw new Error(`APK: lokaler ZIP-Eintrag abweichend: ${name}.`);
+    const lokalerName = bytes.subarray(lokal + 30, lokal + 30 + bytes.readUInt16LE(lokal + 26)).toString('utf8');
+    const daten = lokal + 30 + bytes.readUInt16LE(lokal + 26) + bytes.readUInt16LE(lokal + 28);
+    if (lokalerName !== name || daten + gepackt > start) throw new Error(`APK: ZIP-Daten abweichend: ${name}.`);
+    const komprimiert = bytes.subarray(daten, daten + gepackt);
+    const inhalt = methode === 0 ? komprimiert : inflateRawSync(komprimiert, { maxOutputLength: Math.max(1, groesse) });
+    if (inhalt.length !== groesse || crc32(inhalt) !== summe) throw new Error(`APK: ZIP-Prüfsumme oder Länge abweichend: ${name}.`);
+    eintraege.set(name, inhalt);
+    pos += 46 + namenLaenge + bytes.readUInt16LE(pos + 30) + bytes.readUInt16LE(pos + 32);
+  }
+  if (pos !== ende) throw new Error('APK: ZIP-Verzeichnis hat zusätzliche Daten.');
+  return eintraege;
+}
+
+// Gleiche Auswahl und Properties-Maskierung wie android-build.mjs. Ein SDK aus
+// local.properties hat Vorrang vor ANDROID_HOME; Fortsetzungen sind Fehler.
+function apkSdk(wurzel, angabe, umgebung) {
+  const projekt = join(wurzel, 'app/android');
+  const datei = join(projekt, 'local.properties');
+  const entmaskiere = (text) => text.replace(/\\(u[0-9a-fA-F]{4}|.)/g, (_, z) => z.length === 5 ? String.fromCharCode(parseInt(z.slice(1), 16)) : ({ t: '\t', n: '\n', r: '\r', f: '\f' }[z] ?? z));
+  let lokal = null;
+  if (existsSync(datei)) for (const roh of readFileSync(datei, 'utf8').split(/\r\n|\r|\n/)) {
+    const zeile = roh.replace(/^[ \t\f]+/, '');
+    if (!zeile || /^[#!]/.test(zeile)) continue;
+    if (/(?:^|[^\\])(?:\\\\)*\\$/.test(zeile)) throw new Error('local.properties verwendet eine nicht unterstützte Fortsetzungszeile.');
+    const treffer = /^((?:\\.|[^\\=: \t\f])*)[ \t\f]*[=:]?[ \t\f]*(.*)$/.exec(zeile);
+    if (treffer && entmaskiere(treffer[1]) === 'sdk.dir') lokal = entmaskiere(treffer[2]);
+  }
+  if (lokal === '') throw new Error('sdk.dir in local.properties ist leer.');
+  if (lokal !== null) lokal = resolve(projekt, lokal);
+  const vergleich = (pfad) => windows ? resolve(pfad).toLowerCase() : resolve(pfad);
+  if (angabe && lokal && vergleich(angabe) !== vergleich(lokal)) throw new Error('SDK-Angabe weicht von sdk.dir in local.properties ab.');
+  return angabe ? resolve(angabe) : lokal ?? umgebung.ANDROID_HOME ?? standardSdk(umgebung);
+}
+
+/** K5: statische Prüfung; keine Aussage über Laufzeit, Signatur oder Reproduzierbarkeit.
+ * bericht nimmt bei Bedarf die beobachteten Werte und aapt2-Ausgaben auf. */
+export function pruefeApk(apkPfad, { wurzel, debug, vorgabe = VORGABE, sdk, umgebung = process.env, bericht = {} } = {}) {
+  const fehler = [];
+  versucht(fehler, 'K5', () => {
+    if (typeof debug !== 'boolean') throw new Error('Build-Art muss mit debug: true oder false ausdrücklich gewählt werden.');
+    const werkzeuge = jsonDatei(join(wurzel, 'scripts/toolchain.json'));
+    const version = jsonDatei(join(wurzel, 'app/package.json')).version;
+    const aapt2 = join(apkSdk(wurzel, sdk, umgebung), 'build-tools', werkzeuge.android.buildTools, windows ? 'aapt2.exe' : 'aapt2');
+    if (!existsSync(aapt2)) throw new Error(`aapt2 aus den Build-Tools ${werkzeuge.android.buildTools} fehlt; K5 ist nicht ausgeführt.`);
+    const dump = (art, ...args) => {
+      const lauf = spawnSync(aapt2, ['dump', art, ...args, resolve(apkPfad)], { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024, env: { ...umgebung, CI: '1', ASTRO_TELEMETRY_DISABLED: '1' } });
+      if (lauf.status !== 0 || lauf.error) throw new Error(`aapt2 ${art} fehlgeschlagen (Rückgabewert ${lauf.status}): ${lauf.error?.message ?? lauf.stderr?.trim()}`);
+      bericht[`aapt2-${art}${args.length ? `-${args.at(-1)}` : ''}`] = lauf.stdout;
+      return lauf.stdout;
+    };
+    const permissions = dump('permissions');
+    const badging = dump('badging');
+    const manifest = aaptBaum(dump('xmltree', '--file', 'AndroidManifest.xml'));
+    const anwendungen = nachfahren(manifest, 'application');
+    if (anwendungen.length !== 1) throw new Error('Manifest muss genau eine application enthalten.');
+    const app = anwendungen[0];
+    const a = app.attribute;
+    const genutzt = [...permissions.matchAll(/^uses-permission(?:-sdk-\d+)?: name='([^']+)'/gm)].map((m) => m[1]).sort();
+    const deklariert = [...permissions.matchAll(/^permission: ([^\s]+)\s*$/gm)].map((m) => m[1]).sort();
+    const berechtigung = vorgabe.apk.berechtigung;
+    bericht.berechtigungen = { genutzt, deklariert };
+    if (!isDeepStrictEqual(genutzt, [berechtigung]) || !isDeepStrictEqual(deklariert, [berechtigung])) fehler.push(`Berechtigungen: erwartet ausschließlich ${berechtigung}, genutzt ${JSON.stringify(genutzt)}, deklariert ${JSON.stringify(deklariert)}.`);
+    // Auch SDK-bedingte permission-Tags müssen sichtbar bleiben, unabhängig vom badging-Format.
+    const tags = nachfahren(manifest, 'manifest')[0]?.kinder.filter((k) => k.name.startsWith('uses-permission')) ?? [];
+    if (tags.length !== 1 || tags[0].name !== 'uses-permission' || tags[0].attribute['android:name'] !== berechtigung || tags[0].attribute['android:maxSdkVersion'] !== undefined) fehler.push('Manifest: genau eine unbedingte uses-permission erwartet.');
+    const paket = /^package: name='([^']+)' versionCode='([^']*)' versionName='([^']*)'/m.exec(badging);
+    if (!paket || paket[1] !== vorgabe.konfiguration.werte.appId || paket[2] !== String(versionscode(version)) || paket[3] !== version) fehler.push(`Paket und Versionen: erwartet ${vorgabe.konfiguration.werte.appId}, ${versionscode(version)}, ${version}.`);
+    for (const [name, muster, soll] of [['minSdk', /^(?:minSdkVersion|sdkVersion):'(\d+)'/gm, werkzeuge.android.minSdk], ['targetSdk', /^targetSdkVersion:'(\d+)'/gm, werkzeuge.android.targetSdk]]) {
+      const funde = [...badging.matchAll(muster)].map((m) => m[1]);
+      if (!isDeepStrictEqual(funde, [String(soll)])) fehler.push(`${name}: erwartet ${soll}, gefunden ${JSON.stringify(funde)}.`);
+    }
+    const sprachen = /^locales:(.*)$/m.exec(badging);
+    const locale = sprachen ? [...sprachen[1].matchAll(/'([^']*)'/g)].map((m) => m[1]).filter((s) => s !== '--_--').sort() : [];
+    bericht.sprachen = locale;
+    if (!isDeepStrictEqual(locale, vorgabe.apk.sprachen)) fehler.push(`Sprachen: erwartet ${JSON.stringify(vorgabe.apk.sprachen)}, gefunden ${JSON.stringify(locale)}.`);
+    if (!aFalsch(a['android:allowBackup'])) fehler.push('application: allowBackup muss false sein.');
+    if (a['android:usesCleartextTraffic'] !== undefined && !aFalsch(a['android:usesCleartextTraffic'])) fehler.push('application: usesCleartextTraffic darf nur fehlen oder false sein.');
+    for (const [name, soll] of Object.entries(vorgabe.apk.webViewMetadaten)) {
+      const funde = app.kinder.filter((k) => k.name === 'meta-data' && k.attribute['android:name'] === name);
+      if (funde.length !== 1 || !(soll ? aWahr : aFalsch)(funde[0].attribute['android:value'])) fehler.push(`WebView-Metadatum ${name} muss genau einmal ${soll} sein.`);
+    }
+    if (nachfahren(app, 'meta-data').some((k) => k.attribute['android:name'] === vorgabe.apk.verbotenerInitializer)) fehler.push(`Initializer ${vorgabe.apk.verbotenerInitializer} ist nicht erlaubt.`);
+    const komponenten = app.kinder.filter((k) => ['activity', 'activity-alias', 'receiver', 'service', 'provider'].includes(k.name));
+    for (const k of komponenten) {
+      if (!aWahr(k.attribute['android:exported']) && !aFalsch(k.attribute['android:exported'])) fehler.push(`Komponente ${k.attribute['android:name']}: exported muss ausdrücklich true oder false sein.`);
+    }
+    const exportierte = komponenten.filter((k) => aWahr(k.attribute['android:exported'])).map((k) => ({ art: k.name, name: k.attribute['android:name'], berechtigung: k.attribute['android:permission'] ?? null })).sort((x, y) => x.name.localeCompare(y.name));
+    bericht.exportierteKomponenten = exportierte;
+    if (!isDeepStrictEqual(exportierte, [...vorgabe.apk.exportierteKomponenten].sort((x, y) => x.name.localeCompare(y.name)))) fehler.push('Exportierte Komponenten: erwartet nur MainActivity und ProfileInstallReceiver mit android.permission.DUMP.');
+    const badgingDebug = /^application-debuggable\s*$/m.test(badging);
+    if (debug ? !aWahr(a['android:debuggable']) || !badgingDebug : (a['android:debuggable'] !== undefined && !aFalsch(a['android:debuggable'])) || badgingDebug) fehler.push(`debuggable: erwartet ${debug ? 'true im Debug-Build' : 'fehlend oder false im Release-Build'}.`);
+    const resources = dump('resources');
+    // Release kann Dateipfade kürzen. Maßgeblich sind Ressourcenname, ID und
+    // dessen tatsächliche Datei, nicht der ursprüngliche Quellpfad.
+    const abschnitt = /(?:^|\n) *resource (0x[0-9a-f]+) xml\/data_extraction_rules\r?\n([\s\S]*?)(?=\n *resource |\n *type |$)/.exec(resources);
+    const dateien = abschnitt?.[2].trim().split(/\r?\n/).filter((z) => z.trim()) ?? [];
+    const standard = dateien.length === 1 ? /^\s*\(\) \(file\) (res\/[^\s]+\.xml) type=XML\s*$/.exec(dateien[0]) : null;
+    const regeln = standard ? [null, abschnitt[1], standard[1]] : null;
+    if (abschnitt && !standard) fehler.push('dataExtractionRules: genau eine unqualifizierte XML-Ressource erwartet; zusätzliche Varianten sind nicht erlaubt.');
+    if (!regeln || a['android:dataExtractionRules'] !== `@${regeln[1]}`) fehler.push('dataExtractionRules muss auf xml/data_extraction_rules verweisen.');
+    if (regeln) {
+      const baum = aaptBaum(dump('xmltree', '--file', regeln[2]));
+      const regelnWurzel = baum.kinder[0];
+      if (baum.kinder.length !== 1 || regelnWurzel.name !== 'data-extraction-rules' || !isDeepStrictEqual(regelnWurzel.kinder.map((k) => k.name).sort(), ['cloud-backup', 'device-transfer'])) fehler.push('dataExtractionRules: genau cloud-backup und device-transfer erwartet.');
+      for (const art of ['cloud-backup', 'device-transfer']) {
+        const abschnitte = nachfahren(baum, art);
+        const kinder = abschnitte[0]?.kinder ?? [];
+        if (abschnitte.length !== 1 || kinder.length !== vorgabe.apk.sicherungsDomaenen.length || !isDeepStrictEqual(kinder.map((k) => k.attribute.domain).sort(), [...vorgabe.apk.sicherungsDomaenen].sort()) || kinder.some((k) => k.name !== 'exclude' || k.attribute.path !== '.' || k.kinder.length)) fehler.push(`dataExtractionRules ${art}: alle neun Domänen müssen mit path="." ausgeschlossen sein.`);
+      }
+    }
+    const eintraege = leseApkEintraege(apkPfad);
+    bericht.eintraege = eintraege.size;
+    for (const name of eintraege.keys()) if (name.startsWith('lib/') || name.endsWith('.so')) fehler.push(`Native Bibliothek ist nicht erlaubt: ${name}.`);
+    const dex = [...eintraege].filter(([name]) => /^classes[^/]*\.dex$/.test(name));
+    bericht.dexDateien = dex.map(([name]) => name);
+    if (!dex.length) fehler.push('Keine classes*.dex in der APK.');
+    for (const [name, inhalt] of dex) for (const folge of vorgabe.apk.verboteneDexBytes) {
+      if (inhalt.includes(Buffer.from(folge))) fehler.push(`${name}: verbotene Bytefolge ${folge}.`);
+    }
+    const pub = new Map([...eintraege].filter(([name]) => name.startsWith('assets/public/') && !name.endsWith('/')).map(([name, inhalt]) => [name.slice('assets/public/'.length), inhalt]));
+    fehler.push(...pruefePublic(pub, dateiBaum(join(wurzel, 'app/dist')), vorgabe.sync.leereDateien));
+    const plugins = eintraege.get('assets/capacitor.plugins.json');
+    if (!plugins || !isDeepStrictEqual(JSON.parse(plugins.toString('utf8')), [])) fehler.push('assets/capacitor.plugins.json muss inhaltlich [] sein.');
+    const config = eintraege.get('assets/capacitor.config.json');
+    if (!config || !isDeepStrictEqual(JSON.parse(config.toString('utf8')), jsonDatei(join(wurzel, 'app/capacitor.config.json')))) fehler.push('assets/capacitor.config.json weicht inhaltlich von app/capacitor.config.json ab.');
+    bericht.publicDateien = pub.size;
+  });
+  return fehler;
 }

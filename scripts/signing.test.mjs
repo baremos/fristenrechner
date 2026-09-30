@@ -761,14 +761,34 @@ test('Ausgabe: apksigner verify lehnt die Datei ab, die Meldung nennt den Fehler
   assert.ok(!existsSync(aus));
 });
 
-test('Ausgabe: Das Skript ruft apksigner verify mit -Werr auf, für die Datei, die es signiert hat', nurMitWerkzeug, () => {
+test('Ausgabe: Das Skript ruft apksigner verify mit -Werr ab API 24 auf, für die Datei, die es signiert hat', nurMitWerkzeug, () => {
   const aus = join(eigenerOrdner('werr'), 'aus.apk');
   const { fehler, aufrufe } = mitEingriff({ aus }, () => undefined);
   assert.equal(fehler, undefined, String(fehler));
   const pruefungen = aufrufe.filter((a) => a.argumente.includes('verify'));
   assert.equal(pruefungen.length, 1);
   assert.ok(pruefungen[0].argumente.includes('-Werr'));
+  const minSdkIndex = pruefungen[0].argumente.indexOf('--min-sdk-version');
+  assert.ok(minSdkIndex >= 0);
+  assert.equal(pruefungen[0].argumente[minSdkIndex + 1], '24');
   assert.equal(pruefungen[0].argumente.at(-1), aufrufe.find((a) => a.argumente.includes('sign')).argumente.at(-2));
+});
+
+test('Werkzeug Gegenprobe: v3 allein besteht verify ab API 24, die Ausgabeprüfung verlangt zusätzlich v2', nurMitWerkzeug, (t) => {
+  vorbereiten();
+  const ordner = eigenerOrdner('werkzeug-nur-v3');
+  const java = join(jdk.pfad, 'bin', `java${endung}`);
+  const jar = join(werkzeuge, 'lib', 'apksigner.jar');
+  const nurV3 = join(ordner, 'nur-v3.apk');
+  const signiert = spawnSync(java, ['-jar', jar, 'sign', '--ks', schluessel, '--ks-type', 'PKCS12', '--ks-key-alias', 'test', '--ks-pass', `file:${kennwort}`,
+    '--v1-signing-enabled', 'false', '--v2-signing-enabled', 'false', '--v3-signing-enabled', 'true', '--v4-signing-enabled', 'false', '--out', nurV3, apk], { encoding: 'utf8' });
+  assert.equal(signiert.status, 0, `${signiert.stdout}${signiert.stderr}`);
+  const lauf = spawnSync(java, ['-jar', jar, 'verify', '--verbose', '--print-certs', '-Werr', '--min-sdk-version', '24', nurV3], { encoding: 'utf8' });
+  assert.equal(lauf.status, 0, `${lauf.stdout}${lauf.stderr}`);
+  assert.match(lauf.stdout, /^Verified using v2 scheme .*: false$/m);
+  assert.match(lauf.stdout, /^Verified using v3 scheme .*: true$/m);
+  assert.throws(() => pruefeAusgabe(lauf.stdout, fingerabdruck.replaceAll(':', '').toLowerCase(), lauf.stderr), /Signaturverfahren v2: erwartet true, gefunden false/);
+  t.diagnostic('Erwarteter Abbruch: Signaturverfahren v2: erwartet true, gefunden false.');
 });
 
 // Hält fest, worauf sich das Skript verlässt: Mit -Werr endet apksigner verify bei

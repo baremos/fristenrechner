@@ -243,8 +243,10 @@ export function signiere(werte, { ausfuehren = spawnSync, melde = console.log, u
     }
   };
   const signiert = summeVon(lies());
-  // -Werr: Warnungen lassen die Prüfung scheitern.
-  const pruefung = apksigner(['verify', '--verbose', '--print-certs', '-Werr', vorlaeufig], { encoding: 'utf8' });
+  // -Werr: Warnungen lassen die Prüfung scheitern. Ab API 24 prüfen, damit
+  // apksigner v2 und v3 verifiziert; ab der Manifest-Mindest-API 30 würde es v2
+  // überspringen. Dies ändert nur den Prüfbereich, nicht die Mindest-API der App.
+  const pruefung = apksigner(['verify', '--verbose', '--print-certs', '-Werr', '--min-sdk-version', '24', vorlaeufig], { encoding: 'utf8' });
   if (pruefung.status !== 0) {
     const zeilen = werkzeugmeldung(pruefung, privat);
     const erste = zeilen.find((z) => /^(WARNING|ERROR)\b/.test(z)) ?? zeilen[0] ?? 'ohne Meldung';

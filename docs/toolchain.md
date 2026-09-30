@@ -2,6 +2,8 @@
 
 Stand 2026-09-28 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review der Festlegung am 2026-09-27 bestanden. Am 2026-09-28 geändert: Kommandozeilenwerkzeuge 22.0 statt 23.0, Prüfung der Pakete mit `scripts/SdkPruefung.java`, Testgeräte. Projekt-SDK eingerichtet, Beispielbuild und Probe im Emulator bestanden, siehe Abschnitt „Nachweis". Kreuz-Review dieser Änderungen am 2026-09-28 bestanden. Am 2026-09-29 ergänzt: Unter Linux wird nur die Gruppe „Build" eingerichtet.
 
+Ergänzt am 2026-09-30: Die App setzt Android 11 (API 30) und WebView ab Version 83 voraus. Ihr Wrapper verwendet Gradle 8.14.5 als `bin`-Verteilung. Die AndroidX-Versionen aus `app/android/variables.gradle` sind unten aufgeführt. Debug- und Release-Build der App unter Windows sind erfolgt; Ergebnisse und ausstehende Prüfungen stehen in [app.md](app.md).
+
 ## Zweck
 
 Dieses Dokument legt fest, mit welchen Werkzeugen und in welchen Versionen der Fristenrechner gebaut wird. Die Versionen stehen fest, bevor etwas installiert wird. Wer das Repository klont, findet hier alles, was für Build und Test nötig ist.
@@ -95,6 +97,26 @@ Zu Gradle: Die Vorlage nennt 8.14.3. Diese Version ist von zwei Sicherheitsmeldu
 
 Der Wrapper prüft die Distribution über `distributionSha256Sum`. Das Build-Skript prüft zusätzlich `gradle-wrapper.jar`. Die Datei ist in 8.14.3 und 8.14.5 dieselbe.
 
+Der Wrapper der App verwendet `gradle-8.14.5-bin.zip`; Quelltexte und Dokumentation der `all`-Verteilung sind für ihren Build nicht erforderlich. Die Prüfsumme von `all` bleibt für bestehende Beispielprojekte dokumentiert. Der erste Build der App über den Wrapper mit `bin` gelang unter Windows am 2026-09-30.
+
+### AndroidX und Cordova
+
+Die folgenden Versionen stehen am 2026-09-30 in `app/android/variables.gradle`. Sie legen die dort benannten Bibliotheken fest; sie sind keine vollständige Liste der von Gradle aufgelösten Abhängigkeiten.
+
+| Variable | Version |
+|---|---|
+| `androidxActivityVersion` | 1.11.0 |
+| `androidxAppCompatVersion` | 1.7.1 |
+| `androidxCoordinatorLayoutVersion` | 1.3.0 |
+| `androidxCoreVersion` | 1.17.0 |
+| `androidxFragmentVersion` | 1.8.9 |
+| `androidxWebkitVersion` | 1.14.0 |
+| `cordovaAndroidVersion` | 14.0.1 |
+
+Die Lizenzprüfung der vollständigen Gradle-Abhängigkeiten der App steht noch aus.
+
+### JDK
+
 Zum JDK:
 
 - Festgelegt ist die Hauptversion 21. Ein vorhandenes JDK 21 wird mitgenutzt und nicht ein zweites Mal installiert.
@@ -108,11 +130,13 @@ Android Studio ist nicht nötig.
 
 | Angabe | Wert | Begründung |
 |---|---|---|
-| Mindest-API (`minSdkVersion`) | 24, Android 7.0 | Untergrenze von Capacitor 8 |
+| Mindest-API (`minSdkVersion`) | 30, Android 11 | Niedrigstes geprüftes Systemabbild mit geeigneter WebView: Version 83.0.4103.120 |
 | Übersetzungs-API (`compileSdkVersion`) | 36 | Capacitor-Vorlage 8.5.2 |
 | Ziel-API (`targetSdkVersion`) | 36, Android 16 | Vorgabe von Google Play seit 2026-08-31 für neue Apps und Updates |
 
 Google Play hebt die verlangte Ziel-API in der Regel jährlich zum 31. August an. Die Prüfung gehört deshalb in die Regelprüfung des zweiten Quartals, siehe `pflegekonzept.md`.
+
+Die Mindest-API ist höher als die Untergrenze von Capacitor 8. Das geprüfte Abbild mit API 24 enthält WebView 52; dort scheitert bereits die Brücke. Für API 25 bis 29 gibt es keinen Nachweis mit einem geeigneten Abbild. Die App verlangt deshalb zusätzlich `android.minWebViewVersion: 83`; JavaScript und CSS werden für `chrome83` gebaut. Eine ältere WebView soll die lokale Fehlerseite `startfehler.html` über `server.errorPath` anzeigen. Die Mindest-API allein garantiert keinen bestimmten Update-Stand der WebView. Die Prüfung dieser App im Emulator steht aus.
 
 ### Android SDK
 
@@ -198,7 +222,7 @@ So bleiben die Revisionen unter Kontrolle:
 Weitere Angaben:
 
 - `build-tools;35.0.0` ist die Mindest- und Standardversion des Android-Gradle-Plugins 8.13. Das App-Projekt trägt sie ausdrücklich als `buildToolsVersion` ein. `apksigner` und `zipalign` kommen aus diesem Paket, `keytool` aus dem JDK.
-- Die Systemabbilder der Reihe `default` enthalten keine Google-Dienste. Sie decken die Ziel-API (Android 16), eine mittlere Version (API 30, Android 11) und die Mindest-API (Android 7.0) ab.
+- Die Systemabbilder der Reihe `default` enthalten keine Google-Dienste. API 36 deckt die Ziel-API (Android 16) ab, API 30 die Mindest-API (Android 11). Das Testgerät `fr-api24` dient für diese App nur noch der Gegenprobe, dass Android die Installation wegen der Mindest-API ablehnt.
 - Unter Windows werden beide Gruppen zusammen eingerichtet. Die Gruppe „Test" umfasst rund 2,3 GB. Für die Probe unter Linux richtet `--ohne-testgruppe` nur die Gruppe „Build" ein, der Emulator läuft unter Windows. Siehe F4 in `fdroid-build.md`.
 - Das Android SDK steht unter den Lizenzbedingungen von Google. Alle festgelegten Pakete nennen die Lizenz `android-sdk-license`. `sdkmanager` zeigt sie vor der Installation an, solange sie im SDK nicht bestätigt ist. Wer installiert, bestätigt sie selbst. Ohne Bestätigung installiert `sdkmanager` nichts.
 - Das Einrichtungsskript ruft `sdkmanager --licenses` nicht auf. Der Aufruf legt auch Bedingungen vor, die die festgelegten Pakete nicht brauchen.
@@ -213,7 +237,7 @@ Die Vorlage von Capacitor 8.5.2 enthält Stellen, die zum Zuschnitt dieser App o
 | `android/app/build.gradle` | Block, der bei vorhandener `google-services.json` das Plugin `com.google.gms.google-services` anwendet | entfernen |
 | `AndroidManifest.xml` | Berechtigung `android.permission.INTERNET` | entfernen |
 | `AndroidManifest.xml` | `android:allowBackup="true"` | abschalten, Regeln für Sicherung und Gerätewechsel setzen |
-| `gradle-wrapper.properties` | Gradle 8.14.3, keine Prüfsumme | Gradle 8.14.5, `distributionSha256Sum` |
+| `gradle-wrapper.properties` | Gradle 8.14.3, keine Prüfsumme | Gradle 8.14.5 als `bin`-Verteilung, `distributionSha256Sum` |
 | `android/app/build.gradle` | keine `buildToolsVersion` | `buildToolsVersion "35.0.0"` |
 
 Offen für Arbeitspaket 2.8: Prüfsummen der Gradle-Abhängigkeiten über `gradle/verification-metadata.xml`.
@@ -316,7 +340,7 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 
 | Thema | Arbeitspaket |
 |---|---|
-| Build-Ziel des Web-Builds und geprüfte Version der System-WebView. Die Mindest-API allein bestimmt die Fähigkeiten der WebView nicht. Dazu gehört das Verhalten bei zu alter WebView: Hinweisseite über `server.errorPath` oder höhere Mindest-API. | 2.5 |
+| Emulatorprüfung der App mit dem festgelegten Build-Ziel `chrome83`, WebView ab 83 und lokaler Fehlerseite bei zu alter WebView | 2.5 |
 | Probe auf dem Gerät mit Berechnung in der Oberfläche, einem Aufruf über die Brücke von Capacitor und vollständiger Paketliste des Systemabbilds | 2.5 |
 | Bereitstellung eines Screenreaders auf den Systemabbildern ohne Google-Dienste | 2.5, Testmatrix |
 | Gradle im Build für F-Droid, vorgebaute Programme in `node_modules`, Kategorie bei F-Droid: Festlegungen F2, F5 und F6 in `fdroid-build.md` | 2.8 |
@@ -336,9 +360,9 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
    | API 30 | 83.0.4103.120 | Seite erscheint |
    | API 24 | 52.0.2743.100 | Seite erscheint, Capacitor meldet „System WebView is not supported", das Skript der Brücke bricht mit einem Syntaxfehler ab |
 
-   Auf dem Abbild API 24 wären Plugins nicht nutzbar. API 30 ist das niedrigste geprüfte Abbild mit geeigneter WebView. Für API 25 bis 29 gibt es keinen Nachweis. Auf Geräten hängt die Version der WebView vom Stand ihrer Updates ab, nicht allein von der API-Stufe.
+   Die Tabelle beschreibt die frühere Minimal-App mit Mindest-API 24. Auf dem Abbild API 24 wären Plugins nicht nutzbar. Die App setzt seit dem 2026-09-30 Mindest-API 30 voraus; API 24 dient nur noch der Installationsgegenprobe. API 30 ist das niedrigste geprüfte Abbild mit geeigneter WebView. Für API 25 bis 29 gibt es keinen Nachweis. Auf Geräten hängt die Version der WebView vom Stand ihrer Updates ab, nicht allein von der API-Stufe.
 
-   Beobachtet am 2026-09-29 in der Probe zum Update (`signierung.md`): Die WebView 83 des Abbilds API 30 bricht das gebündelte Skript der Seite mit `Uncaught SyntaxError: Unexpected token '='` ab; der Aufruf des Plugins über die Brücke findet nicht statt. Die Prüfsummen der unsignierten APK blieben trotz `vite.build.target: 'chrome60'` in `astro.config.mjs` gleich. Das gebündelte Skript wurde nicht aufbewahrt. Welcher Ausdruck den Syntaxabbruch auslöste und warum das Build-Ziel die Prüfsumme nicht änderte, ist damit nicht unabhängig nachvollziehbar. Die WebView-Kompatibilität bleibt Aufgabe von Arbeitspaket 2.5.
+   Beobachtet am 2026-09-29 in der Probe zum Update (`signierung.md`): Die WebView 83 des Abbilds API 30 bricht das gebündelte Skript der Seite mit `Uncaught SyntaxError: Unexpected token '='` ab; der Aufruf des Plugins über die Brücke findet nicht statt. Die Prüfsummen der unsignierten APK blieben trotz `vite.build.target: 'chrome60'` in `astro.config.mjs` gleich. Das gebündelte Skript wurde nicht aufbewahrt. Welcher Ausdruck den Syntaxabbruch auslöste und warum das Build-Ziel die Prüfsumme nicht änderte, ist damit nicht unabhängig nachvollziehbar. Die App setzt das JavaScript-Ziel inzwischen über `configEnvironment` für die Client-Umgebung und das CSS-Ziel über `cssTarget` auf `chrome83`. Der statische Web-Build bestand am 2026-09-30; die Wiederholung mit dieser App im Emulator steht aus.
 6. **Der Build lädt Werkzeuge und Abhängigkeiten aus dem Netz.** Das betrifft nur den Build. Die App greift im Betrieb nicht auf das Netzwerk zu.
 7. **`sdkmanager` ist abgekündigt.** Siehe Abschnitt „Android SDK". Die Festlegung auf die Kommandozeilenwerkzeuge 22.0 ist eine Übergangslösung.
 8. **Warnung des Android-Gradle-Plugins zum Format der Paketbeschreibung.** Die installierten Pakete tragen `package.xml` im Format 4. Das Android-Gradle-Plugin 8.13 versteht Format 3 und meldet das beim Build als Warnung. Der Build läuft durch.

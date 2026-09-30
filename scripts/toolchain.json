@@ -39,7 +39,7 @@
   },
   "androidGradlePlugin": "8.13.0",
   "android": {
-    "minSdk": 24,
+    "minSdk": 30,
     "compileSdk": 36,
     "targetSdk": 36,
     "buildTools": "35.0.0",
