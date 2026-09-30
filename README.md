@@ -17,14 +17,14 @@ Das Repository ist im Aufbau. Es gibt noch keine Veröffentlichung.
 | Werkzeuge und Versionen | festgelegt, siehe [docs/toolchain.md](docs/toolchain.md) |
 | Projektgerüst | vorhanden |
 | Rechenkern | vorhanden, mit Tests und Referenzfällen |
-| Oberfläche | folgt |
-| Android-App | folgt |
+| Oberfläche | vorhanden, mit Schnittstellen für Speichern, Importieren und Exportieren |
+| Android-App | baut und läuft im Emulator; Exportieren, Teilen und Importieren von Dateien folgen |
 
 Die Arbeitspakete stehen in [docs/arbeitspakete.md](docs/arbeitspakete.md). Die Dokumente im Ordner `docs` sind deutsch.
 
 ## Was die Software rechnen wird
 
-Dieser Abschnitt beschreibt den Umfang von Version 1. Im Repository ist bisher der Rechenkern umgesetzt, Oberfläche und App folgen.
+Dieser Abschnitt beschreibt den Umfang von Version 1. Im Repository sind der Rechenkern, die Oberfläche und das App-Projekt für Android umgesetzt. In der App fehlen noch die Dateiabläufe: Exportieren, Teilen und Importieren.
 
 Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren. Version 1 rechnet dasselbe wie der [Fristenrechner auf www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). Den Umfang legt [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md) fest.
 
@@ -47,7 +47,7 @@ Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren.
 
 ## Aufbau
 
-Der Ordner `packages/kern` enthält den Rechenkern. Oberfläche und App sind noch nicht umgesetzt, die Tabelle nennt den vorgesehenen Inhalt.
+Die Tabelle nennt die Ordner und ihren Inhalt. Die App ist in [docs/app.md](docs/app.md) beschrieben.
 
 | Ordner | Inhalt | Paketname |
 |---|---|---|
@@ -57,7 +57,7 @@ Der Ordner `packages/kern` enthält den Rechenkern. Oberfläche und App sind noc
 | `scripts` | Skripte für Einrichtung, Build und Prüfung | – |
 | `docs` | Festlegungen und Nachweise | – |
 
-Website und App sollen denselben Rechenkern und dieselbe Oberfläche nutzen.
+Website und App sollen denselben Rechenkern und dieselbe Oberfläche nutzen. Die Oberfläche kennt keine Plattform: Speichern, Importieren und Exportieren übergibt ihr das einbindende Projekt.
 
 ## Voraussetzungen
 
@@ -73,17 +73,19 @@ Alle Versionen und ihre Begründung stehen in [docs/toolchain.md](docs/toolchain
 
 ## Build und Test
 
-| Schritt | Befehl | Stand |
+| Schritt | Befehl | Hinweis |
 |---|---|---|
-| Abhängigkeiten installieren | `npm ci` | läuft |
-| Tests | `npm test` | läuft, prüft die Skripte, den Rechenkern und die Oberfläche |
-| Typprüfung | `npm run check` | läuft für den Rechenkern und die Oberfläche |
-| Build der Pakete | `npm run build` | läuft für den Rechenkern |
-| Lizenzen der Abhängigkeiten prüfen | `npm run lizenzen` | läuft, siehe [docs/lizenzen.md](docs/lizenzen.md) |
-| Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
-| Android-App bauen | `node scripts/android-build.mjs` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
+| Abhängigkeiten installieren | `npm ci` | – |
+| Tests | `npm test` | prüft die Skripte, den Rechenkern, die Oberfläche und die App |
+| Typprüfung | `npm run check` | Rechenkern, Oberfläche und App |
+| Build der Pakete und der Seite der App | `npm run build` | prüft dabei die Konfiguration und die gebauten Web-Dateien der App |
+| Lizenzen der Abhängigkeiten prüfen | `npm run lizenzen` | siehe [docs/lizenzen.md](docs/lizenzen.md) |
+| Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht JDK und Projekt-SDK |
+| Android-App bauen, Debug | `node scripts/app-bauen.mjs --android` | Web-Build, Übertragung nach Android, Gradle und die Prüfungen der Build-Kette in einem Lauf |
+| Android-App bauen, Release ohne Signatur | `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` | mit `--streng` nur mit den Referenzversionen der Werkzeuge |
+| App im Emulator prüfen | `node scripts/emulator-lauf.mjs` | unter Windows, Aufruf und Umfang in [docs/app.md](docs/app.md) |
 
-Build und Tests brauchen keine privaten Dateien. `npm ci` lädt die Abhängigkeiten aus dem Netz, der Android-Build lädt zusätzlich seine Werkzeuge. Die App selbst soll im Betrieb nicht auf das Netzwerk zugreifen.
+Build und Tests brauchen keine privaten Dateien. `npm ci` lädt die Abhängigkeiten aus dem Netz, der Android-Build lädt zusätzlich seine Werkzeuge. Die App selbst hat keine Berechtigung für den Netzwerkzugriff. Was dazu im Emulator geprüft ist und was nicht, steht in [docs/app.md](docs/app.md).
 
 ## Pflege der Regeln
 

@@ -37,7 +37,7 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | 2.2 | **Gerüst.** `git init`, npm-Workspaces, Lizenzdatei Apache-2.0 im Originalwortlaut, README und Beitragsregeln mit den Befehlen für Build und Test, Checkliste der Übernahmeprüfung. | der erste Commit enthält nur geprüfte Dateien, Build und Tests laufen ohne private Dateien |
 | 2.3 | **Kern übernehmen.** Dateien frisch kopieren, ohne Historie, Kommentare von internen Verweisen bereinigen. Die Schwellenwerte werden vollständig entfernt: die Tabelle, ihr Export in der Schnittstelle, der Import und der Testblock in den Tests sowie der Zusatz in der Angabe zum Rechtsstand. Der Rechtsstand wird als Datum im ISO-Format und als Anzeigetext geführt. | Typprüfung, Fachtests und Paket-Build grün, keine Schwellenwert-Beträge in den Dateien, Referenzfälle rechnen wie Kern 1.9.0 |
 | 2.4 | **Oberfläche als Paket.** Astro-Komponente, Bedienlogik, Exporte. Schnittstellen für Speichern, Importieren, Exportieren, Teilen. Globale Styles und plattformabhängige Texte herauslösen. | Oberfläche läuft im Browser mit der Web-Implementierung, Prüfpunkte zur Barrierefreiheit aus der Testmatrix bestanden |
-| 2.5 | **App-Projekt.** Kleines Astro-Projekt, statischer Build, Capacitor für Android. Alle Dateien gebündelt, Navigation zu entfernten Adressen in der WebView unterbunden, Sicherungsregeln gesetzt. | das Release-Manifest enthält weder die Berechtigung `INTERNET` noch andere unnötige Berechtigungen; alle Abläufe laufen auf einem Emulator ohne Google-Dienste; bei eingeschaltetem Netzwerk baut die App keine Verbindung auf |
+| 2.5 | **App-Projekt.** Kleines Astro-Projekt, statischer Build, Capacitor für Android. Alle Dateien gebündelt, Navigation zu entfernten Adressen in der WebView unterbunden, Sicherungsregeln gesetzt. | das Release-Manifest enthält weder die Berechtigung `INTERNET` noch andere unnötige Berechtigungen; Start, Berechnung, Speichern, Hinweise, Fehlerseite, Navigationssperre, Sicherung und Build laufen auf Emulatoren ohne Google-Dienste; bei eingeschaltetem Netzwerk baut die App keine Verbindung auf. Die Dateiabläufe nimmt 2.6 ab. Die Prüfung mit einem Screenreader läuft auf einem echten Gerät vor Stufe 4. |
 | 2.6 | **Dateiabläufe und Datenschutz.** PDF, Excel und Projektdatei schreiben und teilen, Projektdatei über den Dateidialog laden, temporäre Dateien aufräumen. Datenschutzhinweise in `docs/datenschutz.md`, in der App offline lesbar. | siehe Abschnitt „Abnahme der Dateiabläufe" |
 | 2.7 | **Lizenzen.** Liste aller Abhängigkeiten samt Transitivabhängigkeiten, Hinweise Dritter, Prüfskript. Beginnt mit 2.2. Vor Stufe 3 zusätzlich der tatsächliche Inhalt der npm-Pakete. | Liste ohne unfreie Lizenz und ohne proprietären Dienst, Hinweise vorhanden |
 | 2.8 | **F-Droid-Nachweis.** Build-Rezept, zuerst mit einer Minimal-App, am Ende der vollständige, saubere Build unter Linux mit Scanner. Das geschieht lokal, ein öffentliches Repository ist dafür nicht nötig. | Build aus Quellen ohne Beanstandung des Scanners |
@@ -51,14 +51,15 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | 2.1 | abgeschlossen am 2026-09-28 | `docs/toolchain.md` mit Nachweis, `scripts/` |
 | 2.2 | abgeschlossen am 2026-09-28 | Projektgerüst mit Workspaces, `LICENSE`, `NOTICE`, README und Beitragsregeln auf Deutsch und Englisch, `docs/uebernahmepruefung.md` |
 | 2.3 | abgeschlossen am 2026-09-28 | Rechenkern 1.9.0 unter `packages/kern` mit Tests und Referenzfällen, Nachweis in `docs/uebernahmepruefung.md` |
-| 2.4 | begonnen am 2026-09-29 | Abhängigkeiten der Oberfläche und Regeln der Lizenzprüfung in Arbeit |
-| 2.5 und 2.6 | offen | – |
+| 2.4 | Teil 1 am 2026-09-29, Teil 2 am 2026-09-30 | Oberfläche unter `packages/oberflaeche` mit eigenem Excel-Schreiber, Schnittstellen zur Plattform und Web-Adapter, auf die Komponente begrenzte Styles, `docs/testmatrix.md`. Offen sind die Prüfpunkte der Testmatrix, die von Hand oder auf einem Gerät zu prüfen sind. |
+| 2.5 | am 2026-09-30 bis auf die Geräteprüfung abgeschlossen | App-Projekt unter `app` mit Android-Projekt, Build in einem Lauf mit den Prüfungen K1 bis K5 (`scripts/app-bauen.mjs`), Prüfung im Emulator auf Android 11 und 16 (`scripts/emulator-lauf.mjs`), unsignierte Release-APK bytegleich zwischen Windows und Linux. Ergebnisse, dokumentierte Grenzen und Ausstehendes in `docs/app.md`. Offen für ein echtes Gerät: Screenreader und der Nachweis zum Debugging der WebView im Release-Build. |
+| 2.6 | offen | Entwurf der Dateiabläufe begonnen am 2026-09-30. Bis dahin bindet die App den Web-Adapter der Oberfläche ein; Exportieren, Teilen und Importieren sind in der App nicht abgenommen. |
 | 2.7 | für den Bestand vom 2026-09-28 abgeschlossen | `scripts/check-licenses.mjs` mit Tests, `docs/lizenzen.md`, `LICENSE` und `NOTICE` in den npm-Paketen. Die Prüfung wiederholt sich mit jeder neuen Abhängigkeit. Der tatsächliche Inhalt der npm-Pakete folgt vor Stufe 3. |
-| 2.8 | frühe Probe mit der Minimal-App am 2026-09-29 abgeschlossen | `docs/fdroid-build.md`, `scripts/fdroid/`: Prüfung mit dem Scanner, Build unter Linux, erste Probe zur Reproduzierbarkeit. Offen sind das Rezept und der vollständige Build der App. |
+| 2.8 | frühe Probe mit der Minimal-App am 2026-09-29 abgeschlossen | `docs/fdroid-build.md`, `scripts/fdroid/`: Prüfung mit dem Scanner, Build unter Linux, erste Probe zur Reproduzierbarkeit. Rezept und lokaler Build mit `fdroidserver` für die Minimal-App am 2026-09-29. Offen sind das Rezept und der vollständige Build der App mit dem Scanner. |
 | 2.9 | begonnen am 2026-09-29 | `docs/signierung.md`, `scripts/signing/`. Nachweise N1 bis N5 mit einem Probeschlüssel für die Minimal-App erbracht. Offen sind die Nachweise für die App und der echte Schlüssel. |
 | 2.10 | offen | – |
 
-Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt eine System-WebView mit, die Capacitor nicht unterstützt. Paket 2.5 legt fest, wie die App damit umgeht. Einzelheiten in `docs/toolchain.md`, Abschnitt „Bekannte Einschränkungen".
+Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt eine System-WebView mit, die Capacitor nicht unterstützt. Paket 2.5 hat deshalb festgelegt: Die App verlangt Android 11 (API 30) und eine WebView ab Version 83; ist die WebView älter, zeigt die App eine Fehlerseite. Einzelheiten in `docs/app.md` und in `docs/toolchain.md`, Abschnitt „Bekannte Einschränkungen".
 
 ### Reihenfolge
 
@@ -87,7 +88,7 @@ Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt e
 | Bereich | Inhalt |
 |---|---|
 | Referenzfälle | Berechnungen gegen Kern 1.9.0, mit Feiertagen und Datumsgrenzen |
-| Geräte | Browser, Emulator ohne Google-Dienste mit Android in der Mindestversion, in einer mittleren und in der aktuellen Version. Ein echtes Gerät kommt vor Stufe 4 dazu. |
+| Geräte | Browser, Emulator ohne Google-Dienste mit Android in der Mindestversion (Android 11) und in der aktuellen Version (Android 16). Das Abbild mit Android 7.0 dient nur der Gegenprobe, dass die Installation abgelehnt wird. Ein echtes Gerät kommt vor Stufe 4 dazu. |
 | Barrierefreiheit | Screenreader, Fokusführung, Beschriftung der Felder und Fehlermeldungen, große Schrift, Kontrast, Bedienung bei eingeblendeter Tastatur |
 | Hinweis zum Rechtsstand | Monatsende, Schaltjahr, Zeitzonen, verstellte Uhr, Start und Wiederaufnahme der App |
 
@@ -97,7 +98,7 @@ Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt e
 |---|---|
 | Exporte | Der heutige Code erzeugt Browser-Downloads. In der Android-WebView funktionieren sie nicht ohne native Dateiabläufe. |
 | Binärdaten | PDF und Excel korrekt an das Dateisystem übergeben, Dateityp und Dateiname setzen, Abbruch behandeln. |
-| Globale Styles | Die Oberfläche nutzt auf der Website globale CSS-Variablen. Für das Paket herauslösen. |
+| Globale Styles | Die Oberfläche nutzte auf der Website globale CSS-Variablen und globale Klassen. Seit Paket 2.4 Teil 2 gelten alle Regeln nur unter der Komponente, die Variablen haben Vorgabewerte. Die Druckregeln der Website gehören ins Website-Projekt. |
 | Sicherung | Das Abschalten der Sicherung im Manifest deckt nicht jede Übertragung auf ein neues Gerät ab. Cloud-Sicherung und Gerätewechsel getrennt regeln. |
 | F-Droid unter Windows | Die Werkzeuge laufen unter Linux. WSL oder Container einplanen. |
 | App-Bundle und APK | Google Play erwartet ein App-Bundle, F-Droid baut eine APK. Beides getrennt betrachten. |

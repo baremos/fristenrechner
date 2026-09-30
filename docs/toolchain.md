@@ -355,7 +355,7 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 |---|---|
 | Emulatorprüfung der App mit dem festgelegten Build-Ziel `chrome83`, WebView ab 83 und lokaler Fehlerseite bei zu alter WebView | 2.5 |
 | Probe auf dem Gerät mit Berechnung in der Oberfläche, einem Aufruf über die Brücke von Capacitor und vollständiger Paketliste des Systemabbilds | 2.5 |
-| Bereitstellung eines Screenreaders auf den Systemabbildern ohne Google-Dienste | 2.5, Testmatrix |
+| Prüfung mit einem Screenreader: auf einem echten Gerät vor Stufe 4. Die Systemabbilder ohne Google-Dienste bringen keinen mit; im Emulator prüft die App-Prüfung nur den Barrierebaum und die Namen der Bedienelemente. | Testmatrix |
 | Gradle im Build für F-Droid, vorgebaute Programme in `node_modules`, Kategorie bei F-Droid: Festlegungen F2, F5 und F6 in `fdroid-build.md` | 2.8 |
 | Prüfsummen der Gradle-Abhängigkeiten | 2.8 |
 

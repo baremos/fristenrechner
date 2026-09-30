@@ -17,14 +17,14 @@ The repository is under construction. Nothing has been released yet.
 | Tools and versions | defined, see [docs/toolchain.md](docs/toolchain.md) |
 | Project scaffold | in place |
 | Calculation core | in place, with tests and reference cases |
-| User interface | to follow |
-| Android app | to follow |
+| User interface | in place, with interfaces for saving, importing and exporting |
+| Android app | builds and runs in the emulator; exporting, sharing and importing files are still to follow |
 
 The work packages are listed in [docs/arbeitspakete.md](docs/arbeitspakete.md). The documents in the folder `docs` are in German.
 
 ## What the software will calculate
 
-This section describes the scope of version 1. So far, the repository implements the calculation core; user interface and app follow.
+This section describes the scope of version 1. The repository implements the calculation core, the user interface and the app project for Android. The app still lacks the file workflows: exporting, sharing and importing.
 
 From the data entered, the software produces a schedule of dates and deadlines for a procurement procedure. Version 1 calculates the same as the [calculator on www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). The scope is defined in [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md).
 
@@ -47,7 +47,7 @@ From the data entered, the software produces a schedule of dates and deadlines f
 
 ## Structure
 
-The folder `packages/kern` contains the calculation core. User interface and app are not yet implemented; the table states the intended content.
+The table lists the folders and their content. The app is described in [docs/app.md](docs/app.md).
 
 | Folder | Content | Package name |
 |---|---|---|
@@ -57,7 +57,7 @@ The folder `packages/kern` contains the calculation core. User interface and app
 | `scripts` | Scripts for setup, build and checks | – |
 | `docs` | Definitions and evidence | – |
 
-Website and app are meant to use the same calculation core and the same user interface.
+Website and app are meant to use the same calculation core and the same user interface. The user interface knows no platform: the embedding project hands it the means for saving, importing and exporting.
 
 ## Requirements
 
@@ -73,17 +73,19 @@ All versions and the reasons for them are in [docs/toolchain.md](docs/toolchain.
 
 ## Build and test
 
-| Step | Command | Status |
+| Step | Command | Note |
 |---|---|---|
-| Install dependencies | `npm ci` | works |
-| Tests | `npm test` | works, tests the scripts, the calculation core and the user interface |
-| Type check | `npm run check` | works for the calculation core and the user interface |
-| Build the packages | `npm run build` | works for the calculation core |
-| Check the licenses of the dependencies | `npm run lizenzen` | works, see [docs/lizenzen.md](docs/lizenzen.md) |
-| Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the Android project in `app/android`, which follows with the app |
-| Build the Android app | `node scripts/android-build.mjs` | needs the Android project in `app/android`, which follows with the app |
+| Install dependencies | `npm ci` | – |
+| Tests | `npm test` | tests the scripts, the calculation core, the user interface and the app |
+| Type check | `npm run check` | calculation core, user interface and app |
+| Build the packages and the page of the app | `npm run build` | also checks the configuration and the built web files of the app |
+| Check the licenses of the dependencies | `npm run lizenzen` | see [docs/lizenzen.md](docs/lizenzen.md) |
+| Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the JDK and the project SDK |
+| Build the Android app, debug | `node scripts/app-bauen.mjs --android` | web build, transfer to Android, Gradle and the checks of the build chain in one run |
+| Build the Android app, unsigned release | `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` | with `--streng` only with the reference versions of the tools |
+| Check the app in the emulator | `node scripts/emulator-lauf.mjs` | under Windows; call and scope in [docs/app.md](docs/app.md) |
 
-Build and tests need no private files. `npm ci` downloads the dependencies from the network; the Android build additionally downloads its tools. The app itself is meant not to access the network during operation.
+Build and tests need no private files. `npm ci` downloads the dependencies from the network; the Android build additionally downloads its tools. The app itself has no permission for network access. What has been checked in the emulator in this respect, and what has not, is described in [docs/app.md](docs/app.md).
 
 ## Maintenance of the rules
 
