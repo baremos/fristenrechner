@@ -77,6 +77,9 @@ const texte = {
   body { margin: 0; min-width: 20rem; }
   button, input, select, textarea { font: inherit; }
   .app-rahmen { max-width: 64rem; margin: 0 auto; padding: 1rem; }
+  /* Bei großer Systemschrift passt „Fristenrechner“ nicht in eine Zeile. Ohne Umbruch
+     im Wort wird die Seite breiter als der Bildschirm. */
+  .app-rahmen > h1 { overflow-wrap: anywhere; hyphens: auto; }
   .app-hinweis { border: 1px solid var(--color-accent); padding: 0.75rem; }
   .app-abschnitt { margin-top: 1rem; }
   .app-abschnitt pre { white-space: pre-wrap; }
