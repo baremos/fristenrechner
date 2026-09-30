@@ -383,7 +383,8 @@ class AppAuswertung(unittest.TestCase):
                 self.assertIn("Zeile ohne Kopf: unerwartete", probleme[0])
 
     def test_bekannte_zeile_mit_zusatz_bleibt_unbekannt(self):
-        for zusatz in (" neue Meldung", "\x1b[2J", "\x00", "\r", "\u2028"):
+        # Ein einzelnes CR direkt vor dem Zeilenende ginge in der Normalisierung von CRLF auf; deshalb CR mit Rest.
+        for zusatz in (" neue Meldung", "\x1b[2J", "\x00", "\r ", "\u2028"):
             with self.subTest(zusatz=repr(zusatz)):
                 probleme, *_ = self.protokoll(self.app_fixture().replace("K4 Gradle: bestanden", "K4 Gradle: bestanden" + zusatz))
                 self.assertTrue(any("Zeile ohne Kopf" in p for p in probleme), probleme)
