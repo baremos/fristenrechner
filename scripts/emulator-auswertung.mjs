@@ -1,0 +1,470 @@
+// SPDX-License-Identifier: Apache-2.0
+import { pathToFileURL } from 'node:url';
+// Die einzelnen Auswerter sind rein; der optionale CLI liest vorhandene Rohbelege.
+export const STATUS = Object.freeze({ bestanden: 'bestanden', fehler: 'nicht bestanden', ungueltig: 'ungültig', grenze: 'dokumentierte Grenze' });
+const APP = 'de.baremos.fristenrechner';
+const GEGEN = `${APP}.gegenprobe`;
+const text = (v) => typeof v === 'string';
+const texte = (v) => Array.isArray(v) && v.every(text);
+const zahl = (v) => Number.isSafeInteger(v) && v >= 0;
+const objekt = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const ok = (grund, details) => befund(STATUS.bestanden, grund, details);
+const nein = (grund, details) => befund(STATUS.fehler, grund, details);
+const ungueltig = (grund, details) => befund(STATUS.ungueltig, grund, details);
+const grenze = (grund, details) => befund(STATUS.grenze, grund, details);
+
+export function befund(status, grund, details) {
+  if (!Object.values(STATUS).includes(status) || !text(grund) || !grund.trim()) {
+    return { status: STATUS.ungueltig, grund: 'Befund hat ein unbekanntes Format.' };
+  }
+  return { status, grund, ...(details === undefined ? {} : { details }) };
+}
+
+export function zusammenfassen(befunde) {
+  if (!Array.isArray(befunde) || !befunde.length || befunde.some((b) => !objekt(b) || !Object.values(STATUS).includes(b.status) || !text(b.grund))) {
+    return ungueltig('Befunde fehlen oder haben ein unbekanntes Format.');
+  }
+  if (befunde.some((b) => b.status === STATUS.fehler)) return nein('Mindestens eine Prüfung ist nicht bestanden.', befunde);
+  if (befunde.some((b) => b.status === STATUS.ungueltig)) return ungueltig('Mindestens eine Messung ist ungültig.', befunde);
+  if (befunde.some((b) => b.status === STATUS.grenze)) return grenze('Ausführbare Prüfungen bestanden; dokumentierte Grenzen bleiben unbelegt.', befunde);
+  return ok('Alle Prüfungen bestanden.', befunde);
+}
+
+export function rueckgabewert(befunde) {
+  return { [STATUS.bestanden]: 0, [STATUS.fehler]: 1, [STATUS.ungueltig]: 2, [STATUS.grenze]: 3 }[zusammenfassen(befunde).status];
+}
+
+export function zaehleBefunde(befunde) {
+  return Object.fromEntries(Object.values(STATUS).map((status) => [status, befunde.filter((b) => b.status === status).length]));
+}
+
+/** Rohtext von dumpsys activity activities. Fokus ist ausdrücklich kein Ersatz. */
+export function evaluiereActivity(ausgabe, paket = APP) {
+  if (!text(ausgabe) || !text(paket) || !paket) return ungueltig('Activity-Ausgabe fehlt.');
+  const lies = (muster) => [...ausgabe.matchAll(muster)].map((m) => m[1]);
+  let oben = lies(/\btopResumedActivity\s*=\s*ActivityRecord\{[^\r\n}]*?\bu\d+\s+([\w.]+\/[\w.$]+)(?:\s|})/g);
+  if (!oben.length) oben = lies(/\bmResumedActivity\s*[:=]\s*ActivityRecord\{[^\r\n}]*?\bu\d+\s+([\w.]+\/[\w.$]+)(?:\s|})/g);
+  const eindeutig = [...new Set(oben)];
+  if (eindeutig.length !== 1) return ungueltig('Keine eindeutige oberste Activity in der Ausgabe.');
+  const details = { oben: eindeutig[0] };
+  return eindeutig[0].split('/')[0] === paket ? ok('Erwartetes Paket ist oben.', details) : nein('Eine fremde Activity ist oben.', details);
+}
+
+export const NETZWEGE = Object.freeze(['fetch', 'xhr', 'image', 'iframe', 'websocket', 'sendBeacon', 'eventSource', 'prefetch', 'capacitorHttp', 'invalid']);
+/** Annahmen sind ausschließlich die im abgegrenzten Messfenster gezählten TCP-Annahmen. */
+export function evaluiereNetz(messung) {
+  if (!objekt(messung) || !zahl(messung.vorher?.annahmen) || !zahl(messung.nachher?.annahmen)) return ungueltig('Gültigkeitsmessung des Netzmelders fehlt.');
+  if (messung.vorher.annahmen === 0 || messung.nachher.annahmen === 0) return ungueltig('Gegenprobe vor oder nach der App hatte keine Wirkung.');
+  for (const gruppe of ['app', 'gegen']) {
+    const werte = messung[gruppe];
+    if (!Array.isArray(werte) || werte.length !== NETZWEGE.length || new Set(werte.map((v) => v?.name)).size !== NETZWEGE.length ||
+      werte.some((v) => !objekt(v) || !NETZWEGE.includes(v.name) || !zahl(v.annahmen) || !texte(v.cdp) || !text(v.ergebnis))) {
+      return ungueltig(`Angriffswege oder Messwerte fehlen: ${gruppe}.`);
+    }
+  }
+  const befunde = [];
+  for (const name of NETZWEGE) {
+    const app = messung.app.find((v) => v.name === name);
+    const gegen = messung.gegen.find((v) => v.name === name);
+    if (name !== 'invalid' && gegen.annahmen === 0) {
+      befunde.push(ungueltig(`${name}: Gegenprobe erreicht den Netzmelder nicht.`)); continue;
+    }
+    if (app.annahmen !== 0) { befunde.push(nein(`${name}: Netzmelder hat Verbindungen angenommen.`, { annahmen: app.annahmen })); continue; }
+    const cdp = app.cdp.join('\n');
+    if (name === 'capacitorHttp') {
+      if (!app.ergebnis.includes('socket failed: EPERM (Operation not permitted)')) befunde.push(ungueltig('capacitorHttp: bekannter Ablehnungsgrund fehlt.'));
+      else befunde.push(ok('capacitorHttp: kein Zugriff auf den Netzmelder; EPERM beobachtet.'));
+    } else if (name === 'websocket') {
+      befunde.push(cdp.includes('net::ERR_ACCESS_DENIED') ? ok('websocket: kein Zugriff; ERR_ACCESS_DENIED beobachtet.') : ungueltig('websocket: bekannter Ablehnungsgrund fehlt.'));
+    } else if (!/^loadingFailed type=\w+ errorText=net::ERR_CACHE_MISS$/m.test(cdp)) {
+      befunde.push(ungueltig(`${name}: loadingFailed mit ERR_CACHE_MISS fehlt.`));
+    } else if (name === 'invalid') {
+      if (!/^loadingFailed type=\w+ errorText=net::ERR_NAME_NOT_RESOLVED$/m.test(gegen.cdp.join('\n'))) befunde.push(ungueltig('DNS-Gegenprobe zeigt nicht ERR_NAME_NOT_RESOLVED.'));
+      else befunde.push(ok('Nur Fehlervergleich für .invalid: App ERR_CACHE_MISS, Gegenprobe ERR_NAME_NOT_RESOLVED; kein Nachweis über DNS-Verkehr.'));
+    } else befunde.push(ok(`${name}: keine Annahme; loadingFailed beobachtet.`));
+  }
+  return zusammenfassen(befunde);
+}
+
+/** Eine dokumentierte Grenze verlangt vollständige Messwerte und den bekannten Sperrgrund. */
+export function evaluiereNavigation(messung) {
+  const { name, app, gegen, appPaket = APP, gegenPaket = GEGEN } = messung ?? {};
+  if (!['href', 'open', 'blank', 'mailto', 'tel', 'intent', 'file', 'content', 'data'].includes(name)) return ungueltig('Unbekannter Navigationsweg.');
+  for (const [art, m] of [['App', app], ['Gegenprobe', gegen]]) {
+    if (!objekt(m) || !text(m.oben) || !objekt(m.ort) || !text(m.ort.href) || !text(m.ort.origin) || !zahl(m.pidVor) || !zahl(m.pidNach) || !m.pidVor || !m.pidNach || !zahl(m.annahmen) || !text(m.logcat) || !texte(m.cdp)) {
+      return ungueltig(`${art}: Navigation wurde nicht vollständig aufgezeichnet.`);
+    }
+  }
+  if (![`${appPaket}/.MainActivity`, `${appPaket}/${APP}.MainActivity`].includes(app.oben) || app.pidVor !== app.pidNach || app.ort.origin !== 'https://localhost' || app.ort.href !== 'https://localhost/' || app.annahmen !== 0) {
+    return nein('App hat ihren Zustand verlassen oder der Netzmelder wurde erreicht.');
+  }
+  if (['file', 'content', 'data'].includes(name)) {
+    const marker = name === 'data' ? 'Not allowed to navigate top frame to data URL: data:' : `Not allowed to load local resource: ${name}:`;
+    if (![app, gegen].every((m) => m.cdp.some((z) => z.includes(marker)) || m.logcat.includes(marker))) return ungueltig(`${name}: Renderer-Meldung fehlt.`);
+    return grenze(`${name}: Chromium sperrt App und Gegenprobe; keine wirksame Gegenprobe für das Plugin.`, { rendererSperre: true });
+  }
+  const protokoll = ['href', 'open', 'blank'].includes(name) ? 'https' : name;
+  const sperre = new RegExp(`(?:^|\\n)[^\\n]*D/Navigationssperre\\(\\s*\\d+\\): gesperrt: ${protokoll}(?:\\r?$)`, 'm');
+  if (!sperre.test(app.logcat)) return ungueltig(`${name}: Zeile der Navigationssperre fehlt.`);
+  if (['mailto', 'intent'].includes(name) && gegen.oben.split('/')[0] === gegenPaket) return grenze(`${name}: Gegenprobe öffnet keinen Empfänger; Pluginwirkung nur teilweise beobachtet.`);
+  const ziel = name === 'tel' ? 'com.android.dialer/' : 'org.chromium.webview_shell/';
+  if (['href', 'open', 'blank', 'tel'].includes(name) && !gegen.oben.startsWith(ziel)) return ungueltig(`${name}: Gegenprobe öffnet die erwartete fremde Activity nicht.`);
+  if (['href', 'open', 'blank'].includes(name) && gegen.annahmen === 0) return ungueltig(`${name}: Browser der Gegenprobe erreicht den Netzmelder nicht.`);
+  return ok(`${name}: App bleibt lokal, Gegenprobe öffnet eine fremde Activity.`);
+}
+
+function backupErgebnis(ausgabe, paket) {
+  if (!text(ausgabe) || !/^Running incremental backup for 1 requested packages\.\r?$/m.test(ausgabe) || !/^Backup finished with result: Success\r?$/m.test(ausgabe)) return null;
+  const treffer = [...ausgabe.matchAll(new RegExp(`^Package ${esc(paket)} with result: (.+)\\r?$`, 'gm'))].map((m) => m[1].trim());
+  return treffer.length === 1 ? treffer[0] : null;
+}
+
+export function evaluiereSicherung(messung) {
+  if (!objekt(messung) || typeof messung.deviceTransfer !== 'boolean' || typeof messung.appStopped !== 'boolean' || typeof messung.gegenStopped !== 'boolean' ||
+      !texte(messung.appDateien) || !texte(messung.gegenDateien) || typeof messung.appMarker !== 'boolean' || typeof messung.gegenMarker !== 'boolean' ||
+      typeof messung.appArchivLesbar !== 'boolean' || typeof messung.gegenArchivLesbar !== 'boolean' || (messung.deviceTransfer && !text(messung.logcat))) return ungueltig('Sicherungsnachweis ist unvollständig.');
+  if (messung.appStopped || messung.gegenStopped) return ungueltig('App oder Gegenprobe war vor backupnow gestoppt.');
+  if (!messung.appArchivLesbar || !messung.gegenArchivLesbar) return ungueltig('Ablage oder Archiv des LocalTransport war nicht lesbar.');
+  const app = backupErgebnis(messung.appAusgabe, messung.appPaket ?? APP);
+  const gegen = backupErgebnis(messung.gegenAusgabe, messung.gegenPaket ?? GEGEN);
+  if (!app || !gegen) return ungueltig('Paketbezogenes Ergebnis von backupnow fehlt oder ist unlesbar.');
+  if (gegen !== 'Success' || !messung.gegenMarker || !messung.gegenDateien.some((z) => z.includes('/app_webview/Default/Local Storage/leveldb/'))) return ungueltig('Gegenprobe hat keine nachweisbare Sicherung des Markers erzeugt.');
+  if (messung.appDateien.length || messung.appMarker) return nein('Daten der App liegen beim LocalTransport.');
+  const erwartet = messung.deviceTransfer ? "Transport rejected package because it wasn't able to process it at the time" : 'Backup is not allowed';
+  if (app === 'Success') return nein('backupnow meldet eine erfolgreiche Sicherung der App.');
+  if (app !== erwartet) return ungueltig('Unbekannter Ablehnungsgrund der App.', { ergebnis: app });
+  if (messung.deviceTransfer && (!messung.logcat.includes('Found valid data-extraction-rules; parsing xml resource.') || !messung.logcat.includes(`Initiating full-data transport backup of ${messung.appPaket ?? APP} `))) return ungueltig('Gerätewechsel: Nachweis des Starts und des Lesens der Ausschlussregeln fehlt.');
+  return ok('Keine Daten der App beim LocalTransport; Gegenprobe enthält den Marker.');
+}
+
+export function evaluiereReleaseFlags(messung) {
+  const { dumpsys } = objekt(messung) ? messung : {};
+  if (!text(dumpsys)) return ungueltig('dumpsys package fehlt.');
+  const treffer = [...dumpsys.matchAll(/^\s*flags=\[\s*([A-Z_0-9 ]*?)\s*\]\s*$/gm)];
+  if (treffer.length !== 1 || !/^\s*versionCode=\d+ minSdk=\d+ targetSdk=\d+(?:\s|$)/m.test(dumpsys)) return ungueltig('Eindeutiger Paketabschnitt mit benannten Flags fehlt.');
+  const flags = treffer[0][1].split(/\s+/).filter(Boolean);
+  if (!flags.includes('HAS_CODE')) return ungueltig('Erwartetes Flag HAS_CODE fehlt.');
+  const verbotene = ['DEBUGGABLE', 'ALLOW_BACKUP'].filter((flag) => flags.includes(flag));
+  return verbotene.length ? nein('Release enthält unzulässige Flags.', { flags: verbotene }) : ok('Release ohne DEBUGGABLE und ALLOW_BACKUP.');
+}
+
+export function evaluiereUnixSockets(messung) {
+  const { text: ausgabe, debugSocketNachgewiesen } = objekt(messung) ? messung : {};
+  if (!text(ausgabe) || debugSocketNachgewiesen !== true) return ungueltig('Unix-Socket-Ausgabe oder wirksame Debug-Gegenprobe fehlt.');
+  const zeilen = ausgabe.trim().split(/\r?\n/);
+  if (!/^Num\s+RefCount\s+Protocol\s+Flags\s+Type\s+St\s+Inode\s+Path\s*$/.test(zeilen.shift() ?? '')) return ungueltig('Unbekannter Kopf von /proc/net/unix.');
+  if (zeilen.some((z) => !/^[\da-f]+:\s+[\da-f]+\s+[\da-f]+\s+[\da-f]+\s+[\da-f]+\s+[\da-f]+\s+\d+(?:\s+.*)?$/i.test(z))) return ungueltig('Unlesbare Zeile in /proc/net/unix.');
+  return zeilen.some((z) => /(?:@|\b)webview_devtools_remote(?:_\d+)?\b/.test(z)) ? nein('Ein Devtools-Socket der WebView ist offen.') : ok('Kein Devtools-Socket in /proc/net/unix.');
+}
+
+/** Header und Datensätze werden geprüft, bevor nach der UID gefiltert wird. */
+function procAdresse(hex, ipv6) {
+  if (!(ipv6 ? /^[\da-f]{32}$/i : /^[\da-f]{8}$/i).test(hex)) return null;
+  // Die Testabbilder sind x86_64: /proc/net gibt jedes 32-Bit-Wort in Hostreihenfolge aus.
+  const netzfolge = hex.toUpperCase().match(/.{8}/g).map((wort) => wort.match(/../g).reverse().join('')).join('');
+  const nulladresse = /^0+$/.test(netzfolge);
+  const loopback = ipv6 ? netzfolge === '00000000000000000000000000000001' || /^00000000000000000000FFFF7F[\dA-F]{6}$/.test(netzfolge) : /^7F[\dA-F]{6}$/.test(netzfolge);
+  return { nulladresse, loopback };
+}
+
+function procNet(tabellen, uid) {
+  if (!objekt(tabellen) || !zahl(uid) || !uid) return null;
+  const funde = [];
+  for (const typ of ['tcp', 'tcp6', 'udp', 'udp6']) {
+    if (!text(tabellen[typ])) return null;
+    const zeilen = tabellen[typ].trim().split(/\r?\n/);
+    if (!/^\s*sl\s+local_address\s+rem(?:ote)?_address\s+st\s+tx_queue\s+rx_queue\s+tr\s+tm->when\s+retrnsmt\s+uid\s+timeout\s+inode(?:\s|$)/.test(zeilen.shift() ?? '')) return null;
+    for (const zeile of zeilen) {
+      const m = /^\s*\d+:\s+([\da-f]+):[\da-f]{4}\s+([\da-f]+):[\da-f]{4}\s+[\da-f]{2}\s+[\da-f]+:[\da-f]+\s+[\da-f]+:[\da-f]+\s+[\da-f]+\s+(\d+)\s+\d+\s+\d+(?:\s+.*)?$/i.exec(zeile);
+      if (!m) return null;
+      const lokal = procAdresse(m[1], typ.endsWith('6')), fern = procAdresse(m[2], typ.endsWith('6'));
+      if (!lokal || !fern) return null;
+      const loopback = (lokal.loopback && (fern.loopback || fern.nulladresse)) || (lokal.nulladresse && fern.loopback);
+      if (Number(m[3]) === uid) funde.push({ typ, zeile, loopback });
+    }
+  }
+  return funde;
+}
+
+export function evaluiereProcNet(messung) {
+  const { uid, tabellen, gegenprobe } = objekt(messung) ? messung : {};
+  const app = procNet(tabellen, uid);
+  const gegen = procNet(gegenprobe?.tabellen, gegenprobe?.uid);
+  if (!app || !gegen) return ungueltig('/proc/net-Ausgabe fehlt oder ist unlesbar.');
+  if (!gegen.some((v) => !v.loopback)) return ungueltig('Keine externe Verbindung der Gegenprobe in /proc/net beobachtet.');
+  const extern = app.filter((v) => !v.loopback);
+  return extern.length ? nein('Offene Netz-Sockets der App-UID außerhalb von Loopback beobachtet.', extern) : ok('Keine offenen Netz-Sockets der App-UID außerhalb von Loopback im Messzeitpunkt; andere UIDs werden nicht bewertet.', { loopback: app.length });
+}
+
+function netstatsTabelle(ausgabe) {
+  if (!text(ausgabe)) return null;
+  const abschnitte = [...ausgabe.matchAll(/^  mAppUidStatsMap:\r?\n([\s\S]*?)(?=^  m[A-Za-z]+:)/gm)];
+  if (abschnitte.length !== 1) return null;
+  const zeilen = abschnitte[0][1].trim().split(/\r?\n/);
+  if (!/^uid rxBytes rxPackets txBytes txPackets$/.test(zeilen.shift() ?? '')) return null;
+  const werte = new Map();
+  for (const z of zeilen) {
+    const m = /^\s*(\d+) (\d+) (\d+) (\d+) (\d+)\s*$/.exec(z);
+    if (!m || m.slice(1).some((v) => !Number.isSafeInteger(Number(v))) || werte.has(Number(m[1]))) return null;
+    werte.set(Number(m[1]), m.slice(2).map(Number));
+  }
+  return werte;
+}
+
+export function evaluiereNetstats(messung) {
+  const { api, uid, vorher, nachher, gegenUid } = objekt(messung) ? messung : {};
+  if (api === 30) return ungueltig('API 30: netstats enthält in der Probe keine auswertbaren UID-Zeilen.', { grenze: true });
+  if (api !== 36 || !zahl(uid) || !uid || !zahl(gegenUid) || !gegenUid || uid === gegenUid) return ungueltig('API oder UIDs für netstats fehlen.');
+  const vor = netstatsTabelle(vorher), nach = netstatsTabelle(nachher);
+  if (!vor || !nach) return ungueltig('Tabelle mAppUidStatsMap fehlt, ist abgeschnitten oder unlesbar.');
+  if (![vor, nach].every((t) => t.get(gegenUid)?.some((v) => v > 0))) return ungueltig('Gegenprobe ist nicht in beiden netstats-Tabellen nachgewiesen.');
+  const basis = vor.get(uid) ?? [0, 0, 0, 0];
+  if (vor.has(uid) && !nach.has(uid)) return ungueltig('App-UID ist nach der Messung aus netstats verschwunden.');
+  const ende = nach.get(uid) ?? [0, 0, 0, 0];
+  const delta = ende.map((v, i) => v - basis[i]);
+  if (delta.some((v) => v < 0)) return ungueltig('Zähler der App-UID sind während der Messung zurückgegangen.', { basis, ende });
+  const details = { basis, ende, delta, hinweis: 'Die Aussage gilt für die Änderung zwischen den zwei Messzeitpunkten; frühere Zähler können zu einer vorherigen Nutzung der UID gehören.' };
+  if (delta.some((v) => v > 0)) return nein('netstats weist zusätzlichen Netzverkehr der App-UID im Messfenster aus.', details);
+  return ok('Keine Zählerzunahme der App-UID in netstats; Gegenprobe hat Netzverkehr.', details);
+}
+
+export function evaluiereFehlerseite(messung) {
+  const { ort, ausnahmen, logcat, erwarteterText } = objekt(messung) ? messung : {};
+  if (!objekt(ort) || !text(ort.pathname) || !text(ort.text) || !Array.isArray(ausnahmen) || !text(logcat) || !text(erwarteterText) || !erwarteterText.trim()) return ungueltig('Beobachtung der Fehlerseite ist unvollständig.');
+  if (ort.pathname !== '/startfehler.html' || !ort.text.includes(erwarteterText) || ausnahmen.length || /\bSyntaxError\b|\bFATAL EXCEPTION\b/.test(logcat)) return nein('Fehlerseite fehlt, ist nicht sichtbar oder ein Skriptfehler wurde beobachtet.');
+  if (!logcat.includes('Handling local request: https://localhost/startfehler.html')) return ungueltig('Lokaler Abruf der Fehlerseite fehlt im Protokoll.');
+  return ok('Fehlerseite lokal geladen, sichtbarer Text vorhanden, keine Skriptausnahme.');
+}
+
+export function evaluiereInstallation(messung) {
+  const { code, ausgabe } = objekt(messung) ? messung : {};
+  if (!Number.isInteger(code) || !text(ausgabe) || !ausgabe.trim()) return ungueltig('Ergebnis der Installation fehlt.');
+  if (code === 0) return nein('Installation auf dem ausgeschlossenen API-Level war erfolgreich.');
+  if (!/Failure \[INSTALL_FAILED_OLDER_SDK(?::[^\r\n\]]*)?\]/.test(ausgabe)) return ungueltig('Installation scheiterte ohne den erwarteten Grund INSTALL_FAILED_OLDER_SDK.');
+  return ok('Installation wegen älterem API-Level abgelehnt.');
+}
+
+export function evaluiereUeberlauf(messung) {
+  const { scrollWidth, clientWidth } = objekt(messung) ? messung : {};
+  if (!zahl(scrollWidth) || !zahl(clientWidth) || clientWidth === 0 || scrollWidth === 0) return ungueltig('Breiten der sichtbaren Seite fehlen.');
+  return scrollWidth > clientWidth ? nein('Waagerechter Überlauf.', { scrollWidth, clientWidth }) : ok('Kein waagerechter Überlauf.', { scrollWidth, clientWidth });
+}
+
+export function evaluiereBarrierebaum(antwort) {
+  if (!objekt(antwort) || !Array.isArray(antwort.nodes) || !antwort.nodes.length || antwort.nodes.some((n) => !objekt(n) || typeof n.ignored !== 'boolean' || !text(n.nodeId) || (n.properties !== undefined && (!Array.isArray(n.properties) || n.properties.some((p) => !objekt(p)))))) return ungueltig('WebView liefert keinen auswertbaren Barrierebaum; auf dem Gerät nachzuprüfen.');
+  const sichtbar = antwort.nodes.filter((n) => !n.ignored);
+  if (!sichtbar.some((n) => n.role?.value === 'RootWebArea')) return ungueltig('Wurzel des Barrierebaums fehlt.');
+  const rollen = ['button', 'textbox', 'combobox', 'checkbox', 'radio', 'spinbutton', 'slider', 'listbox', 'searchbox', 'switch', 'link', 'menuitem', 'menuitemcheckbox', 'menuitemradio', 'tab', 'treeitem', 'Date', 'DateTime', 'InputTime', 'DisclosureTriangle'];
+  const bedienung = sichtbar.filter((n) => rollen.includes(n.role?.value) || (n.role?.value !== 'RootWebArea' && n.properties?.some((p) => p.name === 'focusable' && p.value?.value === true)));
+  if (!bedienung.length) return ungueltig('Keine Bedienelemente im Barrierebaum.');
+  if (bedienung.some((n) => !text(n.name?.value) || !n.name.value.trim())) return nein('Ein Bedienelement im Barrierebaum hat keinen zugänglichen Namen.');
+  return ok('Barrierebaum mit benannten Bedienelementen; ersetzt keinen TalkBack-Lauf.');
+}
+
+/** Für durch CDP selbst erhobene, explizite Soll-Ist-Werte (keine Textmarker-Erkennung). */
+export function evaluiereBeobachtungen(beobachtungen) {
+  const skalar = (v) => v === null || typeof v === 'boolean' || text(v) || (typeof v === 'number' && Number.isFinite(v));
+  if (!Array.isArray(beobachtungen) || !beobachtungen.length || beobachtungen.some((b) => !objekt(b) || !text(b.name) || !b.name.trim() || !skalar(b.ist) || !skalar(b.soll))) return ungueltig('Soll-Ist-Beobachtungen fehlen oder haben ein unbekanntes Format.');
+  return zusammenfassen(beobachtungen.map((b) => Object.is(b.ist, b.soll) ? ok(b.name, { ist: b.ist, soll: b.soll }) : nein(b.name, { ist: b.ist, soll: b.soll })));
+}
+
+export function evaluiereBruecke(wert) {
+  return objekt(wert) && text(wert.path) ? ok('WebView-Brücke liefert path.', wert) : ungueltig('Brückenantwort ohne lesbaren path.', wert);
+}
+
+export function evaluiereFehlerfalleGegenprobe(wert) {
+  return wert === true ? ok('Fehlerfalle reagiert auf das Fehlerereignis eigener Herkunft.') : ungueltig('Fehlerfalle reagiert nicht nachweisbar auf die Gegenprobe.');
+}
+
+function ansichtsTexte(xml) {
+  if (!text(xml)) return null;
+  const inhalt = xml.trim().replace(/^<\?xml\s[^?]*\?>\s*/, '');
+  const teile = inhalt.match(/<[^>]*>|[^<]+/g) ?? [];
+  const stapel = [], sichtbar = [];
+  let wurzeln = 0;
+  for (const teil of teile) {
+    if (!teil.startsWith('<')) { if (teil.trim()) return null; continue; }
+    const ende = /^<\/(hierarchy|node)\s*>$/.exec(teil);
+    if (ende) { if (stapel.pop() !== ende[1]) return null; continue; }
+    const anfang = /^<(hierarchy|node)((?:\s+[\w:-]+="[^"<>]*")*)\s*(\/?)>$/.exec(teil);
+    if (!anfang) return null;
+    const [, art, roh, selbst] = anfang;
+    if (art === 'hierarchy') { if (stapel.length || wurzeln++) return null; }
+    else if (!stapel.length) return null;
+    const attribute = {};
+    for (const m of roh.matchAll(/\s+([\w:-]+)="([^"<>]*)"/g)) {
+      if (Object.hasOwn(attribute, m[1])) return null;
+      attribute[m[1]] = m[2].replace(/&(?:amp|lt|gt|quot|apos);/g, (s) => ({ '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&apos;': "'" })[s]);
+    }
+    if (art === 'node') {
+      const grenzen = /^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(attribute.bounds ?? '');
+      if (!grenzen || (attribute['visible-to-user'] !== undefined && !['true', 'false'].includes(attribute['visible-to-user']))) return null;
+      if (attribute['visible-to-user'] !== 'false' && Number(grenzen[3]) > Number(grenzen[1]) && Number(grenzen[4]) > Number(grenzen[2])) {
+        sichtbar.push(attribute.text ?? '', attribute['content-desc'] ?? '');
+      }
+    }
+    if (!selbst) stapel.push(art);
+  }
+  return wurzeln === 1 && stapel.length === 0 && sichtbar.length ? sichtbar : null;
+}
+
+export function evaluiereReleaseStart(messung) {
+  const texte = ansichtsTexte(messung?.xml);
+  if (!texte) return ungueltig('Native Ansicht ist unvollständig oder nicht lesbar.');
+  if (texte.some((s) => s.includes('Im Fristenrechner ist ein Fehler aufgetreten'))) return nein('Fehlerfalle sichtbar.');
+  if (!texte.some((s) => s.includes('Fristenrechner Vergabe')) || !texte.some((s) => /Vergabeverfahren konfigurieren|Vergabeordnung/.test(s))) return ungueltig('Native Ansicht bestätigt die Formularanzeige nicht; Bild prüfen.');
+  return ok('Formular in der nativen Ansicht, Fehlerfalle nicht sichtbar.');
+}
+
+export function evaluiereTastatur(ausgabe) {
+  if (!text(ausgabe)) return ungueltig('Ausgabe des Eingabedienstes fehlt.');
+  const werte = [...ausgabe.matchAll(/\b(?:mInputShown|mIsInputViewShown)=(true|false)\b/g)].map((m) => m[1]);
+  if (!werte.length || new Set(werte).size > 1) return ungueltig('Sichtbarkeit der Tastatur ist nicht eindeutig belegt.');
+  return werte[0] === 'true' ? ok('Tastatur wird vom Eingabedienst als sichtbar gemeldet.') : nein('Tastatur wird vom Eingabedienst als verborgen gemeldet.');
+}
+
+export function evaluiereFehlerseiteGegenprobe(messung) {
+  if (!text(messung?.logcat)) return ungueltig('Protokoll der Gegenprobe ohne Fehlerseite fehlt.');
+  const anfragen = (messung.logcat.match(/^[^\r\n]*\bE\/Capacitor\(\s*\d+\): Unable to open asset URL: https:\/\/localhost\/startfehler\.html\r?$/gm) ?? []).length;
+  return anfragen > 1 ? ok('Entfernte Fehlerseite löst die beobachtete Fehlerschleife aus.', { anfragen }) : ungueltig('Gegenprobe ohne Fehlerseite zeigt keine belegte Fehlerschleife.', { anfragen });
+}
+
+export function evaluiereZurueck(ausgabe, paket = APP) {
+  const activity = evaluiereActivity(ausgabe, paket);
+  if (activity.status === STATUS.ungueltig) return activity;
+  return activity.status === STATUS.bestanden ? nein('App nach Zurück weiter im Vordergrund.', activity.details) : ok('Zurück verlässt die App.', activity.details);
+}
+
+export function evaluiereRuhe(messung) {
+  if (!objekt(messung) || !zahl(messung.vorher?.annahmen) || !zahl(messung.nachher?.annahmen) || ['ruhe', 'hintergrund', 'rueckkehr'].some((k) => !zahl(messung[k]))) return ungueltig('Messwerte der Releasephase fehlen oder sind unlesbar.');
+  if (messung.vorher.annahmen === 0 || messung.nachher.annahmen === 0) return ungueltig('Gegenprobe vor oder nach der Releasephase ohne Wirkung.');
+  if (messung.hintergrund < messung.ruhe || messung.rueckkehr < messung.hintergrund) return ungueltig('Kumulative Netzmelderzähler gehen während der Releasephase zurück.');
+  return evaluiereBeobachtungen([{ name: '60 s Ruhe', ist: messung.ruhe, soll: 0 }, { name: 'Hintergrund', ist: messung.hintergrund, soll: 0 }, { name: 'Rückkehr', ist: messung.rueckkehr, soll: 0 }]);
+}
+
+/** Vorhandene Rohbelege erneut lesen; ursprüngliche Befunde und nicht gelaufene Schritte bleiben sichtbar. */
+export async function werteLaufAus(lauf) {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const lesen = (name) => readFile(join(lauf, name), 'utf8');
+  const json = async (name) => JSON.parse(await lesen(name));
+  const original = await json('ergebnis.json');
+  if (!Array.isArray(original.befund)) throw new Error('Lauf enthält keine Befundliste.');
+  const befunde = structuredClone(original.befund), neuAusgewertet = [], zusaetzlich = [];
+  const setzen = (id, wert, quellen) => {
+    const index = befunde.findIndex((b) => b.id === id), eintrag = { id, ...wert };
+    if (index < 0) { befunde.push(eintrag); zusaetzlich.push(id); } else befunde[index] = eintrag;
+    neuAusgewertet.push({ id, quellen });
+  };
+  const vorhanden = new Set(await readdir(lauf));
+  const navigationen = new Set(original.befund.filter((b) => b.id.startsWith('navigation-')).map((b) => b.id.slice('navigation-'.length)));
+  for (const name of ['href', 'open', 'blank', 'mailto', 'tel', 'intent', 'file', 'content', 'data']) {
+    if (vorhanden.has(`navigation-app-${name}.json`) && vorhanden.has(`navigation-gegen-${name}.json`)) navigationen.add(name);
+  }
+  for (const name of navigationen) {
+    const quellen = [`navigation-app-${name}.json`, `navigation-gegen-${name}.json`];
+    try { setzen(`navigation-${name}`, evaluiereNavigation({ name, app: await json(quellen[0]), gegen: await json(quellen[1]) }), quellen); }
+    catch (e) { setzen(`navigation-${name}`, ungueltig(`Rohbeleg der Navigation nicht lesbar: ${e.message}`), quellen); }
+  }
+  if (vorhanden.has('netz.json')) {
+    try {
+      const n = await json('netz.json');
+      setzen('netz', evaluiereNetz(n), ['netz.json']);
+      const gegenprobe = { uid: n.gegenUid, tabellen: n.vorher?.tabellen };
+      for (const [name, tabellen] of [['vorher', n.procVorher], ...(n.app ?? []).map((m) => [m.name, m.tabellen]), ['nachher', n.procNachher]]) {
+        setzen(`netz-proc-${name}`, evaluiereProcNet({ uid: n.appUid, tabellen, gegenprobe }), ['netz.json']);
+      }
+      if (original.auswahl?.api === 36) setzen('netz-netstats', evaluiereNetstats({ api: 36, uid: n.appUid, gegenUid: n.gegenUid, vorher: n.netstatsVorher, nachher: n.netstatsNachher }), ['netz.json']);
+    } catch (e) { setzen('netz', ungueltig(`Netz-Rohbeleg nicht lesbar: ${e.message}`), ['netz.json']); }
+  }
+  if (vorhanden.has('sicherung-standard-app-backupnow.txt')) {
+    const { leseLocalTransportArchiv } = await import('./emulator/pruefungen.mjs');
+    const adb = (await lesen('adb.jsonl')).trim().split(/\r?\n/).map(JSON.parse);
+    const marker = await json('sicherung-marker.json');
+    const phasen = original.auswahl?.api === 36 ? ['standard', 'geraetewechsel'] : ['standard'];
+    for (const phase of phasen) {
+      const prefix = `sicherung-${phase}`, quellen = ['adb.jsonl', 'sicherung-marker.json'];
+      if (!vorhanden.has(`${prefix}-app-backupnow.txt`)) {
+        setzen(`sicherung-${phase}`, ungueltig('Diese Sicherungsphase wurde im ursprünglichen Lauf nicht ausgeführt.'), []);
+        continue;
+      }
+      try {
+        const daten = { deviceTransfer: phase === 'geraetewechsel' };
+        for (const [rolle, paket] of [['app', APP], ['gegen', GEGEN]]) {
+          daten[`${rolle}Paket`] = paket;
+          const name = (suffix) => `${prefix}-${rolle}-${suffix}.txt`;
+          const zustand = await lesen(name('package')), ausgabe = await lesen(name('backupnow'));
+          const full = await lesen(name('ablage')), delta = await lesen(name('delta'));
+          quellen.push(name('package'), name('backupnow'), name('ablage'), name('delta'));
+          const ablage = '/data/data/com.android.localtransport/files/1/';
+          // Entspricht genau ctx.shell: CRLF wird LF, äußerer Leerraum entfernt.
+          const shellBelegt = (befehl, out) => adb.some((a) => a.code === 0 && a.args?.[0] === 'shell' && a.args[1] === befehl && typeof a.out === 'string' && a.out.replaceAll('\r\n', '\n').trim() === out);
+          for (const [befehl, out] of [[`dumpsys package ${paket}`, zustand], [`bmgr backupnow ${paket}`, ausgabe], [`ls -1 ${ablage}_full`, full], [`ls -1 ${ablage}_delta`, delta]]) {
+            if (!shellBelegt(befehl, out)) throw new Error('Rohtext ist nicht durch einen erfolgreichen ADB-Aufruf belegt.');
+          }
+          const stopped = zustand.match(/\bUser 0:[^\r\n]*\bstopped=(true|false)\b/);
+          daten[`${rolle}Stopped`] = stopped ? stopped[1] === 'true' : undefined;
+          daten[`${rolle}Ausgabe`] = ausgabe;
+          const dateien = delta.split(/\r?\n/).includes(paket) ? [`LocalTransport/_delta/${paket}`] : [];
+          daten[`${rolle}Marker`] = false;
+          if (full.split(/\r?\n/).includes(paket)) {
+            const archivName = `sicherung/${phase}-${rolle}.tar`, pullText = await lesen(name('pull'));
+            const pull = adb.find((a) => a.code === 0 && a.args?.[0] === 'pull' && a.args[1] === `${ablage}_full/${paket}` && `${a.out}\n${a.err}` === pullText);
+            if (!pull) throw new Error('Binäre Übertragung nicht durch adb pull belegt.');
+            const archiv = leseLocalTransportArchiv(await readFile(join(lauf, archivName)), marker[rolle], { paket, backupAusgabe: ausgabe, pullAusgabe: pullText });
+            dateien.push(...archiv.eintraege.map((e) => e.name));
+            daten[`${rolle}Marker`] = archiv.marker;
+            daten[`${rolle}Archiv`] = archiv;
+            quellen.push(archivName, name('pull'));
+          }
+          daten[`${rolle}Dateien`] = dateien;
+          daten[`${rolle}ArchivLesbar`] = true;
+        }
+        if (vorhanden.has(`${prefix}-logcat.txt`)) { daten.logcat = await lesen(`${prefix}-logcat.txt`); quellen.push(`${prefix}-logcat.txt`); }
+        setzen(`sicherung-${phase}`, evaluiereSicherung(daten), quellen);
+      } catch (e) { setzen(`sicherung-${phase}`, ungueltig(`Sicherungs-Rohbeleg nicht auswertbar: ${e.message}`), quellen); }
+    }
+    // Der damalige Abbruch bleibt ein Laufbefund; erfolgreiche Neuauswertung ist kein neuer Gerätelauf.
+    const laufbefund = befunde.find((b) => b.id === 'ablauf-sicherung');
+    if (laufbefund) laufbefund.grund += ' Einzelphasen wurden getrennt aus den erhaltenen Rohbelegen neu ausgewertet; der Lauf wurde nicht wiederholt.';
+  }
+  return {
+    schema: 2, art: 'Neuauswertung vorhandener Rohbelege', datum: new Date().toISOString(),
+    vorher: { ergebnis: original.ergebnis, code: original.code, anzahl: zaehleBefunde(original.befund), befund: original.befund },
+    nachher: { ergebnis: zusammenfassen(befunde).status, code: rueckgabewert(befunde), anzahl: zaehleBefunde(befunde), befund: befunde },
+    aufraeumen: original.aufraeumen ?? [], zaehlung: 'Einzelbefunde ohne Aufräumen und ohne Gesamtergebnis.',
+    neuAusgewertet, zusaetzlich,
+    unveraendertUebernommen: original.befund.filter((b) => !neuAusgewertet.some((n) => n.id === b.id)).map((b) => b.id),
+    hinweis: 'Nur aufgeführte Rohbelege wurden neu ausgewertet. Übrige Befunde stammen aus dem ursprünglichen Lauf. Nicht ausgeführte Schritte brauchen einen neuen Lauf. Rückgabewert 3 kennzeichnet ausschließlich dokumentierte Grenzen und ist keine vollständige Abnahme.',
+  };
+}
+
+export async function auswertungCli(args) {
+  const { mkdir, writeFile, realpath } = await import('node:fs/promises');
+  const { resolve, relative, isAbsolute, dirname, join } = await import('node:path');
+  const optionen = {};
+  for (let i = 0; i < args.length; i += 2) {
+    if (!['--lauf', '--ausgabe'].includes(args[i]) || !args[i + 1] || optionen[args[i]]) throw new Error('Aufruf: node scripts/emulator-auswertung.mjs --lauf <Laufordner> --ausgabe <neuer Ordner>');
+    optionen[args[i]] = args[i + 1];
+  }
+  if (!optionen['--lauf'] || !optionen['--ausgabe']) throw new Error('--lauf und --ausgabe sind erforderlich.');
+  const lauf = await realpath(resolve(optionen['--lauf']));
+  const ausgabe = resolve(optionen['--ausgabe']);
+  const innerhalb = (ziel) => { const r = relative(lauf, ziel); return !r || (!r.startsWith('..') && !isAbsolute(r)); };
+  if (innerhalb(ausgabe) || innerhalb(await realpath(dirname(ausgabe)))) throw new Error('Ausgabe darf nicht im ursprünglichen Laufordner liegen.');
+  const bericht = await werteLaufAus(lauf);
+  await mkdir(ausgabe); // Existierende Ausgabeordner werden niemals überschrieben.
+  await writeFile(join(ausgabe, 'ergebnis.json'), JSON.stringify(bericht, null, 2) + '\n', { flag: 'wx' });
+  const zeilen = [bericht.art, `Vorher: ${bericht.vorher.ergebnis}; Rückgabewert ${bericht.vorher.code}; ${JSON.stringify(bericht.vorher.anzahl)}`,
+    `Nachher: ${bericht.nachher.ergebnis}; Rückgabewert ${bericht.nachher.code}; ${JSON.stringify(bericht.nachher.anzahl)}`,
+    ...bericht.nachher.befund.map((b) => `${b.id}: ${b.status} – ${b.grund}`), '', bericht.hinweis];
+  await writeFile(join(ausgabe, 'zusammenfassung.txt'), zeilen.join('\n') + '\n', { flag: 'wx' });
+  return bericht;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  auswertungCli(process.argv.slice(2)).then((b) => {
+    console.log(`Neuauswertung: ${b.nachher.ergebnis}; Rückgabewert ${b.nachher.code}`); process.exitCode = b.nachher.code;
+  }).catch((e) => { console.error(e.message); process.exitCode = 2; });
+}

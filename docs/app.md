@@ -132,7 +132,7 @@ Die ersten Builds liefen ohne vorausgehendes `clean`. Am selben Tag wurden die B
 | Neubau nach `clean` | Debug- und Release-Build jeweils mit Rückgabewert 0; beide APKs bytegleich zum ersten Build, mit den oben genannten Prüfsummen. |
 | Zweite Arbeitskopie in einem anderen Ordner, mit eigenem `node_modules` | Gesamte Kette über `app-bauen.mjs --android`: Debug in 73 Sekunden, Release in 45 Sekunden, jeweils Rückgabewert 0 und K1 bis K5 bestanden. Beide APKs bytegleich zu denen der ersten Arbeitskopie; `git status --porcelain -- app/android` danach leer. |
 
-Diese Vergleiche belegen bytegleiche Builds auf einem Windows-Rechner, am selben Tag und mit denselben Werkzeugen. Ein zweiter Rechner und Linux sind damit nicht geprüft.
+Diese Vergleiche belegen bytegleiche Builds auf einem Windows-Rechner, am selben Tag und mit denselben Werkzeugen. Der gesonderte Linux-Nachweis folgt unten; ein zweiter Rechner ist nicht geprüft.
 
 ### Rauchtest im Emulator
 
@@ -147,4 +147,115 @@ Am 2026-09-30 lief die oben genannte Debug-APK im Emulator aus dem Projekt-SDK, 
 
 Beim ersten Lauf auf API 36 erschien ein Systemdialog, dass die Systemoberfläche nicht antwortet. Beim zweiten Lauf mit 45 Sekunden Wartezeit nach dem Systemstart trat er nicht auf. Nach den Proben wurden die App deinstalliert und die Emulatoren beendet.
 
-Der Rauchtest belegt Start und Anzeige. Er ersetzt die noch ausstehenden Emulatorprüfungen auf API 30 und 36 nicht: Es gab keinen Netzmelder, keine Navigationsversuche, keine Sicherungsprüfung und keine Berechnung in der Oberfläche. Auch die Wirkung beim Gerätewechsel, die Fehlerseite und das Startbildverhalten bleiben zu prüfen. Ausstehend sind außerdem die abgelehnte Installation auf API 24, die Lizenzprüfung der Gradle-Abhängigkeiten sowie Linux-Builds unter Debian. Dort sind zwei saubere, getrennte Arbeitskopien und ein Vergleich der unsignierten APKs untereinander und mit Windows vorgesehen. Ebenso ausstehend ist der Nachweis von Web-Build und Sync ohne Netzwerk in einer vorbereiteten Linux-Umgebung.
+Der Rauchtest belegt Start und Anzeige. Er ersetzt die noch ausstehenden Emulatorprüfungen auf API 30 und 36 nicht: Es gab keinen Netzmelder, keine Navigationsversuche, keine Sicherungsprüfung und keine Berechnung in der Oberfläche. Auch die Wirkung beim Gerätewechsel, die Fehlerseite und das Startbildverhalten bleiben zu prüfen. Ausstehend sind außerdem die abgelehnte Installation auf API 24 und die Lizenzprüfung der Gradle-Abhängigkeiten.
+
+## Linux-Nachweis vom 2026-09-30
+
+Der Quellstand `c7a0cd8` wurde unter Debian 13.5 in WSL 2 aus einem Git-Bundle in zwei getrennte Ordner geklont. Jeder Klon hatte sein eigenes `node_modules`. Verwendet wurden Node.js 24.21.0, npm 11.19.0, OpenJDK 21.0.12.1, Gradle 8.14.5 als `bin`-Verteilung und Build-Tools 35.0.0. Das Projekt-SDK enthielt nur die Gruppe „Build“. Die bereits vorhandene und geprüfte Gradle-Verteilung wurde in den Cache des Wrappers kopiert; der Wrapper prüfte ihre Prüfsumme erneut. Bei diesem Lauf wurde die Verteilung nicht neu geladen.
+
+| Schritt | Klon 1 | Klon 2 |
+|---|---|---|
+| `npm ci` | Rückgabewert 0, 16 Sekunden | Rückgabewert 0, 21 Sekunden |
+| `node scripts/app-bauen.mjs --android --aufgabe assembleRelease --streng --ohne-testgruppe` | Rückgabewert 0, 59 Sekunden; K1 bis K5 bestanden | Rückgabewert 0, 47 Sekunden; K1 bis K5 bestanden |
+| `git status --porcelain` nach dem Build | Leer | Leer |
+| Unsignierte Release-APK | 7.713.336 Bytes | 7.713.336 Bytes |
+
+Die beiden unsignierten APKs waren mit `cmp` bytegleich. Ihre SHA-256 lautet `824259abbf10c58eddaf13f897ae897a11c2ad541f5af789ffffc3c4455da892`. Sie entspricht auch der Windows-APK vom selben Tag. Dort lief der Build mit JDK 21.0.8 ohne `--streng`, unter Debian mit JDK 21.0.12.1 und `--streng`.
+
+Die APK enthält `META-INF/version-control-info.textproto` mit 46 Bytes und dem Inhalt `generate_error_reason: NO_SUPPORTED_VCS_FOUND`. Außerdem enthält sie `assets/dexopt/baseline.prof` mit 2.496 Bytes und `baseline.profm` mit 232 Bytes. Die Bytegleichheit gilt einschließlich dieser Dateien.
+
+Im ersten Klon bestanden unter `unshare -r -n` sowohl `node scripts/app-bauen.mjs --web` als auch `capacitor sync android`, jeweils mit Rückgabewert 0. Als Gegenprobe scheiterte `fetch('https://registry.npmjs.org/')` im selben Netzwerk-Namensraum mit `EAI_AGAIN`. Damit sind Web-Build und Sync in der vorbereiteten Umgebung ohne Netzwerkzugriff belegt. Der Gradle-Build lief mit Netzwerkzugriff; ein Gradle-Build ohne Netz aus den vorhandenen Zwischenspeichern wurde nicht geprüft.
+
+Im zweiten Klon wurde das Ausführungsrecht des Wrappers zur Gegenprobe entfernt. `android-build.mjs` meldete daraufhin, dass `gradlew` mit `EACCES` nicht gestartet werden konnte, und endete mit Rückgabewert 1.
+
+`npm test` bestand im ersten Klon mit 1.093 Skripttests, davon 1.090 bestanden und drei übersprungen, sowie 134 Tests des Rechenkerns, 86 der Oberfläche und neun der App. `npm run lizenzen` bestand ebenfalls. Diese Angaben beschreiben den genannten Quellstand und ersetzen keine Prüfung späterer Änderungen.
+
+Ergänzend bestand am selben Tag eine saubere Windows-Kopie desselben Stands mit Node.js 22.23.2, npm 10.9.8 und `core.autocrlf=true`: `npm ci`, `npm test`, `npm run check`, `npm run build` und `npm run lizenzen`, jeweils mit Rückgabewert 0. Die Skripttests meldeten 1.089 bestanden und vier übersprungen; Rechenkern, Oberfläche und App bestanden mit 134, 86 und neun Tests. Die Arbeitskopie blieb unverändert.
+
+Der Vergleich gilt für zwei Klone auf demselben Rechner und für den genannten Tag. Nicht geprüft sind ein Debug-Build unter Linux, die Gegenprobe mit geändertem `versionName`, ein zweiter Rechner und ein Build dieser App mit dem Scanner oder dem Buildserver von F-Droid.
+
+## Prüfung im Emulator
+
+`scripts/emulator-lauf.mjs` führt die gewählten Prüfungen unter Windows aus. Die Auswertung in `scripts/emulator-auswertung.mjs` arbeitet getrennt davon auf aufgezeichneten Texten und JSON. Die folgenden Aufrufe setzen das eingerichtete Projekt-SDK, die Testgeräte aus [toolchain.md](toolchain.md), installierte npm-Abhängigkeiten und die gebauten Debug- und Release-APKs voraus. Node.js 24.21.0 und 22.23.2 stellen den benötigten eingebauten `WebSocket` ohne zusätzlichen Schalter bereit; fehlt er, bricht das Skript ab.
+
+Aus der Repositorywurzel, beispielsweise für die Fehlerseite und danach für alle vorgesehenen Prüfungen eines Abbilds:
+
+```sh
+node scripts/emulator-lauf.mjs --api 30 --ablauf fehlerseite --ausgabe scratchpad/emulator/api30-fehlerseite
+node scripts/emulator-lauf.mjs --api 36 --ablauf alle --ausgabe scratchpad/emulator/api36
+node scripts/emulator-lauf.mjs --api 30 --ablauf alle --ausgabe scratchpad/emulator/api30
+node scripts/emulator-lauf.mjs --api 24 --ablauf installation --ausgabe scratchpad/emulator/api24
+```
+
+`--api`, `--ablauf` und `--ausgabe` sind Pflicht. Der Ausgabeordner muss neu oder leer sein. Innerhalb des Repositorys sind Ausgaben nur unter `scratchpad/` zulässig; vorhandene Ergebnisse werden nicht überschrieben. `--apk-debug <Datei>` und `--apk-release <Datei>` ersetzen die Vorgaben `app/android/app/build/outputs/apk/debug/app-debug.apk` und `app/android/app/build/outputs/apk/release/app-release-unsigned.apk`. `--wipe-data` setzt das Testgerät nur bei ausdrücklicher Angabe zurück und löscht dessen bisherige Daten.
+
+`a8` und `a10` führen Darstellung beziehungsweise Barrierebaum einzeln aus. `--varianten <Ordner>` verwendet APKs aus dem Unterordner `varianten` eines früheren Laufs. Dazu müssen `build-<Art>-apk.json`, die APK-Prüfsummen und der Fingerabdruck der aktuellen Bauquellen übereinstimmen. Der Fingerabdruck erfasst auch uncommittete Android-Änderungen, erzeugte Web-Assets, Capacitor, Lockfile, Toolchain, Baurezept und den Debugschlüssel. Alte Metadaten ohne Quellenfingerabdruck reichen nicht. Geprüfte APKs und Metadaten werden im neuen Lauf aufbewahrt; die Gradle-Cache-Kopie wird auch nach einem Baufehler entfernt. Fehlen die nötigen Varianten, ist zuerst ein Lauf ohne `--varianten` nötig.
+
+| Abbild | WebView des vorgesehenen Abbilds | Auswahl mit `--ablauf` |
+|---|---|---|
+| `fr-api36` | 133.0.6943.137 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `sicherung`, `alle`; Sicherung einschließlich Gerätewechsel |
+| `fr-api30` | 83.0.4103.120 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `sicherung`, `fehlerseite`, `alle`; Sicherung ohne Gerätewechsel |
+| `fr-api24` | 52 | `installation`, `alle`; erwartete Ablehnung mit `INSTALL_FAILED_OLDER_SDK` |
+
+Der Lauf verwendet jeweils nur einen Emulator auf Port 5554 mit `-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect`. Nach dem Systemstart wird auf die Bereitschaft der Oberfläche gewartet. Für die oberste Activity wird `topResumedActivity` verwendet. Navigationsfotos benötigen keinen UI-Automator-Baum; sie sind ergänzende Rohbelege. In den übrigen Bildprüfungen wird ein verdeckender Systemdialog zusätzlich über den Ansichtsbaum geprüft. Umgebungsvariablen für SDK und Testgeräte gelten nur für den gestarteten Prozess.
+
+| Prüfung | Umfang |
+|---|---|
+| Ablauf A, Debug über CDP | Start und Fehlerfalle, Formular und Berechnung mit Regelversion und Rechtsstand, Brückenaufruf, gespeicherte Eingaben nach `force-stop` und deren Löschung nach `pm clear`, Rechtsstandhinweis an der Grenze und am Folgetag, Navigation, Netz, Darstellung, Zurück-Taste und Barrierebaum. |
+| Darstellung innerhalb von A | Bildschirmfotos bei Schriftgröße 1,3 und 2,0, Nachtmodus, gedrehtem Bildschirm und eingeblendeter Tastatur. Automatischer Vergleich von `scrollWidth` und `clientWidth` auf waagerechten Überlauf; ergänzende Sichtprüfung der Bilder. |
+| Ablauf B, Release | Signierte Kopie der Release-APK im Ausgabeordner, Startbild und Fehlerfalle, Paketkennzeichen ohne `DEBUGGABLE` und `ALLOW_BACKUP`, keine WebView-Devtools-Sockets; Netzmelder nach 60 Sekunden Ruhe, Hintergrund und Rückkehr. |
+| Netz | TCP-Netzmelder, Gegenprobe vor und nach der App sowie je nutzbarem Zugriffsweg: Fetch, XHR, Bild, Iframe, WebSocket, Beacon, EventSource, Prefetch und CapacitorHttp. Eine `.invalid`-Adresse ergänzt die Fehlerbeobachtung. Dazu `/proc/net`, auf API 36 die UID-Tabelle von `netstats` und eine nicht automatisch ausgewertete Paketaufzeichnung. |
+| Navigation | `location.href`, `window.open`, Link mit `target=_blank`, `mailto:`, `tel:`, `intent:`, `file:`, `content:` und `data:`; Prüfung von oberster Activity, lokaler Herkunft, Netzmelder und Protokollmeldungen. |
+| Sicherung | App vor `backupnow` starten und `stopped=false` prüfen. LocalTransport darf keine App-Daten ablegen; die Gegenprobe muss den gespeicherten Marker unter `app_webview/Default/Local Storage` sichern. Auf API 36 zusätzlich Gerätewechsel. |
+| Fehlerseite | Temporärer Debug-Build mit `minWebViewVersion=84` auf API 30: `location.pathname` ist `/startfehler.html`, kein `SyntaxError`, Seitentext sichtbar. Die Fehlerseite enthält keine Capacitor-Brücke. Eine zweite Variante ohne diese Datei dient als Gegenprobe; zehn Sekunden lang wird beobachtet, ob wiederholte Navigationen zur fehlenden Fehlerseite auftreten. |
+| Installation | API 24 muss die APK wegen der Mindest-API ablehnen. |
+
+Die Gegenprobe-App entsteht ausschließlich in einer temporären Kopie unter dem Ausgabeordner: andere App-ID, Berechtigung `INTERNET`, ohne Registrierung der Navigationssperre sowie `allowBackup=true` ohne Sicherungsregeln. Die Varianten für die Fehlerseite entstehen ebenfalls dort. Auch die Capacitor-Quellen werden kopiert; ein Gradle-Init-Skript lenkt die Build-Verzeichnisse aller Projekte in den Ausgabeordner um. Der Build verwendet `--offline` und ein eigenes `GRADLE_USER_HOME` mit einer Kopie der vorhandenen Zwischenspeicher. Er lädt keine fehlenden Abhängigkeiten nach.
+
+Vor und nach den Varianten-Builds werden die Datei-Prüfsummen unter `app/android/app/build`, `app/android/build` und `node_modules/@capacitor/android/capacitor/build` verglichen. Eine Veränderung ist ein Fehler. Das Skript baut die ursprüngliche App nicht erneut. Der anschließende Neubau dieser App aus `clean` und sein Vergleich mit der Referenzprüfsumme bleiben gesondert auszuführen; inkrementelle Builds nach geänderten Assets können abweichen.
+
+Die Release-Kopie wird ausschließlich mit dem Debug-Schlüssel der Android-Werkzeuge unter `%USERPROFILE%\.android\debug.keystore` und mit v2, v3 sowie `--alignment-preserved true` signiert. Die vorübergehende Kennwortdatei enthält je eine Zeile für Store und Schlüssel; apksigner liest sie nacheinander. Die Datei wird anschließend gelöscht. Die Signaturprüfung beginnt ausdrücklich bei API 24, damit v2 und v3 geprüft werden. Diese Signatur dient nur dem Emulatorlauf und keinem Vertrieb.
+
+Der Ausgabeordner enthält `ergebnis.json`, `zusammenfassung.txt`, `logcat.txt`, Bildschirmfotos und weitere Rohbelege. Dazu gehören Gerätefingerabdruck, Pakete mit UID, WebView-Version und SHA-256 der installierten APKs. Diese Laufbelege können lokale Angaben enthalten und gehören nicht ungeprüft in das öffentliche Repository. Öffentliche Prüfdaten unter `scripts/emulator/fixtures` enthalten nur gekürzte und bereinigte Ausschnitte.
+
+Auch nach einem Fehler räumt der Lauf auf: App und Gegenprobe deinstallieren, geänderte Uhr-, Schrift-, Nachtmodus- und Sicherungseinstellungen zurücksetzen, Emulator beenden, dessen `snapshots` löschen und eigene ADB-Weiterleitungen entfernen. Fehler beim Aufräumen gehören zum Ergebnis.
+
+### Grenzen und Bewertung
+
+- Die Netzaussage gilt für die UID der App und für die beobachteten Zeiträume und Zugriffswege. Verkehr des WebView-Pakets und des Systems wird benannt und nicht als App-Verkehr bewertet. Ein Netzmelder mit null Annahmen ersetzt keinen Nachweis für beliebige Ziele und Zeiträume.
+- `sendBeacon` kann trotz Sperre `true` liefern; ein Iframe kann `load` für die Fehlerseite von Chromium melden. Maßgeblich sind Netzmelder und die aufgezeichneten CDP-Fehler, nicht diese Rückgabewerte.
+- `dumpsys dnsresolver` lieferte auch für die Gegenprobe keine Anfragen und ist kein DNS-Nachweis. Auf API 30 enthält `dumpsys netstats detail` keine auswertbaren Zeilen je UID. Die Tabelle `mAppUidStatsMap` auf API 36 ist nur ein zusätzlicher Beleg; `/proc/net` erfasst Momentaufnahmen.
+- Auf den vorgesehenen AOSP-Abbildern fehlen Empfänger für `mailto:` und `intent:`. Deren Gegenproben können die Sperre nicht belegen. `file:`, `content:` und `data:` werden bereits von Chromium gesperrt; erwartet werden dessen konkrete Fehlermeldungen statt einer Meldung des Plugins. Auch hier fehlt eine wirksame Gegenprobe für das Plugin. Diese fünf Fälle bleiben ausdrücklich als Grenzen sichtbar.
+- A8 baut nach Darstellungswechseln die CDP-Verbindung neu auf: In den Läufen vom 30.09.2026 wurde die Activity bei geändertem `font_scale` neu erzeugt. A10 verwendet ebenfalls eine frische Verbindung und ruft vor `Accessibility.getFullAXTree` zuerst `Accessibility.enable` auf. Bleibt allein die AX-Abfrage trotz erreichbarem DOM unbeantwortet oder ist die Methode nicht vorhanden, lautet der Befund „dokumentierte Grenze: nicht verfügbar“. Namenquellen der Bedienelemente aus DOM und ARIA werden separat geprüft. Sie ersetzen weder einen berechneten Barrierebaum noch TalkBack. Die alten Zeitüberschreitungen auf der veralteten Verbindung belegen keine fehlende AX-Unterstützung.
+- Die Bilder benötigen eine Sichtprüfung, insbesondere für Systemleisten, Startverhalten, Verdeckung und Lesbarkeit. Der automatische Überlauftest deckt diese Punkte nicht ab. Dateiimport, Exporte, Teilen und Bestätigungsdialog sowie TalkBack auf einem echten Gerät sind nicht Teil dieses Emulatornachweises.
+- LocalTransport prüft nur das beschriebene Verhalten dieser Abbilder. Die Meldung „Transport rejected package“ beim Gerätewechsel belegt allein keine Ursache; entscheidend sind fehlende App-Daten und die wirksame Gegenprobe. Ein fehlender oder nicht auswertbarer Transport ergibt keinen dynamischen Nachweis. Die statische Prüfung der Sicherungsregeln bleibt davon getrennt.
+
+Die Auswertung unterscheidet „bestanden“, „nicht bestanden“, „ungültig“ und „dokumentierte Grenze“. Rückgabewert `0` bedeutet, dass alle gewählten Prüfungen und ihre Gegenproben bestanden sind; `1` kennzeichnet einen Fehler, `2` eine ungültige oder unvollständige Messung und `3` ausschließlich dokumentierte Grenzen neben bestandenen Prüfungen. `64` bedeutet falsche oder fehlende Laufargumente. Unbekannte Formate, fehlende Abschnitte und unwirksame Gegenproben sind kein Bestehen. Die bekannten Navigationsgrenzen haben eine eigene Stufe mit Begründung; andere unwirksame Gegenproben bleiben ungültig. Ausstehende Sichtprüfung bleibt ebenfalls ungültig. Für die Abnahme sind Grenzen einzeln ausdrücklich als Einschränkung zu akzeptieren oder durch zusätzliche Belege zu schließen; Code `3` darf nicht als vollständiges Bestehen behandelt werden.
+
+Die Offline-Neuauswertung verändert keinen ursprünglichen Laufordner:
+
+```sh
+node scripts/emulator-auswertung.mjs --lauf scratchpad/emulator/api30 --ausgabe scratchpad/emulator/auswertung-api30
+```
+
+Sie stellt ursprüngliche und neue Einzelbefunde gegenüber und nennt ihre Rohbelege. Unverändert übernommene Befunde und rekonstruierte Zusatzbefunde sind gekennzeichnet. Ein neuer Geräteversuch wird dadurch nicht ersetzt. LocalTransport-Dateien dürfen nur dann ohne TAR-Endblöcke ausgewertet werden, wenn alle Einträge vollständig sind, das Paket erfolgreich gesichert wurde und die Bytezahlen von `backupnow`, `adb pull` und Datei übereinstimmen. Normale TAR-Dateien werden weiterhin streng geprüft.
+
+### Ergebnisse der vollständigen Läufe
+
+Beobachtet am **30.09.2026**, Quellstand **`c7a0cd8` mit uncommitteten Prüfskripten**. Debug-APK in allen fünf Läufen: SHA-256 **`5b305d7dac933c1fad83f03b298edfaff1a0d54126cdd548df25e8985506cfea`**. Die folgende Tabelle bezeichnet diese Prüfsumme mit „Debug 5b305d7d…cfea“. Gezählt werden die Einzelbefunde in `ergebnis.json`; die jeweils zwölf bestandenen Aufräumschritte und die Gesamtüberschrift werden nicht mitgezählt. Es wurde in keinem Lauf ein Einzelbefund „nicht bestanden“ gemeldet.
+
+| Datum / Quellstand | Abbild / WebView | APK-SHA-256 | Gewählte Abläufe | Gegenproben | Rückgabewert | Sichtprüfung / Grenzen | Nachweis |
+|---|---|---|---|---|---|---|---|
+| 30.09.2026 / c7a0cd8 | API 30 / nicht erhoben | Debug 5b305d7d…cfea | netz, erster Versuch | Nicht ausgeführt | 2 | Rahmenabbruch beim Vergleich des AVD-Namens mit CR CR LF; 190 s | `api30-netz-versuch1`, `adb.jsonl` und `ergebnis.json` |
+| 30.09.2026 / c7a0cd8 | API 30 / 83.0.4103.120 | Debug 5b305d7d…cfea | netz | Vorher, nachher und Zugriffswege wirksam | 0 | 14 bestandene Einzelbefunde; 654 s | `api30-netz`, `netz.json` und `ergebnis.json` |
+| 30.09.2026 / c7a0cd8 | API 24 / nicht auslesbar | Debug 5b305d7d…cfea | installation | Nicht ausgeführt | 2 | Metadatenabbruch vor Installation; leeres `webviewupdate`, `-U` unbekannt; 134 s | `api24-installation`, `geraet.json` und `adb.jsonl` |
+| 30.09.2026 / c7a0cd8 | API 30 / 83.0.4103.120 | Debug 5b305d7d…cfea | alle | A1, Netz, vier Navigationsfälle, Debugflags, Fehlerseite wirksam | 2 | Ursprünglich 32 bestanden, 9 ungültig; darunter fünf bekannte Navigationsgrenzen; 1357 s | `api30-alle`, Rohbelege und `ergebnis.json` |
+| 30.09.2026 / c7a0cd8 | API 36 / 133.0.6943.137 | Debug 5b305d7d…cfea | alle | A1, Netz, vier Navigationsfälle und Debugflags wirksam | 2 | Ursprünglich 29 bestanden, 7 ungültig; darunter zwei gemeldete Navigationsgrenzen; 1067 s | `api36-alle`, Rohbelege und `ergebnis.json` |
+
+Auf beiden unterstützten Abbildern bestanden A1 einschließlich Gegenprobe, A2 bis A5, A7 einschließlich Netz und A9 sowie die Navigationsfälle `href`, `open`, `blank`, `tel` und die Gegenprobe für Releaseflags. Auf API 30 bestanden außerdem A6 als ausgeführter Ablauf mit den genannten Einzelgrenzen und beide Fehlerseitenproben; auf API 36 zusätzlich `netz-netstats`. Der Offline-Bau der Varianten funktionierte, und die Prüfsummen der geschützten Build-Verzeichnisse der echten App blieben unverändert. Emulator und installierte Testpakete wurden in allen Läufen entfernt.
+
+Ausstehend sind die Installationsablehnung auf API 24, B nach dem Signierschritt einschließlich Release-Start, Flags, Unix-Sockets und Ruhephase, A8 jenseits der Einstellung `font_scale=1.3`, A10 und die vollständige Navigation auf API 36. Die Schriftgröße wurde abschließend auf den Ausgangswert zurückgesetzt: API 30 `null`, API 36 `1.0`. Die alten A8/A10-Abbrüche sind kein Ergebnis der Bildschirm- oder Barrierebaumprüfung. Sichtprüfungen sind nicht bestätigt.
+
+Die fünf bekannten Navigationsgrenzen auf API 30 sind `mailto`/`intent` ohne Empfänger sowie `file`/`content`/`data` mit Sperre durch Chromium in App und Gegenprobe. Auf API 36 waren beim Abbruch nur `mailto` und `intent` gemeldet. Das vollständig aufgezeichnete `file`-Paar lässt sich nachträglich ebenfalls als Grenze auswerten; `content` und `data` wurden dort nicht mehr ausgeführt. Diese Lücke wird nicht mit Ergebnissen von API 30 gefüllt. Die Sicherungsabläufe brachen ursprünglich bei der Archivauswertung ab; ein Gerätewechsel auf API 36 wurde dabei nicht versucht.
+
+Die Neuauswertung der vollständigen Rohdateien vom selben Tag belegt die **Standardsicherung auf beiden Abbildern**: keine Daten der App im LocalTransport, gespeicherter Marker in der Gegenprobe. Deren `_full`-Dateien enthalten vollständige Einträge ohne TAR-Endblöcke (API 30: 114688 Bytes, API 36: 4860928 Bytes); `backupnow` und `adb pull` bestätigen jeweils dieselbe Größe. Danach zählt API 30 **33 bestanden, 4 ungültig, 5 dokumentierte Grenzen**, API 36 **30 bestanden, 6 ungültig, 3 dokumentierte Grenzen**, jeweils Rückgabewert `2`. Die ursprünglichen Ablaufabbrüche bleiben zusätzlich zum neuen Rohbefund erhalten. Auf API 36 ist der nicht ausgeführte Gerätewechsel eigens als ausstehend erfasst. Der erste Netzlauf und die beiden Rahmenabbrüche ändern ihre Bewertung nicht. Die korrigierte Laufsteuerung sowie Variantenwiederverwendung und automatische Cachelöschung müssen im nächsten Geräteversuch bestätigt werden.

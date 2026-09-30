@@ -1,0 +1,20 @@
+{
+  "appAusgabe": "Running incremental backup for 1 requested packages.\nPackage de.baremos.fristenrechner with result: Backup is not allowed\nBackup finished with result: Success",
+  "gegenAusgabe": "Running incremental backup for 1 requested packages.\nPackage @pm@ with result: Success\nPackage de.baremos.fristenrechner.gegenprobe with result: Success\nBackup finished with result: Success",
+  "appStopped": false,
+  "gegenStopped": false,
+  "appDateien": [],
+  "gegenDateien": [
+    "apps/de.baremos.fristenrechner.gegenprobe/r/app_webview/Default/Local Storage/leveldb/CURRENT",
+    "apps/de.baremos.fristenrechner.gegenprobe/r/app_webview/Default/Local Storage/leveldb/000003.log",
+    "apps/de.baremos.fristenrechner.gegenprobe/r/app_webview/Default/Local Storage/leveldb/MANIFEST-000001",
+    "apps/de.baremos.fristenrechner.gegenprobe/r/app_webview/Default/Local Storage/leveldb/LOCK",
+    "apps/de.baremos.fristenrechner.gegenprobe/r/app_webview/Default/Local Storage/leveldb/LOG"
+  ],
+  "appMarker": false,
+  "gegenMarker": true,
+  "appArchivLesbar": true,
+  "gegenArchivLesbar": true,
+  "deviceTransfer": false,
+  "logcat": "09-29 18:29:43.227 I/PFTBT   (  531): Initiating full-data transport backup of de.baremos.fristenrechner.gegenprobe token: 92863749"
+}

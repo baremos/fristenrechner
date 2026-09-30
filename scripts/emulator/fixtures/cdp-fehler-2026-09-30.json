@@ -1,0 +1,22 @@
+{
+  "api30": [
+    {
+      "zeile": 38,
+      "meldung": "A8: ungültig – Einstellung font_scale wurde nicht wiederhergestellt."
+    },
+    {
+      "zeile": 39,
+      "meldung": "A10: ungültig – CDP-Zeitüberschreitung: Accessibility.getFullAXTree"
+    }
+  ],
+  "api36": [
+    {
+      "zeile": 36,
+      "meldung": "A8: ungültig – CDP-Zeitüberschreitung: Runtime.evaluate"
+    },
+    {
+      "zeile": 37,
+      "meldung": "A10: ungültig – CDP-Zeitüberschreitung: Accessibility.getFullAXTree"
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+{
+  "vorher": {
+    "annahmen": 2
+  },
+  "nachher": {
+    "annahmen": 4
+  },
+  "app": [
+    {
+      "name": "fetch",
+      "annahmen": 0,
+      "ergebnis": "abgelehnt: TypeError: Failed to fetch",
+      "cdp": [
+        "loadingFailed type=Fetch errorText=net::ERR_CACHE_MISS"
+      ]
+    },
+    {
+      "name": "xhr",
+      "annahmen": 0,
+      "ergebnis": "error readyState=4 status=0",
+      "cdp": [
+        "loadingFailed type=XHR errorText=net::ERR_CACHE_MISS"
+      ]
+    },
+    {
+      "name": "image",
+      "annahmen": 0,
+      "ergebnis": "error",
+      "cdp": [
+        "loadingFailed type=Image errorText=net::ERR_CACHE_MISS"
+      ]
+    },
+    {
+      "name": "iframe",
+      "annahmen": 0,
+      "ergebnis": "load, href=nicht lesbar (SecurityError)",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_CACHE_MISS"
+      ]
+    },
+    {
+      "name": "websocket",
+      "annahmen": 0,
+      "ergebnis": "close code=1006 wasClean=false reason=",
+      "cdp": [
+        "Log network/error: WebSocket connection to 'wss://10.0.2.2:58837/app-ws' failed: Error in connection establishment: net::ERR_ACCESS_DENIED"
+      ]
+    },
+    {
+      "name": "sendBeacon",
+      "annahmen": 0,
+      "ergebnis": "Rueckgabe true",
+      "cdp": [
+        "loadingFailed type=Ping errorText=net::ERR_CACHE_MISS"
+      ]
+    },
+    {
+      "name": "eventSource",
+      "annahmen": 0,
+      "ergebnis": "error readyState=0",
+      "cdp": [
+        "loadingFailed type=EventSource errorText=net::ERR_CACHE_MISS"
+      ]
+    },
+    {
+      "name": "prefetch",
+      "annahmen": 0,
+      "ergebnis": "error",
+      "cdp": [
+        "loadingFailed type=Other errorText=net::ERR_CACHE_MISS"
+      ]
+    },
+    {
+      "name": "capacitorHttp",
+      "annahmen": 0,
+      "ergebnis": "abgelehnt: message=socket failed: EPERM (Operation not permitted) code=SocketException data=undefined",
+      "cdp": []
+    },
+    {
+      "name": "invalid",
+      "annahmen": 0,
+      "ergebnis": "abgelehnt: TypeError: Failed to fetch",
+      "cdp": [
+        "loadingFailed type=Fetch errorText=net::ERR_CACHE_MISS"
+      ]
+    }
+  ],
+  "gegen": [
+    {
+      "name": "fetch",
+      "annahmen": 4,
+      "ergebnis": "abgelehnt: TypeError: Failed to fetch",
+      "cdp": [
+        "loadingFailed type=Fetch errorText=net::ERR_CONNECTION_CLOSED"
+      ]
+    },
+    {
+      "name": "xhr",
+      "annahmen": 2,
+      "ergebnis": "timeout",
+      "cdp": [
+        "loadingFailed type=XHR errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    {
+      "name": "image",
+      "annahmen": 4,
+      "ergebnis": "error",
+      "cdp": [
+        "loadingFailed type=Image errorText=net::ERR_CONNECTION_CLOSED"
+      ]
+    },
+    {
+      "name": "iframe",
+      "annahmen": 2,
+      "ergebnis": "load, href=nicht lesbar (SecurityError)",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_CONNECTION_CLOSED"
+      ]
+    },
+    {
+      "name": "websocket",
+      "annahmen": 2,
+      "ergebnis": "close code=1006 wasClean=false reason=",
+      "cdp": []
+    },
+    {
+      "name": "sendBeacon",
+      "annahmen": 4,
+      "ergebnis": "Rueckgabe true",
+      "cdp": []
+    },
+    {
+      "name": "eventSource",
+      "annahmen": 2,
+      "ergebnis": "error readyState=0",
+      "cdp": [
+        "loadingFailed type=Ping errorText=net::ERR_CONNECTION_CLOSED",
+        "loadingFailed type=EventSource errorText=net::ERR_CONNECTION_CLOSED"
+      ]
+    },
+    {
+      "name": "prefetch",
+      "annahmen": 4,
+      "ergebnis": "error",
+      "cdp": [
+        "loadingFailed type=Other errorText=net::ERR_CONNECTION_CLOSED"
+      ]
+    },
+    {
+      "name": "capacitorHttp",
+      "annahmen": 1,
+      "ergebnis": "abgelehnt: message=connection closed code=SSLHandshakeException data=undefined",
+      "cdp": []
+    },
+    {
+      "name": "invalid",
+      "annahmen": 0,
+      "ergebnis": "abgelehnt: TypeError: Failed to fetch",
+      "cdp": [
+        "loadingFailed type=Fetch errorText=net::ERR_NAME_NOT_RESOLVED"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,299 @@
+[
+  {
+    "name": "href",
+    "app": {
+      "activity": "    mResumedActivity: ActivityRecord{1113465 u0 de.baremos.fristenrechner/.MainActivity t19}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 2764,
+      "pidNach": 2764,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    mResumedActivity: ActivityRecord{c5a767b u0 org.chromium.webview_shell/.WebViewBrowserActivity t20}",
+      "oben": "org.chromium.webview_shell/.WebViewBrowserActivity",
+      "pidVor": 2933,
+      "pidNach": 2933,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 1,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "open",
+    "app": {
+      "activity": "    mResumedActivity: ActivityRecord{f941c25 u0 de.baremos.fristenrechner/.MainActivity t21}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 3191,
+      "pidNach": 3191,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    mResumedActivity: ActivityRecord{2c5fc99 u0 org.chromium.webview_shell/.WebViewBrowserActivity t22}",
+      "oben": "org.chromium.webview_shell/.WebViewBrowserActivity",
+      "pidVor": 3356,
+      "pidNach": 3356,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 1,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "blank",
+    "app": {
+      "activity": "    mResumedActivity: ActivityRecord{9d638dd u0 de.baremos.fristenrechner/.MainActivity t23}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 3608,
+      "pidNach": 3608,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    mResumedActivity: ActivityRecord{f5eca5b u0 org.chromium.webview_shell/.WebViewBrowserActivity t24}",
+      "oben": "org.chromium.webview_shell/.WebViewBrowserActivity",
+      "pidVor": 3771,
+      "pidNach": 3771,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 2,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "mailto",
+    "app": {
+      "activity": "    mResumedActivity: ActivityRecord{932219e u0 de.baremos.fristenrechner/.MainActivity t25}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 4029,
+      "pidNach": 4029,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    mResumedActivity: ActivityRecord{6d9268d u0 de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity t26}",
+      "oben": "de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity",
+      "pidVor": 4196,
+      "pidNach": 4196,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "tel",
+    "app": {
+      "activity": "    mResumedActivity: ActivityRecord{1c06760 u0 de.baremos.fristenrechner/.MainActivity t27}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 4363,
+      "pidNach": 4363,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    mResumedActivity: ActivityRecord{cf3517f u0 com.android.dialer/.main.impl.MainActivity t29}",
+      "oben": "com.android.dialer/.main.impl.MainActivity",
+      "pidVor": 4527,
+      "pidNach": 4527,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "intent",
+    "app": {
+      "activity": "    mResumedActivity: ActivityRecord{278dcbf u0 de.baremos.fristenrechner/.MainActivity t30}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 4741,
+      "pidNach": 4741,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel\nD/Navigationssperre( 4741): gesperrt: intent",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    mResumedActivity: ActivityRecord{b90b32a u0 de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity t31}",
+      "oben": "de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity",
+      "pidVor": 4909,
+      "pidNach": 4909,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel\nD/Navigationssperre( 4741): gesperrt: intent",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "file",
+    "app": {
+      "activity": "    mResumedActivity: ActivityRecord{260155 u0 de.baremos.fristenrechner/.MainActivity t32}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 5074,
+      "pidNach": 5074,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel\nD/Navigationssperre( 4741): gesperrt: intent\nE/Capacitor/Console( 5074): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/",
+      "cdp": [
+        "Log security/error: Not allowed to load local resource: file:///sdcard/"
+      ]
+    },
+    "gegen": {
+      "activity": "    mResumedActivity: ActivityRecord{d7c3e4c u0 de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity t33}",
+      "oben": "de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity",
+      "pidVor": 5238,
+      "pidNach": 5238,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel\nD/Navigationssperre( 4741): gesperrt: intent\nE/Capacitor/Console( 5074): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/\nE/Capacitor/Console( 5238): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/",
+      "cdp": [
+        "Log security/error: Not allowed to load local resource: file:///sdcard/"
+      ]
+    }
+  },
+  {
+    "name": "content",
+    "app": {
+      "activity": "    mResumedActivity: ActivityRecord{c028719 u0 de.baremos.fristenrechner/.MainActivity t34}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 5402,
+      "pidNach": 5402,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel\nD/Navigationssperre( 4741): gesperrt: intent\nE/Capacitor/Console( 5074): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/\nE/Capacitor/Console( 5238): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/\nE/Capacitor/Console( 5402): File:  - Line 1 - Msg: Not allowed to load local resource: content://x",
+      "cdp": [
+        "Log security/error: Not allowed to load local resource: content://x"
+      ]
+    },
+    "gegen": {
+      "activity": "    mResumedActivity: ActivityRecord{cda9b5d u0 de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity t35}",
+      "oben": "de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity",
+      "pidVor": 5566,
+      "pidNach": 5566,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel\nD/Navigationssperre( 4741): gesperrt: intent\nE/Capacitor/Console( 5074): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/\nE/Capacitor/Console( 5238): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/\nE/Capacitor/Console( 5402): File:  - Line 1 - Msg: Not allowed to load local resource: content://x\nE/Capacitor/Console( 5566): File:  - Line 1 - Msg: Not allowed to load local resource: content://x",
+      "cdp": [
+        "Log security/error: Not allowed to load local resource: content://x"
+      ]
+    }
+  },
+  {
+    "name": "data",
+    "app": {
+      "activity": "    mResumedActivity: ActivityRecord{97e509d u0 de.baremos.fristenrechner/.MainActivity t36}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 5730,
+      "pidNach": 5730,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel\nD/Navigationssperre( 4741): gesperrt: intent\nE/Capacitor/Console( 5074): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/\nE/Capacitor/Console( 5238): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/\nE/Capacitor/Console( 5402): File:  - Line 1 - Msg: Not allowed to load local resource: content://x\nE/Capacitor/Console( 5566): File:  - Line 1 - Msg: Not allowed to load local resource: content://x\nE/Capacitor/Console( 5730): File:  - Line 1 - Msg: Not allowed to navigate top frame to data URL: data:text/html,x",
+      "cdp": [
+        "Log security/error: Not allowed to navigate top frame to data URL: data:text/html,x"
+      ]
+    },
+    "gegen": {
+      "activity": "    mResumedActivity: ActivityRecord{e2942c6 u0 de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity t37}",
+      "oben": "de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity",
+      "pidVor": 5895,
+      "pidNach": 5895,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2764): gesperrt: https\nD/Navigationssperre( 3191): gesperrt: https\nD/Navigationssperre( 3608): gesperrt: https\nD/Navigationssperre( 4029): gesperrt: mailto\nD/Navigationssperre( 4363): gesperrt: tel\nD/Navigationssperre( 4741): gesperrt: intent\nE/Capacitor/Console( 5074): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/\nE/Capacitor/Console( 5238): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/\nE/Capacitor/Console( 5402): File:  - Line 1 - Msg: Not allowed to load local resource: content://x\nE/Capacitor/Console( 5566): File:  - Line 1 - Msg: Not allowed to load local resource: content://x\nE/Capacitor/Console( 5730): File:  - Line 1 - Msg: Not allowed to navigate top frame to data URL: data:text/html,x\nE/Capacitor/Console( 5895): File:  - Line 1 - Msg: Not allowed to navigate top frame to data URL: data:text/html,x",
+      "cdp": [
+        "Log security/error: Not allowed to navigate top frame to data URL: data:text/html,x"
+      ]
+    }
+  }
+]

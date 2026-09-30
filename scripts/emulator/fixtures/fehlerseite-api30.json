@@ -1,0 +1,9 @@
+{
+  "ort": {
+    "pathname": "/startfehler.html",
+    "text": "Probe P3: Startfehler\n\nProbe-Seite fuer server.errorPath, ohne Skript."
+  },
+  "ausnahmen": [],
+  "logcat": "09-29 18:30:02.328 D/Capacitor( 5307): Handling local request: https://localhost/startfehler.html\n09-29 18:30:02.930 D/Capacitor( 5307): Handling local request: https://localhost/favicon.ico",
+  "erwarteterText": "Probe P3: Startfehler"
+}

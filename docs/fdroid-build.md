@@ -2,6 +2,8 @@
 
 Stand 2026-09-29 · Arbeitspaket 2.8, vier lokale Läufe mit der Minimal-App
 
+Ergänzt am 2026-09-30: Die App wurde ohne die Werkzeuge von F-Droid in zwei frischen Debian-Klonen gebaut. Die unsignierten Release-APKs sind untereinander und mit Windows bytegleich; Web-Build und Sync bestanden zusätzlich ohne Netz. Versionen und Grenzen stehen im [Linux-Nachweis der App](app.md#linux-nachweis-vom-2026-09-30). Ein Build dieser App mit Scanner oder auf dem Buildserver von F-Droid bleibt ausstehend.
+
 ## Zweck
 
 F-Droid baut jede App selbst aus den Quellen und prüft sie vorher mit einem Scanner. Dieses Dokument hält fest, wie der Nachweis dafür lokal geführt wird, was bisher geprüft ist und was offen bleibt.
@@ -435,11 +437,11 @@ Ergänzend `scandelete` für die untersuchten npm-Bereiche erproben und jede dad
 | Nur gezieltes Löschen nach Web-Build und `cap sync` | Macht die Trennung der Werkzeuge von den Android-Quellen überprüfbar und kann auch `.node` sowie eingebettetes WASM erfassen; Liste und Build müssen bei Änderungen der Pakete erneut geprüft werden. |
 | Gezielt löschen, ergänzend `scandelete` | Vorschlag für den nächsten Versuch: bewusste Paketbereinigung plus ausgewiesene Scanner-Löschungen; kein Ersatz für Inventar, Lizenzen und Prüfung des ausgelieferten Inhalts. |
 
-Vor einer Entscheidung zu F5 fehlen ein zusätzlicher Vergleich des Inventars nach der gezielten Bereinigung, nach dem Scanner und mit dem Inhalt der APK sowie ein erfolgreicher Build der späteren App. Die breite `scandelete`-Probe allein belegt weder die vollständige Entfernung vorgebauter Programme noch die Annahme durch F-Droid.
+Vor einer Entscheidung zu F5 fehlen ein zusätzlicher Vergleich des Inventars nach der gezielten Bereinigung, nach dem Scanner und mit dem Inhalt der APK sowie ein erfolgreicher Build der App mit dieser Bereinigung und dem Scanner. Der Release-Build der App ohne F-Droid ist seit dem 2026-09-30 unter Debian belegt. Die breite `scandelete`-Probe allein belegt weder die vollständige Entfernung vorgebauter Programme noch die Annahme durch F-Droid.
 
 `--omit=dev` trennt diese Rollen nicht zuverlässig. `--omit=optional` entfernt auch benötigte Compiler- und Bundler-Pakete. Plattformpakete für macOS, Windows, musl und WASM-Ausweichpakete sind von tatsächlich unter Debian x64 verwendeten Programmen zu unterscheiden.
 
-Die Minimal-App `d27fb91` hat ein anderes Lockfile: 488 Einträge mit `resolved`, nach `npm ci` 394 installierte Pakete. Beispielsweise enthält sie astro2tsx 0.1.0 statt 0.1.1 aus der ersten Tabelle. Die aktuelle saubere Linux-Kopie des Paket-Repositorys hat 321 installierte Pakete und 412 Fremdpakete laut Lizenzprüfung; sie ist ebenfalls kein vollständiger App-Build. Die erste Tabelle darf deshalb nicht als beobachtete Paketliste der Minimal-App oder der fertigen Android-App gelesen werden.
+Die Minimal-App `d27fb91` hat ein anderes Lockfile: 488 Einträge mit `resolved`, nach `npm ci` 394 installierte Pakete. Beispielsweise enthält sie astro2tsx 0.1.0 statt 0.1.1 aus der ersten Tabelle. Die am 2026-09-29 untersuchte saubere Linux-Kopie des Paket-Repositorys hatte 321 installierte Pakete und 412 Fremdpakete laut Lizenzprüfung; sie war ebenfalls kein vollständiger App-Build. Die erste Tabelle darf deshalb nicht als beobachtete Paketliste der Minimal-App oder der inzwischen unter Debian gebauten Android-App gelesen werden.
 
 ## Prüfung der ersten Fassung der Skripte unter Windows
 
@@ -464,4 +466,4 @@ Nach Ergänzung der Prüfungen für Steuerzeichen, Leerraum und sichtbare Unicod
 3. Erledigt am 2026-09-29: vier lokale Aufrufe von `fdroid build` in Debian; Lauf 3 und 4 mit `--versuch-scandelete` ergaben die bytegleiche Minimal-APK.
 4. Erledigt am 2026-09-29: Legacy-Warnung als eng begrenzte bekannte Meldung bewertet, Archivprüfung durch Lauf 4 belegt; dessen Neuauswertung mit `eaf3939` besteht ohne Beanstandung mit neun bekannten Meldungen.
 5. Den vorgeschlagenen bereinigten Build erproben und F5 anhand der Inventare und Vergleichsläufe entscheiden; F6 bleibt offen.
-6. Am Ende von Stufe 2: alles mit der App wiederholen; den Nachweis mit dem dann verwendeten Buildserver von F-Droid gesondert führen.
+6. Release-Build der App ohne F-Droid am 2026-09-30 unter Debian erledigt, mit bytegleichem Ergebnis in zwei Klonen und gegenüber Windows. Am Ende von Stufe 2 bleiben die Läufe mit Bereinigung und Scanner für die App zu wiederholen; den Nachweis mit dem dann verwendeten Buildserver von F-Droid gesondert führen.

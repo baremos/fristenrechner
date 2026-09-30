@@ -2,7 +2,7 @@
 
 Stand 2026-09-28 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review der Festlegung am 2026-09-27 bestanden. Am 2026-09-28 geändert: Kommandozeilenwerkzeuge 22.0 statt 23.0, Prüfung der Pakete mit `scripts/SdkPruefung.java`, Testgeräte. Projekt-SDK eingerichtet, Beispielbuild und Probe im Emulator bestanden, siehe Abschnitt „Nachweis". Kreuz-Review dieser Änderungen am 2026-09-28 bestanden. Am 2026-09-29 ergänzt: Unter Linux wird nur die Gruppe „Build" eingerichtet.
 
-Ergänzt am 2026-09-30: Die App setzt Android 11 (API 30) und WebView ab Version 83 voraus. Ihr Wrapper verwendet Gradle 8.14.5 als `bin`-Verteilung. Die AndroidX-Versionen aus `app/android/variables.gradle` sind unten aufgeführt. Debug- und Release-Build der App unter Windows sind erfolgt; Ergebnisse und ausstehende Prüfungen stehen in [app.md](app.md).
+Ergänzt am 2026-09-30: Die App setzt Android 11 (API 30) und WebView ab Version 83 voraus. Ihr Wrapper verwendet Gradle 8.14.5 als `bin`-Verteilung. Die AndroidX-Versionen aus `app/android/variables.gradle` sind unten aufgeführt. Debug- und Release-Build der App unter Windows sowie zwei strenge Release-Builds unter Debian sind erfolgt. Die unsignierten Release-APKs sind bytegleich. Ergebnisse und Grenzen stehen in [app.md](app.md).
 
 ## Zweck
 
@@ -265,6 +265,8 @@ node scripts/app-bauen.mjs --android --aufgabe assembleRelease --streng --ohne-t
 
 `--ohne-testgruppe` gilt auch für `node scripts/android-build.mjs --nur-pruefen`. Die Prüfung der Gruppe „Build" und aller übrigen Werkzeuge bleibt unverändert; `--streng` macht weiterhin aus jedem verbleibenden Hinweis einen Abbruch.
 
+Am 2026-09-30 bestand dieser Ablauf für `c7a0cd8` in zwei frischen Klonen unter Debian 13.5 in WSL 2 mit Node.js 24.21.0, npm 11.19.0 und OpenJDK 21.0.12.1. Beide Release-APKs waren untereinander und mit Windows bytegleich. Web-Build und Sync bestanden zusätzlich ohne Netzwerkzugriff; Gradle lief mit Netzwerkzugriff. Debug unter Linux und ein zweiter Rechner sind nicht geprüft. Einzelheiten stehen im [Linux-Nachweis](app.md#linux-nachweis-vom-2026-09-30).
+
 ## Einrichtung unter Windows
 
 | Schritt | Befehl |
@@ -398,7 +400,7 @@ Beispielprojekt: eine Astro-Seite mit einem TypeScript-Modul und einem Test, Cap
 |---|---|
 | Auflösung des Baums mit npm 11.19.0 und `min-release-age=7`, `ignore-scripts=true` | bestanden am 2026-09-27, 393 Pakete |
 | `npm ci`, Web-Build, `astro check`, Vitest mit Node 24.21.0 und npm 11.19.0 | bestanden am 2026-09-27 |
-| `npm ci`, Web-Build, `astro check`, Vitest mit npm 10.9.8 aus dem Lockfile von npm 11.19.0 | bestanden am 2026-09-27 unter Node 22.23.1. Dieser Stand liegt unter der Untergrenze. Die Wiederholung mit einem unterstützten Stand der Reihe 22 ist offen. |
+| `npm ci`, Web-Build, `astro check`, Vitest mit npm 10.9.8 aus dem Lockfile von npm 11.19.0 | bestanden am 2026-09-27 unter Node 22.23.1, der unter der Untergrenze liegt. Wiederholt am 2026-09-30 mit Node 22.23.2 und npm 10.9.8 in einer sauberen Windows-Kopie von `c7a0cd8`: `npm ci`, `npm test`, `npm run check`, `npm run build` und `npm run lizenzen` jeweils mit Rückgabewert 0; Arbeitskopie unverändert. |
 | Build-Skript gegen ein nachgestelltes SDK: fehlendes Paket, abweichende Revision, strenge Prüfung, widersprüchliche Ortsangaben, ungeeignetes JDK | bestanden am 2026-09-27 |
 | Einrichtungsskript: Syntax und Hilfsfunktionen unter Windows PowerShell 5.1 und PowerShell 7.6 | bestanden am 2026-09-27, wiederholt am 2026-09-28 |
 | Einrichtungsskript gegen ein leeres SDK, Lizenzbedingungen nicht bestätigt | bestanden am 2026-09-28: Archiv der Kommandozeilenwerkzeuge 22.0 mit passender Prüfsumme geladen, `sdkmanager` zeigt die Bedingungen von `android-sdk-license`, installiert nichts und legt keine Zustimmung ab, das Skript endet mit Code 2 |

@@ -1,0 +1,2 @@
+versionCode=100 minSdk=30 targetSdk=36
+flags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]

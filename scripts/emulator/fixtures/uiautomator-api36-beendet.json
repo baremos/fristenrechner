@@ -1,0 +1,12 @@
+{
+  "datum": "2026-09-30",
+  "api": 36,
+  "zeile": 320,
+  "args": [
+    "shell",
+    "uiautomator dump /data/local/tmp/fristenrechner-emulator.xml"
+  ],
+  "code": 137,
+  "out": "UI hierchary dumped to: /data/local/tmp/fristenrechner-emulator.xml\r\n",
+  "err": ""
+}

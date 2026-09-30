@@ -1,0 +1,233 @@
+[
+  {
+    "name": "href",
+    "app": {
+      "activity": "    topResumedActivity=ActivityRecord{98173035 u0 de.baremos.fristenrechner/.MainActivity t23}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 2745,
+      "pidNach": 2745,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 2745): gesperrt: https",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    topResumedActivity=ActivityRecord{162645745 u0 org.chromium.webview_shell/.WebViewBrowserActivity t24}",
+      "oben": "org.chromium.webview_shell/.WebViewBrowserActivity",
+      "pidVor": 2899,
+      "pidNach": 2899,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 3,
+      "logcat": "",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "open",
+    "app": {
+      "activity": "    topResumedActivity=ActivityRecord{200429940 u0 de.baremos.fristenrechner/.MainActivity t25}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 3132,
+      "pidNach": 3132,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 3132): gesperrt: https",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    topResumedActivity=ActivityRecord{182211812 u0 org.chromium.webview_shell/.WebViewBrowserActivity t26}",
+      "oben": "org.chromium.webview_shell/.WebViewBrowserActivity",
+      "pidVor": 3280,
+      "pidNach": 3280,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 2,
+      "logcat": "",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "blank",
+    "app": {
+      "activity": "    topResumedActivity=ActivityRecord{242593848 u0 de.baremos.fristenrechner/.MainActivity t27}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 3511,
+      "pidNach": 3511,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 3511): gesperrt: https",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    topResumedActivity=ActivityRecord{167395314 u0 org.chromium.webview_shell/.WebViewBrowserActivity t28}",
+      "oben": "org.chromium.webview_shell/.WebViewBrowserActivity",
+      "pidVor": 3661,
+      "pidNach": 3661,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 3,
+      "logcat": "",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "mailto",
+    "app": {
+      "activity": "    topResumedActivity=ActivityRecord{118865839 u0 de.baremos.fristenrechner/.MainActivity t29}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 3890,
+      "pidNach": 3890,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 3890): gesperrt: mailto",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    topResumedActivity=ActivityRecord{151739397 u0 de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity t30}",
+      "oben": "de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity",
+      "pidVor": 4040,
+      "pidNach": 4040,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "tel",
+    "app": {
+      "activity": "    topResumedActivity=ActivityRecord{262635367 u0 de.baremos.fristenrechner/.MainActivity t31}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 4198,
+      "pidNach": 4198,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 4198): gesperrt: tel",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    topResumedActivity=ActivityRecord{135324234 u0 com.android.dialer/.main.impl.MainActivity t33}",
+      "oben": "com.android.dialer/.main.impl.MainActivity",
+      "pidVor": 4350,
+      "pidNach": 4350,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "intent",
+    "app": {
+      "activity": "    topResumedActivity=ActivityRecord{110120883 u0 de.baremos.fristenrechner/.MainActivity t34}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 4569,
+      "pidNach": 4569,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "D/Navigationssperre( 4569): gesperrt: intent",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    },
+    "gegen": {
+      "activity": "    topResumedActivity=ActivityRecord{246765261 u0 de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity t35}",
+      "oben": "de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity",
+      "pidVor": 4722,
+      "pidNach": 4722,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "",
+      "cdp": [
+        "loadingFailed type=Document errorText=net::ERR_ABORTED canceled"
+      ]
+    }
+  },
+  {
+    "name": "file",
+    "app": {
+      "activity": "    topResumedActivity=ActivityRecord{97141646 u0 de.baremos.fristenrechner/.MainActivity t36}",
+      "oben": "de.baremos.fristenrechner/.MainActivity",
+      "pidVor": 4878,
+      "pidNach": 4878,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "E/Capacitor/Console( 4878): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/",
+      "cdp": [
+        "Log security/error: Not allowed to load local resource: file:///sdcard/"
+      ]
+    },
+    "gegen": {
+      "activity": "    topResumedActivity=ActivityRecord{191030682 u0 de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity t37}",
+      "oben": "de.baremos.fristenrechner.gegenprobe/de.baremos.fristenrechner.MainActivity",
+      "pidVor": 5028,
+      "pidNach": 5028,
+      "ort": {
+        "origin": "https://localhost",
+        "href": "https://localhost/"
+      },
+      "annahmen": 0,
+      "logcat": "E/Capacitor/Console( 5028): File:  - Line 1 - Msg: Not allowed to load local resource: file:///sdcard/",
+      "cdp": [
+        "Log security/error: Not allowed to load local resource: file:///sdcard/"
+      ]
+    }
+  }
+]

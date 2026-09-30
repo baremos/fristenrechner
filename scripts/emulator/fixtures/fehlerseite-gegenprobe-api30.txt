@@ -1,0 +1,2 @@
+09-29 18:30:33.202 E/Capacitor( 5466): Unable to open asset URL: https://localhost/startfehler.html
+09-29 18:30:33.235 E/Capacitor( 5466): Unable to open asset URL: https://localhost/startfehler.html

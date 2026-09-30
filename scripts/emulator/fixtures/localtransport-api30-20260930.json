@@ -1,0 +1,21 @@
+{
+  "datum": "2026-09-30",
+  "api": 30,
+  "paket": "de.baremos.fristenrechner.gegenprobe",
+  "archivBytes": 114688,
+  "auswahl": [
+    {
+      "offset": 14336,
+      "bytes": 2048,
+      "name": "apps/de.baremos.fristenrechner.gegenprobe/r/app_webview/Default/Local Storage/leveldb/000003.log"
+    },
+    {
+      "offset": 113664,
+      "bytes": 1024,
+      "name": "apps/de.baremos.fristenrechner.gegenprobe/sp/WebViewChromiumPrefs.xml"
+    }
+  ],
+  "marker": "EMULATORc8c07a8adb404192b43a5448ad308d56",
+  "backupAusgabe": "Running incremental backup for 1 requested packages.\nPackage @pm@ with result: Success\nPackage de.baremos.fristenrechner.gegenprobe with progress: 2560/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 3584/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 6144/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 11264/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 16384/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 17920/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 19968/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 28160/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 36352/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 44544/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 52736/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 60928/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 69120/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 77312/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 85504/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 93696/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 101888/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 110080/112128\nPackage de.baremos.fristenrechner.gegenprobe with progress: 114688/112128\nPackage de.baremos.fristenrechner.gegenprobe with result: Success\nBackup finished with result: Success",
+  "pullAusgabe": "\n/data/data/com.android.localtransport/files/1/_full/de.baremos.fristenrechner.gegenprobe: 1 file pulled, 0 skipped. 24.8 MB/s (114688 bytes in 0.004s)\r\n"
+}
