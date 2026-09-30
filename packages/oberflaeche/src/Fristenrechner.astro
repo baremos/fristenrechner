@@ -471,6 +471,7 @@ const bundeslaender = [
     --phase-teststellung: #a56721;
     --phase-zuschlag: #4d6b3c;
     margin-top: 1.5rem;
+    overflow-wrap: anywhere;
   }
 
   .fristenrechner h2,
@@ -550,6 +551,7 @@ const bundeslaender = [
   }
 
   .fristenrechner fieldset {
+    min-width: 0;
     margin: 1.5rem 0 0;
     padding: 1rem;
     border: 1px solid #d7d7d3;
@@ -557,6 +559,8 @@ const bundeslaender = [
   }
 
   .fristenrechner legend {
+    box-sizing: border-box;
+    max-width: 100%;
     padding-inline: 0.35rem;
     font-weight: 700;
   }
@@ -588,6 +592,7 @@ const bundeslaender = [
   .fristenrechner label:not(.check-card):not(.file-button) {
     min-width: 0;
     display: grid;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 0.35rem;
     color: #37373b;
     font-weight: 650;
@@ -658,7 +663,7 @@ const bundeslaender = [
 
   @media (max-width: 34rem) {
     .fristenrechner .zeit-zeile {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
@@ -678,6 +683,9 @@ const bundeslaender = [
 
   .fristenrechner input,
   .fristenrechner select {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
     width: 100%;
     min-height: 2.75rem;
     padding: 0.55rem 0.65rem;
@@ -722,7 +730,7 @@ const bundeslaender = [
 
   @media (max-width: 34rem) {
     .fristenrechner .optionen-zeile {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
@@ -748,6 +756,7 @@ const bundeslaender = [
   }
 
   .fristenrechner .check-card input {
+    flex-shrink: 0;
     width: 1.15rem;
     min-height: auto;
     height: 1.15rem;
@@ -758,6 +767,10 @@ const bundeslaender = [
   .fristenrechner .check-card span,
   .fristenrechner .check-card small {
     display: block;
+  }
+
+  .fristenrechner .check-card > span {
+    min-width: 0;
   }
 
   .fristenrechner .check-card small {
@@ -851,6 +864,9 @@ const bundeslaender = [
   }
 
   .fristenrechner .button {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
     width: auto;
     min-height: 2.75rem;
     padding: 0.55rem 0.85rem;
@@ -999,6 +1015,7 @@ const bundeslaender = [
 
   .fristenrechner .table-scroll {
     overflow-x: auto;
+    overflow-wrap: normal;
   }
 
   .fristenrechner .timeline {
@@ -1026,6 +1043,7 @@ const bundeslaender = [
   .fristenrechner .timeline-phase > header {
     padding: 0.7rem;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-content: start;
     gap: 0.2rem;
     border-bottom: 1px solid #dededb;
@@ -1062,6 +1080,7 @@ const bundeslaender = [
   .fristenrechner .timeline-milestones li {
     position: relative;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.12rem;
   }
 
@@ -1205,7 +1224,7 @@ const bundeslaender = [
     .fristenrechner .two-columns,
     .fristenrechner .four-columns,
     .fristenrechner .check-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .fristenrechner .form-header,
@@ -1223,6 +1242,12 @@ const bundeslaender = [
       width: 100%;
     }
 
+    .fristenrechner .form-actions .button,
+    .fristenrechner .export-actions .button {
+      height: auto;
+      white-space: normal;
+    }
+
     .fristenrechner .form-actions {
       align-items: stretch;
       flex-direction: column;
@@ -1233,17 +1258,17 @@ const bundeslaender = [
     }
 
     .fristenrechner .timeline-milestones {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .fristenrechner .timeline {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
   @media (max-width: 30rem) {
     .fristenrechner .export-actions {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
