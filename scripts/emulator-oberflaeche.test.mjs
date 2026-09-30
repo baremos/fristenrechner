@@ -284,7 +284,7 @@ async function anzeigeUmgebung({ rotationZurueck = false, tippenFehler = false }
 
 test('A8 verbindet neu, tippt mit nativen Koordinaten und stellt alle Einstellungen zurück', async () => {
   const u = await anzeigeUmgebung();
-  status(await u.schritte.get('A8')(), 'ungültig');
+  status(await u.schritte.get('A8')(), 'Sichtprüfung ausstehend');
   assert.equal(u.aufrufe.filter(a => a[0] === 'cdp' && a[2]?.neu === true).length, 5);
   assert.equal(u.aufrufe.filter(a => a[0] === 'shot').length, 5);
   assert.equal(u.display(), 1);

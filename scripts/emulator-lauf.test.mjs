@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { dirname, join, relative, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { lauf, variantePlan, avdName, geraeteDaten, stelleEinstellungZurueck, systemDialog, warteAufSystemoberflaeche } from './emulator-lauf.mjs';
+import { lauf, variantePlan, avdName, geraeteDaten, stelleEinstellungZurueck, systemDialog, systemWaitPunkt, ansichtsKnoten, leseAnsichtsbaum, bildschirmfoto, warteAufSystemoberflaeche } from './emulator-lauf.mjs';
 import { APP, argumente, ausgabePruefen, echterPfad, innen, mitAufraeumen, prozess, schreiber, websocketPruefen } from './emulator/rahmen.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -60,48 +60,173 @@ test('ANR-Fokus der Systemoberfläche gilt trotz oberster App-Activity als verde
   assert.equal(systemDialog({ xml: '<node text="Systemoberfläche reagiert nicht" />' }), true);
 });
 
-function systemUiProbe(verdecktBis, { nurXml = false } = {}) {
+const dialogFixture = JSON.parse(readFileSync(join(repo, 'scripts/emulator/fixtures/systemui-wait-api36.json'), 'utf8'));
+const freierBaum = '<hierarchy rotation="0"></hierarchy>';
+
+test('Wait wird ausschließlich aus dem eindeutigen echten Android-Knoten abgeleitet', () => {
+  assert.equal(ansichtsKnoten(dialogFixture.xml).length, 3);
+  assert.deepEqual(systemWaitPunkt(dialogFixture.xml), { text: 'Wait', bounds: [70, 1269, 1010, 1395], x: 540, y: 1332 });
+  assert.deepEqual(systemWaitPunkt(dialogFixture.xml.replace('text="Wait"', 'text="Warten"')), { text: 'Warten', bounds: [70, 1269, 1010, 1395], x: 540, y: 1332 });
+  assert.equal(systemDialog(dialogFixture), true);
+});
+
+for (const [name, transform] of [
+  ['fehlender Wait-Text', x => x.replace('text="Wait"', 'text="Close app"')],
+  ['Teiltext', x => x.replace('text="Wait"', 'text="Please Wait"')],
+  ['abweichende Großschreibung', x => x.replace('text="Wait"', 'text="wait"')],
+  ['doppelter Treffer', x => x.replace('text="Close app"', 'text="Wait"')],
+  ['fremdes Paket', x => x.replaceAll('package="android"', 'package="example.app"')],
+  ['Titel einer anderen App', x => x.replace("System UI isn't responding", "Example app isn't responding")],
+  ['Titel ohne Systemdialog-Kennung', x => x.replace('resource-id="android:id/alertTitle"', 'resource-id="example.app:id/alertTitle"')],
+  ['gesperrte Schaltfläche', x => x.replaceAll('enabled="true"', 'enabled="false"')],
+  ['unsichtbare Schaltfläche', x => x.replace('text="Wait"', 'text="Wait" visible-to-user="false"')],
+  ['fehlende bounds', x => x.replace('bounds="[70,1269][1010,1395]"', '')],
+  ['leere bounds', x => x.replace('[70,1269][1010,1395]', '[70,1269][70,1395]')],
+  ['negative bounds', x => x.replace('[70,1269][1010,1395]', '[-1,1269][1010,1395]')],
+  ['unsichere Zahlen', x => x.replace('[70,1269][1010,1395]', '[70,1269][999999999999999999,1395]')],
+  ['abgeschnittener Baum', x => x.replace('</hierarchy>', '')],
+  ['falsche Verschachtelung', x => x.replace('</hierarchy>', '</node></hierarchy>')],
+  ['unvollständiges zusätzliches Tag', x => x.replace('</hierarchy>', '<</hierarchy>')],
+  ['doppelte Attribute', x => x.replace('text="Wait"', 'text="Wait" text="Close app"')],
+  ['zusätzliche Wurzel', x => x + x],
+]) test(`Wait verwirft ${name} ohne Koordinaten zu raten`, () => {
+  assert.equal(systemWaitPunkt(transform(dialogFixture.xml)), null);
+});
+
+function systemUiProbe(verdecktBis, { nurXml = false, xml: baum = dialogFixture.xml, tippFehler = false } = {}) {
   let probes = 0;
-  const saved = new Map(), sleeps = [], calls = [];
-  return { saved, sleeps, calls, ctx: {
+  const saved = new Map(), sleeps = [], calls = [], befunde = [];
+  const verdeckt = () => typeof verdecktBis === 'function' ? verdecktBis(probes) : probes <= verdecktBis;
+  return { saved, sleeps, calls, befunde, ctx: {
     shell: async (command, options) => {
-      calls.push(command); assert.equal(command, 'dumpsys activity activities'); assert.equal(options.timeoutMs, 10000);
+      calls.push(command); assert.equal(options.timeoutMs, 10000);
+      if (command.startsWith('input ')) { assert.equal(command, 'input tap 540 1332'); if (tippFehler) throw new Error('Eingabe unterbrochen'); return ''; }
+      assert.equal(command, 'dumpsys activity activities');
       probes++;
-      return !nurXml && probes <= verdecktBis ? 'mCurrentFocus=Window{2 u0 Application Not Responding: com.android.systemui}' : 'mCurrentFocus=Window{3 u0 App}';
+      return !nurXml && verdeckt() ? dialogFixture.activity : 'mCurrentFocus=Window{3 u0 App}';
     },
     uiBaum: async (name, options) => {
       assert.equal(options.timeoutMs, 10000);
-      const xml = nurXml && probes <= verdecktBis ? '<hierarchy><node text="System UI isn\'t responding" /></hierarchy>' : '<hierarchy />';
+      const xml = verdeckt() ? baum : freierBaum;
       saved.set(`${name}-ansicht.xml`, xml); return xml;
     },
+    befund: (id, wert) => { befunde.push({ id, ...wert }); },
     sleep: async ms => { sleeps.push(ms); }, log() {}, save: (name, value) => { saved.set(name, structuredClone(value)); },
   } };
 }
 
-test('SystemUI wird nach erneutem Warten wieder geprüft und jeder Versuch belegt', async () => {
+test('SystemUI wird mit Wait geschlossen und jeder Versuch samt Koordinaten belegt', async () => {
   const p = systemUiProbe(2);
   const r = await warteAufSystemoberflaeche(p.ctx, 'start-probe');
   assert.match(r.activity, /u0 App/);
+  assert.equal(r.waitVersuche, 2);
   assert.deepEqual(p.sleeps, [10000, 10000]);
   assert.deepEqual(p.saved.get('start-probe-systemui.json').map(v => v.verdeckt), [true, true, false]);
-  assert.ok(p.saved.has('start-probe-systemui-0.activity.txt'));
+  for (let i = 0; i <= 2; i++) {
+    assert.ok(p.saved.has(`start-probe-systemui-${i}.activity.txt`));
+    assert.ok(p.saved.has(`start-probe-systemui-${i}-ansicht.xml`));
+  }
+  assert.equal(p.calls.filter(c => c === 'input tap 540 1332').length, 2);
+  assert.deepEqual(p.saved.get('start-probe-systemui.json')[0].tipp, systemWaitPunkt(dialogFixture.xml));
+  assert.equal(p.saved.get('start-probe-systemui.json')[0].nachpruefung.verdeckt, true);
+  assert.equal(p.saved.get('start-probe-systemui.json')[1].nachpruefung.verdeckt, false);
+  assert.equal(p.befunde[0].id, 'Systemdialog mit Wait geschlossen');
+  assert.equal(p.befunde[0].details.versuche, 2);
 });
 
-test('Dialog nur im UI-Baum löst ebenfalls erneutes Warten aus', async () => {
+test('Dialog nur im UI-Baum löst ebenfalls Wait aus', async () => {
   const p = systemUiProbe(1, { nurXml: true });
   await warteAufSystemoberflaeche(p.ctx, 'bild', { ui: true });
   assert.deepEqual(p.sleeps, [10000]);
   assert.ok(p.saved.has('bild-systemui-0-ansicht.xml'));
 });
 
-test('Dauerhafter SystemUI-Dialog endet nach sechs Wartezeiten ungültig ohne Eingabe', async () => {
+test('Dauerhafter SystemUI-Dialog endet nach genau drei Wait-Versuchen ungültig', async () => {
   const p = systemUiProbe(Infinity);
-  await assert.rejects(warteAufSystemoberflaeche(p.ctx, 'dauer'), /nach sechs weiteren Wartezeiten/);
+  await assert.rejects(warteAufSystemoberflaeche(p.ctx, 'dauer'), /nach 3 Wait-Versuchen/);
   assert.equal(p.calls.length, 7);
-  assert.equal(p.sleeps.length, 6);
-  assert.equal(p.sleeps.reduce((a, b) => a + b), 60000);
-  assert.equal(p.saved.get('dauer-systemui.json').length, 7);
+  assert.equal(p.sleeps.length, 3);
+  assert.equal(p.calls.filter(c => c.startsWith('input ')).length, 3);
+  assert.equal(p.saved.get('dauer-systemui.json').length, 4);
+  assert.equal(p.befunde.length, 0);
+});
+
+test('Fehlende eindeutige Wait-Schaltfläche beendet ohne Eingabe und mit Rohbeleg', async () => {
+  const p = systemUiProbe(Infinity, { xml: dialogFixture.xml.replace('text="Wait"', 'text="Close app"') });
+  await assert.rejects(warteAufSystemoberflaeche(p.ctx, 'kein-wait'), /kein Tippen/);
   assert.equal(p.calls.some(c => c.startsWith('input ')), false);
+  assert.match(p.saved.get('kein-wait-systemui.json')[0].ergebnis, /Keine eindeutige/);
+  assert.equal(p.befunde.length, 0);
+});
+
+for (const [name, xml] of [
+  ['ANR einer anderen App', dialogFixture.xml.replace("System UI isn't responding", "Example app isn't responding")],
+  ['unverknüpfter Wait-Knoten', dialogFixture.xml.replace("System UI isn't responding", 'Example dialog')],
+  ['SystemUI-Text in App-Inhalt', dialogFixture.xml.replace('resource-id="android:id/alertTitle"', 'resource-id="example.app:id/title"')],
+]) test(`Veralteter SystemUI-Fokus mit ${name} führt zu keinem Tippen`, async () => {
+  const p = systemUiProbe(Infinity, { xml });
+  await assert.rejects(warteAufSystemoberflaeche(p.ctx, 'veralteter-fokus'), /kein Tippen/);
+  assert.equal(p.calls.some(c => c.startsWith('input ')), false);
+  assert.equal(p.saved.get('veralteter-fokus-systemui.json')[0].verdeckt, true);
+  assert.match(p.saved.get('veralteter-fokus-systemui.json')[0].ergebnis, /aktuellem SystemUI-Dialogtitel/);
+});
+
+test('Fehlgeschlagenes input tap behält Koordinaten und Fehler ohne Erfolgseintrag', async () => {
+  const p = systemUiProbe(Infinity, { tippFehler: true });
+  await assert.rejects(warteAufSystemoberflaeche(p.ctx, 'fehler'), /Eingabe unterbrochen/);
+  assert.match(p.saved.get('fehler-systemui.json')[0].ergebnis, /Wait-Eingabe fehlgeschlagen/);
+  assert.equal(p.saved.get('fehler-systemui.json')[0].tipp.x, 540);
+  assert.equal(p.befunde.length, 0);
+});
+
+test('Fehlender Dialog verlangt ohne ui keinen Baum und keinen Erfolgseintrag', async () => {
+  const p = systemUiProbe(0);
+  p.ctx.uiBaum = () => { throw new Error('Darf ohne Dialog nicht aufgerufen werden'); };
+  assert.equal((await warteAufSystemoberflaeche(p.ctx, 'frei')).waitVersuche, 0);
+  assert.equal(p.befunde.length, 0);
+});
+
+test('Nachträglich erschienener Dialog wird geschlossen und das Bildschirmfoto neu aufgenommen', async () => {
+  const p = systemUiProbe(n => n === 2);
+  let bilder = 0;
+  p.ctx.adb = async args => { assert.deepEqual(args, ['exec-out', 'screencap', '-p']); return { code: 0, out: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, ++bilder]) }; };
+  await bildschirmfoto(p.ctx, 'probe.png');
+  assert.equal(bilder, 2);
+  assert.equal(p.saved.get('probe-vor-wait-0.png')[8], 1);
+  assert.equal(p.saved.get('probe.png')[8], 2);
+  assert.equal(p.befunde[0].id, 'Systemdialog mit Wait geschlossen');
+});
+
+test('Bildaufnahme beschränkt wiederkehrende Dialoge zusammen auf drei Wait-Betätigungen', async () => {
+  const p = systemUiProbe(n => n % 2 === 0);
+  p.ctx.adb = async () => ({ code: 0, out: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]) });
+  await assert.rejects(bildschirmfoto(p.ctx, 'wiederkehrend.png'), /Wait-Versuchen/);
+  assert.equal(p.calls.filter(c => c.startsWith('input ')).length, 3);
+  assert.equal(p.saved.has('wiederkehrend.png'), false);
+});
+
+const beendetFixture = JSON.parse(readFileSync(join(repo, 'scripts/emulator/fixtures/uiautomator-api36-beendet.json'), 'utf8'));
+for (const [name, code, xml, readCode, gueltig] of [
+  ['normales Ende', 0, dialogFixture.xml, 0, true],
+  ['137 mit vollständiger Datei', beendetFixture.code, dialogFixture.xml, 0, true],
+  ['137 mit abgeschnittener Datei', 137, '<hierarchy><node', 0, false],
+  ['137 mit falsch geschlossener Datei', 137, '<hierarchy><node></hierarchy>', 0, false],
+  ['137 ohne Datei', 137, '', 1, false],
+  ['fehlende Datei nach Erfolg', 0, '', 1, false],
+  ['sonstiger Fehler', 1, dialogFixture.xml, 0, false],
+]) test(`UI-Baum: ${name} wird ${gueltig ? 'gelesen' : 'verworfen'}`, async () => {
+  const calls = [], saved = new Map();
+  const ctx = {
+    shell: async command => { calls.push(command); },
+    adb: async args => { calls.push(args[1]); return args[1].startsWith('uiautomator ') ? { code, out: beendetFixture.out, err: '' } : { code: readCode, out: xml, err: readCode ? 'No such file or directory' : '' }; },
+    save: (name, d) => saved.set(name, d),
+  };
+  if (gueltig) assert.equal(await leseAnsichtsbaum(ctx, 'probe'), xml);
+  else await assert.rejects(leseAnsichtsbaum(ctx, 'probe'), /Ansichtsbaum nicht lesbar/);
+  assert.deepEqual(calls, ['rm -f /data/local/tmp/fristenrechner-emulator.xml', 'uiautomator dump /data/local/tmp/fristenrechner-emulator.xml', 'cat /data/local/tmp/fristenrechner-emulator.xml', 'rm -f /data/local/tmp/fristenrechner-emulator.xml']);
+  assert.equal(saved.get('probe-uiautomator.json').gueltig, gueltig);
+  assert.equal(saved.get('probe-uiautomator.json').dump.code, code);
+  assert.equal(saved.get('probe-ansicht.xml'), xml);
 });
 
 test('Wiederverwendung und gezielte A8/A10-Läufe benötigen keinen Variantenbau', () => {
@@ -248,7 +373,7 @@ for (const [name, argv, meldung] of [
 
 function schreibe(datei, inhalt) { mkdirSync(dirname(datei), { recursive: true }); writeFileSync(datei, inhalt); }
 
-function geraeteProbe({ installCode = 1, rootFehler = false, vorhandenerEmulator = false, uninstallFehler = false, wipeData = false, startFehler = false, avdErreichbar = true, logcatExit = false } = {}) {
+function geraeteProbe({ installCode = 1, rootFehler = false, vorhandenerEmulator = false, uninstallFehler = false, wipeData = false, startFehler = false, avdErreichbar = true, logcatExit = false, bootDialog = 0 } = {}) {
   const ort = mkdtempSync(join(arbeit, 'geraet-'));
   const local = join(ort, 'local'), sdk = join(local, 'fristenrechner/android-sdk');
   const avd = join(local, 'fristenrechner/avd/fr-api24.avd');
@@ -256,7 +381,7 @@ function geraeteProbe({ installCode = 1, rootFehler = false, vorhandenerEmulator
   schreibe(join(avd, 'snapshots/alt.txt'), 'wird bei eigenem Emulator aufgeräumt');
   const debug = join(ort, 'eingang.apk'); schreibe(debug, 'APK-Testdatei');
   const optionen = { api: 24, ablauf: 'installation', phasen: ['installation'], ausgabe: join(ort, 'ausgabe'), debug, wipeData };
-  const calls = []; let installiert = false, logcatChild;
+  const calls = []; let installiert = false, logcatChild, dialogProben = 0;
   const ok = out => ({ code: 0, out, err: '' });
   const run = async (exe, argv, opts) => {
     calls.push({ art: 'run', exe, args: argv, opts });
@@ -285,6 +410,10 @@ function geraeteProbe({ installCode = 1, rootFehler = false, vorhandenerEmulator
     assert.equal(a[0], 'shell', `Unerwarteter ADB-Aufruf: ${a.join(' ')}`);
     const c = a[1];
     if (c === 'getprop sys.boot_completed') { if (startFehler) throw new Error('Nachgestellter Startabbruch'); return ok('1'); }
+    if (c === 'dumpsys activity activities') return ok(++dialogProben <= bootDialog ? dialogFixture.activity : 'mCurrentFocus=Window{3 u0 Launcher}');
+    if (c === 'rm -f /data/local/tmp/fristenrechner-emulator.xml' || c === 'input tap 540 1332') return ok('');
+    if (c === 'uiautomator dump /data/local/tmp/fristenrechner-emulator.xml') return { ...beendetFixture };
+    if (c === 'cat /data/local/tmp/fristenrechner-emulator.xml') return ok(dialogProben <= bootDialog ? dialogFixture.xml : freierBaum);
     if (c === 'id') return ok(rootFehler ? 'uid=2000(shell)' : 'uid=0(root)');
     if (c === 'getprop ro.build.version.sdk') return ok('24');
     if (c === 'getprop ro.build.fingerprint') return ok('test/device/fingerprint');
@@ -344,6 +473,25 @@ test('Unerwartet erfolgreiche Installation wird beanstandet und wieder deinstall
   const emu = p.calls.find(c => c.art === 'launch' && c.exe.endsWith('emulator.exe'));
   assert.equal(emu.args.includes('-wipe-data'), false);
   assert.equal(existsSync(join(p.avd, 'snapshots')), false);
+});
+
+test('Wait schließt den Dialog direkt nach Systemstart vor der ersten Prüfung', { skip: process.platform !== 'win32' }, async () => {
+  const p = geraeteProbe({ bootDialog: 1 });
+  assert.equal(await nachgestellterLauf(p), 0);
+  const result = JSON.parse(readFileSync(join(p.optionen.ausgabe, 'ergebnis.json'), 'utf8'));
+  assert.equal(result.befund.find(b => b.id === 'Systemdialog mit Wait geschlossen').details.pruefort, 'systemstart');
+  const pos = text => p.calls.findIndex(c => c.args?.includes(text));
+  assert.ok(pos('input tap 540 1332') < pos('id'));
+  assert.ok(pos('input tap 540 1332') < pos('install'));
+  assert.equal(JSON.parse(readFileSync(join(p.optionen.ausgabe, 'systemstart-systemui-0-uiautomator.json'), 'utf8')).dump.code, 137);
+});
+
+test('Dauerhafter Dialog nach Systemstart verhindert jede Installation und räumt auf', { skip: process.platform !== 'win32' }, async () => {
+  const p = geraeteProbe({ bootDialog: Infinity });
+  assert.equal(await nachgestellterLauf(p), 2);
+  assert.equal(p.calls.filter(c => c.args?.includes('input tap 540 1332')).length, 3);
+  assert.equal(p.calls.some(c => c.args?.includes('install')), false);
+  assert.ok(p.calls.some(c => c.args?.join(' ').endsWith('emu kill')));
 });
 
 test('Deinstallationsfehler verhindert die nachfolgenden Aufräumschritte nicht', { skip: process.platform !== 'win32' }, async () => {

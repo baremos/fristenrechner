@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { homedir } from 'node:os';
 import { findeJdk } from './werkzeuge.mjs';
-import { befund, zusammenfassen, rueckgabewert, zaehleBefunde, evaluiereActivity, evaluiereReleaseFlags, evaluiereUnixSockets, evaluiereInstallation, evaluiereReleaseStart, evaluiereRuhe } from './emulator-auswertung.mjs';
+import { befund, zusammenfassen, rueckgabewert, zaehleBefunde, evaluiereActivity, evaluiereReleaseFlags, evaluiereUnixSockets, evaluiereInstallation, evaluiereReleaseStart, evaluiereRuhe, SICHTPRUEFUNGEN, sichtpruefungAusstehend } from './emulator-auswertung.mjs';
 import { APP, GEGEN, SERIAL, Cdp, argumente, dateiNoetig, echterPfad, innen, mitAufraeumen, netzmelder, pause, prozess, schreiber, sha256, websocketPruefen } from './emulator/rahmen.mjs';
 import { baueVarianten, signiereRelease } from './emulator/bauen.mjs';
 import { ablaufA, ablaufA8, ablaufA10, datumBefehl, fehlerseite } from './emulator/oberflaeche.mjs';
@@ -39,26 +39,131 @@ export function systemDialog({ activity = '', xml = '' }) {
     || /System UI isn.t responding|Systemoberfläche[^"<>]*(?:reagiert|antwortet) nicht/i.test(xml);
 }
 
+// Nur vollständig geschlossene UI-Automator-Bäume sind als Tippgrundlage geeignet.
+// Fremde XML-Konstrukte und doppelte Attribute werden nicht ausgewertet.
+export function ansichtsKnoten(xml) {
+  if (typeof xml !== 'string') return null;
+  const inhalt = xml.trim().replace(/^<\?xml\s[^?]*\?>\s*/, '');
+  if (!/^<hierarchy\b/.test(inhalt) || !/<\/hierarchy>$/.test(inhalt)) return null;
+  const stapel = [], knoten = [];
+  const teile = inhalt.match(/<[^>]*>|[^<]+/g) ?? [];
+  if (teile.join('') !== inhalt) return null;
+  let wurzeln = 0;
+  for (const teil of teile) {
+    if (!teil.startsWith('<')) { if (teil.trim()) return null; continue; }
+    const ende = /^<\/(hierarchy|node)\s*>$/.exec(teil);
+    if (ende) { if (stapel.pop() !== ende[1]) return null; continue; }
+    const anfang = /^<(hierarchy|node)((?:\s+[\w:-]+="[^"<>]*")*)\s*(\/?)>$/.exec(teil);
+    if (!anfang) return null;
+    const [, art, roh, selbst] = anfang;
+    if (art === 'hierarchy') { if (stapel.length || wurzeln++) return null; }
+    else if (!stapel.length) return null;
+    const attribute = {};
+    for (const [, key, value] of roh.matchAll(/\s+([\w:-]+)="([^"<>]*)"/g)) {
+      if (Object.hasOwn(attribute, key)) return null;
+      attribute[key] = value;
+    }
+    if (art === 'node') knoten.push(attribute);
+    if (!selbst) stapel.push(art);
+  }
+  return wurzeln === 1 && stapel.length === 0 ? knoten : null;
+}
+
+export function systemWaitPunkt(xml) {
+  const knoten = ansichtsKnoten(xml);
+  // Der Fokus kann gegenüber dem Baum veraltet sein. Deshalb muss auch der
+  // aktuelle native Dialogtitel die Systemoberfläche bezeichnen.
+  const titel = knoten?.filter(a => a.package === 'android' && a.class === 'android.widget.TextView'
+    && a['resource-id'] === 'android:id/alertTitle'
+    && /^(?:System UI isn(?:'|&apos;)t responding|Systemoberfläche (?:reagiert|antwortet) nicht)$/.test(a.text ?? ''));
+  if (titel?.length !== 1) return null;
+  const treffer = knoten.filter(a => a.text === 'Wait' || a.text === 'Warten');
+  if (treffer?.length !== 1) return null;
+  const a = treffer[0];
+  if (a.package !== 'android' || a.class !== 'android.widget.Button' || a.clickable !== 'true' || a.enabled !== 'true' || a['visible-to-user'] === 'false') return null;
+  const m = /^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(a.bounds ?? '');
+  if (!m) return null;
+  const bounds = m.slice(1).map(Number), [l, o, r, u] = bounds;
+  if (!bounds.every(Number.isSafeInteger) || r <= l || u <= o) return null;
+  return { text: a.text, bounds, x: l + Math.floor((r - l) / 2), y: o + Math.floor((u - o) / 2) };
+}
+
+export async function leseAnsichtsbaum(ctx, name, { timeoutMs = 120000 } = {}) {
+  const remote = '/data/local/tmp/fristenrechner-emulator.xml';
+  // Eine alte Datei darf nach einem erfolglosen dump nicht als neuer Beleg gelten.
+  await ctx.shell(`rm -f ${remote}`, { timeoutMs });
+  try {
+    const dump = await ctx.adb(['shell', `uiautomator dump ${remote}`], { timeoutMs });
+    const lesen = await ctx.adb(['shell', `cat ${remote}`], { timeoutMs });
+    const xml = lesen.out.replaceAll('\r\n', '\n').trim();
+    ctx.save(`${name}-ansicht.xml`, xml);
+    const vollstaendig = ansichtsKnoten(xml) !== null;
+    const gueltig = [0, 137].includes(dump.code) && lesen.code === 0 && vollstaendig;
+    ctx.save(`${name}-uiautomator.json`, { dump, lesen: { code: lesen.code, err: lesen.err }, vollstaendig, gueltig });
+    if (!gueltig) throw new Error(`Ansichtsbaum nicht lesbar (dump ${dump.code}, Lesen ${lesen.code}, vollständig ${vollstaendig}).`);
+    return xml;
+  } finally { await ctx.shell(`rm -f ${remote}`, { timeoutMs }); }
+}
+
 // Die App kann die oberste Activity sein, obwohl der ANR-Dialog darüber liegt.
-// Maximal sechs weitere Wartezeiten; alle Prüfungen behalten ihre Rohbelege.
-export async function warteAufSystemoberflaeche(ctx, name, { ui = false } = {}) {
+// Nur die eindeutig belegte Wait-Schaltfläche wird betätigt, höchstens dreimal.
+export async function warteAufSystemoberflaeche(ctx, name, { ui = false, maxVersuche = 3 } = {}) {
+  if (!Number.isInteger(maxVersuche) || maxVersuche < 0 || maxVersuche > 3) throw new Error('Ungültige Anzahl der Wait-Versuche.');
   const versuche = [];
-  for (let versuch = 0; versuch <= 6; versuch++) {
+  for (let versuch = 0; versuch <= maxVersuche; versuch++) {
     const belegName = `${name}-systemui-${versuch}`;
     const activity = await ctx.shell('dumpsys activity activities', { timeoutMs: 10000 });
     ctx.save(`${belegName}.activity.txt`, activity);
-    // Ein bekannter ANR kann auch uiautomator blockieren. Der Fokusbeleg reicht
-    // dann für den erneuten Warteversuch; den Baum erst bei freiem Fokus lesen.
-    const baumLesen = ui && !systemDialog({ activity });
-    const xml = baumLesen ? await ctx.uiBaum(belegName, { timeoutMs: 10000 }) : '';
+    const baumLesen = ui || versuch > 0 || systemDialog({ activity });
+    const beleg = { versuch, activity: `${belegName}.activity.txt`, ...(baumLesen ? { xml: `${belegName}-ansicht.xml` } : {}) };
+    versuche.push(beleg);
+    let xml = '';
+    try { if (baumLesen) xml = await ctx.uiBaum(belegName, { timeoutMs: 10000 }); }
+    catch (e) { beleg.ergebnis = `Ansichtsbaum fehlt: ${e.message}`; ctx.save(`${name}-systemui.json`, versuche); throw e; }
     const verdeckt = systemDialog({ activity, xml });
-    versuche.push({ versuch, verdeckt, wartezeitMs: versuch * 10000, activity: `${belegName}.activity.txt`, ...(baumLesen ? { xml: `${belegName}-ansicht.xml` } : {}) });
+    beleg.verdeckt = verdeckt;
+    beleg.ergebnis = verdeckt ? 'Systemdialog sichtbar' : 'Kein Systemdialog sichtbar';
+    if (versuch > 0) versuche[versuch - 1].nachpruefung = { verdeckt, activity: beleg.activity, xml: beleg.xml, ergebnis: beleg.ergebnis };
     ctx.save(`${name}-systemui.json`, versuche);
-    if (!verdeckt) return { activity, xml };
-    if (versuch === 6) throw new Error('Dialog der Systemoberfläche nach sechs weiteren Wartezeiten (60 s) weiterhin sichtbar; Prüfung ungültig.');
-    ctx.log(`Dialog der Systemoberfläche sichtbar; warte erneut 10 Sekunden (${versuch + 1}/6).`);
+    if (!verdeckt) {
+      if (versuch > 0) ctx.befund('Systemdialog mit Wait geschlossen', befund('bestanden', `${name}: nach ${versuch} Wait-Betätigungen nicht mehr sichtbar; Rohbeleg ${name}-systemui.json.`, { pruefort: name, versuche: versuch, beleg: `${name}-systemui.json` }));
+      return { activity, xml, waitVersuche: versuch };
+    }
+    if (versuch === maxVersuche) throw new Error(`Dialog der Systemoberfläche nach ${maxVersuche} Wait-Versuchen weiterhin sichtbar; Prüfung ungültig.`);
+    const punkt = systemWaitPunkt(xml);
+    if (!punkt) {
+      beleg.ergebnis = 'Keine eindeutige betätigbare Schaltfläche mit genau Wait oder Warten und aktuellem SystemUI-Dialogtitel gefunden';
+      ctx.save(`${name}-systemui.json`, versuche);
+      throw new Error('Aktueller SystemUI-Dialogtitel oder Wait/Warten-Knoten mit eindeutigen bounds nicht gefunden; kein Tippen, Prüfung ungültig.');
+    }
+    beleg.tipp = punkt;
+    ctx.save(`${name}-systemui.json`, versuche);
+    try { await ctx.shell(`input tap ${punkt.x} ${punkt.y}`, { timeoutMs: 10000 }); beleg.ergebnis = 'Wait betätigt; Nachprüfung folgt'; }
+    catch (e) { beleg.ergebnis = `Wait-Eingabe fehlgeschlagen: ${e.message}`; ctx.save(`${name}-systemui.json`, versuche); throw e; }
+    ctx.save(`${name}-systemui.json`, versuche);
+    ctx.log(`Systemdialog: ${punkt.text} an belegten Koordinaten ${punkt.x},${punkt.y} betätigt (${versuch + 1}/3); Nachprüfung in 10 Sekunden.`);
     await ctx.sleep(10000);
   }
+}
+
+export async function bildschirmfoto(ctx, name, { ui = true } = {}) {
+  const basis = name.replace(/\.png$/, '');
+  let benutzt = (await warteAufSystemoberflaeche(ctx, basis, { ui })).waitVersuche;
+  for (let aufnahme = 0; aufnahme <= 3; aufnahme++) {
+    const r = await ctx.adb(['exec-out', 'screencap', '-p'], { binary: true });
+    if (r.code !== 0 || !Buffer.isBuffer(r.out) || !r.out.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new Error('Bildschirmfoto nicht lesbar.');
+    // Erst nach der Nachprüfung als gültiges Zielbild ablegen. Verdeckte Bilder
+    // behalten einen gesonderten Rohbeleg und werden nach Wait neu aufgenommen.
+    const nachher = await warteAufSystemoberflaeche(ctx, `${basis}-nach-bild-${aufnahme}`, { ui, maxVersuche: 3 - benutzt });
+    if (nachher.waitVersuche === 0) {
+      ctx.save(name, r.out); ctx.save(`${name}.activity.txt`, nachher.activity);
+      if (ui) ctx.save(`${basis}-ansicht.xml`, nachher.xml);
+      return;
+    }
+    ctx.save(`${basis}-vor-wait-${aufnahme}.png`, r.out);
+    benutzt += nachher.waitVersuche;
+  }
+  throw new Error('Bildschirmfoto nach Wait nicht belegbar.');
 }
 
 export async function stelleEinstellungZurueck(ctx, table, key, value) {
@@ -137,7 +242,7 @@ export async function ablaufB(ctx) {
   const nachher = await netzGueltigkeit(ctx, 'release-nachher');
   ctx.save('b-netz.json', { vorher, nachher, ruhe, hintergrund, rueckkehr });
   ctx.befund('B-Netz', evaluiereRuhe({ vorher, nachher, ruhe, hintergrund, rueckkehr }));
-  ctx.befund('B-Sichtprüfung', befund('ungültig', 'Startbild, Systemleisten und Fehlerfalle im Bildschirmfoto noch manuell prüfen.'));
+  ctx.befund('B-Sichtprüfung', sichtpruefungAusstehend(SICHTPRUEFUNGEN['B-Sichtprüfung']));
 }
 
 export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pause } = {}) {
@@ -250,24 +355,8 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
       await ctx.sleep(1200);
       return c;
     },
-    async uiBaum(name, { timeoutMs = 120000 } = {}) {
-      const remote = '/data/local/tmp/fristenrechner-emulator.xml';
-      try {
-        await ctx.shell(`uiautomator dump ${remote}`, { timeoutMs });
-        const xml = await ctx.shell(`cat ${remote}`, { timeoutMs }); save(`${name}-ansicht.xml`, xml);
-        if (!xml.includes('<hierarchy') || !xml.includes('</hierarchy>')) throw new Error('Ansichtsbaum nicht lesbar.');
-        return xml;
-      } finally { await ctx.shell(`rm -f ${remote}`, { timeoutMs }); }
-    },
-    async shot(name, { ui = true } = {}) {
-      await warteAufSystemoberflaeche(ctx, name.replace(/\.png$/, ''), { ui });
-      const r = await ctx.adb(['exec-out', 'screencap', '-p'], { binary: true });
-      if (r.code !== 0 || !Buffer.isBuffer(r.out) || !r.out.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new Error('Bildschirmfoto nicht lesbar.');
-      save(name, r.out);
-      const top = await ctx.shell('dumpsys activity activities'); save(`${name}.activity.txt`, top);
-      const xml = ui ? await ctx.uiBaum(name.replace(/\.png$/, '')) : '';
-      if (systemDialog({ activity: top, xml })) throw new Error('Dialog der Systemoberfläche verdeckt die App; Bild nicht gültig.');
-    },
+    async uiBaum(name, opt = {}) { return leseAnsichtsbaum(ctx, name, opt); },
+    async shot(name, opt = {}) { return bildschirmfoto(ctx, name, opt); },
     async restoreClock() {
       if (!snapshot) return;
       const errors = [];
@@ -371,6 +460,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
         if (avd.code !== 0 || avdName(avd.out) !== `fr-api${optionen.api}`) throw new Error('Testgerät auf Port 5554 ist nicht das gestartete Abbild.');
         deviceOwned = true;
         ctx.log('System gestartet; 45 Sekunden für die Systemoberfläche.'); await ctx.sleep(45000);
+        await warteAufSystemoberflaeche(ctx, 'systemstart');
         const root = await ctx.adb(['root']); if (root.code !== 0) throw new Error('adb root nicht verfügbar.');
         const wait = await ctx.adb(['wait-for-device']); if (wait.code !== 0) throw new Error('Gerät nach adb root nicht erreichbar.');
         const id = await ctx.shell('id'); if (!/uid=0\(root\)/.test(id)) throw new Error('Root-Shell nicht bestätigt.');
@@ -433,7 +523,8 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
     daten.anzahl = zaehleBefunde(daten.befund);
     daten.dokumentierteGrenzen = daten.befund.filter(b => b.status === 'dokumentierte Grenze');
     daten.ausstehend = daten.befund.filter(b => b.status === 'ungültig');
-    daten.abnahme = 'Code 3: nur dokumentierte Grenzen; jede Einschränkung ausdrücklich bewerten und akzeptieren oder ergänzend belegen. Code 2: Messungen oder Sichtprüfungen ausstehend. Beides ist kein vollständiges Bestehen.';
+    daten.sichtpruefungAusstehend = daten.befund.filter(b => b.status === 'Sichtprüfung ausstehend');
+    daten.abnahme = 'Code 3: nur dokumentierte Grenzen; jede Einschränkung ausdrücklich bewerten und akzeptieren oder ergänzend belegen. Code 2: Messungen ungültig. Code 4: Sichtprüfung ausstehend; verhindert Code 0, macht auswertbare Messungen aber nicht ungültig. Kein vollständiges Bestehen.';
     save('ergebnis.json', daten);
     save('zusammenfassung.txt', [`API ${optionen.api}, Ablauf ${optionen.ablauf}`, `Ergebnis: ${daten.ergebnis}; Rückgabewert ${daten.code}`, `Einzelbefunde: ${Object.entries(daten.anzahl).map(([status, n]) => `${n} ${status}`).join(', ')}`, ...daten.befund.map(b => `${b.id}: ${b.status} – ${b.grund}`), '', daten.abnahme, '', ...daten.grenzen, '', ...daten.aufraeumen.map(a => `Aufräumen ${a.name}: ${a.status}${a.fehler ? ` – ${a.fehler}` : ''}`)].join('\n') + '\n');
   }

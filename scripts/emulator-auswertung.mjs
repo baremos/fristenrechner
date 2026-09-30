@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { pathToFileURL } from 'node:url';
 // Die einzelnen Auswerter sind rein; der optionale CLI liest vorhandene Rohbelege.
-export const STATUS = Object.freeze({ bestanden: 'bestanden', fehler: 'nicht bestanden', ungueltig: 'ungültig', grenze: 'dokumentierte Grenze' });
+export const STATUS = Object.freeze({ bestanden: 'bestanden', fehler: 'nicht bestanden', ungueltig: 'ungültig', grenze: 'dokumentierte Grenze', sicht: 'Sichtprüfung ausstehend' });
+export const SICHTPRUEFUNGEN = Object.freeze({
+  A8: Object.freeze(['a8-schrift-1-3.png', 'a8-schrift-2-0.png', 'a8-nacht.png', 'a8-gedreht.png', 'a8-tastatur.png']),
+  'B-Sichtprüfung': Object.freeze(['b-start.png']),
+});
 const APP = 'de.baremos.fristenrechner';
 const GEGEN = `${APP}.gegenprobe`;
 const text = (v) => typeof v === 'string';
@@ -27,12 +31,57 @@ export function zusammenfassen(befunde) {
   }
   if (befunde.some((b) => b.status === STATUS.fehler)) return nein('Mindestens eine Prüfung ist nicht bestanden.', befunde);
   if (befunde.some((b) => b.status === STATUS.ungueltig)) return ungueltig('Mindestens eine Messung ist ungültig.', befunde);
+  if (befunde.some((b) => b.status === STATUS.sicht)) return befund(STATUS.sicht, 'Messungen auswertbar; mindestens eine Sichtprüfung steht aus. Dokumentierte Grenzen bleiben gesondert ausgewiesen.', befunde);
   if (befunde.some((b) => b.status === STATUS.grenze)) return grenze('Ausführbare Prüfungen bestanden; dokumentierte Grenzen bleiben unbelegt.', befunde);
   return ok('Alle Prüfungen bestanden.', befunde);
 }
 
 export function rueckgabewert(befunde) {
-  return { [STATUS.bestanden]: 0, [STATUS.fehler]: 1, [STATUS.ungueltig]: 2, [STATUS.grenze]: 3 }[zusammenfassen(befunde).status];
+  return { [STATUS.bestanden]: 0, [STATUS.fehler]: 1, [STATUS.ungueltig]: 2, [STATUS.grenze]: 3, [STATUS.sicht]: 4 }[zusammenfassen(befunde).status];
+}
+
+export function sichtpruefungAusstehend(bilder) {
+  if (!texte(bilder) || !bilder.length) return ungueltig('Bildliste für die Sichtprüfung fehlt.');
+  return befund(STATUS.sicht, `Sichtprüfung ausstehend: ${bilder.join(', ')}.`, { ausstehend: [...bilder], geprueft: [] });
+}
+
+/** Ein Prüfvermerk gilt nur für die unveränderten PNG-Dateien dieses Laufordners. */
+export async function leseSichtpruefung(lauf, bilder) {
+  const { readFile, lstat, realpath } = await import('node:fs/promises');
+  const { join, dirname } = await import('node:path');
+  const { createHash } = await import('node:crypto');
+  const wurzel = await realpath(lauf);
+  const datei = async (name) => {
+    if (!/^[a-z0-9][a-z0-9._-]*\.(?:png|json)$/.test(name)) throw new Error('Nur einfache Dateinamen im Laufordner sind erlaubt.');
+    const pfad = join(wurzel, name), info = await lstat(pfad);
+    if (!info.isFile() || info.isSymbolicLink() || dirname(await realpath(pfad)) !== wurzel) throw new Error(`Keine reguläre Datei im Laufordner: ${name}.`);
+    return readFile(pfad);
+  };
+  let daten = { schema: 1, pruefungen: [] }, vorhanden = false;
+  try {
+    const roh = await datei('sichtpruefung.json');
+    if (roh.length > 1024 * 1024) throw new Error('Sichtprüfprotokoll ist zu groß.');
+    daten = JSON.parse(roh.toString('utf8')); vorhanden = true;
+  } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  if (!objekt(daten) || daten.schema !== 1 || !Array.isArray(daten.pruefungen)) throw new Error('Unbekanntes Format von sichtpruefung.json.');
+  const gesehen = new Set(), pruefungen = [];
+  const textfeld = (v, max) => text(v) && !!v.trim() && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
+  for (const p of daten.pruefungen) {
+    if (!objekt(p) || !bilder.includes(p.bild) || gesehen.has(p.bild)) throw new Error('Unbekanntes oder doppelt geprüftes Bild.');
+    if (![STATUS.bestanden, STATUS.fehler].includes(p.ergebnis) || !textfeld(p.wer, 200) || !textfeld(p.bemerkung, 4000) ||
+        !text(p.wann) || !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)?$/.test(p.wann) || !Number.isFinite(Date.parse(p.wann)) ||
+        new Date(p.wann).toISOString().slice(0, 10) !== p.wann.slice(0, 10) || !/^[a-f0-9]{64}$/.test(p.sha256 ?? '')) throw new Error(`Unvollständiger oder ungültiger Prüfvermerk: ${p.bild}.`);
+    gesehen.add(p.bild); pruefungen.push({ ...p });
+  }
+  const bilddaten = [];
+  for (const bild of bilder) {
+    const inhalt = await datei(bild);
+    if (inhalt.length < 24 || !inhalt.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new Error(`Kein lesbarer PNG-Beleg: ${bild}.`);
+    const sha256 = createHash('sha256').update(inhalt).digest('hex'), pruefung = pruefungen.find(p => p.bild === bild);
+    if (pruefung && pruefung.sha256 !== sha256) throw new Error(`Prüfsumme stimmt nicht mit dem Bild überein: ${bild}.`);
+    bilddaten.push({ bild, sha256 });
+  }
+  return { datei: vorhanden ? 'sichtpruefung.json' : null, pruefungen, bilder: bilddaten, ausstehend: bilder.filter(bild => !gesehen.has(bild)) };
 }
 
 export function zaehleBefunde(befunde) {
@@ -349,8 +398,17 @@ export function evaluiereTastatur(ausgabe) {
     const shown = signal('mInputShown'), view = signal('mIsInputViewShown');
     if (!shown.length || !view.length || new Set([...shown, ...view]).size !== 1) return ungueltig('Eingabedienst und Tastaturansicht bestätigen keinen eindeutigen gemeinsamen Zustand.');
     if (shown[0] === 'false') return nein('Eingabedienst und Tastaturansicht melden die Tastatur als verborgen.');
+    // API 30 gibt in "window windows" den IME-Eingabeempfänger aus; der
+    // mCurrentFocus-Eintrag steht dort nicht. Auf API 36 ist er vorhanden.
+    // Ein IME-Fensterfokus allein belegt keinen Empfänger für die Eingabe.
+    const empfaenger = [...fenster.matchAll(/^\s*(?:mInputMethodInputTarget in display# \d+ |mImeInputTarget=)Window\{[^\r\n}]*?\bu\d+\s+([^\r\n}]+)\}/gm)].map(m => m[1].trim());
+    const fokus = [...fenster.matchAll(/^\s*mCurrentFocus=Window\{[^\r\n}]*?\bu\d+\s+([^\r\n}]+)\}/gm)].map(m => m[1].trim());
+    const empfaengerZeilen = fenster.match(/^\s*(?:mInputMethodInputTarget in display# \d+ |mImeInputTarget=)[^\r\n]*$/gm) ?? [];
+    const ziele = empfaengerZeilen.length ? empfaenger : fokus;
+    const fokusquelle = empfaengerZeilen.length ? 'IME-Eingabeempfänger' : 'mCurrentFocus';
     if (nachher?.aktivesElement?.name !== 'projektname' || nachher.aktivesElement.tag !== 'input' ||
-        !/\bmCurrentFocus=Window\{[^\r\n}]*\bde\.baremos\.fristenrechner\//.test(fenster)) return ungueltig('Fokus auf Projektname und App-Fenster ist nicht gemeinsam belegt.');
+        (empfaengerZeilen.length && empfaenger.length !== empfaengerZeilen.length) || !ziele.length || new Set(ziele).size !== 1 ||
+        ![`${APP}/.MainActivity`, `${APP}/${APP}.MainActivity`].includes(ziele[0])) return ungueltig('Fokus auf Projektname und App-Fenster ist nicht gemeinsam belegt.');
     // API 30/36: sichtbare IME-Inset-Fläche. Eine leere Fläche kann trotz
     // mInputShown=true auftreten, wenn die Hardwaretastatur aktiv ist.
     const flaechen = [...fenster.matchAll(/\b(?:type=ime|type=ITYPE_IME)\s+frame=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]([^\r\n]*?)\bvisible=(true|false)\b/g)]
@@ -359,6 +417,9 @@ export function evaluiereTastatur(ausgabe) {
         return { breite: Number(m[3]) - Number(m[1]), hoehe: Number(m[4]) - Number(m[2]), sichtbar: m[6] === 'true',
           ...(sichtbar ? { sichtbareBreite: Number(sichtbar[3]) - Number(sichtbar[1]), sichtbareHoehe: Number(sichtbar[4]) - Number(sichtbar[2]) } : {}) };
       });
+    for (const m of fenster.matchAll(/\bInsetsSource: \{mType=ITYPE_IME, mFrame=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\], mVisible=(true|false)\}/g)) {
+      flaechen.push({ breite: Number(m[3]) - Number(m[1]), hoehe: Number(m[4]) - Number(m[2]), sichtbar: m[5] === 'true' });
+    }
     if (!flaechen.length) {
       for (const abschnitt of fenster.split(/(?=^\s*Window #\d+ Window\{)/m)) {
         if (!/^\s*Window #\d+ Window\{[^\r\n}]*\bInputMethod\}/.test(abschnitt)) continue;
@@ -367,7 +428,7 @@ export function evaluiereTastatur(ausgabe) {
       }
     }
     if (!flaechen.length || flaechen.some(f => !f.sichtbar || f.hoehe <= 0 || f.breite <= 0 || f.sichtbareHoehe <= 0 || f.sichtbareBreite <= 0)) return ungueltig('Keine eindeutig sichtbare Tastaturfläche mit positiver Höhe aufgezeichnet.', { flaechen });
-    return ok('Tastaturansicht und Eingabedienst sichtbar; IME-Fläche mit positiver Höhe und Fokus auf Projektname belegt.', { flaechen, vorher: ausgabe.vorher, nachher });
+    return ok('Tastaturansicht und Eingabedienst sichtbar; IME-Fläche mit positiver Höhe und Fokus auf Projektname belegt.', { flaechen, fokusquelle, eingabeziel: ziele[0], vorher: ausgabe.vorher, nachher });
   }
   if (!text(ausgabe)) return ungueltig('Ausgabe des Eingabedienstes fehlt.');
   const werte = [...ausgabe.matchAll(/\b(?:mInputShown|mIsInputViewShown)=(true|false)\b/g)].map((m) => m[1]);
@@ -406,7 +467,8 @@ export async function werteLaufAus(lauf) {
   const setzen = (id, wert, quellen) => {
     const index = befunde.findIndex((b) => b.id === id), eintrag = { id, ...wert };
     if (index < 0) { befunde.push(eintrag); zusaetzlich.push(id); } else befunde[index] = eintrag;
-    neuAusgewertet.push({ id, quellen });
+    const neuIndex = neuAusgewertet.findIndex(n => n.id === id);
+    if (neuIndex < 0) neuAusgewertet.push({ id, quellen }); else neuAusgewertet[neuIndex] = { id, quellen };
   };
   const vorhanden = new Set(await readdir(lauf));
   const neu = async (id, quellen, auswerten) => {
@@ -425,6 +487,13 @@ export async function werteLaufAus(lauf) {
   }
   if (vorhanden.has('a8-tastatur-nachweis.json')) await neu('A8-Tastatur', ['a8-tastatur-nachweis.json'], async () => evaluiereTastatur(await json('a8-tastatur-nachweis.json')));
   else if (vorhanden.has('a8-tastatur.txt')) await neu('A8-Tastatur', ['a8-tastatur.txt'], async () => evaluiereTastatur(await lesen('a8-tastatur.txt')));
+  if (vorhanden.has('ohne-fehlerseite-logcat.txt')) await neu('ohne-fehlerseite', ['ohne-fehlerseite-logcat.txt', 'adb.jsonl'], async () => {
+    const logcat = await lesen('ohne-fehlerseite-logcat.txt');
+    const adb = (await lesen('adb.jsonl')).trim().split(/\r?\n/).map(JSON.parse);
+    const normal = s => s.replaceAll('\r\n', '\n').trim();
+    if (!adb.some(a => a.code === 0 && a.args?.[0] === 'logcat' && a.args.includes('-d') && text(a.out) && normal(a.out) === normal(logcat))) throw new Error('logcat-Rohtext ist nicht durch einen erfolgreichen ADB-Aufruf belegt.');
+    return evaluiereFehlerseiteGegenprobe({ logcat });
+  });
   if (vorhanden.has('a10-barrierebaum.json')) await neu('A10', ['a10-barrierebaum.json', 'geraet.json'], async () => {
     const g = await json('geraet.json');
     const webviewVersion = /Current WebView package \(name, version\): \([^,]+, (\d+(?:\.\d+)+)\)/.exec(g.webview ?? '')?.[1];
@@ -501,14 +570,38 @@ export async function werteLaufAus(lauf) {
     const laufbefund = befunde.find((b) => b.id === 'ablauf-sicherung');
     if (laufbefund) laufbefund.grund += ' Einzelphasen wurden getrennt aus den erhaltenen Rohbelegen neu ausgewertet; der Lauf wurde nicht wiederholt.';
   }
+  const sichtgruppen = Object.entries(SICHTPRUEFUNGEN).filter(([id]) => original.befund.some(b => b.id === id &&
+    (b.status === STATUS.sicht || (b.status === STATUS.ungueltig &&
+      (b.grund === 'Bilder für Systemleisten, Verdeckung und Lesbarkeit müssen noch gesichtet werden.' ||
+       b.grund === 'Startbild, Systemleisten und Fehlerfalle im Bildschirmfoto noch manuell prüfen.')))));
+  let sichtpruefung;
+  if (sichtgruppen.length || vorhanden.has('sichtpruefung.json')) {
+    const bilder = sichtgruppen.flatMap(([, liste]) => liste);
+    for (const [id, liste] of sichtgruppen) setzen(id, sichtpruefungAusstehend(liste), liste);
+    try {
+      sichtpruefung = await leseSichtpruefung(lauf, bilder);
+      for (const [id, liste] of sichtgruppen) {
+        const geprueft = sichtpruefung.pruefungen.filter(p => liste.includes(p.bild));
+        const ausstehend = liste.filter(bild => !geprueft.some(p => p.bild === bild));
+        const details = { ausstehend, geprueft };
+        const negativ = geprueft.filter(p => p.ergebnis === STATUS.fehler);
+        const wert = negativ.length ? nein(`Sichtprüfung nicht bestanden: ${negativ.map(p => p.bild).join(', ')}.`, details) :
+          ausstehend.length ? { ...sichtpruefungAusstehend(ausstehend), details } : ok('Alle Bilder dieser Gruppe geprüft; Sichtprüfung bestanden.', details);
+        setzen(id, wert, [...liste, ...(sichtpruefung.datei ? [sichtpruefung.datei] : [])]);
+      }
+    } catch (e) {
+      sichtpruefung = { datei: vorhanden.has('sichtpruefung.json') ? 'sichtpruefung.json' : null, pruefungen: [], ausstehend: bilder, fehler: e.message };
+      setzen('Sichtprüfprotokoll', ungueltig(`Sichtprüfung nicht auswertbar: ${e.message}`), ['sichtpruefung.json', ...bilder]);
+    }
+  }
   return {
     schema: 2, art: 'Neuauswertung vorhandener Rohbelege', datum: new Date().toISOString(),
     vorher: { ergebnis: original.ergebnis, code: original.code, anzahl: zaehleBefunde(original.befund), befund: original.befund },
     nachher: { ergebnis: zusammenfassen(befunde).status, code: rueckgabewert(befunde), anzahl: zaehleBefunde(befunde), befund: befunde },
     aufraeumen: original.aufraeumen ?? [], zaehlung: 'Einzelbefunde ohne Aufräumen und ohne Gesamtergebnis.',
-    neuAusgewertet, zusaetzlich,
+    neuAusgewertet, zusaetzlich, ...(sichtpruefung ? { sichtpruefung } : {}),
     unveraendertUebernommen: original.befund.filter((b) => !neuAusgewertet.some((n) => n.id === b.id)).map((b) => b.id),
-    hinweis: 'Nur aufgeführte Rohbelege wurden neu ausgewertet. Übrige Befunde stammen aus dem ursprünglichen Lauf. Nicht ausgeführte Schritte brauchen einen neuen Lauf. Rückgabewert 3 kennzeichnet ausschließlich dokumentierte Grenzen und ist keine vollständige Abnahme.',
+    hinweis: 'Nur aufgeführte Rohbelege wurden neu ausgewertet. Übrige Befunde stammen aus dem ursprünglichen Lauf. Nicht ausgeführte Schritte brauchen einen neuen Lauf. Rückgabewert 3 kennzeichnet ausschließlich dokumentierte Grenzen. Rückgabewert 4 kennzeichnet ausstehende Sichtprüfungen und kann zusätzlich dokumentierte Grenzen enthalten. Fehler (1) und ungültige Messungen oder Prüfvermerke (2) haben Vorrang. Nur 0 bedeutet vollständig bestanden.',
   };
 }
 
@@ -530,7 +623,8 @@ export async function auswertungCli(args) {
   await writeFile(join(ausgabe, 'ergebnis.json'), JSON.stringify(bericht, null, 2) + '\n', { flag: 'wx' });
   const zeilen = [bericht.art, `Vorher: ${bericht.vorher.ergebnis}; Rückgabewert ${bericht.vorher.code}; ${JSON.stringify(bericht.vorher.anzahl)}`,
     `Nachher: ${bericht.nachher.ergebnis}; Rückgabewert ${bericht.nachher.code}; ${JSON.stringify(bericht.nachher.anzahl)}`,
-    ...bericht.nachher.befund.map((b) => `${b.id}: ${b.status} – ${b.grund}`), '', bericht.hinweis];
+    ...bericht.nachher.befund.map((b) => `${b.id}: ${b.status} – ${b.grund}`),
+    ...(bericht.sichtpruefung?.pruefungen ?? []).map(p => `Sichtprüfung ${p.bild}: ${p.ergebnis}; wer: ${p.wer}; wann: ${p.wann}; SHA-256: ${p.sha256}; ${p.bemerkung}`), '', bericht.hinweis];
   await writeFile(join(ausgabe, 'zusammenfassung.txt'), zeilen.join('\n') + '\n', { flag: 'wx' });
   return bericht;
 }

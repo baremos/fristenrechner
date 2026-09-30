@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, writeFile, readFile, rm, stat } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
   befund, zusammenfassen, rueckgabewert, zaehleBefunde, NETZWEGE, evaluiereActivity, evaluiereNetz,
@@ -13,12 +14,13 @@ import {
   evaluiereBarrierebaum, evaluiereBeobachtungen,
   evaluiereBruecke, evaluiereFehlerfalleGegenprobe, evaluiereReleaseStart, evaluiereTastatur,
   evaluiereFehlerseiteGegenprobe, evaluiereZurueck, evaluiereRuhe, werteLaufAus, auswertungCli,
+  SICHTPRUEFUNGEN, sichtpruefungAusstehend, leseSichtpruefung,
 } from './emulator-auswertung.mjs';
 
 const fixture = (name) => readFileSync(new URL(`./emulator/fixtures/${name}`, import.meta.url), 'utf8');
 const json = (name) => JSON.parse(fixture(name));
 const status = (b, erwartet) => assert.equal(b.status, erwartet, b.grund);
-const OK = 'bestanden', NEIN = 'nicht bestanden', UNGUELTIG = 'ungültig', GRENZE = 'dokumentierte Grenze';
+const OK = 'bestanden', NEIN = 'nicht bestanden', UNGUELTIG = 'ungültig', GRENZE = 'dokumentierte Grenze', SICHT = 'Sichtprüfung ausstehend';
 
 test('Befunde und Rückgabewerte verlangen vollständige Statuswerte', () => {
   status(befund('unbekannt', 'Test'), UNGUELTIG);
@@ -31,7 +33,11 @@ test('Befunde und Rückgabewerte verlangen vollständige Statuswerte', () => {
   assert.equal(rueckgabewert([befund(OK, 'Beleg'), befund(GRENZE, 'Bekannte fehlende Gegenprobe')]), 3);
   assert.equal(rueckgabewert([befund(UNGUELTIG, 'Nicht ausführbar'), befund(GRENZE, 'Bekannte fehlende Gegenprobe')]), 2);
   assert.equal(rueckgabewert([befund(NEIN, 'Fehler'), befund(GRENZE, 'Bekannte fehlende Gegenprobe')]), 1);
-  assert.deepEqual(zaehleBefunde([befund(OK, 'Beleg'), befund(GRENZE, 'Grund')]), { bestanden: 1, 'nicht bestanden': 0, 'ungültig': 0, 'dokumentierte Grenze': 1 });
+  assert.equal(rueckgabewert([befund(SICHT, 'Bild fehlt')]), 4);
+  assert.equal(rueckgabewert([befund(SICHT, 'Bild fehlt'), befund(GRENZE, 'Grenze')]), 4);
+  assert.equal(rueckgabewert([befund(SICHT, 'Bild fehlt'), befund(UNGUELTIG, 'Messung fehlt')]), 2);
+  assert.equal(rueckgabewert([befund(SICHT, 'Bild fehlt'), befund(NEIN, 'Fehler')]), 1);
+  assert.deepEqual(zaehleBefunde([befund(OK, 'Beleg'), befund(GRENZE, 'Grund')]), { bestanden: 1, 'nicht bestanden': 0, 'ungültig': 0, 'dokumentierte Grenze': 1, [SICHT]: 0 });
 });
 
 for (const api of [30, 36]) test(`Navigation vom 30.09.2026 API ${api}: dokumentierte Grenzen brauchen echte vollständige Gegenproben`, () => {
@@ -57,7 +63,7 @@ test('Neuauswertung bewahrt Originale, trennt Grenzen und erfindet keine nicht a
   const roh = JSON.stringify(original); await writeFile(join(lauf, 'ergebnis.json'), roh);
   for (const rolle of ['app', 'gegen']) await writeFile(join(lauf, `navigation-${rolle}-intent.json`), JSON.stringify(m[rolle]));
   const direkt = await werteLaufAus(lauf);
-  assert.deepEqual(direkt.nachher.anzahl, { bestanden: 0, 'nicht bestanden': 0, 'ungültig': 1, 'dokumentierte Grenze': 1 });
+  assert.deepEqual(direkt.nachher.anzahl, { bestanden: 0, 'nicht bestanden': 0, 'ungültig': 1, 'dokumentierte Grenze': 1, [SICHT]: 0 });
   assert.equal(direkt.nachher.code, 2);
   assert.deepEqual(direkt.unveraendertUebernommen, ['A6']);
   assert.deepEqual(direkt.zusaetzlich, []);
@@ -255,6 +261,85 @@ test('Unix-Sockets: Header ist Pflicht; offene WebView und fehlende Gegenprobe',
   status(evaluiereUnixSockets({ text: '', debugSocketNachgewiesen: true }), UNGUELTIG);
   status(evaluiereUnixSockets({ text: header, debugSocketNachgewiesen: false }), UNGUELTIG);
   status(evaluiereUnixSockets({ text: header + 'kaputt', debugSocketNachgewiesen: true }), UNGUELTIG);
+});
+
+const pruefPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1ioAAAAASUVORK5CYII=', 'base64');
+const sichtvermerk = (bild) => ({ bild, ergebnis: OK, wer: 'Prüfperson', wann: '2026-09-30', bemerkung: 'Lesbarkeit und Verdeckung geprüft.', sha256: createHash('sha256').update(pruefPng).digest('hex') });
+async function sichtordner(t) {
+  const tmp = resolve('scratchpad/paket-2.5-c4/tmp'); await mkdir(tmp, { recursive: true });
+  const dir = await mkdtemp(join(tmp, 'sichtpruefung-')); t.after(() => rm(dir, { recursive: true, force: true }));
+  for (const bild of Object.values(SICHTPRUEFUNGEN).flat()) await writeFile(join(dir, bild), pruefPng);
+  return dir;
+}
+
+test('Sichtprüfung wird ohne neuen Lauf eingelesen, gruppiert und mit Namen und Datum ausgegeben', async t => {
+  const dir = await sichtordner(t), lauf = join(dir, 'lauf'); await mkdir(lauf);
+  const bilder = Object.values(SICHTPRUEFUNGEN).flat();
+  for (const bild of bilder) await writeFile(join(lauf, bild), pruefPng);
+  const original = { ergebnis: UNGUELTIG, code: 2, befund: [
+    { id: 'A8', status: UNGUELTIG, grund: 'Bilder für Systemleisten, Verdeckung und Lesbarkeit müssen noch gesichtet werden.' },
+    { id: 'B-Sichtprüfung', status: UNGUELTIG, grund: 'Startbild, Systemleisten und Fehlerfalle im Bildschirmfoto noch manuell prüfen.' },
+    { id: 'Grenze', ...befund(GRENZE, 'Dokumentierte Grenze') },
+  ] };
+  const roh = JSON.stringify(original); await writeFile(join(lauf, 'ergebnis.json'), roh);
+  const offen = await werteLaufAus(lauf);
+  assert.equal(offen.nachher.code, 4);
+  assert.equal(offen.nachher.anzahl[UNGUELTIG], 0);
+  assert.deepEqual(offen.sichtpruefung.ausstehend, bilder);
+  const pruefungen = ['a8-schrift-2-0.png', 'a8-tastatur.png', 'b-start.png'].map(sichtvermerk);
+  await writeFile(join(lauf, 'sichtpruefung.json'), JSON.stringify({ schema: 1, pruefungen }));
+  const teilweise = await auswertungCli(['--lauf', lauf, '--ausgabe', join(dir, 'neu')]);
+  assert.equal(teilweise.nachher.code, 4);
+  assert.deepEqual(teilweise.sichtpruefung.ausstehend, ['a8-schrift-1-3.png', 'a8-nacht.png', 'a8-gedreht.png']);
+  status(teilweise.nachher.befund.find(b => b.id === 'B-Sichtprüfung'), OK);
+  const zusammenfassung = await readFile(join(dir, 'neu', 'zusammenfassung.txt'), 'utf8');
+  for (const p of pruefungen) assert.ok(zusammenfassung.includes(`Sichtprüfung ${p.bild}: bestanden; wer: ${p.wer}; wann: ${p.wann}; SHA-256: ${p.sha256}; ${p.bemerkung}`));
+  assert.equal(await readFile(join(lauf, 'ergebnis.json'), 'utf8'), roh);
+  await writeFile(join(lauf, 'sichtpruefung.json'), JSON.stringify({ schema: 1, pruefungen: bilder.map(sichtvermerk) }));
+  assert.equal((await werteLaufAus(lauf)).nachher.code, 3);
+  await writeFile(join(lauf, 'sichtpruefung.json'), JSON.stringify({ schema: 1, pruefungen: [{ ...sichtvermerk('b-start.png'), ergebnis: NEIN }] }));
+  assert.equal((await werteLaufAus(lauf)).nachher.code, 1);
+});
+
+test('Unlesbares Sichtprotokoll entwertet keine Messung, verhindert aber jede Freigabe', async t => {
+  const dir = await sichtordner(t);
+  await writeFile(join(dir, 'ergebnis.json'), JSON.stringify({ befund: [{ id: 'A8', ...sichtpruefungAusstehend(SICHTPRUEFUNGEN.A8) }] }));
+  await writeFile(join(dir, 'sichtpruefung.json'), '{');
+  const b = await werteLaufAus(dir);
+  assert.equal(b.nachher.code, 2);
+  status(b.nachher.befund.find(v => v.id === 'A8'), SICHT);
+  status(b.nachher.befund.find(v => v.id === 'Sichtprüfprotokoll'), UNGUELTIG);
+});
+
+for (const [name, aendern] of [
+  ['Prüfsumme falsch', p => { p.sha256 = '0'.repeat(64); }],
+  ['Prüfsumme fehlt', p => { delete p.sha256; }],
+  ['Ergebnis unbekannt', p => { p.ergebnis = 'gut'; }],
+  ['Prüfperson fehlt', p => { p.wer = ''; }],
+  ['Datum ungültig', p => { p.wann = '2026-02-30'; }],
+  ['Bemerkung fehlt', p => { delete p.bemerkung; }],
+  ['Pfad verlässt Lauf', p => { p.bild = '../b-start.png'; }],
+  ['Unbekanntes Bild', p => { p.bild = 'unbekannt.png'; }],
+]) test(`Sichtprüfung weist falschen Vermerk zurück: ${name}`, async t => {
+  const dir = await sichtordner(t), p = sichtvermerk('b-start.png'); aendern(p);
+  await writeFile(join(dir, 'sichtpruefung.json'), JSON.stringify({ schema: 1, pruefungen: [p] }));
+  await assert.rejects(leseSichtpruefung(dir, ['b-start.png']));
+});
+
+test('Sichtprüfung verlangt eindeutige Vermerke und vorhandene unveränderte PNG-Dateien', async t => {
+  const dir = await sichtordner(t), p = sichtvermerk('b-start.png');
+  await writeFile(join(dir, 'sichtpruefung.json'), JSON.stringify({ schema: 1, pruefungen: [p, p] }));
+  await assert.rejects(leseSichtpruefung(dir, ['b-start.png']), /doppelt/);
+  await writeFile(join(dir, 'sichtpruefung.json'), JSON.stringify({ schema: 1, pruefungen: [p] }));
+  await writeFile(join(dir, 'b-start.png'), Buffer.concat([pruefPng, Buffer.from('verändert')]));
+  await assert.rejects(leseSichtpruefung(dir, ['b-start.png']), /Prüfsumme/);
+  await writeFile(join(dir, 'b-start.png'), 'kein Bild');
+  await assert.rejects(leseSichtpruefung(dir, ['b-start.png']), /PNG/);
+  await rm(join(dir, 'b-start.png'));
+  await assert.rejects(leseSichtpruefung(dir, ['b-start.png']), /ENOENT/);
+  await mkdir(join(dir, 'b-start.png'));
+  await assert.rejects(leseSichtpruefung(dir, ['b-start.png']), /reguläre Datei/);
+  status(sichtpruefungAusstehend([]), UNGUELTIG);
 });
 
 test('Release API 30: echter userdebug-Socket ist Grenze, fehlender Typ bleibt ungültig', () => {

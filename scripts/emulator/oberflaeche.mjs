@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { hinweisGrenze } from '../../app/src/rechtsstand-hinweis.ts';
-import { STATUS, befund, evaluiereBeobachtungen, evaluiereBarrierebaum, evaluiereUeberlauf, evaluiereFehlerseite, evaluiereBruecke, evaluiereFehlerfalleGegenprobe, evaluiereTastatur, evaluiereFehlerseiteGegenprobe, evaluiereZurueck } from '../emulator-auswertung.mjs';
+import { STATUS, SICHTPRUEFUNGEN, sichtpruefungAusstehend, befund, evaluiereBeobachtungen, evaluiereBarrierebaum, evaluiereUeberlauf, evaluiereFehlerseite, evaluiereBruecke, evaluiereFehlerfalleGegenprobe, evaluiereTastatur, evaluiereFehlerseiteGegenprobe, evaluiereZurueck } from '../emulator-auswertung.mjs';
 import { navigation, netz } from './pruefungen.mjs';
 
 // Selektoren belegt durch packages/oberflaeche/src/Fristenrechner.astro:
@@ -277,7 +277,7 @@ export async function ablaufA8(ctx) {
       }
     }
     if (fehler) throw fehler;
-    return befund('ungültig', 'Bilder für Systemleisten, Verdeckung und Lesbarkeit müssen noch gesichtet werden.');
+    return sichtpruefungAusstehend(SICHTPRUEFUNGEN.A8);
   });
 }
 
@@ -353,11 +353,17 @@ export async function fehlerseite(ctx) {
     await ctx.uninstall(ctx.app); await ctx.shell('logcat -c'); await ctx.install(ctx.varianten[art], ctx.app); await ctx.start(ctx.app);
     await ctx.pruefung(art, async () => {
       const c = await ctx.cdp(ctx.app); await c.send('Page.enable'); await c.send('Page.reload'); await ctx.sleep(10000);
-      const logcat = (await ctx.adb(['logcat', '-d', '-v', 'time'])).out;
+      const protokoll = await ctx.adb(['logcat', '-d', '-v', 'time']);
+      if (protokoll.code !== 0) throw new Error(`Logcat der Variante ${art} nicht lesbar (${protokoll.code}).`);
+      const logcat = protokoll.out;
       let ort;
       try { ort = await c.evaluate('({pathname:location.pathname,text:document.body.innerText,capacitor:typeof Capacitor})'); }
       catch (e) { if (art === 'fehlerseite') throw e; ort = { fehler: e.message }; }
-      ctx.save(`${art}.json`, { ort, events: c.events }); ctx.save(`${art}-logcat.txt`, logcat); await ctx.shot(`${art}.png`);
+      ctx.save(`${art}.json`, { ort, events: c.events }); ctx.save(`${art}-logcat.txt`, logcat);
+      // Die Gegenprobe lädt bei fehlender Fehlerseite fortlaufend neu. Uiautomator
+      // findet dann nicht zuverlässig einen Ruhezustand; maßgeblich ist Logcat.
+      // Die Prüfung auf einen Systemdialog bleibt im Screenshot-Aufruf aktiv.
+      await ctx.shot(`${art}.png`, { ui: art !== 'ohne-fehlerseite' });
       if (art === 'fehlerseite') return evaluiereFehlerseite({ ort, ausnahmen: c.events.filter(e => e.method === 'Runtime.exceptionThrown'), logcat, erwarteterText: 'Der Fristenrechner kann nicht starten' });
       return evaluiereFehlerseiteGegenprobe({ logcat });
     });

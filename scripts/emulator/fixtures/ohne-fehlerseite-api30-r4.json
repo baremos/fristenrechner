@@ -1,0 +1,19 @@
+{
+  "herkunft": "Android API 30, WebView 83, 2026-09-30; gekürzte Rohbelege der vierten Serie",
+  "dump": {
+    "err": "ERROR: could not get idle state.\r\n",
+    "out": "",
+    "code": 0
+  },
+  "lesen": {
+    "err": "cat: ansicht.xml: No such file or directory\r\n",
+    "out": "",
+    "code": 1
+  },
+  "logcat": "09-30 14:08:43.793 E/Capacitor(10020): Unable to open asset URL: https://localhost/startfehler.html\n09-30 14:08:43.806 E/Capacitor(10020): Unable to open asset URL: https://localhost/startfehler.html\n09-30 14:08:44.277 E/Capacitor(10020): Unable to open asset URL: https://localhost/startfehler.html",
+  "ort": {
+    "pathname": "/",
+    "capacitor": "undefined",
+    "text": ""
+  }
+}

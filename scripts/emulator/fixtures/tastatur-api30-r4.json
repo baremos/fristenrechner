@@ -1,0 +1,24 @@
+{
+  "inputMethod": "  mShowRequested=true mShowExplicitlyRequested=true mShowForced=false mInputShown=true\n  mIsInputViewShown=true mStatusIcon=0\n",
+  "fenster": "    mRequestedInsetsState: InsetsState: {mDisplayFrame=Rect(0, 0 - 0, 0), mSources= { InsetsSource: {mType=ITYPE_STATUS_BAR, mFrame=[0,0][1080,63], mVisible=true}, InsetsSource: {mType=ITYPE_NAVIGATION_BAR, mFrame=[0,2274][1080,2400], mVisible=true}, InsetsSource: {mType=ITYPE_IME, mFrame=[0,1499][1080,2400], mVisible=true} }\n  mInputMethodInputTarget in display# 0 Window{db7c88e u0 de.baremos.fristenrechner/de.baremos.fristenrechner.MainActivity}\n",
+  "vorher": {
+    "innerHeight": 843,
+    "clientHeight": 843,
+    "visualViewportHeight": 843.047607421875,
+    "aktivesElement": {
+      "tag": "body",
+      "id": "",
+      "name": ""
+    }
+  },
+  "nachher": {
+    "innerHeight": 548,
+    "clientHeight": 548,
+    "visualViewportHeight": 548.1904907226562,
+    "aktivesElement": {
+      "tag": "input",
+      "id": "",
+      "name": "projektname"
+    }
+  }
+}
