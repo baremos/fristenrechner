@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "stand": "2026-09-30",
-  "hinweis": "Geprüft anhand Lockfile und installierter Windows-Quellen. Am 2026-09-30 unter Debian 13.5 x64/glibc mit fdroidserver 2.4.2 am Stand f272140 erprobt: 21 Pakete und 1580 Dateien entfernt, sechs Windows-Pakete inaktiv; ohne scandelete erfolgreicher lokaler F-Droid-Build mit bytegleicher Referenz-APK. F5 bleibt als Entscheidung offen. Plattformfremde Einträge dürfen fehlen, passende Einträge müssen vorhanden sein.",
+  "hinweis": "Geprüft anhand Lockfile und installierter Windows-Quellen. Am 2026-09-30 unter Debian 13.5 x64/glibc mit fdroidserver 2.4.2 am Stand f272140 erprobt: 21 Pakete und 1580 Dateien entfernt, sechs Windows-Pakete inaktiv; ohne scandelete erfolgreicher lokaler F-Droid-Build mit bytegleicher Referenz-APK. F5 ist am 2026-09-30 so festgelegt: gezielte Bereinigung ohne scandelete. Plattformfremde Einträge dürfen fehlen, passende Einträge müssen vorhanden sein.",
   "pakete": [
     {
       "paket": "@astrojs/astro2tsx",

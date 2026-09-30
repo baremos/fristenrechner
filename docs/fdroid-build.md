@@ -202,7 +202,7 @@ Was das belegt und was nicht:
 
 ## Festlegungen
 
-Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1 bis F4 und F6 sind getroffen. Für F5 ist seit dem 2026-09-30 der Versuch freigegeben; die endgültige Behandlung wird anhand der Inventare und Vergleichsläufe festgelegt.
+Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1 bis F6 sind getroffen. F5 ist am 2026-09-30 nach dem Versuch mit der App anhand der Inventare und Vergleichsläufe festgelegt worden.
 
 | Nr. | Thema | Festlegung oder Vorschlag | Begründung |
 |---|---|---|---|
@@ -210,7 +210,7 @@ Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1 bis 
 | F2 | Gradle im Build für F-Droid | **festgelegt am 2026-09-29:** Gradle 8.14.5 bleibt; lokal gilt `gradlew-fdroid` mit Commit `c7227d147483979bb5c408048cee3533a8814fb0`. Quelle, SHA-256 und Ablage stehen im folgenden Abschnitt und in `scripts/toolchain.json`. | Ein Wechsel auf fdroidserver 2.4.5 löst die Frage nicht (Befund 3). Das Projekt hat laut dem gelesenen Stand keine Marken. Die Festlegung fixiert das Programm, nicht die nachgeladenen Prüfsummendaten. |
 | F3 | Node.js unter Linux | **festgelegt am 2026-09-28:** Archiv von nodejs.org mit der Prüfsumme oben, abgelegt im Benutzerbereich | wie unter Windows: Referenzversion, keine Installation im System |
 | F4 | Android SDK unter Linux | **festgelegt am 2026-09-28:** Kommandozeilenwerkzeuge 22.0 für Linux nach `scripts/toolchain.json`, nur die Gruppe „Build" | Der Emulator läuft unter Windows. Wer installiert, bestätigt die Lizenz selbst. Das `sdkmanager` von F-Droid wird dafür nicht verwendet. |
-| F5 | Vorgebaute Programme in `node_modules` | **Versuch am 2026-09-30 durchgeführt; Entscheidung durch Andreas offen. Vorschlag: gezielte Bereinigung ohne `scandelete`.** | Die App baut nach gezielter Bereinigung ohne Scannerfehler und bytegleich zur Referenz. Ohne Bereinigung stoppt der Scanner an zehn Dateien. Ergänzendes `scandelete: [node_modules]` bricht mit `Unused scandelete path: node_modules` ab, weil die Bereinigung keine entsprechenden Scannerfunde übrig lässt. |
+| F5 | Vorgebaute Programme in `node_modules` | **festgelegt am 2026-09-30: gezielte Bereinigung nach Web-Build und `cap sync` anhand der geprüften Paketliste, ohne `scandelete`** | Die App baut nach gezielter Bereinigung ohne Scannerfehler und bytegleich zur Referenz. Ohne Bereinigung stoppt der Scanner an zehn Dateien. Ergänzendes `scandelete: [node_modules]` bricht mit `Unused scandelete path: node_modules` ab, weil die Bereinigung keine entsprechenden Scannerfunde übrig lässt. |
 | F6 | Kategorie bei F-Droid | **festgelegt am 2026-09-30: `Calculator`** | `config/categories.yml` aus `fdroiddata`, gelesen am 2026-09-30: „Arithmetic, scientific, and mathematical calculation tools“. SHA-256 der gelesenen Datei: `edf68d8d70073fe52a52c6a33f490399ce9dc884acff3a761a3a1e34acf9d541`. |
 
 ## F2: festgehaltenes Buildwerkzeug
@@ -265,7 +265,7 @@ Der Laufordner wird außerdem zu einem eigenen Git-Repository; nur das Rezept un
 
 Die Vorbereitung läuft wie bei den am 2026-09-28 gelesenen Capacitor-Rezepten vor dem Scanner: `npm ci --ignore-scripts --no-audit --no-fund`, Web-Build, lokales `cap sync android`. Es wird kein `npx` verwendet. `npm ci` lädt und installiert Pakete ausschließlich in diesen Build-Klon; Installationsskripte bleiben abgeschaltet. Tests werden hier nicht ausgeführt. Das Lockfile und zwei Dateiinventare vor und nach dem Web-Build werden im Lauf aufbewahrt. Die Inventur sucht Endungen sowie ELF und WASM am Dateianfang, hält Größe und SHA-256 fest und scheitert bei Lesefehlern. Sie ist keine vollständige Erkennung eingebetteten WASM in JavaScript.
 
-Der normale Aufruf hat weder `scanignore` noch `scandelete`. Für den ausdrücklich bezeichneten Vergleich gibt es `--versuch-scandelete`: Nur dessen erzeugtes Rezept erhält `scandelete: [node_modules]`, entsprechend dem Muster der gelesenen Capacitor-Rezepte. Das ist ein Versuch zur offenen F5, keine freigegebene Regel für die App. Der Scanner entfernt dabei nur erkannte beanstandete Dateien, nicht den ganzen Ordner. Eingebettetes WASM kann übrig bleiben. Die drei Gradle-Dateien von Capacitor Android, Filesystem und Share müssen nach dem Scanner noch vorhanden sein; sonst bricht der Build ab. Die vollständigen Android-Quellen werden weiterhin vom Scanner erfasst.
+Der normale Aufruf hat weder `scanignore` noch `scandelete`. Für den ausdrücklich bezeichneten Vergleich gibt es `--versuch-scandelete`: Nur dessen erzeugtes Rezept erhält `scandelete: [node_modules]`, entsprechend dem Muster der gelesenen Capacitor-Rezepte. Das war ein Versuch zu F5 vor deren Festlegung, keine Regel für die App. Der Scanner entfernt dabei nur erkannte beanstandete Dateien, nicht den ganzen Ordner. Eingebettetes WASM kann übrig bleiben. Die drei Gradle-Dateien von Capacitor Android, Filesystem und Share müssen nach dem Scanner noch vorhanden sein; sonst bricht der Build ab. Die vollständigen Android-Quellen werden weiterhin vom Scanner erfasst.
 
 ### Auswertung und Grenzen
 
@@ -397,7 +397,7 @@ Die zusätzliche Entfernung von `android/gradle/wrapper/gradle-wrapper.jar` geh�
 
 Erneut gelesen am 2026-09-30: Lockfile und installierte Quellen zum Stand `cac2c4b`. Capacitor Android, CLI und Core sind hinzugekommen; `exceljs` ist nicht mehr enthalten. Mit Astro gilt die frühere Aussage „nur Tests“ für Rolldown, Lightning CSS und es-module-lexer nicht mehr. Die Tabelle zeigt Abhängigkeitspfade und gelesene Verwendung; sie behauptet nicht, dass jeder Build jeden optionalen Programmteil ausführt. Lizenzangaben stammen aus dem Lockfile und ersetzen keine Prüfung eingebetteter Bestandteile. Die Paketliste des Versuchs steht maschinenlesbar in `scripts/fdroid/bereinigungsliste.json`.
 
-| Paket, Version | Lizenzangabe | Verwendung im aktuellen Baum | Vorschlag für F5 |
+| Paket, Version | Lizenzangabe | Verwendung im aktuellen Baum | Behandlung nach F5 |
 |---|---|---|---|
 | `@astrojs/compiler-binding-linux-x64-gnu` 0.4.1 | MIT | Astro 7.3.3 → compiler-rs → compiler-binding; Übersetzung von Astro | Für Web-Build; anschließend entfernen |
 | `@esbuild/linux-x64` 0.28.2 | MIT | Astro → esbuild; Client-Direktiven und Umgebungsvariablen | Für Web-Build; anschließend entfernen |
@@ -434,7 +434,7 @@ In Lauf 2 bis 4 enthalten die Inventare vor dem Web-Build und nach Web-Build plu
 
 Für diese fünf `.node`-Dateien enthält Lauf 3 keine Entfernungsmeldung. Umgekehrt erfasst die Inventur die fünf `.tar.gz`-Archive nicht, die der Scanner beanstandet. Die Zahl zehn ist daher bei Scanner und Inventar zufällig gleich; die Mengen sind verschieden. Ein Inventar nach dem Scanner liegt nicht vor. Ebenso wenig beweist das unveränderte Inventar, welche Programme der Web-Build tatsächlich ausgeführt hat. Es belegt aber, dass Web-Build und `cap sync` die erfassten Werkzeuge nicht selbst wegräumen. Die Inventur erfasst außerdem nicht vollständig WASM, das in JavaScript eingebettet ist.
 
-### Freigegebener Versuch, endgültige Behandlung noch offen
+### Versuch und Festlegung
 
 **Versuch freigegeben und durchgeführt am 2026-09-30.** Im `prebuild` nach Web-Build **und** `cap sync android` werden die entbehrlichen npm-Werkzeuge anhand einer geprüften Paketliste gezielt entfernt. Das umfasst auch ganze entbehrliche Pakete mit eingebettetem WASM, native `.node`-Dateien sowie CLI-Vorlagen. Die Java-Quellen und Gradle-Dateien von `@capacitor/android` bleiben erhalten. Filesystem und Share sind noch keine Abhängigkeiten der App; bei späteren Plugins muss die Liste erneut geprüft werden. Maßgeblich für die geschützten Ordner ist die Ausgabe von `node scripts/app-bauen.mjs --android-quellen`. Dass die zehn Scannerdateien nach `cap sync` für den Android-Build der Minimal-App entbehrlich sind, ist durch Lauf 3 belegt. Der entsprechende Nachweis für die gezielt bereinigte App liegt nun mit `lauf-hqj89xdz` vor.
 
@@ -443,10 +443,10 @@ Ergänzendes `scandelete` wurde mit der App erprobt. Es ist beim beobachteten be
 | Variante | Bewertung anhand der Minimal-App und der drei App-Läufe |
 |---|---|
 | Nur `scandelete: [node_modules]` | Der Android-Build der Minimal-App gelingt; die Bereinigung erfasst aber nur die vom Scanner erkannten Dateien. |
-| Nur gezieltes Löschen nach Web-Build und `cap sync` | App-Build erfolgreich und bytegleich zur Referenz; 43 Inventarfunde vor und 0 nach der Bereinigung sowie nach dem Scanner. Vorschlag für F5; Liste und Build müssen bei Änderungen der Pakete erneut geprüft werden. |
+| Nur gezieltes Löschen nach Web-Build und `cap sync` | App-Build erfolgreich und bytegleich zur Referenz; 43 Inventarfunde vor und 0 nach der Bereinigung sowie nach dem Scanner. Festlegung für F5; Liste und Build müssen bei Änderungen der Pakete erneut geprüft werden. |
 | Gezielt löschen, ergänzend `scandelete` | App-Build abgebrochen: `Unused scandelete path: node_modules`. Kein APK-Nachweis für diese Variante. |
 
-Die Inventare nach gezielter Bereinigung und Scanner sowie der Vergleich mit dem APK-Inhalt liegen für Variante (a) vor. Die Entscheidung zu F5 bleibt bei Andreas; der Vorschlag lautet „gezielte Bereinigung ohne `scandelete`“. Die lokalen Ergebnisse belegen keine Annahme durch F-Droid.
+Die Inventare nach gezielter Bereinigung und Scanner sowie der Vergleich mit dem APK-Inhalt liegen für Variante (a) vor. Auf dieser Grundlage ist F5 am 2026-09-30 festgelegt: gezielte Bereinigung ohne `scandelete`. Das Rezept der App trägt deshalb keinen `scandelete`-Eintrag; die Variante mit `scandelete` bleibt nur als Vergleichslauf in der Laufsteuerung. Die lokalen Ergebnisse belegen keine Annahme durch F-Droid.
 
 `--omit=dev` trennt diese Rollen nicht zuverlässig. `--omit=optional` entfernt auch benötigte Compiler- und Bundler-Pakete. Plattformpakete für macOS, Windows, musl und WASM-Ausweichpakete sind von tatsächlich unter Debian x64 verwendeten Programmen zu unterscheiden.
 
@@ -626,7 +626,7 @@ Das Verhalten wurde an einer bereits vorhandenen Quelltextkopie der Marke 2.4.2 
 
 Der Build von (a) startet danach das nach F2 festgelegte `gradlew-fdroid` (`build.log:133`) und dessen Gradle 8.14.5 (`build.log:138`). Alle drei Berichte `gradle-archiv.json` nennen dasselbe geprüfte `gradle-8.14.5-bin.zip`: 138 068 841 Bytes, SHA-256 `6f74b601422d6d6fc4e1f9a1ab6522f642c2fdcbc15ae33ebd30ba3d7198e854`, passend zu `toolchain.json`. Damit hängt dieser Build nicht vom entfernten Wrapper-JAR ab. Die Materialkopien enthalten die Archivberichte, nicht die Archive selbst; bei der Neuauswertung wurden die Berichte und Aufrufe abgeglichen, keine Archiv-Prüfsumme neu berechnet.
 
-Bei (b) folgt nach der Wrapper-Entfernung der Scannerfehler `Unused scandelete path: node_modules` (`build.log:120`), danach der Scanabbruch mit einem Fehler (Zeile 121) und `1 build failed` (Zeile 125). In derselben Scannerquelle markiert nur `todelete` einen `scandelete`-Eintrag als benutzt (Zeilen 767–773); ein unbenutzter Eintrag führt zu ERROR und erhöht den Fehlerzähler (Zeilen 1117–1122). Die gezielte Bereinigung lässt hier keinen entsprechenden Fund übrig. Die Wrapper-Entfernung benutzt den Eintrag nicht. Der eigene Befund für (b) lautet deshalb: Buildabbruch durch ungenutztes `scandelete`, kein APK-Nachweis. Er ist keine Folge unbekannter Protokollzeilen. F5 bleibt offen; der Vorschlag an Andreas lautet „gezielte Bereinigung ohne `scandelete`“.
+Bei (b) folgt nach der Wrapper-Entfernung der Scannerfehler `Unused scandelete path: node_modules` (`build.log:120`), danach der Scanabbruch mit einem Fehler (Zeile 121) und `1 build failed` (Zeile 125). In derselben Scannerquelle markiert nur `todelete` einen `scandelete`-Eintrag als benutzt (Zeilen 767–773); ein unbenutzter Eintrag führt zu ERROR und erhöht den Fehlerzähler (Zeilen 1117–1122). Die gezielte Bereinigung lässt hier keinen entsprechenden Fund übrig. Die Wrapper-Entfernung benutzt den Eintrag nicht. Der eigene Befund für (b) lautet deshalb: Buildabbruch durch ungenutztes `scandelete`, kein APK-Nachweis. Er ist keine Folge unbekannter Protokollzeilen. Die Festlegung zu F5 verzichtet deshalb auf `scandelete`.
 
 ### Grenzen dieses Nachweises
 
@@ -659,6 +659,6 @@ Nach Ergänzung der Prüfungen für Steuerzeichen, Leerraum und sichtbare Unicod
 3. Erledigt am 2026-09-29: vier lokale Aufrufe von `fdroid build` in Debian; Lauf 3 und 4 mit `--versuch-scandelete` ergaben die bytegleiche Minimal-APK.
 4. Erledigt am 2026-09-29: Legacy-Warnung als eng begrenzte bekannte Meldung bewertet, Archivprüfung durch Lauf 4 belegt; dessen Neuauswertung mit `eaf3939` besteht ohne Beanstandung mit neun bekannten Meldungen.
 5. Erledigt am 2026-09-30: drei App-Läufe auf `f272140`; gezielte Bereinigung ohne `scandelete` baut erfolgreich und bytegleich. Ohne Bereinigung zehn Scannerfehler; mit ergänzendem `scandelete` Abbruch am ungenutzten Eintrag. F6 ist mit `Calculator` festgelegt.
-6. Andreas entscheidet F5 anhand dieser Nachweise. Vorschlag: gezielte Bereinigung ohne `scandelete`; noch keine endgültige Festlegung.
+6. Erledigt am 2026-09-30: F5 ist anhand dieser Nachweise festgelegt, gezielte Bereinigung ohne `scandelete`.
 7. Die angepasste Auswertung kreuzweise prüfen und die vollständigen Tests vor dem Merge unter Windows und Linux ausführen.
 8. Release-Build der App ohne F-Droid am 2026-09-30 unter Debian erledigt, mit bytegleichem Ergebnis in zwei Klonen und gegenüber Windows. Am Ende von Stufe 2 die Läufe mit Bereinigung und Scanner für den fertigen App-Stand wiederholen; den Nachweis mit dem dann verwendeten Buildserver von F-Droid gesondert führen.
