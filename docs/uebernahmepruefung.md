@@ -144,6 +144,142 @@ Zwei Punkte für die folgenden Arbeitspakete:
 - `vitest` bringt über `vite` vorgebaute Programme mit, etwa `rolldown` und `lightningcss`. Der Build des Pakets braucht sie nicht, er läuft allein mit `tsc`. Was das für den Build bei F-Droid bedeutet, klärt Arbeitspaket 2.8.
 - Die 12 Pakete unter MPL-2.0 gehören zu `lightningcss`. Sie dienen dem Test und werden nicht mit der App ausgeliefert.
 
+## Übernahme der Android-Vorlage
+
+Stand 2026-09-30 · Arbeitspaket 2.5 · Capacitor 8.5.2
+
+### Quelle und Lizenzbelege
+
+Geprüft wurde das lokal installierte npm-Paket `@capacitor/cli` **8.5.2**, darin `assets/android-template.tar.gz`. Das Archiv hat **217.371 Bytes** und die SHA-256 **`5edb50a67a034556da8bb5fa54eb08211eaa952aac0949c75050ebcf0be97303`**. Es enthält 52 Dateien. Grundlage des Vergleichs ist der frisch entpackte Archivinhalt ohne Versionsgeschichte.
+
+`node_modules/@capacitor/cli/package.json` nennt die Lizenz `MIT` und das Ionic Team als Autor. Die Datei `node_modules/@capacitor/cli/LICENSE` enthält den unten erhaltenen MIT-Lizenztext mit dem Urheberhinweis auf Drifty Co.; ihre SHA-256 ist `9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd`. Im Vorlagenarchiv liegt kein eigener Lizenztext. Dieser Abschnitt erhält deshalb den vollständigen Text für die übernommenen Vorlagenanteile. Deren MIT-Lizenz bleibt bestehen; eigene Ergänzungen stehen unter der Apache-2.0-Lizenz des Repositorys.
+
+Der mitgelieferte Gradle-Wrapper enthält gesonderte Apache-2.0-Hinweise: in den unverändert übernommenen Köpfen von `gradlew` und `gradlew.bat` sowie als `META-INF/LICENSE` in `gradle-wrapper.jar`. Die Jar-Datei enthält keinen `NOTICE`-Eintrag. Ihr Inhalt und beide Startskripte sind bytegleich mit der Vorlage. Die SHA-256 der Jar-Datei ist `7d3a4ac4de1c32b59bc6a4eb8ecb8e612ccd0cf1ae1e99f66902da64df296172` und stimmt mit `scripts/toolchain.json` überein.
+
+MIT-Lizenztext aus dem Paket, unveränderter Wortlaut:
+
+```text
+MIT License
+
+Copyright (c) 2017-present Drifty Co.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### Prüfung nach den zehn Prüfpunkten
+
+| Nr. | Ergebnis am 2026-09-30 |
+|---|---|
+| 1 | Übernommen werden Android-Buildgerüst, Wrapper und die benötigten Ressourcen. Beispieltests, Beispielklasse, Rastergrafiken, Startbilder, unbenutztes Layout und die breite Dateifreigabe der Vorlage entfallen. Die folgende Tabelle führt jede Vorlagendatei einzeln auf. |
+| 2 | Paketmanifest und Paketlizenz sind gelesen. MIT-Text sowie die vorhandenen Apache-2.0-Hinweise des Wrappers bleiben erhalten. Die eigenen Java-Klassen und Vektorsymbole ergänzen die Vorlage. Die Lizenzen der erst durch Gradle aufgelösten Abhängigkeiten sind mit dieser Prüfung nicht abgedeckt. |
+| 3 | Die Wrapperdateien einschließlich ihrer Lizenzhinweise bleiben unverändert. Der vollständige MIT-Text steht oben. Die Symbole der Vorlage sind vollständig durch eigene Vektorsymbole ersetzt. |
+| 4 | Die neu geschriebenen Kommentare in Java und den Symbolressourcen sind deutsch und enthalten keine internen Dokumentverweise. Die ursprüngliche Beispiel-Paketkennung und deren Testdateien sind nicht übernommen. Unveränderte Werkzeugkommentare und die automatisch erzeugten Hinweise von Capacitor bleiben erhalten. |
+| 5 | Die gelesenen Textdateien enthalten keine gefundenen Schlüssel, Kennwörter, Token oder Zugangsdaten. Ein Signierungsblock ist nicht eingerichtet; lokale Einstellungen und erzeugte Build-Dateien bleiben ausgeschlossen. Das ist eine Sichtprüfung der übernommenen Quellen, keine Aussage über beliebige spätere Build-Ausgaben. |
+| 6 | Die Beispieltests der Vorlage entfallen. Es wurden keine Testdaten aus Vergabeverfahren in das Android-Projekt aufgenommen. |
+| 7 | Das Quellmanifest enthält keine INTERNET-Berechtigung und keine Freigabe von Klartextverkehr. Das eigene Plugin begrenzt Navigationen auf die lokale App. Wrapperadresse und Maven-Repositories dienen dem Build; XML-Namensräume und erhaltene Kommentaradressen sind keine Laufzeittests. Das erzeugte `res/xml/config.xml` enthält `<access origin="*" />`; die Wirkung der vollständigen APK ist beim Build und im Emulator zu prüfen. |
+| 8 | `strings.xml` enthält den App-Namen, die kurze Beschriftung „Fristenrechner“, die Paketkennung und eine deutsche Meldung bei fehlender Android System WebView. Die Meldung beschreibt die fehlende Systemkomponente. Anzeige, Launcher-Beschriftung und Symbol sind im Emulator noch zu prüfen. |
+| 9 | Die Android-Dateien ergänzen keine fachlichen Fristenwerte, Schwellenwerte oder Berechnungsregeln. SDK-, Werkzeug- und App-Versionen sind technische Angaben. |
+| 10 | `capacitor.settings.gradle` und `app/capacitor.build.gradle` sind mit Capacitor 8.5.2 erzeugt und für das Android-Projekt vorgesehen. Kopierte Web-Assets, Capacitor-JSON-Dateien, `res/xml/config.xml` und das Cordova-Modul bleiben erzeugte, ausgeschlossene Dateien. Der leere Build-Platzhalter der Vorlage wird nicht übernommen. Die eigenen Vektorsymbole liegen als direkt von Android gelesene XML-Quellen vor. |
+
+### Vergleich aller Dateien
+
+Die Pfade beziehen sich auf `app/android/`. „Entfernt“ bedeutet, dass die Datei aus dem Vorlagenarchiv nicht übernommen wird. „Neu“ bezeichnet einen Pfad, den das Archiv nicht enthält. „Unverändert“ beruht auf einem Bytevergleich. Von den **52 Vorlagendateien** sind **6 unverändert**, **12 geändert** und **34 entfernt**. Hinzu kommen **7 neue Dateien**, insgesamt also **25 Dateien** für die Übernahme. Die ersten 52 Tabellenzeilen gehören zur Vorlage, die letzten sieben sind neu.
+
+| Datei | unverändert / geändert / entfernt / neu | Grund |
+|---|---|---|
+| `.gitignore` | geändert | Ausschlüsse für Build-Ausgaben, lokale Einstellungen und durch Capacitor erzeugte Dateien. |
+| `app/.gitignore` | geändert | Erzeugte Build-Dateien vollständig ausschließen; der Platzhalter der Vorlage wird nicht benötigt. |
+| `app/build.gradle` | geändert | App-ID, Version, SDK und deutsche Ressourcen festlegen; lokale Jar-Suche, Testabhängigkeiten, direkte Startbildbibliothek und Google-Services-Block entfernen. |
+| `app/build/.npmkeep` | entfernt | Platzhalter eines erzeugten Build-Ordners; für den Build nicht erforderlich. |
+| `app/proguard-rules.pro` | unverändert | Vorlage für ProGuard-Regeln; keine zusätzliche Regel aktiviert. |
+| `app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java` | entfernt | Beispieltest und Beispiel-Paket gehören nicht zur App. |
+| `app/src/main/AndroidManifest.xml` | geändert | App-Komponenten und Metadaten festlegen; Netzwerkberechtigung und FileProvider entfernen, Sicherung ausschließen. |
+| `app/src/main/java/com/getcapacitor/myapp/MainActivity.java` | entfernt | Beispielklasse durch die Activity im eigenen Paket ersetzen. |
+| `app/src/main/res/drawable-land-hdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-land-mdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-land-xhdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-land-xxhdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-land-xxxhdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-port-hdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-port-mdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-port-xhdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-port-xxhdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-port-xxxhdpi/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/drawable-v24/ic_launcher_foreground.xml` | entfernt | Vordergrund der Vorlage durch eigenes Vektorsymbol im Ordner drawable ersetzen. |
+| `app/src/main/res/drawable/ic_launcher_background.xml` | entfernt | Hintergrundgrafik der Vorlage durch die eigene Farbressource ersetzen. |
+| `app/src/main/res/drawable/splash.png` | entfernt | Startbild der Vorlage wird nicht verwendet. |
+| `app/src/main/res/layout/activity_main.xml` | entfernt | Nicht verwendet; die Activity übernimmt das Layout von Capacitor. |
+| `app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` | geändert | Eigenes adaptives Symbol; Vordergrund verweist auf @drawable/ic_launcher_foreground, ergänzt um die einfarbige Ebene. |
+| `app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml` | geändert | Eigenes rundes adaptives Symbol mit denselben vorhandenen Zeichen- und Farbressourcen. |
+| `app/src/main/res/mipmap-hdpi/ic_launcher.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-hdpi/ic_launcher_round.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-mdpi/ic_launcher.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-mdpi/ic_launcher_round.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-xhdpi/ic_launcher.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-xhdpi/ic_launcher_round.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-xxhdpi/ic_launcher.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-xxxhdpi/ic_launcher.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
+| `app/src/main/res/values/ic_launcher_background.xml` | geändert | Hintergrundfarbe des eigenen Symbols. |
+| `app/src/main/res/values/strings.xml` | geändert | Deutscher App-Name, kurze Beschriftung, eigenes Paket und Meldung bei fehlender WebView. |
+| `app/src/main/res/values/styles.xml` | geändert | AppCompat-Theme mit weißen Systemleisten, ohne Theme.SplashScreen oder eigenes Startbild. |
+| `app/src/main/res/xml/file_paths.xml` | entfernt | Breite Freigabe externer Dateien entfällt zusammen mit dem FileProvider. |
+| `app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java` | entfernt | Beispieltest ohne Bezug zur App entfernen. |
+| `build.gradle` | geändert | Google-Services-Klassenpfad entfernen; clean verwendet rootProject.layout.buildDirectory. Übrige Bytes einschließlich Leerraum bleiben erhalten. |
+| `gradle.properties` | unverändert | Vorhandene Einstellungen für JVM und AndroidX. |
+| `gradle/wrapper/gradle-wrapper.jar` | unverändert | Unveränderter Gradle-Wrapper; Prüfsumme mit der Werkzeugfestlegung verglichen. |
+| `gradle/wrapper/gradle-wrapper.properties` | geändert | Gradle 8.14.5 als bin-Verteilung mit festgelegter SHA-256. |
+| `gradlew` | unverändert | Unverändertes Gradle-Startskript für POSIX mit Lizenzkopf. |
+| `gradlew.bat` | unverändert | Unverändertes Gradle-Startskript für Windows mit Lizenzkopf. |
+| `settings.gradle` | unverändert | Bindet App, Cordova-Modul und die von Capacitor erzeugten Projekteinstellungen ein. |
+| `variables.gradle` | geändert | Mindest-API 30 und feste AndroidX-/Cordova-Versionen; unbenötigte Test- und Startbildvariablen entfallen. |
+| `app/capacitor.build.gradle` | neu | Von Capacitor 8.5.2 durch sync erzeugte Build-Einstellungen; wird eingecheckt. |
+| `app/src/main/java/de/baremos/fristenrechner/MainActivity.java` | neu | Eigene Activity registriert die Navigationssperre vor der Initialisierung der Brücke. |
+| `app/src/main/java/de/baremos/fristenrechner/NavigationssperrePlugin.java` | neu | Navigation auf Schema und Host der lokalen App ohne abweichenden Port begrenzen. |
+| `app/src/main/res/drawable/ic_launcher_foreground.xml` | neu | Eigenes Vektorsymbol als Vordergrund, ohne Rastergrafik der Vorlage. |
+| `app/src/main/res/drawable/ic_launcher_monochrome.xml` | neu | Einfarbige Ebene des eigenen adaptiven Symbols. |
+| `app/src/main/res/xml/data_extraction_rules.xml` | neu | Cloud-Sicherung und Gerätewechsel schließen jeweils alle neun festgelegten Speicherbereiche aus. |
+| `capacitor.settings.gradle` | neu | Von Capacitor 8.5.2 durch sync erzeugter relativer Pfad zum Android-Modul im Wurzel-node_modules; wird eingecheckt. |
+
+### Ausschlüsse und erzeugte Dateien
+
+Die Änderungen an den beiden übernommenen `.gitignore`-Dateien sind vollständig:
+
+- `app/android/.gitignore`: Die erste Kommentarzeile mit der Adresse der GitHub-Vorlage ist durch `# Erzeugte Dateien und lokale Einstellungen der Android-Werkzeuge.` ersetzt. Die beiden Kommentarzeilen `# Google Services (e.g. APIs or Firebase)` und `# google-services.json` sowie die folgende Leerzeile entfallen. Keine Ausschlussregel dieser Datei ist geändert.
+- `app/android/app/.gitignore`: `/build/*` ist durch `/build/` ersetzt; `!/build/.npmkeep` entfällt. Damit gibt es keine Ausnahme für einen Platzhalter im erzeugten Build-Ordner.
+
+Die `.gitignore` der Repositorywurzel ist unverändert. Unter Android bleiben insbesondere `.gradle`, `build`, `local.properties`, `capacitor-cordova-android-plugins`, `app/src/main/assets/public`, `app/src/main/assets/capacitor.config.json`, `app/src/main/assets/capacitor.plugins.json` und `app/src/main/res/xml/config.xml` ausgeschlossen.
+
+Der Sync mit Capacitor 8.5.2 erzeugt in `capacitor.settings.gradle` den Pfad `../../node_modules/@capacitor/android/capacitor`. Vom Android-Projekt aus aufgelöst zeigt er auf das vorhandene `node_modules` der Repositorywurzel. `app/capacitor.build.gradle` setzt Java 21 und enthält keine zusätzlichen Plugin-Abhängigkeiten. `capacitor.plugins.json` enthält `[]`.
+
+Die App definiert kein `Theme.SplashScreen` und kein eigenes Startbild. Entfernt ist die **direkte** Abhängigkeit auf `core-splashscreen`; daraus folgt keine Aussage über das Fehlen der Bibliothek im vollständigen Gradle-Abhängigkeitsbaum oder in der APK.
+
+### Grenzen und noch ausstehende Prüfung
+
+Diese Übernahmeprüfung betrifft den Quellstand und die lokal erzeugten Sync-Dateien vom 2026-09-30. Ein Gradle-Build, die Untersuchung der daraus entstehenden APK und die Prüfung im Emulator sind noch nicht erfolgt. Ebenfalls offen sind die gesonderte Prüfung der Gradle-Abhängigkeiten und das Kreuz-Review vor dem Commit. Insbesondere Navigation, Sicherung und Gerätewechsel, die endgültige Ressourcenzusammenführung und das Verhalten ohne Startbild werden durch die Sichtprüfung der Quellen allein nicht nachgewiesen.
+
 ## Protokoll
 
 Jede Übernahme erhält eine Zeile. Ein Prüfpunkt, der nicht zutrifft, steht nicht unter „Befunde".
@@ -155,3 +291,4 @@ Jede Übernahme erhält eine Zeile. Ein Prüfpunkt, der nicht zutrifft, steht ni
 | 2026-09-28 | 2.3 | acht Dateien des Rechenkerns unter `packages/kern/src` | Rechenkern 1.9.0 des Fristenrechners auf www.baremos.de, Stand 2026-08-26 | Prüfpunkt 1: Die Schwellenwerte gehören nicht zum Zuschnitt, entfernt (A1, A2). Prüfpunkt 4: interne Verweise in Kommentaren und in Titeln von Tests, bereinigt (A6). Prüfpunkt 8: fünf Texte neu gefasst, Anzeigetext zum Rechtsstand gekürzt (A2, A7). Die übrigen Texte in den Quelldateien sind unverändert, neu ist die Meldung aus A3. Die Texte, die der Rechenkern im Raster ausgibt, stehen in `texte-1.9.0.txt`. Die Meldungen beim Import einer Projektdatei gehören nicht dazu, sie stehen in `projekt.ts`. | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.3 | vier Referenzdateien unter `packages/kern/test/referenz` | erzeugt aus dem Rechenkern 1.9.0, siehe Abschnitt „Referenzfälle" | Prüfpunkt 10: Die Dateien sind erzeugt. Sie gehören ins Repository, weil die Tests sie brauchen. Raster und Abbild, aus denen sie entstehen, liegen daneben. | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.3 | `package-lock.json` | erzeugt mit npm 11.19.0 unter Node 24.21.0, nach Aufnahme von `typescript` und `vitest` | keine, siehe Abschnitt „Abhängigkeiten für Test und Build" | Claude Code, Kreuz-Review Codex |
+| 2026-09-30 | 2.5 | Android-Projekt: 52 Vorlagendateien geprüft, davon 18 übernommen; sieben neue Dateien | `@capacitor/cli` 8.5.2, `assets/android-template.tar.gz`, 217.371 Bytes, SHA-256 `5edb50a67a034556da8bb5fa54eb08211eaa952aac0949c75050ebcf0be97303` | Vorlage gezielt reduziert und an die App angepasst; vollständiger Dateivergleich, Prüfpunkte und Lizenzbelege im Abschnitt „Übernahme der Android-Vorlage“. Gradle-Build, APK-, Emulator- und Gradle-Lizenzprüfung stehen aus. | Codex; Kreuz-Review ausstehend |

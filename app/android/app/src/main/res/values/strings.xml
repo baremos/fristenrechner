@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fristenrechner Vergabe</string>
+    <string name="title_activity_main">Fristenrechner</string>
+    <string name="package_name">de.baremos.fristenrechner</string>
+    <string name="custom_url_scheme">de.baremos.fristenrechner</string>
+    <string name="no_webview_text">Der Fristenrechner benötigt die Systemkomponente Android System WebView. Sie ist auf diesem Gerät nicht verfügbar.</string>
+</resources>

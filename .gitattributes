@@ -1,6 +1,9 @@
 # Textdateien liegen im Repository mit LF. Die Arbeitskopie folgt dem System.
 * text=auto
 
+# Android-Quellen behalten die Zeilenenden der Vorlage; Ausnahmen folgen unten.
+app/android/** text eol=lf
+
 # Diese Dateien behalten ihre Zeilenenden auch in der Arbeitskopie.
 LICENSE text eol=lf
 NOTICE text eol=lf
@@ -19,6 +22,14 @@ packages/oberflaeche/test/referenz/** text eol=lf
 # Astro kopiert public/ unverändert in die App. Mit festen Zeilenenden sind
 # die Builds unter Windows und Linux gleich.
 app/public/** text eol=lf
+
+# Capacitor schreibt diese eingecheckten Dateien bei jedem Sync mit LF.
+app/android/capacitor.settings.gradle text eol=lf
+app/android/app/capacitor.build.gradle text eol=lf
+
+# Feste Zeilenenden der Seitenquellen verhindern Unterschiede im Web-Build.
+app/src/** text eol=lf
+packages/oberflaeche/src/** text eol=lf
 
 # Binärdateien
 *.png binary
