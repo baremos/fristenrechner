@@ -30,7 +30,7 @@ Stand 2026-09-30, App-Version 0.1.0. Die App verbindet den Rechenkern und die Ob
 | Nur deutsche Sprachressourcen | `localeFilters += ["de"]` beschränkt die Sprachvarianten der Android-Ressourcen. Sprachneutrale Ressourcen bleiben erhalten. Die App-Oberfläche ist deutsch. |
 | Versionsschema | `versionName` entspricht `app/package.json`; `versionCode = Hauptversion × 10000 + Nebenversion × 100 + Patch`. Version 0.1.0 ergibt 100. |
 | Kein Signierblock im Projekt | Release-Dateien werden außerhalb von Gradle signiert; das Projekt enthält keine Schlüssel oder Kennwörter. Siehe [signierung.md](signierung.md). |
-| Debug-Schlüssel nur für Emulatorläufe | Die Android-Werkzeuge signieren den Debug-Build mit ihrem lokalen Debug-Schlüssel. Diese APK ist nicht zur Veröffentlichung bestimmt. |
+| Debug-Schlüssel nur für Prüfläufe im Emulator und auf dem Testgerät | Die Android-Werkzeuge signieren den Debug-Build mit ihrem lokalen Debug-Schlüssel. Diese APK ist nicht zur Veröffentlichung bestimmt. |
 | Zoom eingeschaltet | `android.zoomEnabled=true` lässt Vergrößerung in der WebView zu. Die Bedienung ist noch auf den vorgesehenen Geräten zu prüfen. |
 | Eine Seite | Der Rechner braucht keine Navigation zwischen App-Seiten. Die Fehlerseite ist nur für den Startfehler vorgesehen. |
 | WebView-Metadaten | `MetricsOptOut=true` und `EnableSafeBrowsing=false` sind im Manifest gesetzt. Die App lädt keine fremden Seiten; die Metadaten und die Navigationssperre ersetzen keinen Laufzeitnachweis. |
@@ -247,7 +247,7 @@ Die Gegenprobe-App entsteht ausschließlich in einer temporären Kopie unter dem
 
 Vor und nach den Varianten-Builds werden die Datei-Prüfsummen unter `app/android/app/build`, `app/android/build` und `node_modules/@capacitor/android/capacitor/build` verglichen. Eine Veränderung ist ein Fehler. Das Skript baut die ursprüngliche App nicht erneut. Der anschließende Neubau dieser App aus `clean` und sein Vergleich mit der Referenzprüfsumme bleiben gesondert auszuführen; inkrementelle Builds nach geänderten Assets können abweichen.
 
-Die Release-Kopie wird ausschließlich mit dem Debug-Schlüssel der Android-Werkzeuge unter `%USERPROFILE%\.android\debug.keystore` und mit v2, v3 sowie `--alignment-preserved true` signiert. Die vorübergehende Kennwortdatei enthält je eine Zeile für Store und Schlüssel; apksigner liest sie nacheinander. Die Datei wird anschließend gelöscht. Die Signaturprüfung beginnt ausdrücklich bei API 24, damit v2 und v3 geprüft werden. Diese Signatur dient nur dem Emulatorlauf und keinem Vertrieb.
+Die Release-Kopie wird ausschließlich mit dem Debug-Schlüssel der Android-Werkzeuge unter `%USERPROFILE%\.android\debug.keystore` und mit v2, v3 sowie `--alignment-preserved true` signiert. Die vorübergehende Kennwortdatei enthält je eine Zeile für Store und Schlüssel; apksigner liest sie nacheinander. Die Datei wird anschließend gelöscht. Die Signaturprüfung beginnt ausdrücklich bei API 24, damit v2 und v3 geprüft werden. Diese Signatur dient nur dem Prüflauf und keinem Vertrieb.
 
 Der Ausgabeordner enthält `ergebnis.json`, `zusammenfassung.txt`, `logcat.txt`, Bildschirmfotos und weitere Rohbelege. Dazu gehören Gerätefingerabdruck, Build-Typ (`ro.build.type`), Pakete mit UID, WebView-Version und SHA-256 der installierten APKs. Diese Laufbelege können lokale Angaben enthalten und gehören nicht ungeprüft in das öffentliche Repository. Öffentliche Prüfdaten unter `scripts/emulator/fixtures` enthalten nur gekürzte und bereinigte Ausschnitte.
 
@@ -290,20 +290,22 @@ node scripts/geraet-lauf.mjs --seriennummer <Seriennummer aus adb devices> --aus
 
 `--seriennummer` und `--ausgabe` sind Pflicht. Für den Ausgabeordner gelten die Regeln des Emulatorlaufs. `--apk-debug <Datei>` und `--apk-release <Datei>` ersetzen die Vorgaben. Mit `--app-behalten` bleibt die Release-Kopie nach dem Lauf installiert, etwa für die Prüfung von Hand; ohne den Schalter deinstalliert der Lauf die App wieder.
 
-Der Lauf bricht vor jeder Installation ab, wenn das Gerät diesen Rechner noch nicht zugelassen hat, wenn die ADB-Shell als root läuft, wenn es ein Emulator ist, wenn die API unter 30 liegt oder wenn die App schon installiert ist. Vorhandene Daten der App bleiben dann erhalten.
+Der Lauf bricht vor jeder Installation ab, wenn das Gerät diesen Rechner noch nicht zugelassen hat, wenn die ADB-Shell als root läuft, wenn es ein Emulator ist, wenn die API unter 30 liegt oder wenn die App schon installiert ist. Vorhandene Daten der App bleiben dann erhalten. Installiert werden nur Dateien, deren Paketname laut `aapt2` `de.baremos.fristenrechner` ist, und nie über ein vorhandenes Paket. Der Lauf deinstalliert nur, wenn belegt ist, dass er selbst installiert hat: Vor dem Versuch fehlte das Paket, danach ist es da.
 
 | Befund | Inhalt |
 |---|---|
 | `G-Gerät` | Hersteller, Modell, Android-Version, API, Build-Typ und WebView-Version |
-| `G-Devtools-Gegenprobe`, `G-Socket-Gegenprobe`, `G-Flags-Gegenprobe` | Am Debug-Build müssen die Devtools der WebView antworten, ihr Socket muss in `/proc/net/unix` stehen, und das Paket muss `DEBUGGABLE` tragen. Sonst sind die entsprechenden Prüfungen am Release-Build ungültig. |
-| `G-Activity`, `G-Start` | Die Release-Kopie startet, das Formular steht in der nativen Ansicht, die Fehlerfalle ist nicht sichtbar. |
+| `G-Devtools-Gegenprobe`, `G-Socket-Gegenprobe`, `G-Flags-Gegenprobe` | Am Debug-Build müssen die Devtools der WebView antworten, ihr Socket muss in `/proc/net/unix` stehen, und das Paket muss `DEBUGGABLE` tragen. Ohne wirksame Gegenprobe kann die entsprechende Prüfung am Release-Build nicht bestehen. |
+| `G-Activity`, `G-Start` | Die Release-Kopie startet, das Formular steht in der nativen Ansicht, die Fehlerfalle ist nicht sichtbar. Beides ist Voraussetzung für `G-Socket` und `G-Devtools`. |
 | `G-Flags` | Paketkennzeichen ohne `DEBUGGABLE` und `ALLOW_BACKUP` |
-| `G-Socket` | Drei Proben im Abstand von fünf Sekunden bei laufendem Prozess der App: kein Devtools-Socket der WebView in `/proc/net/unix` |
-| `G-Devtools` | Zu denselben Zeitpunkten: Weiterleitung auf den Devtools-Socket des Prozesses und Abfrage von `/json/version`; es darf keine Antwort kommen. |
+| `G-Socket` | Drei Proben im Abstand von fünf Sekunden: kein Devtools-Socket der WebView in `/proc/net/unix`. |
+| `G-Devtools` | Zu denselben Zeitpunkten: Weiterleitung auf den Devtools-Socket des Prozesses und Abruf von `/json/version`. Der Abruf muss genauso scheitern wie der Abruf an einem Kontrollsocket, den es nicht gibt, gemessen in derselben Probe. |
 
-Die Rückgabewerte entsprechen dem Emulatorlauf. Auf einem Gerät mit anderem Build-Typ als `user` bleiben `G-Socket` und `G-Devtools` dokumentierte Grenzen. Die Release-Datei wird wie im Emulatorlauf nur für die Prüfung mit dem Debug-Schlüssel der Android-Werkzeuge signiert.
+Eine Probe zählt nur, wenn vor und nach ihr derselbe Prozess der App läuft und die App im Vordergrund liegt. Ein gefundener Socket oder eine Antwort der Devtools ist immer „nicht bestanden“, auch wenn eine andere Probe unbrauchbar ist. Antwortet beim Abruf etwas anderes als die Devtools, läuft die Zeit ab oder scheitert der Abruf anders als am Kontrollsocket, ist `G-Devtools` ungültig.
 
-Erprobt sind die Annahmen des Laufs am 30.09.2026 auf dem Abbild `fr-api36` ohne Root: Die ADB-Shell liest `/proc/net/unix`, `adb pull` liest die installierte APK, die Devtools des Debug-Builds antworten über die Weiterleitung, und eine Weiterleitung auf einen Socket, den es nicht gibt, bleibt ohne Antwort. Ob ein Gerät eines Herstellers dasselbe zulässt, zeigt erst der Lauf dort.
+Die Rückgabewerte entsprechen dem Emulatorlauf. Auf einem Gerät mit anderem Build-Typ als `user` bleiben `G-Socket` und `G-Devtools` dokumentierte Grenzen. Die Release-Datei wird wie im Emulatorlauf nur für die Prüfung mit dem Debug-Schlüssel der Android-Werkzeuge signiert. Nach dem Lauf entfernt das Aufräumen die App (ohne `--app-behalten`), die Hilfsdatei des Ansichtsbaums auf dem Gerät und die eigenen ADB-Weiterleitungen, auch nach einer Unterbrechung.
+
+Erprobt sind die Annahmen des Laufs am 30.09.2026 auf dem Abbild `fr-api36` ohne Root: Die ADB-Shell liest `/proc/net/unix`, `adb pull` liest die installierte APK, die Devtools des Debug-Builds antworten über die Weiterleitung, und eine Weiterleitung auf einen Socket, den es nicht gibt, bleibt ohne Antwort. Am selben Tag lief das Skript auf diesem Abbild einmal vollständig durch, mit einer Hülle außerhalb des Repositorys, die nur die Erkennung des Emulators ausblendet: Die drei Gegenproben bestanden, der Abruf am Kontrollsocket scheiterte in allen Proben gleich (`UND_ERR_SOCKET`), `G-Socket` und `G-Devtools` blieben wegen des Build-Typs `userdebug` dokumentierte Grenzen, `G-Start` war ungültig, weil der Dialog „System UI isn't responding“ des Abbilds über der App lag, und das Aufräumen ließ weder Paket noch Hilfsdatei noch Weiterleitung zurück. Ob ein Gerät eines Herstellers dasselbe zulässt, zeigt erst der Lauf dort.
 
 Grenzen:
 

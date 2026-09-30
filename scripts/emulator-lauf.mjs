@@ -88,8 +88,10 @@ export function systemWaitPunkt(xml) {
   return { text: a.text, bounds, x: l + Math.floor((r - l) / 2), y: o + Math.floor((u - o) / 2) };
 }
 
+export const ANSICHT_REMOTE = '/data/local/tmp/fristenrechner-emulator.xml';
+
 export async function leseAnsichtsbaum(ctx, name, { timeoutMs = 120000 } = {}) {
-  const remote = '/data/local/tmp/fristenrechner-emulator.xml';
+  const remote = ANSICHT_REMOTE;
   // Eine alte Datei darf nach einem erfolglosen dump nicht als neuer Beleg gelten.
   await ctx.shell(`rm -f ${remote}`, { timeoutMs });
   try {
