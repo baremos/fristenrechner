@@ -1,6 +1,6 @@
 # Build für F-Droid
 
-Stand 2026-09-29 · Arbeitspaket 2.8, vier lokale Läufe mit der Minimal-App
+Stand 2026-09-30 · Arbeitspaket 2.8, vier lokale Läufe mit der Minimal-App; Versuch für die App vorbereitet
 
 Ergänzt am 2026-09-30: Die App wurde ohne die Werkzeuge von F-Droid in zwei frischen Debian-Klonen gebaut. Die unsignierten Release-APKs sind untereinander und mit Windows bytegleich; Web-Build und Sync bestanden zusätzlich ohne Netz. Versionen und Grenzen stehen im [Linux-Nachweis der App](app.md#linux-nachweis-vom-2026-09-30). Ein Build dieser App mit Scanner oder auf dem Buildserver von F-Droid bleibt ausstehend.
 
@@ -202,7 +202,7 @@ Was das belegt und was nicht:
 
 ## Festlegungen
 
-Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1 bis F4 sind getroffen. F5 und F6 sind offen.
+Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1 bis F4 und F6 sind getroffen. Für F5 ist seit dem 2026-09-30 der Versuch freigegeben; die endgültige Behandlung wird anhand der Inventare und Vergleichsläufe festgelegt.
 
 | Nr. | Thema | Festlegung oder Vorschlag | Begründung |
 |---|---|---|---|
@@ -210,8 +210,8 @@ Jede Festlegung fällt, bevor das betreffende Werkzeug installiert wird. F1 bis 
 | F2 | Gradle im Build für F-Droid | **festgelegt am 2026-09-29:** Gradle 8.14.5 bleibt; lokal gilt `gradlew-fdroid` mit Commit `c7227d147483979bb5c408048cee3533a8814fb0`. Quelle, SHA-256 und Ablage stehen im folgenden Abschnitt und in `scripts/toolchain.json`. | Ein Wechsel auf fdroidserver 2.4.5 löst die Frage nicht (Befund 3). Das Projekt hat laut dem gelesenen Stand keine Marken. Die Festlegung fixiert das Programm, nicht die nachgeladenen Prüfsummendaten. |
 | F3 | Node.js unter Linux | **festgelegt am 2026-09-28:** Archiv von nodejs.org mit der Prüfsumme oben, abgelegt im Benutzerbereich | wie unter Windows: Referenzversion, keine Installation im System |
 | F4 | Android SDK unter Linux | **festgelegt am 2026-09-28:** Kommandozeilenwerkzeuge 22.0 für Linux nach `scripts/toolchain.json`, nur die Gruppe „Build" | Der Emulator läuft unter Windows. Wer installiert, bestätigt die Lizenz selbst. Das `sdkmanager` von F-Droid wird dafür nicht verwendet. |
-| F5 | Vorgebaute Programme in `node_modules` | **Vorschlag, nicht entschieden:** entbehrliche Buildwerkzeuge nach Web-Build und `cap sync` gezielt entfernen; `scandelete` ergänzend erproben. Für jede verbleibende Datei Herkunft, Lizenz, Verwendung und Behandlung einzeln festhalten. | Lauf 2 stoppt an zehn Dateien; Lauf 3 entfernt sie mit `scandelete` und baut die Minimal-App bytegleich. Die Inventare zeigen zugleich fünf weitere native Dateien, die der Scanner nicht zur Entfernung meldet. Einzelheiten und Grenzen stehen unter F5. |
-| F6 | Kategorie bei F-Droid | offen | Die Liste der Kategorien gehört zu den Daten von F-Droid und liegt in der Probe nicht vor. |
+| F5 | Vorgebaute Programme in `node_modules` | **Go für den Versuch am 2026-09-30:** entbehrliche Buildwerkzeuge nach Web-Build und `cap sync` anhand einer geprüften Liste gezielt entfernen; `scandelete` ergänzend erproben. Festlegung danach anhand der Inventare. | Lauf 2 stoppt an zehn Dateien; Lauf 3 entfernt sie mit `scandelete` und baut die Minimal-App bytegleich. Die Inventare zeigen zugleich fünf weitere native Dateien, die der Scanner nicht zur Entfernung meldet. Das neue Rezept prüft die echte App in drei Varianten. |
+| F6 | Kategorie bei F-Droid | **festgelegt am 2026-09-30: `Calculator`** | `config/categories.yml` aus `fdroiddata`, gelesen am 2026-09-30: „Arithmetic, scientific, and mathematical calculation tools“. SHA-256 der gelesenen Datei: `edf68d8d70073fe52a52c6a33f490399ce9dc884acff3a761a3a1e34acf9d541`. |
 
 ## F2: festgehaltenes Buildwerkzeug
 
@@ -393,9 +393,9 @@ Alle Pfade in der Tabelle liegen unter `node_modules/`. Lauf 2 meldet sie als Fe
 
 Die zusätzliche Entfernung von `android/gradle/wrapper/gradle-wrapper.jar` gehört zur Behandlung des Gradle-Wrappers durch F-Droid; sie ist keiner der zehn npm-Funde.
 
-## F5: Trennung nach dem aktuellen Lockfile, Vorschlag
+## F5: Trennung nach dem aktuellen Lockfile
 
-Gelesen am 2026-09-29: Lockfile und installierte Quellen zum Stand `908821a`. Mit Astro gilt die frühere Aussage „nur Tests“ für Rolldown, Lightning CSS und es-module-lexer nicht mehr. Die Tabelle zeigt Abhängigkeitspfade und gelesene Verwendung; sie behauptet nicht, dass jede Minimal-Seite jeden optionalen Programmteil ausführt. Lizenzangaben stammen aus dem Lockfile und ersetzen keine Prüfung eingebetteter Bestandteile.
+Erneut gelesen am 2026-09-30: Lockfile und installierte Quellen zum Stand `cac2c4b`. Capacitor Android, CLI und Core sind hinzugekommen; `exceljs` ist nicht mehr enthalten. Mit Astro gilt die frühere Aussage „nur Tests“ für Rolldown, Lightning CSS und es-module-lexer nicht mehr. Die Tabelle zeigt Abhängigkeitspfade und gelesene Verwendung; sie behauptet nicht, dass jeder Build jeden optionalen Programmteil ausführt. Lizenzangaben stammen aus dem Lockfile und ersetzen keine Prüfung eingebetteter Bestandteile. Die Paketliste des Versuchs steht maschinenlesbar in `scripts/fdroid/bereinigungsliste.json`.
 
 | Paket, Version | Lizenzangabe | Verwendung im aktuellen Baum | Vorschlag für F5 |
 |---|---|---|---|
@@ -406,10 +406,19 @@ Gelesen am 2026-09-29: Lockfile und installierte Quellen zum Stand `908821a`. Mi
 | `es-module-lexer` 2.3.2 | MIT | Astro und Vitest; eingebettetes WASM | Build und Tests; ganzes entbehrliches Paket anschließend entfernen |
 | `xxhash-wasm` 1.1.0 | MIT | Astro; Inhalts- und Font-Werkzeuge, WASM auch eingebettet | Nutzung im konkreten Build feststellen, anschließend entfernen |
 | `@bruits/satteri-linux-x64-gnu` 0.10.5 | MIT | Astro → markdown-satteri → Satteri; bedarfsabhängige Markdown-Verarbeitung | Ohne Markdown Bedarf nicht belegt; spätestens anschließend entfernen |
-| Shiki / `@shikijs/engine-oniguruma` 4.4.3 | MIT | Astro → Shiki; Syntaxfärbung mit eingebettetem WASM | Nutzung durch Minimal-Seite nicht belegt; spätestens anschließend entfernen |
-| `@img/sharp-linux-x64` 0.35.4 / `@img/sharp-libvips-linux-x64` 1.3.3 | Apache-2.0 / LGPL-3.0-or-later | Astro → optionales Sharp; Bildverarbeitung | Möglichst schon vorher gezielt entfernen und Build belegen |
+| Shiki / `@shikijs/engine-oniguruma` 4.4.3 | MIT | Astro → Shiki; Syntaxfärbung mit WASM als Datei und eingebettet | Nutzung durch die App nicht belegt; beide Pakete nach Sync entfernen |
+| `@img/sharp-linux-x64` 0.35.4 / `@img/sharp-libvips-linux-x64` 1.3.3 | Apache-2.0 / LGPL-3.0-or-later | Astro → optionales Sharp; Bildverarbeitung | Nach Web-Build und Sync entfernen; Ergebnis vergleichen |
 | `@astrojs/astro2tsx` 0.1.1 | MIT | `@astrojs/check` → language-server; WASM | Nur Typprüfung; getrennt vom App-Build behandeln |
-| Vitest 4.1.11 und eigene Testpakete | MIT | Tests; die nativen Vite-Werkzeuge werden auch von Astro genutzt | Tests gesondert ausführen; Vitest allein zu entfernen beseitigt die geteilten Programme nicht |
+| Vitest / `@vitest/mocker` 4.1.11 | MIT | Testwerkzeuge; gebündeltes WASM und vorsorglich erfasste Ladeaufrufe | Tests gesondert ausführen; beide Pakete nach Sync entfernen, ebenso die geteilten nativen Werkzeuge |
+| Vite 8.3.0 | MIT | Astro und Vitest; enthält eigene gebündelte WASM-Kopien von Lexer und xxhash | Nach Sync das ganze Paket entfernen |
+| `@capacitor/cli` 8.5.2 | MIT | `cap sync`, enthält fünf vorgebaute Vorlagenarchive | Nach Sync das ganze Paket entfernen |
+| `@capacitor/android` 8.5.2 | MIT | Java-Quellen und Gradle-Projekt für die Android-Hülle | Behalten: `node_modules/@capacitor/android/capacitor` ist derzeit der einzige von `--android-quellen` genannte Ordner |
+| `@capacitor/core` 8.5.2 | MIT | JavaScript-Brücke, vom Web-Build verarbeitet | Keine pauschale Entfernung; ausgelieferten Web-Anteil über das Manifest vergleichen |
+| `prettier` 3.9.8 | MIT | Formatierer der Sprachwerkzeuge, Flow-Parser mit eingebettetem WASM | Ganzes Paket nach Sync entfernen |
+| `undici` 8.10.2 | MIT | HTTP-Client der Entwicklungswerkzeuge mit eingebettetem llhttp-WASM | Ganzes Paket nach Sync entfernen |
+| `@tybys/wasm-util` 0.10.4 | MIT | WASM-Ladehilfe von astro2tsx; Ladeaufrufe werden vorsorglich erfasst | Ganzes Paket nach Sync entfernen; der Treffer allein beweist kein eingebettetes Binärprogramm |
+| `@emnapi/core` 1.11.3 | MIT | WASM-Ladehilfe der Entwicklungswerkzeuge | Ganzes Paket nach Sync entfernen; vorsorglicher Treffer von Ladeaufrufen |
+| `node-fetch-native` 1.6.7 | MIT | HTTP-Werkzeug mit gebündeltem llhttp-WASM | Ganzes Paket nach Sync entfernen |
 
 ### Was die Inventare der Minimal-App zeigen
 
@@ -425,9 +434,9 @@ In Lauf 2 bis 4 enthalten die Inventare vor dem Web-Build und nach Web-Build plu
 
 Für diese fünf `.node`-Dateien enthält Lauf 3 keine Entfernungsmeldung. Umgekehrt erfasst die Inventur die fünf `.tar.gz`-Archive nicht, die der Scanner beanstandet. Die Zahl zehn ist daher bei Scanner und Inventar zufällig gleich; die Mengen sind verschieden. Ein Inventar nach dem Scanner liegt nicht vor. Ebenso wenig beweist das unveränderte Inventar, welche Programme der Web-Build tatsächlich ausgeführt hat. Es belegt aber, dass Web-Build und `cap sync` die erfassten Werkzeuge nicht selbst wegräumen. Die Inventur erfasst außerdem nicht vollständig WASM, das in JavaScript eingebettet ist.
 
-### Vorschlag für das spätere Rezept, keine Festlegung
+### Freigegebener Versuch, endgültige Behandlung noch offen
 
-**Empfehlung zur Erprobung: beides mit getrennten Aufgaben.** Im `prebuild` nach Web-Build **und** `cap sync android` die entbehrlichen npm-Werkzeuge anhand einer geprüften Paketliste gezielt entfernen. Das umfasst auch ganze entbehrliche Pakete mit eingebettetem WASM, native `.node`-Dateien sowie CLI-Vorlagen. Die Java-/Kotlin-Quellen und Gradle-Dateien von `@capacitor/android`, `@capacitor/filesystem` und `@capacitor/share` bleiben erhalten. Dass die zehn Scannerdateien nach `cap sync` für den Android-Build der Minimal-App entbehrlich sind, ist durch Lauf 3 belegt. Für die fünf `.node`-Dateien und weitere Pakete ist der entsprechend bereinigte Build erst noch nachzuweisen.
+**Versuch freigegeben am 2026-09-30.** Im `prebuild` nach Web-Build **und** `cap sync android` die entbehrlichen npm-Werkzeuge anhand einer geprüften Paketliste gezielt entfernen. Das umfasst auch ganze entbehrliche Pakete mit eingebettetem WASM, native `.node`-Dateien sowie CLI-Vorlagen. Die Java-Quellen und Gradle-Dateien von `@capacitor/android` bleiben erhalten. Filesystem und Share sind noch keine Abhängigkeiten der App; bei späteren Plugins muss die Liste erneut geprüft werden. Maßgeblich für die geschützten Ordner ist die Ausgabe von `node scripts/app-bauen.mjs --android-quellen`. Dass die zehn Scannerdateien nach `cap sync` für den Android-Build der Minimal-App entbehrlich sind, ist durch Lauf 3 belegt. Für die gezielt bereinigte echte App steht der Debian-Nachweis aus.
 
 Ergänzend `scandelete` für die untersuchten npm-Bereiche erproben und jede dadurch entfernte Datei im Bericht behalten. Es soll neu hinzugekommene Scannerfunde sichtbar machen, aber nicht die gezielte Bereinigung ersetzen: Der beobachtete Scanner entfernt die fünf `.node`-Dateien nicht und bietet keinen Vollständigkeitsnachweis für eingebettetes WASM. Unerwartete Löschungen müssen ins Review des Rezepts; eine pauschale `scanignore`-Ausnahme wird nicht vorgeschlagen.
 
@@ -442,6 +451,86 @@ Vor einer Entscheidung zu F5 fehlen ein zusätzlicher Vergleich des Inventars na
 `--omit=dev` trennt diese Rollen nicht zuverlässig. `--omit=optional` entfernt auch benötigte Compiler- und Bundler-Pakete. Plattformpakete für macOS, Windows, musl und WASM-Ausweichpakete sind von tatsächlich unter Debian x64 verwendeten Programmen zu unterscheiden.
 
 Die Minimal-App `d27fb91` hat ein anderes Lockfile: 488 Einträge mit `resolved`, nach `npm ci` 394 installierte Pakete. Beispielsweise enthält sie astro2tsx 0.1.0 statt 0.1.1 aus der ersten Tabelle. Die am 2026-09-29 untersuchte saubere Linux-Kopie des Paket-Repositorys hatte 321 installierte Pakete und 412 Fremdpakete laut Lizenzprüfung; sie war ebenfalls kein vollständiger App-Build. Die erste Tabelle darf deshalb nicht als beobachtete Paketliste der Minimal-App oder der inzwischen unter Debian gebauten Android-App gelesen werden.
+
+## Rezept der App: Versuch vom 2026-09-30
+
+Das eigene Rezept `scripts/fdroid/de.baremos.fristenrechner.yml` gilt für `de.baremos.fristenrechner`, Version `0.1.0` / Code `100`, Kategorie `Calculator`, Unterordner `app/android/app`. Das Rezept der Minimal-App und ihre vier historischen Läufe bleiben unverändert. Dies ist weiterhin ein lokaler Nachweis mit fdroidserver 2.4.2; ein Veröffentlichungsrezept und die Annahme durch F-Droid sind damit nicht belegt.
+
+Die Referenz ist die ohne F-Droid gebaute unsignierte APK vom 2026-09-30: 7 715 483 Bytes, SHA-256 `776bba301220d1d9b3f5e4f5d4841f37449609e72d6622b8ebdab065fcab93b3`. Ein eigener Vergleich von `a1e7821` bis `cac2c4b` zeigt ausschließlich Änderungen an Dokumentation und Emulator-Prüfskripten. Die App-Quellen, Abhängigkeiten und Build-Eingaben sind unverändert. Das ist die Grundlage für die Verwendung derselben Referenz. Der Lauf erhält die tatsächliche Referenzdatei und prüft deren Größe und Prüfsumme; eine abweichende APK darf nicht stillschweigend als neue Referenz dienen.
+
+### Vorbereitung, Bereinigung und Nachweise
+
+Der `prebuild` installiert mit `npm ci --ignore-scripts --no-audit --no-fund`, sichert Lockfile und Inventar, baut Kern und Web und führt `cap sync android` aus. Die vorhandenen K1/K2-Prüfungen laufen über `app-bauen.mjs --web`; K3/K4 werden über dieselben exportierten Prüffunktionen wie in der vollständigen App-Kette ausgeführt. K3 vergleicht den Zustand unmittelbar vor und nach dem Sync, damit von F-Droid angelegte `local.properties` den Vergleich nicht verfälschen. Diese Wahl vermeidet einen zweiten Android-Build im `prebuild`. Git steht zur Verfügung, weil F-Droid in einem Klon arbeitet. Gradle startet später über das nach F2 festgehaltene `gradlew-fdroid`.
+
+Vor der Bereinigung werden das Inventar nach Sync und ein Manifest aller Dateien unter `assets/public` gesichert. Die gezielte Bereinigung ermittelt die geschützten Quellordner mit `app-bauen.mjs --android-quellen`. Sie löscht ausschließlich geprüfte Pakete unter dem aufgelösten `node_modules` dieses Klons. Paketnamen, Versionen, Lizenzangaben, Build-Rollen und Gründe stehen in `bereinigungsliste.json`. Ein fehlendes Paket der für die Plattform geltenden Liste, abweichende Lockfile-Angaben, ein Löschziel mit geschützten Quellen oder ein nicht zugelassener Restfund lassen den Schritt scheitern. Die Paketliste ist keine Erlaubnis zum Löschen beliebiger vom Aufrufer angegebener Ordner.
+
+Die Inventur erfasst native Dateien, ausführbare Binärformate, WASM und Archive anhand von Namen und Dateiköpfen. Bei JavaScript sucht sie zusätzlich nach WASM-Merkmalen wie Base64-Magic, Bytefolgen und Ladeaufrufen. Das ist eine bewusst vorsichtige Heuristik; beliebig verschleierter oder dynamisch zusammengesetzter Programmcode lässt sich damit nicht vollständig erkennen. Die erkannten entbehrlichen Pakete mit eingebettetem WASM werden vollständig entfernt. Es gibt keine pauschale Ausnahme für JavaScript-Dateien.
+
+| Variante | Vorbereitung vor dem Scanner | Zweck |
+|---|---|---|
+| (c) `ohne` | Inventare und Web-Manifest, keine Bereinigung | Heutige Fundmenge des App-Baums beobachten |
+| (a) `gezielt` | Geprüfte Paketliste entfernen, Restinventar prüfen | Entbehrlichkeit der Werkzeuge mit APK-Vergleich nachweisen |
+| (b) `gezielt-scandelete` | Wie (a), zusätzlich `scandelete: [node_modules]` | Zusätzliche Scanner-Entfernungen sichtbar machen |
+
+Der Build-Hook sichert das Inventar nach dem Scanner und vor dem Android-Build. Zusätzlich werden vor und nach dem Scanner alle regulären Dateien unter `node_modules` mit Größe und Prüfsumme erfasst. Damit sind auch Scanner-Entfernungen vergleichbar, die nicht zur Fundmenge der eigenen Inventur gehören. Verweise auf die eigenen npm-Workspaces werden nicht durchlaufen. Bricht der Scanner vorher ab, ist diese Phase nicht erreicht; zusätzliche Inventare nach dem Lauf werden ausdrücklich getrennt ausgewiesen. Insbesondere (c) kann an Scannerfunden abbrechen und dann keine APK liefern. Das bleibt ein fehlender APK-Nachweis, kein bestandener Gleichheitsvergleich.
+
+Die Auswertung ordnet die Inventare nach Phase und vergleicht Größe und SHA-256. Jede erzeugte APK wird byteweise mit der geprüften Referenz verglichen. Alle Dateien der entfernten Pakete werden anhand ihrer Inhalte gegen die entpackten ZIP-Einträge geprüft; Treffer bleiben sichtbar. Ungeklärte Treffer sind Beanstandungen. Für zwei lokal nachgewiesene, unabhängig erzeugte Leerdateien gilt die unten beschriebene enge Einordnung. Das Web-Manifest muss genau mit `assets/public` in der APK übereinstimmen. Dieser Vergleich belegt die unveränderte Übernahme des vor der Bereinigung gebauten Bündels; er beweist keine allgemeine Abwesenheit beliebig transformierter Programmbestandteile.
+
+Unbekannte Folgezeilen ohne Protokollkopf und neue Warnungen bleiben Beanstandungen. Der bestehende Parser lässt gewöhnliche druckbare INFO-/DEBUG-Kopfmeldungen zu; besondere Ablaufmarker werden gesondert geprüft. Die Liste bekannter Meldungen wird erst nach Sichtung echter App-Protokolle ergänzt. Deshalb ist beim ersten Debian-Lauf auch bei erfolgreichem Android-Build eine Nacharbeit an der Protokollauswertung möglich. Alte Berichte werden dabei nicht überschrieben.
+
+### Befehle unter Debian
+
+Zuerst die von Claude geprüften Änderungen einchecken und diesen Stand in einen Debian-Klon übernehmen. Der folgende Aufruf erfolgt aus dessen Repositorywurzel. `--stand` bezeichnet den eingecheckten Stand einschließlich der neuen Rezeptskripte. Die Referenzdatei muss bereits vorhanden sein; ihr absoluter Pfad ist einzusetzen. Die vorhandenen Werkzeuge werden verwendet, es ist keine erneute Einrichtung erforderlich.
+
+```sh
+repo="$PWD"
+stand="$(git rev-parse HEAD)"
+referenz="/absoluter/Pfad/zur/geprueften/app-release-unsigned.apk"
+
+python3 scripts/fdroid/build-lokal.py --app --repo "$repo" --stand "$stand" --variante ohne --referenz-apk "$referenz" --probelauf
+python3 scripts/fdroid/build-lokal.py --app --repo "$repo" --stand "$stand" --variante ohne --referenz-apk "$referenz"
+python3 scripts/fdroid/build-lokal.py --app --repo "$repo" --stand "$stand" --variante gezielt --referenz-apk "$referenz"
+python3 scripts/fdroid/build-lokal.py --app --repo "$repo" --stand "$stand" --variante gezielt-scandelete --referenz-apk "$referenz"
+```
+
+Die drei echten Aufrufe einzeln ausführen und den Rückgabewert jeweils festhalten; ein Fehler von (c) darf die folgenden Versuche nicht überspringen. Jeder Aufruf nennt seinen neuen Ordner unter `~/fdroid-probe/build-laeufe`. Den ganzen Laufordner behalten: Rezept und Konfiguration, Commit und Werkzeugstände, `build.log`, Rückgabewerte, Lockfile, alle Inventare, Bereinigungsbericht, Web-Manifest, Referenzkopie, Auswertung, Gradle-Archivnachweis und vorhandene unsignierte APK. Auch fehlgeschlagene Läufe bleiben als Beleg bestehen.
+
+Anschließend die drei ausgegebenen Laufordner einsetzen und nebeneinander auswerten. Die Ausgabedatei und die daneben entstehende Markdown-Datei müssen neu sein:
+
+```sh
+python3 scripts/fdroid/app-auswerten.py --vergleich \
+  "$HOME/fdroid-probe/build-laeufe/lauf-C" \
+  "$HOME/fdroid-probe/build-laeufe/lauf-A" \
+  "$HOME/fdroid-probe/build-laeufe/lauf-B" \
+  --ausgabe "$HOME/fdroid-probe/build-laeufe/app-f5-vergleich.json"
+```
+
+Der Vergleich übernimmt Befunde der Einzelläufe. Ein Abbruch von (c) führt deshalb auch im Gesamtvergleich zu Rückgabe 1; erfolgreiche APK-Vergleiche von (a)/(b) sind trotzdem einzeln sichtbar.
+
+Zeitplanung, noch keine Messung der App mit F-Droid: etwa 2 bis 5 Minuten für (c), falls der Scanner stoppt; etwa 5 bis 15 Minuten je erfolgreichem Lauf (a)/(b). Die Läufe verwenden eigene npm-/Gradle-Zwischenspeicher. Netz und Maven-Downloads können die Dauer deutlich verlängern. Der lokale Windows-Nachweis umfasst keine dieser Debian-Laufzeiten.
+
+### Lokale Prüfung des App-Rezepts am 2026-09-30
+
+Geprüft unter Windows mit Node.js 24.21.0, npm 11.19.0 und Python 3.14.6, ohne Download. Build- und Testausgaben liegen in einer ausgeschlossenen Prüfkopie. Die echte Installation von `node_modules` wurde nicht bereinigt.
+
+| Prüfung | Rückgabe und Ergebnis |
+|---|---|
+| `npm test` | 1: 1 512 Skripttests, davon 1 507 bestanden, 4 übersprungen und ein Timeout des bestehenden echten Signiertests beim Aufruf von `keytool.exe` nach 120 Sekunden. Der unveränderte Einzeltest bestand danach mit Rückgabe 0 in rund 22 Sekunden. |
+| Nachgeholter Kern-Build und Workspace-Tests | jeweils 0; Kern 134, Oberfläche 184, App 9 Tests bestanden. Der erste Gesamtlauf bleibt als fehlgeschlagener Lauf dokumentiert. |
+| `npm run check` | 0; keine Diagnosefehler, bekannter Hinweis auf die ungenutzte Variable `runde2Aktiv`; Astro meldet das fehlende Seitenverzeichnis des Komponentenpakets. |
+| `npm run build` | 0, einschließlich Web-Build und K1/K2 |
+| `npm run lizenzen` | 0 |
+| Neuer Vorbereitungshelfer an den echten Dateien | 0; Web-Build, Sync und K1 bis K4 bestanden; 15 Dateien im Web-Manifest einschließlich der beiden leeren Cordova-Dateien |
+
+Die Bereinigung auf der vollständigen Kopie entfernte 20 unter Windows aktive Pakete mit insgesamt 1 577 Dateien. Das Inventar sank von 44 auf 0 Funde; der von `--android-quellen` genannte Capacitor-Ordner blieb erhalten und bestand die anschließende Quellenprüfung. Die Gegenproben mit fehlendem Listenpaket, geschütztem Android-Ordner in der Löschmenge und einer zusätzlichen WASM-Datei ohne Zulassung brachen jeweils mit Rückgabe 1 ab, vor einer Paketlöschung. Die vollständige Liste umfasst zusätzlich sieben Plattformpakete für Debian x64/glibc; deren tatsächlicher Lauf bleibt ausstehend.
+
+Das zuerst kopierte installierte Verzeichnis enthielt außerdem 355 Artefakte eines vorherigen Android-Builds unter `@capacitor/android/capacitor/build`. Die Restprüfung wies sie anhand des vollständigen Ist-Inventars zurück. Nur dieser ausdrücklich geprüfte Buildordner wurde in der Kopie entfernt, um den Zustand nach einem frischen `npm ci` nachzustellen. Es wurde keine Ausnahme für Buildartefakte in geschützten Android-Quellen hinzugefügt.
+
+Zusätzlich wurde die vorhandene Referenz-APK direkt gelesen: Größe und SHA-256 stimmen mit dem oben genannten Wert überein. Alle 15 Dateien aus dem neuen Web-Manifest stimmen mit `assets/public` der Referenz überein. Von den 1 577 entfernten Dateien trifft kein nichtleerer Dateiinhalt auf einen APK-Eintrag. Dies ist ein Vergleich mit der vorhandenen Referenz, kein Android-Build nach der Bereinigung.
+
+Zwei leere Dateien aus `node-fetch-native` 1.6.7 (`lib/empty.cjs`, `lib/empty.mjs`) haben zwangsläufig denselben SHA-256 wie die leeren APK-Dateien `assets/public/cordova.js` und `assets/public/cordova_plugins.js`. Die Herkunft ist einzeln geprüft: `@capacitor/cli` 8.5.2 schreibt beide Zieldateien in `dist/cordova.js`, Funktion `createEmptyCordovaJS`, ausdrücklich mit leerem Inhalt; `handleCordovaPluginsJS` wählt diesen Weg ohne Cordova-Plugins. Auch `scripts/app-pruefungen.json` verlangt genau diese beiden leeren Sync-Dateien. Die Auswertung behält die Rohübereinstimmungen und kennzeichnet ausschließlich dieses vollständige Paar bei genau diesen Paketversionen, leerem Inhalt und bestandenem Web-Vergleich als belegte Leerdatei-Gleichheit. Andere leere Dateien, andere Pfade, andere Versionen, nichtleerer Inhalt oder Scanner-Treffer erhalten keine solche Einordnung.
+
+Die abschließende gezielte Wiederholung besteht mit 12 Node-Tests, darin 67 Python-Prüfungen: sechs zur Laufsteuerung, 24 zur Bereinigung und 37 zur Auswertung. Sie prüfen Vorbereitung, Pfadgrenzen, Listenalterung, vollständige Inventare, APK-Vergleich und die enge Leerdatei-Einordnung. Zusätzlich bestehen die 26 Tests für Bereinigung und bestehende Build-Vorbereitung gemeinsam. Lesefehler aus der auf acht Leser begrenzten Inventur führen zum Abbruch. Diese lokalen Prüfungen ersetzen weder die drei Debian-Läufe noch das Kreuzreview vor dem Merge.
 
 ## Prüfung der ersten Fassung der Skripte unter Windows
 
@@ -465,5 +554,5 @@ Nach Ergänzung der Prüfungen für Steuerzeichen, Leerraum und sichtbare Unicod
 2. Erledigt am 2026-09-29: Minimal-App unter Linux gebaut, ohne die Werkzeuge von F-Droid.
 3. Erledigt am 2026-09-29: vier lokale Aufrufe von `fdroid build` in Debian; Lauf 3 und 4 mit `--versuch-scandelete` ergaben die bytegleiche Minimal-APK.
 4. Erledigt am 2026-09-29: Legacy-Warnung als eng begrenzte bekannte Meldung bewertet, Archivprüfung durch Lauf 4 belegt; dessen Neuauswertung mit `eaf3939` besteht ohne Beanstandung mit neun bekannten Meldungen.
-5. Den vorgeschlagenen bereinigten Build erproben und F5 anhand der Inventare und Vergleichsläufe entscheiden; F6 bleibt offen.
+5. Den am 2026-09-30 freigegebenen bereinigten Build erproben und F5 anhand der Inventare und Vergleichsläufe entscheiden. F6 ist seit diesem Tag mit `Calculator` festgelegt.
 6. Release-Build der App ohne F-Droid am 2026-09-30 unter Debian erledigt, mit bytegleichem Ergebnis in zwei Klonen und gegenüber Windows. Am Ende von Stufe 2 bleiben die Läufe mit Bereinigung und Scanner für die App zu wiederholen; den Nachweis mit dem dann verwendeten Buildserver von F-Droid gesondert führen.

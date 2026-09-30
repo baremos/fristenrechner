@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "stand": "2026-09-30",
+  "hinweis": "Geprüft anhand Lockfile und installierter Windows-Quellen. Debian-x64/glibc-Varianten anhand Lockfile zugeordnet; tatsächlicher F-Droid-Build noch zu belegen. Plattformfremde Einträge dürfen fehlen, passende Einträge müssen vorhanden sein.",
+  "pakete": [
+    {
+      "paket": "@astrojs/astro2tsx",
+      "version": "0.1.1",
+      "lizenz": "MIT",
+      "rolle": "Typprüfung für Astro über @astrojs/check; WASM-Übersetzer.",
+      "grund": "Nur Typprüfung, nach Web-Build und Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@astrojs/compiler-binding-linux-x64-gnu",
+      "version": "0.4.1",
+      "lizenz": "MIT",
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "rolle": "Nativer Astro-Compiler.",
+      "grund": "Web-Build; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@astrojs/compiler-binding-win32-x64-msvc",
+      "version": "0.4.1",
+      "lizenz": "MIT",
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "rolle": "Nativer Astro-Compiler.",
+      "grund": "Web-Build; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@bruits/satteri-linux-x64-gnu",
+      "version": "0.10.5",
+      "lizenz": "MIT",
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "rolle": "Nativer Markdown-Compiler von Astro.",
+      "grund": "Optionaler Web-Build-Pfad; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@bruits/satteri-win32-x64-msvc",
+      "version": "0.10.5",
+      "lizenz": "MIT",
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "rolle": "Nativer Markdown-Compiler von Astro.",
+      "grund": "Optionaler Web-Build-Pfad; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@capacitor/cli",
+      "version": "8.5.2",
+      "lizenz": "MIT",
+      "rolle": "Capacitor synchronisiert Web-Dateien und erzeugt Plugin-Projekte; enthält Vorlagenarchive.",
+      "grund": "Sync-Werkzeug, nach cap sync nicht mehr für Gradle erforderlich."
+    },
+    {
+      "paket": "@emnapi/core",
+      "version": "1.11.3",
+      "lizenz": "MIT",
+      "rolle": "WASM-Lader von astro2tsx; Ladeaufrufe werden als Verdacht erfasst.",
+      "grund": "Typprüfungswerkzeug, nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@esbuild/linux-x64",
+      "version": "0.28.2",
+      "lizenz": "MIT",
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "rolle": "Vorgebautes esbuild-Programm für Astro.",
+      "grund": "Web-Build; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@esbuild/win32-x64",
+      "version": "0.28.2",
+      "lizenz": "MIT",
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "rolle": "Vorgebautes esbuild-Programm für Astro.",
+      "grund": "Web-Build; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@img/sharp-libvips-linux-x64",
+      "version": "1.3.3",
+      "lizenz": "LGPL-3.0-or-later",
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "rolle": "Sharp-Bildverarbeitung und gegebenenfalls libvips-Bibliotheken.",
+      "grund": "Optionaler Web-Build-Pfad; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@img/sharp-linux-x64",
+      "version": "0.35.4",
+      "lizenz": "Apache-2.0",
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "rolle": "Sharp-Bildverarbeitung und gegebenenfalls libvips-Bibliotheken.",
+      "grund": "Optionaler Web-Build-Pfad; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@img/sharp-win32-x64",
+      "version": "0.35.4",
+      "lizenz": "Apache-2.0 AND LGPL-3.0-or-later",
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "rolle": "Sharp-Bildverarbeitung und gegebenenfalls libvips-Bibliotheken.",
+      "grund": "Optionaler Web-Build-Pfad; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@rolldown/binding-linux-x64-gnu",
+      "version": "1.2.9",
+      "lizenz": "MIT",
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "rolle": "Nativer Bundler von Vite/Astro und Vitest.",
+      "grund": "Web-Build und Tests; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@rolldown/binding-win32-x64-msvc",
+      "version": "1.2.9",
+      "lizenz": "MIT",
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "rolle": "Nativer Bundler von Vite/Astro und Vitest.",
+      "grund": "Web-Build und Tests; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@shikijs/engine-oniguruma",
+      "version": "4.4.3",
+      "lizenz": "MIT",
+      "rolle": "Shiki-Syntaxfärbung in Astro; eingebettetes WASM.",
+      "grund": "Web-Build, nicht Android-Laufzeit."
+    },
+    {
+      "paket": "@tybys/wasm-util",
+      "version": "0.10.4",
+      "lizenz": "MIT",
+      "rolle": "WASM-Ladehilfen von astro2tsx; Loader vom Inventar als Verdacht erfasst.",
+      "grund": "Typprüfungswerkzeug, nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "@vitest/mocker",
+      "version": "4.1.11",
+      "lizenz": "MIT",
+      "rolle": "Vitest-Modulnachbildung; eingebetteter WASM-Modullexer im dist-Bündel.",
+      "grund": "Testwerkzeug, nach Web-Build und Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "es-module-lexer",
+      "version": "2.3.2",
+      "lizenz": "MIT",
+      "rolle": "Modulanalyse von Astro/Vite und Vitest mit eingebettetem WASM.",
+      "grund": "Web-Build und Tests, nicht Android-Laufzeit."
+    },
+    {
+      "paket": "lightningcss-linux-x64-gnu",
+      "version": "1.33.0",
+      "lizenz": "MPL-2.0",
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "libc": [
+        "glibc"
+      ],
+      "rolle": "Native CSS-Verarbeitung von Vite/Astro.",
+      "grund": "Web-Build und Tests; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "lightningcss-win32-x64-msvc",
+      "version": "1.33.0",
+      "lizenz": "MPL-2.0",
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "rolle": "Native CSS-Verarbeitung von Vite/Astro.",
+      "grund": "Web-Build und Tests; nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "node-fetch-native",
+      "version": "1.6.7",
+      "lizenz": "MIT",
+      "rolle": "HTTP-Helfer der Node-Werkzeuge; llhttp-WASM im gebündelten Proxy.",
+      "grund": "Build-Werkzeug, nach Web-Build und Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "prettier",
+      "version": "3.9.8",
+      "lizenz": "MIT",
+      "rolle": "Formatierer aus Astro-Sprachwerkzeugen; Flow-Parser mit WASM.",
+      "grund": "Quelltextwerkzeug, nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "shiki",
+      "version": "4.4.3",
+      "lizenz": "MIT",
+      "rolle": "Syntaxfärbung für Astro; eigene Datei dist/onig.wasm zusätzlich zur Engine.",
+      "grund": "Optionaler Web-Build-Pfad, nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "undici",
+      "version": "8.10.2",
+      "lizenz": "MIT",
+      "rolle": "HTTP-Client der Entwicklungswerkzeuge mit eingebettetem llhttp-WASM.",
+      "grund": "Node-Werkzeug, nach Web-Build und Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "vite",
+      "version": "8.3.0",
+      "lizenz": "MIT",
+      "rolle": "Astro/Vitest-Bundler; zusätzlich eingebettetes WASM in eigenen dist-Bündeln.",
+      "grund": "Web-Build und Tests, nach Sync nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "vitest",
+      "version": "4.1.11",
+      "lizenz": "MIT",
+      "rolle": "Testrunner mit WASM-Modullader; Ladeaufrufe werden als Verdacht erfasst.",
+      "grund": "Testwerkzeug, nicht für Gradle erforderlich."
+    },
+    {
+      "paket": "xxhash-wasm",
+      "version": "1.1.0",
+      "lizenz": "MIT",
+      "rolle": "Astro-Inhaltsprüfsummen; WASM als Datei und in JavaScript.",
+      "grund": "Web-Build, nicht Android-Laufzeit."
+    }
+  ],
+  "zulassen": []
+}

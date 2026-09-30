@@ -1,0 +1,39 @@
+{
+  "Categories": ["Calculator"],
+  "License": "Apache-2.0",
+  "AutoName": "Fristenrechner",
+  "Summary": "Fristen für Vergabeverfahren berechnen",
+  "Description": "Lokaler Build-Versuch der App; kein Veröffentlichungsrezept.",
+  "RepoType": "git",
+  "Repo": "@LOKALES_REPOSITORY@",
+  "Builds": [
+    {
+      "versionName": "0.1.0",
+      "versionCode": 100,
+      "commit": "@APP_COMMIT@",
+      "subdir": "app/android/app",
+      "gradle": ["yes"],
+      "prebuild": [
+        "cd ../../..",
+        "npm ci --ignore-scripts --no-audit --no-fund",
+        "cp package-lock.json \"$FR_FDROID_LAUF/package-lock-app.json\"",
+        "python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-vor-web.json\"",
+        "node scripts/fdroid/app-vorbereiten.mjs",
+        "python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-web.json\"",
+        "python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe \"$FR_FDROID_LAUF/bereinigung.json\"",
+        "python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-bereinigung.json\"",
+        "python3 \"$FR_FDROID_INVENTAR\" --alle node_modules \"$FR_FDROID_LAUF/npm-dateien-vor-scanner.json\""
+      ],
+      "build": [
+        "cd ../../..",
+        "python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-scanner.json\"",
+        "python3 \"$FR_FDROID_INVENTAR\" --alle node_modules \"$FR_FDROID_LAUF/npm-dateien-nach-scanner.json\"",
+        "node scripts/fdroid/app-vorbereiten.mjs --nach-scanner"
+      ]
+    }
+  ],
+  "AutoUpdateMode": "None",
+  "UpdateCheckMode": "None",
+  "CurrentVersion": "0.1.0",
+  "CurrentVersionCode": 100
+}
