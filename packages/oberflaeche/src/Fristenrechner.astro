@@ -1,4 +1,16 @@
 ---
+import type { ExportInhalt, GastgeberTexte } from './plattform';
+import { pruefeExportInhalt } from './fristenrechner-export-data';
+
+interface Props {
+  texte: GastgeberTexte;
+  exportInhalt: ExportInhalt;
+}
+
+const { texte, exportInhalt } = Astro.props;
+pruefeExportInhalt(exportInhalt);
+const fusszeilenAdresse = exportInhalt.adresse ? new URL(exportInhalt.adresse.href).hostname : '';
+
 const bundeslaender = [
   ['BW', 'Baden-Württemberg'], ['BY', 'Bayern'], ['BE', 'Berlin'], ['BB', 'Brandenburg'],
   ['HB', 'Bremen'], ['HH', 'Hamburg'], ['HE', 'Hessen'], ['MV', 'Mecklenburg-Vorpommern'],
@@ -8,10 +20,11 @@ const bundeslaender = [
 ] as const;
 ---
 
-<div class="fristenrechner" data-fristenrechner data-pagefind-ignore="all">
+<div class="fristenrechner" data-fristenrechner data-pagefind-ignore="all"
+     data-gastgeber-texte={JSON.stringify(texte)} data-export-inhalt={JSON.stringify(exportInhalt)}>
   <div class="privacy-note">
-    <strong>Ihre Daten bleiben lokal.</strong>
-    Eingaben werden nur in diesem Browser verarbeitet und nicht an BAREMOS IT oder Dritte übertragen.
+    <strong>{texte.datenschutzTitel}</strong>
+    {texte.datenschutzText}
     <span id="storage-status" role="status" aria-live="polite"></span>
   </div>
   <p id="project-file-meta" class="project-file-meta" role="status" aria-live="polite" hidden></p>
@@ -28,6 +41,7 @@ const bundeslaender = [
       </div>
       <button type="button" class="button button-quiet" id="reset-project">Neues Projekt</button>
     </div>
+    <p id="reset-message" class="action-message" role="status" aria-live="polite"></p>
 
     <fieldset>
       <legend>Projektkopf <span>optional</span></legend>
@@ -375,7 +389,7 @@ const bundeslaender = [
       <span><strong>Kunde:</strong> <span id="print-customer">—</span></span>
       <span><strong>Projekt:</strong> <span id="print-project">—</span></span>
     </div>
-    <div class="print-page-footer" aria-hidden="true">BAREMOS IT GmbH</div>
+    <div class="print-page-footer" aria-hidden="true">{exportInhalt.herausgeber}</div>
 
     <header class="results-header">
       <div>
@@ -388,14 +402,17 @@ const bundeslaender = [
       <div class="export-actions" aria-label="Projekt- und Exportaktionen">
         <button type="button" class="button button-secondary" id="save-json" data-requires-result disabled>Projekt exportieren</button>
         <label class="button button-secondary file-button">
-          Projekt importieren
-          <input type="file" id="open-json" accept="application/json,.json" />
+          {texte.importBeschriftung}
+          <input type="file" id="open-json" accept="application/json,.json" data-project-import />
         </label>
         <button type="button" class="button button-secondary" id="export-excel" data-requires-result data-schedule-export="excel" disabled>Excel exportieren</button>
         <button type="button" class="button button-secondary" id="export-pdf" data-requires-result data-schedule-export="pdf" disabled>PDF exportieren</button>
       </div>
     </header>
     <p id="export-message" class="export-message" role="status" aria-live="polite"></p>
+    <p id="import-message" class="action-message" role="status" aria-live="polite"></p>
+    <p id="excel-message" class="action-message" role="status" aria-live="polite"></p>
+    <p id="pdf-message" class="action-message" role="status" aria-live="polite"></p>
 
     {/* Harte Startkonflikte (Kern 1.4.0):
         bei Einträgen wird KEIN Terminplan angezeigt */}
@@ -430,7 +447,8 @@ const bundeslaender = [
     </section>
 
     <footer class="print-footer">
-      <p>Erstellt mit dem Fristenrechner der BAREMOS IT GmbH · www.baremos.de</p>
+      <slot name="herausgeber" />
+      <p>Erstellt mit dem Fristenrechner der {exportInhalt.herausgeber}{fusszeilenAdresse ? ` · ${fusszeilenAdresse}` : ''}</p>
     </footer>
   </section>
 
@@ -442,13 +460,8 @@ const bundeslaender = [
       Der PDF- und Excel-Export nutzt die Open-Source-Bibliotheken jsPDF, jsPDF-AutoTable und fflate (MIT-Lizenz).
     </p>
   </section>
+  <slot name="nach-hinweis" />
 </div>
-
-<script>
-  import { initFristenrechner } from './fristenrechner-ui';
-
-  document.querySelectorAll<HTMLElement>('[data-fristenrechner]').forEach(initFristenrechner);
-</script>
 
 <style is:global>
   .fristenrechner {
@@ -466,36 +479,36 @@ const bundeslaender = [
     max-width: none;
   }
 
-  .privacy-note,
-  .notice {
+  .fristenrechner .privacy-note,
+  .fristenrechner .notice {
     padding: 0.85rem 1rem;
     border: 1px solid #c7c7c3;
     border-radius: 4px;
     background: #f7f7f6;
   }
 
-  .privacy-note {
+  .fristenrechner .privacy-note {
     margin-bottom: 0.75rem;
     border-left: 4px solid #4d6b3c;
   }
 
-  .privacy-note strong {
+  .fristenrechner .privacy-note strong {
     margin-right: 0.25rem;
   }
 
-  #storage-status {
+  .fristenrechner #storage-status {
     margin-left: 0.35rem;
     color: #586258;
     font-size: 0.9rem;
   }
 
-  .project-file-meta {
+  .fristenrechner .project-file-meta {
     margin: -0.25rem 0 0.75rem;
     color: #55555a;
     font-size: 0.86rem;
   }
 
-  .project-file-meta--migration {
+  .fristenrechner .project-file-meta--migration {
     padding: 0.65rem 0.8rem;
     border-left: 4px solid #a56721;
     background: #fff8ef;
@@ -503,35 +516,35 @@ const bundeslaender = [
   }
 
   .fristenrechner form,
-  .results,
-  .legal-note {
+  .fristenrechner .results,
+  .fristenrechner .legal-note {
     padding: clamp(1rem, 2.5vw, 1.5rem);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border, #d7d7d3);
     border-radius: 5px;
     background: #fff;
     box-shadow: 0 0.3rem 1.2rem rgba(45, 45, 45, 0.06);
   }
 
-  .form-header,
-  .results-header,
-  .section-heading-row {
+  .fristenrechner .form-header,
+  .fristenrechner .results-header,
+  .fristenrechner .section-heading-row {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
   }
 
-  .eyebrow {
+  .fristenrechner .eyebrow {
     margin: 0 0 0.2rem;
-    color: var(--color-accent);
+    color: var(--color-accent, #a7303c);
     font-size: 0.78rem;
     font-weight: 800;
     letter-spacing: 0.09em;
     text-transform: uppercase;
   }
 
-  .form-header h2,
-  .results-header h2 {
+  .fristenrechner .form-header h2,
+  .fristenrechner .results-header h2 {
     margin: 0;
     font-size: clamp(1.25rem, 2vw, 1.55rem);
   }
@@ -555,20 +568,20 @@ const bundeslaender = [
     font-weight: 400;
   }
 
-  .form-grid {
+  .fristenrechner .form-grid {
     display: grid;
     gap: 1rem;
   }
 
-  .three-columns {
+  .fristenrechner .three-columns {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .two-columns {
+  .fristenrechner .two-columns {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .four-columns {
+  .fristenrechner .four-columns {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
@@ -580,35 +593,35 @@ const bundeslaender = [
     font-weight: 650;
   }
 
-  .uniform-field-grid {
+  .fristenrechner .uniform-field-grid {
     align-items: start;
   }
 
-  .uniform-field-grid > label:not(.check-card):not(.file-button) {
+  .fristenrechner .uniform-field-grid > label:not(.check-card):not(.file-button) {
     align-self: start;
     align-content: start;
     grid-template-rows: auto 2.75rem auto;
   }
 
-  .uniform-field-grid > label:not(.check-card):not(.file-button) > span:first-child {
-    min-height: var(--field-label-height);
+  .fristenrechner .uniform-field-grid > label:not(.check-card):not(.file-button) > span:first-child {
+    min-height: var(--field-label-height, 1.6rem);
     display: flex;
     align-items: flex-end;
     line-height: 1.35;
   }
 
-  .field-label-text {
+  .fristenrechner .field-label-text {
     min-width: 0;
   }
 
   /* Interne Bearbeitungszeiten als Zeilenliste: Beschreibung links,
      Eingabe rechts  */
-  .zeiten-liste {
+  .fristenrechner .zeiten-liste {
     display: flex;
     flex-direction: column;
   }
 
-  .zeit-zeile {
+  .fristenrechner .zeit-zeile {
     padding: 0.5rem 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 8.5rem;
@@ -618,45 +631,45 @@ const bundeslaender = [
 
   /* Trennlinie nur zwischen SICHTBAREN Zeilen (ausgeblendete Zeilen dürfen
      keine verwaiste Linie hinterlassen) */
-  .zeit-zeile:not([hidden]) ~ .zeit-zeile:not([hidden]) {
+  .fristenrechner .zeit-zeile:not([hidden]) ~ .zeit-zeile:not([hidden]) {
     border-top: 1px solid #ececea;
   }
 
-  .zeit-zeile[hidden] {
+  .fristenrechner .zeit-zeile[hidden] {
     display: none;
   }
 
-  .zeit-beschreibung {
+  .fristenrechner .zeit-beschreibung {
     line-height: 1.35;
   }
 
-  .zeit-beschreibung small {
+  .fristenrechner .zeit-beschreibung small {
     margin-top: 0.15rem;
     display: block;
     color: #626267;
     font-weight: 400;
   }
 
-  .zeit-zeile input {
+  .fristenrechner .zeit-zeile input {
     box-sizing: border-box;
     height: 2.75rem;
     min-height: 2.75rem;
   }
 
   @media (max-width: 34rem) {
-    .zeit-zeile {
+    .fristenrechner .zeit-zeile {
       grid-template-columns: 1fr;
     }
   }
 
-  .bindefrist-grid {
+  .fristenrechner .bindefrist-grid {
     --field-label-height: 2.9rem;
     margin-top: 1rem;
   }
 
 
-  .uniform-field-grid input,
-  .uniform-field-grid select {
+  .fristenrechner .uniform-field-grid input,
+  .fristenrechner .uniform-field-grid select {
     align-self: start;
     box-sizing: border-box;
     height: 2.75rem;
@@ -668,7 +681,7 @@ const bundeslaender = [
     width: 100%;
     min-height: 2.75rem;
     padding: 0.55rem 0.65rem;
-    color: var(--color-text);
+    color: var(--color-text, #343438);
     background: #fff;
     border: 1px solid #99999d;
     border-radius: 3px;
@@ -679,47 +692,47 @@ const bundeslaender = [
   .fristenrechner button:focus-visible,
   .fristenrechner summary:focus-visible,
   .fristenrechner .file-button:focus-within {
-    outline: 3px solid var(--color-accent);
+    outline: 3px solid var(--color-accent, #a7303c);
     outline-offset: 2px;
   }
 
-  .check-grid {
+  .fristenrechner .check-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
   }
 
-  .option-fields {
+  .fristenrechner .option-fields {
     margin-top: 1rem;
   }
 
   /* Versand-Auswahl als einzeilige Reihe: Beschreibung links, Select rechts */
-  .optionen-zeile {
+  .fristenrechner .optionen-zeile {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 17.5rem;
     gap: 0.35rem 1.25rem;
     align-items: center;
   }
 
-  .optionen-zeile select {
+  .fristenrechner .optionen-zeile select {
     box-sizing: border-box;
     height: 2.75rem;
     min-height: 2.75rem;
   }
 
   @media (max-width: 34rem) {
-    .optionen-zeile {
+    .fristenrechner .optionen-zeile {
       grid-template-columns: 1fr;
     }
   }
 
   /* Options-Panels: einheitliche Label-Höhe, damit Dauer- und Termin-Kästen
      auf gleicher Höhe sitzen  */
-  .option-panel-grid {
+  .fristenrechner .option-panel-grid {
     --field-label-height: 1.6rem;
   }
 
-  .check-card {
+  .fristenrechner .check-card {
     padding: 0.8rem;
     display: flex;
     gap: 0.65rem;
@@ -729,38 +742,38 @@ const bundeslaender = [
     cursor: pointer;
   }
 
-  .check-card:has(input:checked) {
+  .fristenrechner .check-card:has(input:checked) {
     border-color: #bd777e;
     background: #fff7f8;
   }
 
-  .check-card input {
+  .fristenrechner .check-card input {
     width: 1.15rem;
     min-height: auto;
     height: 1.15rem;
     margin-top: 0.15rem;
-    accent-color: var(--color-accent);
+    accent-color: var(--color-accent, #a7303c);
   }
 
-  .check-card span,
-  .check-card small {
+  .fristenrechner .check-card span,
+  .fristenrechner .check-card small {
     display: block;
   }
 
-  .check-card small {
+  .fristenrechner .check-card small {
     margin-top: 0.15rem;
     color: #626267;
   }
 
   /* generalisiert: seit der Verfahrens-Sperre
      kann auch Runde 1 deaktiviert sein (offene/nicht offene Verfahren) */
-  .check-card:has(input:disabled) {
+  .fristenrechner .check-card:has(input:disabled) {
     opacity: 0.55;
     background: #f1f1ef;
     cursor: not-allowed;
   }
 
-  .conditional-panel {
+  .fristenrechner .conditional-panel {
     margin-top: 1rem;
     padding: 1rem;
     background: #f7f7f6;
@@ -770,62 +783,62 @@ const bundeslaender = [
   /* !important: die Feldhöhen-Vereinheitlichung setzt display:grid mit
      höherer Spezifität und überstimmt sonst das hidden-Attribut.
      Ausgeblendete Felder müssen verborgen bleiben. */
-  .conditional-panel[hidden],
-  [data-teilnahme-field][hidden],
-  [data-bewerberfragen-field][hidden],
-  [data-teilnahme-bewertung-field][hidden],
-  [data-zwischenbewertung-field][hidden],
-  [data-einladung-versand-field][hidden],
-  [data-vu-anpassung-runde1-field][hidden],
-  [data-vu-anpassung-runde2-field][hidden],
-  [data-verhandlungs-field][hidden],
-  [data-bindefrist-tage][hidden],
-  [data-bindefrist-termin][hidden],
-  [data-aufforderung-field][hidden],
-  [data-bieterinfo-field][hidden],
-  [data-infoversand-field][hidden],
-  [data-wartefrist-field][hidden],
-  .project-file-meta[hidden],
-  .result-bindefrist[hidden],
-  .notice[hidden] {
+  .fristenrechner .conditional-panel[hidden],
+  .fristenrechner [data-teilnahme-field][hidden],
+  .fristenrechner [data-bewerberfragen-field][hidden],
+  .fristenrechner [data-teilnahme-bewertung-field][hidden],
+  .fristenrechner [data-zwischenbewertung-field][hidden],
+  .fristenrechner [data-einladung-versand-field][hidden],
+  .fristenrechner [data-vu-anpassung-runde1-field][hidden],
+  .fristenrechner [data-vu-anpassung-runde2-field][hidden],
+  .fristenrechner [data-verhandlungs-field][hidden],
+  .fristenrechner [data-bindefrist-tage][hidden],
+  .fristenrechner [data-bindefrist-termin][hidden],
+  .fristenrechner [data-aufforderung-field][hidden],
+  .fristenrechner [data-bieterinfo-field][hidden],
+  .fristenrechner [data-infoversand-field][hidden],
+  .fristenrechner [data-wartefrist-field][hidden],
+  .fristenrechner .project-file-meta[hidden],
+  .fristenrechner .result-bindefrist[hidden],
+  .fristenrechner .notice[hidden] {
     display: none !important;
   }
 
-  .field-help {
+  .fristenrechner .field-help {
     margin: 0 0 0.8rem;
     color: #606064;
     font-size: 0.9rem;
   }
 
 
-  .advanced-settings {
+  .fristenrechner .advanced-settings {
     margin-top: 1.25rem;
     border: 1px solid #d7d7d3;
     border-radius: 4px;
   }
 
-  .advanced-settings summary {
+  .fristenrechner .advanced-settings summary {
     padding: 0.85rem 1rem;
     font-weight: 700;
     cursor: pointer;
   }
 
-  .advanced-settings[open] {
+  .fristenrechner .advanced-settings[open] {
     padding: 0 1rem 1rem;
   }
 
-  .advanced-settings[open] summary {
+  .fristenrechner .advanced-settings[open] summary {
     margin-inline: -1rem;
   }
 
-  .form-actions {
+  .fristenrechner .form-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.65rem;
     align-items: center;
   }
 
-  .export-actions {
+  .fristenrechner .export-actions {
     width: min(100%, 46rem);
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -833,18 +846,18 @@ const bundeslaender = [
     align-items: stretch;
   }
 
-  .form-actions {
+  .fristenrechner .form-actions {
     margin-top: 1.25rem;
   }
 
-  .button {
+  .fristenrechner .button {
     width: auto;
     min-height: 2.75rem;
     padding: 0.55rem 0.85rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-text);
+    color: var(--color-text, #343438);
     background: #fff;
     border: 1px solid #96969a;
     border-radius: 3px;
@@ -854,26 +867,26 @@ const bundeslaender = [
     cursor: pointer;
   }
 
-  .form-actions .button,
-  .export-actions .button {
+  .fristenrechner .form-actions .button,
+  .fristenrechner .export-actions .button {
     box-sizing: border-box;
     height: 2.75rem;
     min-height: 2.75rem;
     white-space: nowrap;
   }
 
-  .export-actions .button {
+  .fristenrechner .export-actions .button {
     width: 100%;
     padding-inline: 1.25rem;
   }
 
-  .button:hover {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
+  .fristenrechner .button:hover {
+    border-color: var(--color-accent, #a7303c);
+    color: var(--color-accent, #a7303c);
   }
 
-  .button:disabled,
-  .button:disabled:hover {
+  .fristenrechner .button:disabled,
+  .fristenrechner .button:disabled:hover {
     border-color: #c5c5c2;
     color: #6d6d72;
     background: #f3f3f1;
@@ -881,52 +894,52 @@ const bundeslaender = [
     opacity: 0.7;
   }
 
-  .button-primary {
+  .fristenrechner .button-primary {
     color: #fff;
-    background: var(--color-accent);
-    border-color: var(--color-accent);
+    background: var(--color-accent, #a7303c);
+    border-color: var(--color-accent, #a7303c);
   }
 
-  .button-primary:hover {
+  .fristenrechner .button-primary:hover {
     color: #fff;
-    background: var(--color-accent-deep);
+    background: var(--color-accent-deep, #862630);
   }
 
-  .button-quiet {
+  .fristenrechner .button-quiet {
     min-height: 2.3rem;
     color: #55555a;
     border-color: transparent;
     text-decoration: underline;
   }
 
-  .file-button {
+  .fristenrechner .file-button {
     position: relative;
     overflow: hidden;
   }
 
-  .file-button input {
+  .fristenrechner .file-button input {
     position: absolute;
     width: 1px;
     height: 1px;
     opacity: 0;
   }
 
-  .results {
+  .fristenrechner .results {
     margin-top: 1.5rem;
   }
 
-  #result-summary {
+  .fristenrechner #result-summary {
     margin: 0.35rem 0 0;
     color: #5b5b60;
   }
 
-  .result-bindefrist {
+  .fristenrechner .result-bindefrist {
     margin: 0.3rem 0 0;
     color: #343438;
     font-weight: 700;
   }
 
-  .export-message {
+  .fristenrechner .export-message {
     min-height: 1.35rem;
     margin: 0.65rem 0 0;
     color: #5b5b60;
@@ -934,51 +947,61 @@ const bundeslaender = [
     text-align: right;
   }
 
-  .notice {
+  .fristenrechner .action-message {
+    margin: 0.65rem 0 0;
+    color: #5b5b60;
+    font-size: 0.88rem;
+  }
+
+  .fristenrechner .action-message:empty {
+    display: none;
+  }
+
+  .fristenrechner .notice {
     margin-top: 1rem;
   }
 
-  .notice ul {
+  .fristenrechner .notice ul {
     margin: 0;
   }
 
-  .notice-warning {
+  .fristenrechner .notice-warning {
     border-left: 4px solid #a56721;
     background: #fff8ef;
   }
 
-  .notice-error {
+  .fristenrechner .notice-error {
     border-left: 4px solid #a7303c;
     background: #fff5f6;
   }
 
-  .timeline-section,
-  .table-section {
+  .fristenrechner .timeline-section,
+  .fristenrechner .table-section {
     margin-top: 1.75rem;
   }
 
-  .timeline-section h3,
-  .table-section h3 {
+  .fristenrechner .timeline-section h3,
+  .fristenrechner .table-section h3 {
     margin: 0 0 0.75rem;
     font-size: 1.12rem;
   }
 
-  .section-heading-row p {
+  .fristenrechner .section-heading-row p {
     margin: 0;
     color: #6d6d72;
     font-size: 0.85rem;
   }
 
-  .timeline-stack,
-  .table-scroll {
+  .fristenrechner .timeline-stack,
+  .fristenrechner .table-scroll {
     max-width: 100%;
   }
 
-  .table-scroll {
+  .fristenrechner .table-scroll {
     overflow-x: auto;
   }
 
-  .timeline {
+  .fristenrechner .timeline {
     width: 100%;
     margin: 0;
     padding: 1rem;
@@ -991,43 +1014,43 @@ const bundeslaender = [
     background: linear-gradient(#fff, #fbfbfa);
   }
 
-  .timeline-phase {
+  .fristenrechner .timeline-phase {
     min-width: 0;
-    border-top: 3px solid var(--phase-color);
+    border-top: 3px solid var(--phase-color, #a7303c);
     border-inline: 1px solid #dededb;
     border-bottom: 1px solid #dededb;
     border-radius: 3px;
     background: #fff;
   }
 
-  .timeline-phase > header {
+  .fristenrechner .timeline-phase > header {
     padding: 0.7rem;
     display: grid;
     align-content: start;
     gap: 0.2rem;
     border-bottom: 1px solid #dededb;
-    background: color-mix(in srgb, var(--phase-color) 8%, white);
+    background: color-mix(in srgb, var(--phase-color, #a7303c) 8%, white);
   }
 
-  .timeline-phase > header strong {
+  .fristenrechner .timeline-phase > header strong {
     color: #343438;
     font-size: 0.9rem;
   }
 
-  .timeline-phase > header .timeline-phase-order {
-    color: var(--phase-color);
+  .fristenrechner .timeline-phase > header .timeline-phase-order {
+    color: var(--phase-color, #a7303c);
     font-size: 0.7rem;
     font-weight: 800;
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
 
-  .timeline-phase > header span {
+  .fristenrechner .timeline-phase > header span {
     color: #646469;
     font-size: 0.76rem;
   }
 
-  .timeline-milestones {
+  .fristenrechner .timeline-milestones {
     margin: 0;
     padding: 0.75rem 0.75rem 0.75rem 1.8rem;
     display: grid;
@@ -1036,40 +1059,40 @@ const bundeslaender = [
     list-style: none;
   }
 
-  .timeline-milestones li {
+  .fristenrechner .timeline-milestones li {
     position: relative;
     display: grid;
     gap: 0.12rem;
   }
 
-  .timeline-milestones li::before {
+  .fristenrechner .timeline-milestones li::before {
     position: absolute;
     left: -1.15rem;
     top: 0.3rem;
     width: 0.55rem;
     height: 0.55rem;
     border-radius: 50%;
-    background: var(--phase-color);
+    background: var(--phase-color, #a7303c);
     content: '';
   }
 
-  .timeline-milestones time,
-  .timeline-milestones .milestone-date {
+  .fristenrechner .timeline-milestones time,
+  .fristenrechner .timeline-milestones .milestone-date {
     color: #5d5d62;
     font-size: 0.74rem;
     font-weight: 700;
   }
 
-  .timeline-milestones .milestone-date {
+  .fristenrechner .timeline-milestones .milestone-date {
     line-height: 1.35;
   }
 
-  .timeline-milestones span {
+  .fristenrechner .timeline-milestones span {
     font-size: 0.79rem;
     line-height: 1.3;
   }
 
-  .table-scroll {
+  .fristenrechner .table-scroll {
     border: 1px solid #d7d7d3;
     border-radius: 4px;
   }
@@ -1105,17 +1128,17 @@ const bundeslaender = [
     border-bottom: 0;
   }
 
-  .milestone-label {
+  .fristenrechner .milestone-label {
     font-weight: 700;
   }
 
-  .milestone-warning {
+  .fristenrechner .milestone-warning {
     margin-top: 0.35rem;
     color: #8b2d38;
     font-weight: 700;
   }
 
-  .type-badge {
+  .fristenrechner .type-badge {
     padding: 0.16rem 0.4rem;
     display: inline-block;
     border: 1px solid #c8c8c5;
@@ -1124,21 +1147,21 @@ const bundeslaender = [
     white-space: nowrap;
   }
 
-  .legal-note {
+  .fristenrechner .legal-note {
     margin-top: 1.5rem;
     background: #f7f7f6;
   }
 
-  .legal-note h2 {
+  .fristenrechner .legal-note h2 {
     margin-top: 0;
     font-size: 1.12rem;
   }
 
-  .legal-note p:last-child {
+  .fristenrechner .legal-note p:last-child {
     margin-bottom: 0;
   }
 
-  .print-footer {
+  .fristenrechner .print-footer {
     margin-top: 1.5rem;
     padding-top: 0.8rem;
     display: flex;
@@ -1147,90 +1170,85 @@ const bundeslaender = [
     border-top: 1px solid #d7d7d3;
   }
 
-  .print-footer img {
+  .fristenrechner .print-footer img {
     width: auto;
     height: 2rem;
   }
 
-  .print-footer p {
+  .fristenrechner .print-footer p {
     margin: 0;
     color: #68686c;
     font-size: 0.78rem;
   }
 
-  .print-page-header,
-  .print-page-footer {
+  .fristenrechner .print-page-header,
+  .fristenrechner .print-page-footer {
     display: none;
   }
 
   @media (max-width: 64rem) {
-    .four-columns {
+    .fristenrechner .four-columns {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .export-actions {
+    .fristenrechner .export-actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .timeline {
+    .fristenrechner .timeline {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
   @media (max-width: 48rem) {
-    .three-columns,
-    .two-columns,
-    .four-columns,
-    .check-grid {
+    .fristenrechner .three-columns,
+    .fristenrechner .two-columns,
+    .fristenrechner .four-columns,
+    .fristenrechner .check-grid {
       grid-template-columns: 1fr;
     }
 
-    .form-header,
-    .results-header {
+    .fristenrechner .form-header,
+    .fristenrechner .results-header {
       align-items: stretch;
       flex-direction: column;
     }
 
-    .uniform-field-grid > label:not(.check-card):not(.file-button) > span:first-child {
+    .fristenrechner .uniform-field-grid > label:not(.check-card):not(.file-button) > span:first-child {
       min-height: auto;
     }
 
-    .button,
-    .export-actions .button {
+    .fristenrechner .button,
+    .fristenrechner .export-actions .button {
       width: 100%;
     }
 
-    .form-actions {
+    .fristenrechner .form-actions {
       align-items: stretch;
       flex-direction: column;
     }
 
-    .export-message {
+    .fristenrechner .export-message {
       text-align: left;
     }
 
-    .timeline-milestones {
+    .fristenrechner .timeline-milestones {
       grid-template-columns: 1fr;
     }
 
-    .timeline {
+    .fristenrechner .timeline {
       grid-template-columns: 1fr;
     }
   }
 
   @media (max-width: 30rem) {
-    .export-actions {
+    .fristenrechner .export-actions {
       grid-template-columns: 1fr;
     }
   }
 
   @media print {
-    @page {
-      margin: 2.4cm 1.3cm 1.8cm;
-      size: A4 portrait;
-    }
-
-    .print-page-header {
+    .fristenrechner .print-page-header {
       position: fixed;
       top: -1.7cm;
       right: 0;
@@ -1246,13 +1264,13 @@ const bundeslaender = [
       z-index: 1;
     }
 
-    .print-page-header > span {
+    .fristenrechner .print-page-header > span {
       flex: 1 1 0;
       min-width: 0;
       overflow-wrap: anywhere;
     }
 
-    .print-page-footer {
+    .fristenrechner .print-page-footer {
       position: fixed;
       right: 0;
       bottom: -1.15cm;
@@ -1268,33 +1286,23 @@ const bundeslaender = [
       z-index: 1;
     }
 
-    .site-header,
-    .site-footer,
-    .breadcrumbs,
     .fristenrechner > form,
     .fristenrechner > .privacy-note,
     .fristenrechner > .legal-note,
-    .export-actions {
+    .fristenrechner .action-message,
+    .fristenrechner .export-actions {
       display: none !important;
     }
 
-    .main-inner {
-      padding: 0;
-    }
-
-    .layout-container {
-      width: 100%;
-    }
-
-    .results {
+    .fristenrechner .results {
       margin: 0;
       padding: 0;
       border: 0;
       box-shadow: none;
     }
 
-    .timeline-stack,
-    .table-scroll {
+    .fristenrechner .timeline-stack,
+    .fristenrechner .table-scroll {
       overflow: visible;
     }
 
@@ -1302,21 +1310,21 @@ const bundeslaender = [
       min-width: 0;
     }
 
-    .timeline {
+    .fristenrechner .timeline {
       padding: 0.65rem;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.65rem;
     }
 
-    .timeline-phase {
+    .fristenrechner .timeline-phase {
       break-inside: avoid;
     }
 
-    .table-section {
+    .fristenrechner .table-section {
       break-before: page;
     }
 
-    .print-footer {
+    .fristenrechner .print-footer {
       break-inside: avoid;
     }
   }

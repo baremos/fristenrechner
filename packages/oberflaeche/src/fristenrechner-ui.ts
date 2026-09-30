@@ -17,9 +17,16 @@ import {
 
 import { regelstandText } from './fristenrechner-export-data';
 import { leerenUndAnhaengen } from './dom';
+import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type RechnerOptionen } from './plattform';
+import { speicherWarteschlange } from './speicher-warteschlange';
+import { projektAlsDatei } from './projekt-datei';
+export * from './plattform';
+export { erzeugeWebPlattform } from './web-plattform';
+export { webTexte, webExportInhalt } from './web-vorgaben';
+export { projektAlsDatei, safeFilename } from './projekt-datei';
 
-const STORAGE_KEY = 'baremos-fristenrechner-projekt-v1';
 const KERN_1_9_VERSION = '1.9.0';
+const aktiveSeiten = new WeakSet<Document>();
 
 const phaseLabels: Record<Meilenstein['phase'], string> = {
   einholung: 'Angebotsphase',
@@ -100,25 +107,6 @@ export function isVersionBefore(version: string, target: string): boolean {
   return false;
 }
 
-function download(content: BlobPart, mimeType: string, filename: string): void {
-  const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-export function safeFilename(value: string): string {
-  const normalized = value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase();
-  return normalized || 'vergabe-terminplan';
-}
-
 function makeTextElement(tag: keyof HTMLElementTagNameMap, text: string, className?: string): HTMLElement {
   const element = document.createElement(tag);
   element.textContent = text;
@@ -140,7 +128,12 @@ function appendMilestoneDate(container: HTMLElement, milestone: Meilenstein): vo
   }
 }
 
-export function initFristenrechner(root: HTMLElement): void {
+export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen): { dispose(): void } {
+  const seite = root.ownerDocument;
+  if (aktiveSeiten.has(seite) || seite.querySelectorAll('[data-fristenrechner]').length > 1) {
+    throw new Error('Es ist nur ein Fristenrechner je Seite und eine Initialisierung erlaubt.');
+  }
+  const { plattform, texte } = optionen;
   const form = root.querySelector<HTMLFormElement>('#schedule-form');
   const results = root.querySelector<HTMLElement>('#schedule-results');
   const tableBody = root.querySelector<HTMLTableSectionElement>('#schedule-table-body');
@@ -173,6 +166,12 @@ export function initFristenrechner(root: HTMLElement): void {
   const bindefristTageField = root.querySelector<HTMLElement>('[data-bindefrist-tage]');
   const bindefristTerminField = root.querySelector<HTMLElement>('[data-bindefrist-termin]');
   const exportMessage = root.querySelector<HTMLElement>('#export-message');
+  const importMessage = root.querySelector<HTMLElement>('#import-message');
+  const resetMessage = root.querySelector<HTMLElement>('#reset-message');
+  const excelMessage = root.querySelector<HTMLElement>('#excel-message');
+  const pdfMessage = root.querySelector<HTMLElement>('#pdf-message');
+  const importAktion = root.querySelector<HTMLElement>('[data-project-import]');
+  const resetButton = root.querySelector<HTMLButtonElement>('#reset-project');
   const exportActions = root.querySelector<HTMLElement>('.export-actions');
   const saveJsonButton = root.querySelector<HTMLButtonElement>('#save-json');
   const resultActionButtons = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-requires-result]'));
@@ -194,17 +193,31 @@ export function initFristenrechner(root: HTMLElement): void {
     || !saveJsonButton || resultActionButtons.length !== 3
     || !elektronischLabel || !elektronischHinweis
     || !bieterinfoField || !infoVersandField || !wartefristField || !dringlichkeitHinweis
-    || !aufforderungField) {
-    return;
+    || !aufforderungField || !importMessage || !resetMessage || !excelMessage || !pdfMessage || !importAktion || !resetButton) {
+    throw new Error('Die Oberfläche des Fristenrechners ist unvollständig.');
   }
 
+  aktiveSeiten.add(seite);
+  let disposed = false;
+  let geladen = false;
+  let speichernGesperrt = false;
+  let aenderungen = 0;
+  let projektAktion = false;
+  let speichernVorgemerkt = false;
+  const beschaeftigt = new Set<HTMLButtonElement>();
+  const abmelden: (() => void)[] = [];
+  const speicher = speicherWarteschlange(plattform.speicher);
+  const hoeren = (ziel: EventTarget, typ: string, fn: (event: Event) => void): void => {
+    ziel.addEventListener(typ, fn);
+    abmelden.push(() => ziel.removeEventListener(typ, fn));
+  };
   let currentInput: ScheduleInput | undefined;
   let currentResult: ScheduleResult | undefined;
   let saveTimer: number | undefined;
 
   const setResultActionsEnabled = (enabled: boolean): void => {
     resultActionButtons.forEach((button) => {
-      button.disabled = !enabled;
+      button.disabled = !enabled || beschaeftigt.has(button);
     });
   };
 
@@ -640,11 +653,15 @@ export function initFristenrechner(root: HTMLElement): void {
   };
 
   const persist = (input: ScheduleInput): void => {
+    if (disposed || !geladen || speichernGesperrt) return;
+    if (projektAktion) { speichernVorgemerkt = true; return; }
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(erstelleProjektDatei(input, new Date().toISOString())));
-      storageStatus.textContent = 'Zuletzt automatisch gespeichert: gerade eben.';
+      const json = JSON.stringify(erstelleProjektDatei(input, plattform.zeit().zeitpunkt));
+      void speicher.schreiben(json).then(() => {
+        if (!disposed) storageStatus.textContent = 'Zuletzt automatisch gespeichert: gerade eben.';
+      }, () => { if (!disposed) storageStatus.textContent = texte.speicherNichtVerfuegbar; });
     } catch {
-      storageStatus.textContent = 'Lokales Speichern ist in diesem Browser nicht verfügbar.';
+      storageStatus.textContent = texte.speicherNichtVerfuegbar;
     }
   };
 
@@ -755,12 +772,12 @@ export function initFristenrechner(root: HTMLElement): void {
   const schedulePersist = (): void => {
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
-      if (!field<HTMLInputElement>(form, 'bekanntmachung').value) return;
+      if (disposed || !field<HTMLInputElement>(form, 'bekanntmachung').value) return;
       persist(readInput());
     }, 350);
   };
 
-  form.addEventListener('submit', (event) => {
+  hoeren(form, 'submit', (event) => {
     event.preventDefault();
     if (!form.reportValidity()) return;
     const erfolgreich = render(readInput());
@@ -769,11 +786,12 @@ export function initFristenrechner(root: HTMLElement): void {
     formMessage.textContent = erfolgreich
       ? 'Terminplan aktualisiert.'
       : 'Kein Terminplan berechenbar — bitte die festen Starttermine korrigieren.';
-    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    results.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   });
 
-  form.addEventListener('input', schedulePersist);
-  form.addEventListener('change', (event) => {
+  hoeren(form, 'input', () => { aenderungen += 1; schedulePersist(); });
+  hoeren(form, 'change', (event) => {
+    aenderungen += 1;
     const target = event.target;
     if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
     if (target.name === 'vergabeordnung') {
@@ -790,107 +808,196 @@ export function initFristenrechner(root: HTMLElement): void {
     if (field<HTMLInputElement>(form, 'bekanntmachung').value) {
       // Statuszeile nachziehen: eine erfolgreiche Live-Neuberechnung räumt
       // eine stehengebliebene Konfliktmeldung ab
-      const erfolgreich = render(readInput());
+      const erfolgreich = render(readInput(), false);
+      schedulePersist();
       formMessage.textContent = erfolgreich
         ? ''
         : 'Kein Terminplan berechenbar — bitte die festen Starttermine korrigieren.';
     }
   });
 
-  root.querySelector<HTMLButtonElement>('#reset-project')?.addEventListener('click', () => {
-    if (!window.confirm('Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?')) return;
-    localStorage.removeItem(STORAGE_KEY);
-    form.reset();
-    field<HTMLInputElement>(form, 'bekanntmachung').value = todayISO();
-    // reset() stellt die Vergabeordnung auf VgV zurück; die per DOM
-    // ersetzten Verfahrensart-Optionen tragen aber kein defaultSelected —
-    // ohne explizites Setzen bliebe z. B. nach einem VSVgV-Projekt
-    // „nicht offen" stehen statt des Ausgangswerts „offen"
-    field<HTMLSelectElement>(form, 'vergabeordnung').value = 'vgv';
-    updateVerfahrensartOptionen();
-    field<HTMLSelectElement>(form, 'verfahrensart').value = 'offen';
-    updateConditionalFields();
-    updateDefaultFields();
-    render(readInput());
-    formMessage.textContent = '';
-    storageStatus.textContent = 'Neues Projekt angelegt.';
-    projectFileMeta.hidden = true;
-    projectFileMeta.textContent = '';
-    projectFileMeta.classList.remove('project-file-meta--migration');
-  });
-
-  saveJsonButton.addEventListener('click', () => {
-    const input = currentInput ?? readInput();
-    const file = erstelleProjektDatei(input, new Date().toISOString());
-    const name = safeFilename(input.projekt?.projektname || input.projekt?.vergabenummer || 'vergabe-terminplan');
-    download(JSON.stringify(file, null, 2), 'application/json;charset=utf-8', `${name}.json`);
-  });
-
-  root.querySelector<HTMLInputElement>('#open-json')?.addEventListener('change', async (event) => {
-    const inputElement = event.currentTarget;
-    if (!(inputElement instanceof HTMLInputElement) || !inputElement.files?.[0]) return;
-    const parsed = parseProjektDatei(await inputElement.files[0].text());
-    inputElement.value = '';
-    if (!parsed.ok) {
-      formMessage.textContent = parsed.fehler.join(' ');
-      return;
+  const groessenOderFehler = (error: unknown, sonst: string): string =>
+    error instanceof PlattformFehler && error.code === 'zu-gross' ? error.message : sonst;
+  const stoppeSpeichern = async (): Promise<void> => {
+    window.clearTimeout(saveTimer);
+    await speicher.beruhigen();
+  };
+  const projektAktionBeenden = (): void => {
+    projektAktion = false;
+    if (speichernVorgemerkt && !disposed) {
+      speichernVorgemerkt = false;
+      schedulePersist();
     }
-    setInput(parsed.datei.input);
-    // Über das Formular normalisiert rendern — readInput wendet die
-    // Relevanz-Guards an (z. B. zwischenbewertungAT ohne Präsentation/
-    // Verhandlung), damit Restwerte aus der Datei weder den Kern erreichen
-    // noch reexportiert werden
-    render(readInput());
-    showProjectFileMeta(parsed.datei);
-    formMessage.textContent = `Projektdatei geöffnet (Rechenkern ${parsed.datei.rechenkernVersion}, Rechtsstand: ${parsed.datei.rechtsstand}).`;
+  };
+
+  hoeren(resetButton, 'click', async () => {
+    if (projektAktion || !geladen || disposed) return;
+    projektAktion = true;
+    resetButton.disabled = true;
+    resetMessage.textContent = '';
+    try {
+      if (!await plattform.zuruecksetzenBestaetigen() || disposed) return;
+      resetMessage.textContent = 'Projekt wird zurückgesetzt …';
+      await stoppeSpeichern();
+      if (disposed) return;
+      await speicher.entfernen();
+      if (disposed) return;
+      form.reset();
+      field<HTMLInputElement>(form, 'bekanntmachung').value = plattform.zeit().kalendertag;
+      // reset() stellt die Vergabeordnung auf VgV zurück; die per DOM
+      // ersetzten Verfahrensart-Optionen tragen aber kein defaultSelected —
+      // ohne explizites Setzen bliebe z. B. nach einem VSVgV-Projekt
+      // „nicht offen" stehen statt des Ausgangswerts „offen"
+      field<HTMLSelectElement>(form, 'vergabeordnung').value = 'vgv';
+      updateVerfahrensartOptionen();
+      field<HTMLSelectElement>(form, 'verfahrensart').value = 'offen';
+      updateConditionalFields();
+      updateDefaultFields();
+      render(readInput(), false);
+      speichernGesperrt = false;
+      // Der neue Stand wird vor dem Freigeben weiterer Projektaktionen geschrieben.
+      await speicher.schreiben(JSON.stringify(erstelleProjektDatei(readInput(), plattform.zeit().zeitpunkt)));
+      if (disposed) return;
+      formMessage.textContent = '';
+      importMessage.textContent = '';
+      resetMessage.textContent = 'Neues Projekt angelegt.';
+      storageStatus.textContent = 'Zuletzt automatisch gespeichert: gerade eben.';
+      projectFileMeta.hidden = true;
+      projectFileMeta.textContent = '';
+      projectFileMeta.classList.remove('project-file-meta--migration');
+    } catch {
+      if (!disposed) resetMessage.textContent = 'Das Projekt konnte nicht vollständig zurückgesetzt und gespeichert werden. Bitte versuchen Sie es erneut.';
+    } finally {
+      projektAktionBeenden();
+      if (!disposed) resetButton.disabled = false;
+    }
   });
 
-  exportActions.addEventListener('click', (event) => {
+  hoeren(saveJsonButton, 'click', async () => {
+    if (disposed || beschaeftigt.has(saveJsonButton)) return;
+    beschaeftigt.add(saveJsonButton);
+    saveJsonButton.disabled = true;
+    exportMessage.textContent = 'Projektdatei wird erstellt …';
+    try {
+      const datei = projektAlsDatei(currentInput ?? readInput(), plattform.zeit());
+      const ausgabe = await plattform.ausgabe.exportieren(datei);
+      if (!disposed) exportMessage.textContent = ausgabe.status === 'ok' ? texte.exportErfolg : '';
+    } catch {
+      if (!disposed) exportMessage.textContent = 'Die Projektdatei konnte nicht erstellt oder ausgegeben werden. Bitte versuchen Sie es erneut.';
+    } finally {
+      beschaeftigt.delete(saveJsonButton);
+      if (!disposed) setResultActionsEnabled(Boolean(currentResult));
+    }
+  });
+
+  hoeren(importAktion, 'click', async (event) => {
+    if (projektAktion || !geladen || disposed) { event.preventDefault(); return; }
+    projektAktion = true;
+    importMessage.textContent = 'Projektdatei auswählen …';
+    try {
+      const auswahl = await plattform.import.waehlen({ mime: 'application/json', endungen: ['.json'], maxBytes: MAX_PROJEKT_BYTES });
+      if (disposed) return;
+      if (auswahl.status === 'abgebrochen') { importMessage.textContent = ''; return; }
+      pruefeProjektGroesse(auswahl.wert.text);
+      const parsed = parseProjektDatei(auswahl.wert.text);
+      if (!parsed.ok) { importMessage.textContent = parsed.fehler.join(' '); return; }
+      await stoppeSpeichern();
+      if (disposed) return;
+      setInput(parsed.datei.input);
+      // Über das Formular normalisiert rendern — readInput wendet die
+      // Relevanz-Guards an (z. B. zwischenbewertungAT ohne Präsentation/
+      // Verhandlung), damit Restwerte aus der Datei weder den Kern erreichen
+      // noch reexportiert werden
+      render(readInput(), false);
+      showProjectFileMeta(parsed.datei);
+      speichernGesperrt = false;
+      await speicher.schreiben(JSON.stringify(erstelleProjektDatei(readInput(), plattform.zeit().zeitpunkt)));
+      if (disposed) return;
+      formMessage.textContent = currentResult ? '' : 'Kein Terminplan berechenbar — bitte die festen Starttermine korrigieren.';
+      resetMessage.textContent = '';
+      importMessage.textContent = `Projektdatei geöffnet (Rechenkern ${parsed.datei.rechenkernVersion}, Rechtsstand: ${parsed.datei.rechtsstand}).`;
+      storageStatus.textContent = 'Zuletzt automatisch gespeichert: gerade eben.';
+    } catch (error) {
+      if (!disposed) importMessage.textContent = groessenOderFehler(error, 'Die Projektdatei konnte nicht vollständig geladen und gespeichert werden. Bitte versuchen Sie es erneut.');
+    } finally { projektAktionBeenden(); }
+  });
+
+  hoeren(exportActions, 'click', async (event) => {
     const target = event.target;
-    if (!(target instanceof Element) || !currentInput || !currentResult) return;
+    if (!(target instanceof Element) || !currentInput || !currentResult || disposed) return;
     const button = target.closest<HTMLButtonElement>('button[data-schedule-export]');
-    if (!button || !exportActions.contains(button)) return;
+    if (!button || !exportActions.contains(button) || beschaeftigt.has(button)) return;
     const kind = button.dataset.scheduleExport;
     if (kind !== 'excel' && kind !== 'pdf') return;
     const input = currentInput;
     const result = currentResult;
+    const message = kind === 'excel' ? excelMessage : pdfMessage;
     const idleLabel = button.textContent ?? '';
+    beschaeftigt.add(button);
     button.disabled = true;
-    void import('./fristenrechner-export-action')
-      .then(({ runScheduleExport }) => runScheduleExport(kind, button, exportMessage, input, result))
-      .catch((error) => {
-        console.error('Exportmodul konnte nicht geladen werden.', error);
-        button.textContent = idleLabel;
-        button.disabled = false;
-        exportMessage.textContent = `Der ${kind === 'excel' ? 'Excel' : 'PDF'}-Export konnte nicht geladen werden. Bitte versuchen Sie es erneut.`;
-      });
+    message.textContent = `${kind === 'excel' ? 'Excel' : 'PDF'}-Export wird geladen und erstellt …`;
+    try {
+      const zeit = plattform.zeit();
+      const { runScheduleExport } = await import('./fristenrechner-export-action');
+      if (disposed) return;
+      await runScheduleExport(kind, button, message, input, result, optionen, zeit, () => !disposed);
+    } catch {
+      if (!disposed) message.textContent = `Der ${kind === 'excel' ? 'Excel' : 'PDF'}-Export konnte nicht geladen werden. Bitte versuchen Sie es erneut.`;
+    } finally {
+      beschaeftigt.delete(button);
+      if (!disposed) { button.textContent = idleLabel; setResultActionsEnabled(Boolean(currentResult)); }
+    }
   });
 
-  field<HTMLInputElement>(form, 'bekanntmachung').value = todayISO();
+  field<HTMLInputElement>(form, 'bekanntmachung').value = plattform.zeit().kalendertag;
   updateVerfahrensartOptionen();
   updateConditionalFields();
   updateDefaultFields();
-
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = parseProjektDatei(saved);
-      if (parsed.ok) {
-        setInput(parsed.datei.input);
-        // normalisiert wie beim JSON-Import
-        render(readInput(), false);
-        showProjectFileMeta(parsed.datei);
-        // TT.MM.JJJJ mit fuehrenden Nullen  — plain
-        // toLocaleString('de-DE') liefert z. B. "23.7.2026"
-        storageStatus.textContent = `Lokales Projekt geladen (${new Intl.DateTimeFormat('de-DE', {
-          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-        }).format(new Date(parsed.datei.gespeichertAm))} Uhr).`;
-        return;
+  render(readInput(), false);
+  storageStatus.textContent = 'Gespeichertes Projekt wird geladen …';
+  void (async () => {
+    try {
+      const saved = await plattform.speicher.lesen();
+      if (disposed) return;
+      if (saved !== null) {
+        pruefeProjektGroesse(saved);
+        const parsed = parseProjektDatei(saved);
+        if (!parsed.ok) {
+          speichernGesperrt = true;
+          storageStatus.textContent = 'Das gespeicherte Projekt konnte nicht gelesen werden und bleibt erhalten. Importieren Sie eine Projektdatei oder setzen Sie das Projekt zurück. ' + parsed.fehler.join(' ');
+          return;
+        }
+        if (aenderungen === 0) {
+          setInput(parsed.datei.input);
+          // normalisiert wie beim Import einer Projektdatei
+          render(readInput(), false);
+          showProjectFileMeta(parsed.datei);
+          // TT.MM.JJJJ mit führenden Nullen — toLocaleString('de-DE') allein
+          // liefert z. B. „23.7.2026“
+          storageStatus.textContent = `Lokales Projekt geladen (${new Intl.DateTimeFormat('de-DE', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+          }).format(new Date(parsed.datei.gespeichertAm))} Uhr).`;
+          return;
+        }
       }
-    }
-  } catch {
-    storageStatus.textContent = 'Lokales Speichern ist in diesem Browser nicht verfügbar.';
-  }
+      geladen = true;
+      persist(readInput());
+    } catch (error) {
+      speichernGesperrt = true;
+      if (!disposed) storageStatus.textContent = groessenOderFehler(error, texte.speicherNichtVerfuegbar)
+        + ' Ein vorhandenes Projekt bleibt erhalten. Importieren Sie eine Projektdatei oder setzen Sie das Projekt zurück.';
+    } finally { geladen = true; }
+  })();
 
-  render(readInput());
+  return {
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      window.clearTimeout(saveTimer);
+      abmelden.forEach(fn => fn());
+      // Während eines bereits begonnenen Schreibvorgangs darf keine neue Instanz
+      // denselben Speicher übernehmen. Wartende alte Aufträge werden verworfen.
+      void speicher.dispose().then(() => aktiveSeiten.delete(seite));
+    },
+  };
 }

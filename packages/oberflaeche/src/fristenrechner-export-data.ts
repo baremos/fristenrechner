@@ -6,9 +6,18 @@ import type {
   Vergabeordnung,
 } from '@baremos/fristenrechner-kern';
 import { VERGABEORDNUNGEN } from '@baremos/fristenrechner-kern';
+import type { ExportInhalt } from './plattform';
 
-export const EXPORT_TITLE = 'Fristenrechner Vergabe & Terminplanung';
-export const EXPORT_URL = 'www.baremos.de/de/vergabe/fristenrechner/';
+/** Exportadressen sind optional und verwenden ausschließlich HTTPS. */
+export function pruefeExportInhalt(inhalt: ExportInhalt): void {
+  if (inhalt.adresse && new URL(inhalt.adresse.href).protocol !== 'https:') {
+    throw new Error('Die Exportadresse muss HTTPS verwenden.');
+  }
+}
+
+export function exportHinweis(inhalt: ExportInhalt): string {
+  return `Erstellt mit dem Fristenrechner der ${inhalt.herausgeber}${inhalt.adresse ? ` · ${inhalt.adresse.text}` : ''}`;
+}
 
 /** Vergabeordnung eines Inputs; Projektdateien aus Kern < 1.5.0 sind VgV. */
 export function exportRegime(input: ScheduleInput): Vergabeordnung {
@@ -97,12 +106,8 @@ export function uniqueWarnings(result: ScheduleResult): string[] {
   ].filter((warning, index, all) => all.indexOf(warning) === index);
 }
 
-export function exportFileSuffix(input: ScheduleInput, now = new Date()): string {
-  const value = input.projekt?.vergabenummer?.trim() || [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-  ].join('-');
+export function exportFileSuffix(input: ScheduleInput, kalendertag: string): string {
+  const value = input.projekt?.vergabenummer?.trim() || kalendertag;
   const normalized = value
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')

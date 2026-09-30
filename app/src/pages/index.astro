@@ -1,9 +1,17 @@
 ---
 import Fristenrechner from '@baremos/fristenrechner-ui';
+import { webExportInhalt, webTexte } from '@baremos/fristenrechner-ui/ui';
 import { RECHTSSTAND, RECHTSSTAND_DATUM, REGELVERSION } from '@baremos/fristenrechner-kern';
 import app from '../../package.json';
 import lizenz from '../../../LICENSE?raw';
 import herausgeber from '../../../NOTICE?raw';
+
+const texte = {
+  ...webTexte,
+  datenschutzTitel: 'Ihre Daten bleiben auf diesem Gerät.',
+  datenschutzText: 'Die App hat keinen Internetzugriff. Weitergegeben wird nur, was Sie selbst exportieren.',
+  speicherNichtVerfuegbar: 'Lokales Speichern ist auf diesem Gerät nicht verfügbar.',
+};
 ---
 <!doctype html>
 <html lang="de">
@@ -33,7 +41,7 @@ import herausgeber from '../../../NOTICE?raw';
     <p id="app-startfehler" class="app-hinweis" role="alert" hidden>Im Fristenrechner ist ein Fehler aufgetreten. Bitte starten Sie die App neu. Tritt der Fehler erneut auf, ist die Systemkomponente „Android System WebView“ möglicherweise zu alt.</p>
     <p id="app-rechtsstand-hinweis" class="app-hinweis" role="status" hidden
        data-rechtsstand={RECHTSSTAND_DATUM}>Diese Fassung rechnet mit dem Rechtsstand {RECHTSSTAND}. Seitdem sind mehr als zwölf Monate vergangen. Eine neuere Version des Fristenrechners kann vorliegen. Die Berechnung bleibt möglich.</p>
-    <Fristenrechner />
+    <Fristenrechner texte={texte} exportInhalt={webExportInhalt} />
     <details class="app-abschnitt">
       <summary>Über diese App</summary>
       <p>Fristenrechner Vergabe, Version {app.version}</p>
@@ -47,7 +55,18 @@ import herausgeber from '../../../NOTICE?raw';
       <pre>{herausgeber}</pre>
     </details>
   </main>
-  <script>import '../rechtsstand-anzeige';</script>
+  <script>
+    import '../rechtsstand-anzeige';
+    import { erzeugeWebPlattform, initFristenrechner } from '@baremos/fristenrechner-ui/ui';
+    import type { ExportInhalt, GastgeberTexte } from '@baremos/fristenrechner-ui/ui';
+
+    const root = document.querySelector<HTMLElement>('[data-fristenrechner]');
+    if (root) {
+      const texte = JSON.parse(root.dataset.gastgeberTexte!) as GastgeberTexte;
+      const exportInhalt = JSON.parse(root.dataset.exportInhalt!) as ExportInhalt;
+      initFristenrechner(root, { plattform: erzeugeWebPlattform(root), texte, exportInhalt });
+    }
+  </script>
 </body>
 </html>
 <style is:global>

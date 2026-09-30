@@ -1,11 +1,12 @@
 import type { ScheduleInput, ScheduleResult } from '@baremos/fristenrechner-kern';
+import type { AusgabeDatei, ExportInhalt, ExportZeit } from './plattform';
 import {
-  EXPORT_TITLE,
-  EXPORT_URL,
   exportFileSuffix,
+  exportHinweis,
   formatExportDate,
   phaseLabels,
   procedureLabel,
+  pruefeExportInhalt,
   regimeLabel,
   stateLabels,
   typeLabels,
@@ -32,7 +33,7 @@ const STIL: Record<string, XlsxStil> = {
   adresse: { schrift: { kursiv: true, farbe: GRAU, groesse: 9 } },
   kopfName: { schrift: { fett: true, farbe: 'FF343438' } },
   kopfWert: { ausrichtung: obenMitUmbruch },
-  kopfDatum: { ausrichtung: obenMitUmbruch, zahlenformat: DATUMSFORMAT },
+  kopfDatum: { ausrichtung: { ...obenMitUmbruch, horizontal: 'left' }, zahlenformat: DATUMSFORMAT },
   tabellenkopf: { schrift: { fett: true, farbe: 'FFFFFFFF' }, fuellung: AKZENT, ausrichtung: { vertikal: 'center', umbruch: true } },
   warnungKopf: { schrift: { fett: true, farbe: 'FF704510' }, fuellung: WARNUNG },
   warnung: { fuellung: WARNUNG_HELL, ausrichtung: obenMitUmbruch },
@@ -52,7 +53,8 @@ function tabellenStil(datum: boolean, gefuellt: boolean): XlsxStil {
 const datum = (iso: string) => ({ datum: iso });
 
 /** Zeitpunkte und der örtliche Kalendertag kommen ausdrücklich vom Aufrufer. */
-export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, erstelltAm: string, erstellungsdatum: string): XlsxMappe {
+export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, erstelltAm: string, erstellungsdatum: string, inhalt: ExportInhalt): XlsxMappe {
+  pruefeExportInhalt(inhalt);
   const zeilen = new Map<number, XlsxZeile>();
   const verbunden: string[] = [];
   const hyperlinks: { zelle: string; ziel: string }[] = [];
@@ -71,12 +73,10 @@ export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, er
     verbunden.push(`${adresse(nr, von)}:${adresse(nr, bis)}`);
   }
 
-  const ziel = `https://${EXPORT_URL}`;
-
-  verbinde(1, 1, SPALTEN, `BAREMOS IT GmbH – ${EXPORT_TITLE}`, STIL.titel);
+  verbinde(1, 1, SPALTEN, `${inhalt.herausgeber} – ${inhalt.titel}`, STIL.titel);
   zeile(1).hoehe = 27;
-  verbinde(2, 1, SPALTEN, EXPORT_URL, STIL.adresse);
-  hyperlinks.push({ zelle: 'A2', ziel });
+  verbinde(2, 1, SPALTEN, inhalt.adresse?.text ?? '', STIL.adresse);
+  if (inhalt.adresse) hyperlinks.push({ zelle: 'A2', ziel: inhalt.adresse.href });
 
   const kopf: Array<[string, XlsxWert]> = [
     ['Kunde / Vergabestelle', input.projekt?.kunde?.trim() ?? ''],
@@ -130,14 +130,14 @@ export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, er
   warnzeilen.forEach((warnung, index) => verbinde(warnungKopf + index + 1, 1, SPALTEN, `• ${warnung}`, STIL.warnung));
 
   const hinweiszeile = warnungKopf + warnzeilen.length + 2;
-  verbinde(hinweiszeile, 1, SPALTEN, `Erstellt mit dem Fristenrechner der BAREMOS IT GmbH · ${EXPORT_URL}`, STIL.hinweis);
-  hyperlinks.push({ zelle: adresse(hinweiszeile, 1), ziel });
+  verbinde(hinweiszeile, 1, SPALTEN, exportHinweis(inhalt), STIL.hinweis);
+  if (inhalt.adresse) hyperlinks.push({ zelle: adresse(hinweiszeile, 1), ziel: inhalt.adresse.href });
 
   return {
     eigenschaften: {
-      ersteller: 'BAREMOS IT GmbH',
-      firma: 'BAREMOS IT GmbH',
-      betreff: EXPORT_TITLE,
+      ersteller: inhalt.herausgeber,
+      firma: inhalt.herausgeber,
+      betreff: inhalt.titel,
       erstelltAm,
     },
     blatt: {
@@ -155,26 +155,20 @@ export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, er
         einpassen: { breite: 1, hoehe: 0 },
         raender: { links: 0.4, rechts: 0.4, oben: 0.55, unten: 0.55, kopf: 0.2, fuss: 0.2 },
       },
-      fusszeile: `${FUSS.LINKS}${fussText('BAREMOS IT GmbH')}${FUSS.MITTE}${fussText(EXPORT_URL)}${FUSS.RECHTS}Seite ${FUSS.SEITE} von ${FUSS.SEITEN}`,
+      fusszeile: `${FUSS.LINKS}${fussText(inhalt.herausgeber)}${FUSS.MITTE}${fussText(inhalt.adresse?.text ?? '')}${FUSS.RECHTS}Seite ${FUSS.SEITE} von ${FUSS.SEITEN}`,
     },
   };
 }
 
 /** Ohne Browser prüfbarer Export. */
-export function createScheduleExcel(input: ScheduleInput, result: ScheduleResult, erstelltAm: string, erstellungsdatum: string): Uint8Array<ArrayBuffer> {
-  return schreibeXlsx(beschreibeMappe(input, result, erstelltAm, erstellungsdatum));
+export function createScheduleExcel(input: ScheduleInput, result: ScheduleResult, erstelltAm: string, erstellungsdatum: string, inhalt: ExportInhalt): Uint8Array<ArrayBuffer> {
+  return schreibeXlsx(beschreibeMappe(input, result, erstelltAm, erstellungsdatum, inhalt));
 }
 
-export async function exportScheduleExcel(input: ScheduleInput, result: ScheduleResult): Promise<void> {
-  const createdAt = new Date();
-  const erstellungsdatum = [createdAt.getFullYear(), String(createdAt.getMonth() + 1).padStart(2, '0'), String(createdAt.getDate()).padStart(2, '0')].join('-');
-  const erstelltAm = createdAt.toISOString().replace(/\.\d{3}Z$/, 'Z');
-  const buffer = createScheduleExcel(input, result, erstelltAm, erstellungsdatum);
-  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `BAREMOS-IT_fristenplan-${exportFileSuffix(input, createdAt)}.xlsx`;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+export function excelAlsDatei(input: ScheduleInput, result: ScheduleResult, zeit: ExportZeit, inhalt: ExportInhalt): AusgabeDatei {
+  return {
+    name: `${inhalt.dateiPraefix}fristenplan-${exportFileSuffix(input, zeit.kalendertag)}.xlsx`,
+    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    bytes: createScheduleExcel(input, result, zeit.zeitpunkt.replace(/\.\d{3}Z$/, 'Z'), zeit.kalendertag, inhalt),
+  };
 }

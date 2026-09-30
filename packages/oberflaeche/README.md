@@ -1,8 +1,86 @@
 # @baremos/fristenrechner-ui
 
-Astro-Komponente und Browser-Bedienlogik des Fristenrechners Vergabe. Die Berechnung kommt aus `@baremos/fristenrechner-kern`. Das Paket liefert Astro- und TypeScript-Quellen; der Gastgeber bündelt sie mit Astro.
+Astro-Komponente, Bedienlogik und Dateiexporte des Fristenrechners Vergabe. Die Berechnung kommt aus `@baremos/fristenrechner-kern`. Das Paket liefert Astro- und TypeScript-Quellen; der Gastgeber bündelt sie mit Astro.
 
-Stand 2026-09-29: Übernahme Teil 1. Die Schnittstellen zu Speicher und Dateien sowie die Eingrenzung der globalen Styles folgen in Teil 2. Eine Komponente je Seite verwenden.
+Stand 2026-09-30: Die Bedienlogik erhält Speicher, Import, Dateiausgabe, Zeit und Bestätigung über eine `Plattform`. Der enthaltene Web-Adapter verwendet den Browser. Native Adapter gehören zum jeweiligen Gastgeber. Die Komponente wird ausdrücklich durch den Gastgeber initialisiert.
+
+## Einbindung
+
+Eine Komponente je Seite verwenden. Eine zweite Komponente oder erneute Initialisierung löst einen Fehler aus; feste Formular-Kennungen bleiben damit eindeutig. `initFristenrechner(root, optionen)` erhält dieselben Texte und Exportinhalte, die beim Rendern an die Komponente übergeben wurden.
+
+```astro
+---
+import Fristenrechner from '@baremos/fristenrechner-ui';
+import { webTexte, webExportInhalt } from '@baremos/fristenrechner-ui/ui';
+---
+
+<Fristenrechner texte={webTexte} exportInhalt={webExportInhalt}>
+  <span slot="nach-hinweis">Kontaktinformationen des Gastgebers</span>
+</Fristenrechner>
+
+<script>
+  import { erzeugeWebPlattform, initFristenrechner } from '@baremos/fristenrechner-ui/ui';
+  import type { ExportInhalt, GastgeberTexte } from '@baremos/fristenrechner-ui/ui';
+
+  const root = document.querySelector<HTMLElement>('[data-fristenrechner]')!;
+  const plattform = erzeugeWebPlattform(root);
+  const rechner = initFristenrechner(root, {
+    plattform,
+    texte: JSON.parse(root.dataset.gastgeberTexte!) as GastgeberTexte,
+    exportInhalt: JSON.parse(root.dataset.exportInhalt!) as ExportInhalt,
+  });
+
+  // Beim Entfernen der Seite oder Komponente in dieser Reihenfolge aufräumen:
+  const aufraeumen = () => {
+    rechner.dispose();
+    plattform.dispose();
+  };
+  // Der Gastgeber ruft aufraeumen in seinem eigenen Seiten-Lebenszyklus auf.
+</script>
+```
+
+Die Props `texte` und `exportInhalt` sind erforderlich. Die Komponente stellt sie als JSON in `data-gastgeber-texte` und `data-export-inhalt` bereit. Astro maskiert die Attributwerte. Das Beispiel liest diese Werte; die Bedienlogik erwartet keine eingebetteten Skripte und setzt Gastgebertexte nicht als HTML ein.
+
+`rechner.dispose()` entfernt Ereignisbehandler, beendet den Speichertimer und verwirft noch nicht begonnene Schreibaufträge. Ein bereits laufender Schreibauftrag darf abschließen; bis dahin wird auch eine neue Initialisierung abgewiesen. Der Gastgeber besitzt den Adapter: Dessen gesondertes `dispose()` beendet eine offene Dateiauswahl und entfernt seine Ereignisbehandler. `Plattform` selbst verlangt keine `dispose`-Methode, weil die Lebensdauer anderer Adapter vom Gastgeber bestimmt wird.
+
+## Plattform und Abläufe
+
+Die Typen sind über `@baremos/fristenrechner-ui/ui` verfügbar.
+
+| Teil der Plattform | Aufgabe |
+|---|---|
+| `speicher.lesen()`, `.schreiben(json)`, `.entfernen()` | Asynchrones Laden, Speichern und Löschen der Projektdatei. |
+| `import.waehlen({ mime, endungen, maxBytes })` | Dateiauswahl; liefert `{ status: 'ok', wert: { name, text } }` oder `{ status: 'abgebrochen' }`. |
+| `ausgabe.exportieren(datei)` | Ausgabe von Name, MIME-Typ und Bytes; liefert `{ status: 'ok' }` oder `{ status: 'abgebrochen' }`. |
+| `ausgabe.teilen` | Optionale Ausgabe zum Teilen; der Web-Adapter bietet sie in dieser Fassung nicht an. |
+| `zeit()` | Ein gemeinsamer UTC-Zeitpunkt und örtlicher Kalendertag für einen Export. |
+| `zuruecksetzenBestaetigen()` | Asynchrone Bestätigung für ein neues Projekt. |
+
+Der Web-Adapter nutzt `localStorage` mit dem Schlüssel `baremos-fristenrechner-projekt-v1`, das sichtbare Dateifeld `#open-json` und einen Download über Blob und Link. Ein Abbruch verändert das vorhandene Projekt nicht. Er kann im Browser nur die Bereitstellung einer Datei melden, nicht deren dauerhafte Speicherung bestätigen.
+
+Projektdateien sind auf 1 MiB begrenzt. Ein Import-Adapter muss die Grenze vor dem Lesen prüfen. Der Web-Adapter prüft dazu `File.size`; anschließend prüfen Adapter und Bedienlogik die UTF-8-Größe vor dem Parsen. Die Bedienlogik prüft auch geladene Speicherinhalte mit dem Projektdatei-Leser des Kerns. Eine unlesbare gespeicherte Datei bleibt erhalten; automatisches Speichern bleibt bis zum Import oder Zurücksetzen gesperrt und eine Meldung erklärt den Zustand.
+
+Eingaben werden nach 350 ms gespeichert. Schreibvorgänge laufen der Reihe nach; Import, Zurücksetzen und Aufräumen verwerfen wartende ältere Schreibaufträge und warten vor dem Ersetzen auf den bereits laufenden Auftrag. Fehler bei einer Aktion erscheinen in deren eigener Statusregion. Berechnungen bleiben bei einem Speicherfehler möglich. Ein laufender Export verwendet den beim Start festgehaltenen Eingabe- und Ergebnisstand.
+
+## Texte, Inhalte und Darstellung
+
+`GastgeberTexte` enthält `datenschutzTitel`, `datenschutzText`, `speicherNichtVerfuegbar`, `exportErfolg` und `importBeschriftung`. `webTexte` erhält die bisherigen Browsertexte. Eine App übergibt passende Texte zur Verarbeitung auf dem Gerät.
+
+`ExportInhalt` enthält `herausgeber`, `titel`, `dateiPraefix` und optional `adresse: { text, href }`. Für `href` ist nur HTTPS zulässig. `webExportInhalt` enthält die bisherigen BAREMOS-Werte. Das Dateipräfix betrifft Excel und PDF; Projektdateien behalten ihren aus Projektname oder Vergabenummer abgeleiteten Namen. Regelversion, Rechtsstand und der Hinweis auf die unverbindliche Rechenhilfe sind keine austauschbaren Gastgebertexte.
+
+Der optionale Slot `herausgeber` steht in der Fußzeile für ein vom Gastgeber bereitgestelltes Logo oder andere Herausgeberinhalte. `nach-hinweis` folgt auf den fachlichen Hinweis und kann Kontaktinhalte aufnehmen. Das Paket liefert kein Logo und keine festen Kontaktlinks. Die sichtbare Fußzeile nennt den Herausgeber und, sofern vorhanden, den Hostnamen der Exportadresse.
+
+Alle CSS-Selektoren sind auf `.fristenrechner` begrenzt. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
+
+| CSS-Variable | Vorgabe |
+|---|---|
+| `--color-border` | `#d7d7d3` |
+| `--color-accent` | `#a7303c` |
+| `--color-accent-deep` | `#862630` |
+| `--color-text` | `#343438` |
+| `--field-label-height` | `1.6rem`; das Bindefrist-Raster verwendet `2.9rem` |
+
+Das Paket lädt keine Schriftdatei. Seine Druckregeln gelten nur für die Komponente. Seitenränder mit `@page` sowie Regeln für Website-Kopf, Website-Fuß, Breadcrumbs und äußere Layoutflächen gehören zum Gastgeber. Der [Prüfplan zur Barrierefreiheit](../../docs/testmatrix.md) trennt automatische Prüfungen von ausstehenden Sicht- und Bedienprüfungen.
 
 ## Prüfungen
 
@@ -23,8 +101,16 @@ node node_modules/vitest/vitest.mjs run --root packages/oberflaeche test/export-
 
 ## Exporte
 
-`createScheduleExcel` erzeugt Bytes ohne Browser. Der Aufrufer übergibt UTC-Zeitpunkt (mit Sekunden) und örtlichen Kalendertag. Der Schreiber liest weder aktuelle Uhrzeit noch Spracheinstellung und verwendet ausschließlich `zipSync` aus fflate. Die feste ZIP-Zeit und Reihenfolge machen die Ausgabe bei gleichen Eingaben wiederholbar.
+Die drei Dateifunktionen liefern `{ name, mime, bytes }` ohne Download und ohne DOM:
 
-`createSchedulePdf` erzeugt ein jsPDF-Dokument ohne Download. `exportScheduleExcel` und `exportSchedulePdf` führen die bisherigen Browser-Downloads aus. Regelversion, Rechtsstand und Rechtsstanddatum kommen aus dem Kern-Ergebnis. Projektdateien erzeugt und liest der Kern.
+| Funktion | Einstieg | Rückgabe |
+|---|---|---|
+| `projektAlsDatei(input, zeit)` | `@baremos/fristenrechner-ui/ui` | `AusgabeDatei` |
+| `excelAlsDatei(input, result, zeit, inhalt)` | `@baremos/fristenrechner-ui/export-excel` | `AusgabeDatei` |
+| `pdfAlsDatei(input, result, zeit, inhalt)` | `@baremos/fristenrechner-ui/export-pdf` | `Promise<AusgabeDatei>` |
+
+`ExportZeit` enthält `zeitpunkt` in UTC und `kalendertag` im Format `JJJJ-MM-TT`. Der Web-Adapter leitet beide Werte aus einer einzigen `Date`-Instanz ab. Der XLSX-Schreiber liest weder aktuelle Uhrzeit noch Spracheinstellung und verwendet ausschließlich `zipSync` aus fflate. Die feste ZIP-Zeit und Reihenfolge machen die Ausgabe bei gleichen Eingaben wiederholbar. Die beiden Datumswerte im Excel-Kopf sind linksbündige echte Datumswerte mit dem Zahlenformat `dd.mm.yyyy`; die Datumsformate der Termintabelle bleiben unverändert.
+
+Regelversion, Rechtsstand und Rechtsstanddatum kommen aus dem Kern-Ergebnis. Projektdateien erzeugt und liest der Kern. Die früheren Downloadfunktionen `exportScheduleExcel` und `exportSchedulePdf` entfallen; der Gastgeber übergibt die erzeugten Bytes an `plattform.ausgabe.exportieren`.
 
 Die Lizenzangaben der direkten Exportbibliotheken ersetzen keine Hinweise zu ihren mitgelieferten Abhängigkeiten. Ein Gastgeber muss die tatsächlich gebündelten Bibliotheken einschließlich optionaler Teile in seine Hinweise Dritter aufnehmen.

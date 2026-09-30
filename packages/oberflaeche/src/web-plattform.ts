@@ -1,0 +1,127 @@
+import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type Auswahl, type Plattform } from './plattform';
+
+export const WEB_SPEICHERSCHLUESSEL = 'baremos-fristenrechner-projekt-v1';
+
+/** Der Gastgeber besitzt den Adapter und räumt ihn nach dem Rechner mit dispose auf. */
+export function erzeugeWebPlattform(root: HTMLElement): Plattform & { dispose(): void } {
+  const feld = root.querySelector<HTMLInputElement>('#open-json');
+  if (!feld) throw new Error('Das Dateifeld für den Projektimport fehlt.');
+  const fenster = root.ownerDocument.defaultView!;
+  let aktiviert = false;
+  let geschlossen = false;
+  let abbrechen: (() => void) | undefined;
+  const aktiviertDurchKlick = (): void => {
+    aktiviert = true;
+    Promise.resolve().then(() => { aktiviert = false; });
+  };
+  feld.addEventListener('click', aktiviertDurchKlick, true);
+  return {
+    speicher: {
+      async lesen() {
+        try {
+          const text = fenster.localStorage.getItem(WEB_SPEICHERSCHLUESSEL);
+          if (text !== null) pruefeProjektGroesse(text);
+          return text;
+        } catch (error) {
+          if (error instanceof PlattformFehler) throw error;
+          throw new PlattformFehler('nicht-verfuegbar', 'Der lokale Speicher konnte nicht gelesen werden.');
+        }
+      },
+      async schreiben(json) {
+        try { fenster.localStorage.setItem(WEB_SPEICHERSCHLUESSEL, json); }
+        catch { throw new PlattformFehler('kein-speicher', 'Das Projekt konnte nicht gespeichert werden.'); }
+      },
+      async entfernen() {
+        try { fenster.localStorage.removeItem(WEB_SPEICHERSCHLUESSEL); }
+        catch { throw new PlattformFehler('schreiben', 'Das gespeicherte Projekt konnte nicht entfernt werden.'); }
+      },
+    },
+    import: {
+      waehlen(vorgabe) {
+        if (geschlossen) return Promise.resolve({ status: 'abgebrochen' });
+        if (abbrechen) return Promise.reject(new PlattformFehler('lesen', 'Eine Dateiauswahl ist bereits geöffnet.'));
+        return new Promise<Auswahl<{ name: string; text: string }>>((resolve, reject) => {
+          let fertig = false;
+          let liest = false;
+          let timer: number | undefined;
+          const aufraeumen = () => {
+            fertig = true;
+            feld.removeEventListener('change', ausgewaehlt);
+            feld.removeEventListener('cancel', abbruch);
+            fenster.removeEventListener('focus', fokus);
+            fenster.clearTimeout(timer);
+            feld.value = '';
+            abbrechen = undefined;
+          };
+          const abbruch = () => {
+            if (fertig) return;
+            aufraeumen(); resolve({ status: 'abgebrochen' });
+          };
+          const ausgewaehlt = async () => {
+            if (fertig || liest) return;
+            const datei = feld.files?.[0];
+            if (!datei) { abbruch(); return; }
+            liest = true;
+            try {
+              const grenze = Math.min(MAX_PROJEKT_BYTES, vorgabe.maxBytes);
+              if (datei.size > grenze) throw new PlattformFehler('zu-gross', 'Die Projektdatei ist größer als 1 MiB.');
+              const text = await datei.text();
+              if (fertig) return;
+              pruefeProjektGroesse(text, grenze);
+              aufraeumen(); resolve({ status: 'ok', wert: { name: datei.name, text } });
+            } catch (error) {
+              if (fertig) return;
+              aufraeumen();
+              reject(error instanceof PlattformFehler ? error : new PlattformFehler('lesen', 'Die Projektdatei konnte nicht gelesen werden.'));
+            }
+          };
+          // Chromium 83 hat kein cancel-Ereignis am Dateifeld. Nach Rückkehr zum
+          // Fenster prüfen wir die Auswahl; change kann dabei bereits gelesen haben.
+          const fokus = () => {
+            fenster.clearTimeout(timer);
+            timer = fenster.setTimeout(() => {
+              if (!liest && !fertig) { if (feld.files?.length) void ausgewaehlt(); else abbruch(); }
+            }, 300);
+          };
+          abbrechen = abbruch;
+          feld.value = '';
+          feld.accept = `${vorgabe.mime},${vorgabe.endungen.join(',')}`;
+          feld.addEventListener('change', ausgewaehlt);
+          feld.addEventListener('cancel', abbruch);
+          fenster.addEventListener('focus', fokus);
+          if (!aktiviert) feld.click();
+        });
+      },
+    },
+    ausgabe: {
+      async exportieren(datei) {
+        let url: string | undefined;
+        const link = root.ownerDocument.createElement('a');
+        try {
+          url = URL.createObjectURL(new Blob([datei.bytes], { type: datei.mime }));
+          link.href = url; link.download = datei.name; link.hidden = true;
+          root.append(link); link.click();
+          return { status: 'ok' };
+        } catch { throw new PlattformFehler('kein-ziel', 'Die Datei konnte nicht zum Speichern bereitgestellt werden.'); }
+        finally {
+          link.remove();
+          // Dem Browser Zeit geben, den Download anzunehmen.
+          if (url) { const adresse = url; fenster.setTimeout(() => URL.revokeObjectURL(adresse), 1000); }
+        }
+      },
+    },
+    zeit() {
+      const jetzt = new Date();
+      return {
+        zeitpunkt: jetzt.toISOString(),
+        kalendertag: `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, '0')}-${String(jetzt.getDate()).padStart(2, '0')}`,
+      };
+    },
+    async zuruecksetzenBestaetigen() { return fenster.confirm('Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?'); },
+    dispose() {
+      geschlossen = true;
+      feld.removeEventListener('click', aktiviertDurchKlick, true);
+      abbrechen?.();
+    },
+  };
+}

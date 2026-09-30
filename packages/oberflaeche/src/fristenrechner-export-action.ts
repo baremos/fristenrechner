@@ -1,3 +1,4 @@
+import type { RechnerOptionen, ExportZeit } from './plattform';
 import type { ScheduleInput, ScheduleResult } from '@baremos/fristenrechner-kern';
 
 export type ScheduleExportKind = 'excel' | 'pdf';
@@ -31,25 +32,31 @@ export async function runScheduleExport(
   message: HTMLElement,
   input: ScheduleInput,
   result: ScheduleResult,
+  optionen: RechnerOptionen,
+  zeit: ExportZeit,
+  istAktiv: () => boolean = () => true,
 ): Promise<void> {
   const copy = labels[kind];
   button.disabled = true;
   button.textContent = copy.loading;
   message.textContent = copy.progress;
   try {
+    let datei;
     if (kind === 'excel') {
-      const { exportScheduleExcel } = await import('./fristenrechner-export-excel');
-      await exportScheduleExcel(input, result);
+      const { excelAlsDatei } = await import('./fristenrechner-export-excel');
+      if (!istAktiv()) return;
+      datei = excelAlsDatei(input, result, zeit, optionen.exportInhalt);
     } else {
-      const { exportSchedulePdf } = await import('./fristenrechner-export-pdf');
-      await exportSchedulePdf(input, result);
+      const { pdfAlsDatei } = await import('./fristenrechner-export-pdf');
+      if (!istAktiv()) return;
+      datei = await pdfAlsDatei(input, result, zeit, optionen.exportInhalt);
     }
-    message.textContent = copy.success;
-  } catch (error) {
-    console.error(`${kind.toUpperCase()}-Export fehlgeschlagen.`, error);
-    message.textContent = copy.error;
+    if (!istAktiv()) return;
+    const ausgabe = await optionen.plattform.ausgabe.exportieren(datei);
+    if (istAktiv()) message.textContent = ausgabe.status === 'ok' ? optionen.texte.exportErfolg : '';
+  } catch {
+    if (istAktiv()) message.textContent = copy.error;
   } finally {
-    button.textContent = copy.idle;
-    button.disabled = false;
+    if (istAktiv()) { button.textContent = copy.idle; button.disabled = false; }
   }
 }

@@ -1,14 +1,14 @@
 import type { jsPDF as JsPdfDocument } from 'jspdf';
 import type { ScheduleInput, ScheduleResult } from '@baremos/fristenrechner-kern';
+import type { AusgabeDatei, ExportInhalt, ExportZeit } from './plattform';
 import {
-  EXPORT_TITLE,
-  EXPORT_URL,
   exportFileSuffix,
-  formatCreatedDate,
+  exportHinweis,
   formatExportDate,
   phaseLabels,
   procedureLabel,
   projectHeader,
+  pruefeExportInhalt,
   regimeShortLabel,
   regelstandText,
   stateLabels,
@@ -34,12 +34,14 @@ const PHASE_RGB: Record<string, [number, number, number]> = {
   zuschlag: [77, 107, 60],
 };
 
-export async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, createdAt: Date): Promise<JsPdfDocument> {
+async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, zeit: ExportZeit, inhalt: ExportInhalt): Promise<JsPdfDocument> {
+  pruefeExportInhalt(inhalt);
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable'),
   ]);
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  pdf.setCreationDate(new Date(zeit.zeitpunkt));
 
   const drawPageChrome = (pageDocument: JsPdfDocument): void => {
     const pageWidth = pageDocument.internal.pageSize.getWidth();
@@ -57,19 +59,19 @@ export async function createSchedulePdf(input: ScheduleInput, result: ScheduleRe
     pageDocument.setFontSize(6.8);
     pageDocument.setTextColor(...MUTED);
     pageDocument.text(
-      `Erstellt mit dem Fristenrechner der BAREMOS IT GmbH · ${EXPORT_URL}`,
+      exportHinweis(inhalt),
       pageWidth / 2,
       pageHeight - 13.5,
       { align: 'center', maxWidth: pageWidth - 24 },
     );
     pageDocument.setFontSize(8);
-    pageDocument.text('BAREMOS IT GmbH', 12, pageHeight - 8.5);
+    pageDocument.text(inhalt.herausgeber, 12, pageHeight - 8.5);
   };
 
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(...ACCENT);
   pdf.setFontSize(15);
-  pdf.text(EXPORT_TITLE, 12, 25);
+  pdf.text(inhalt.titel, 12, 25);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(...DARK);
   pdf.setFontSize(8.5);
@@ -80,7 +82,7 @@ export async function createSchedulePdf(input: ScheduleInput, result: ScheduleRe
     { maxWidth: 91 },
   );
   pdf.text(`Bundesland: ${stateLabels[input.bundesland]}`, 108, 32, { maxWidth: 90 });
-  pdf.text(`Erstellungsdatum: ${formatCreatedDate(createdAt)}`, 12, 39, { maxWidth: 91 });
+  pdf.text(`Erstellungsdatum: ${formatExportDate(zeit.kalendertag)}`, 12, 39, { maxWidth: 91 });
   pdf.text(`Rechtsstand: ${result.rechtsstand}`, 108, 39, { maxWidth: 90 });
   pdf.text(regelstandText(result), 12, 46, { maxWidth: 186 });
   const tableStartY = result.bindefrist ? 62 : 55;
@@ -237,14 +239,11 @@ export async function createSchedulePdf(input: ScheduleInput, result: ScheduleRe
   return pdf;
 }
 
-export async function exportSchedulePdf(input: ScheduleInput, result: ScheduleResult): Promise<void> {
-  const createdAt = new Date();
-  const pdf = await createSchedulePdf(input, result, createdAt);
-  const blob = pdf.output('blob');
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `BAREMOS-IT_fristenplan-${exportFileSuffix(input, createdAt)}.pdf`;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+export async function pdfAlsDatei(input: ScheduleInput, result: ScheduleResult, zeit: ExportZeit, inhalt: ExportInhalt): Promise<AusgabeDatei> {
+  const pdf = await createSchedulePdf(input, result, zeit, inhalt);
+  return {
+    name: `${inhalt.dateiPraefix}fristenplan-${exportFileSuffix(input, zeit.kalendertag)}.pdf`,
+    mime: 'application/pdf',
+    bytes: new Uint8Array(pdf.output('arraybuffer')),
+  };
 }

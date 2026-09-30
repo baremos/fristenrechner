@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { VERGABEORDNUNGEN, calculateSchedule, erstelleProjektDatei, REGELVERSION, RECHTSSTAND_DATUM } from '@baremos/fristenrechner-kern';
-import { exportRegime, regimeLabel, regimeShortLabel, procedureLabel, stateLabels, phaseLabels, typeLabels, formatExportDate, formatCreatedDate, toExcelDate, uniqueWarnings, exportFileSuffix, projectHeader, regelstandText } from '../src/fristenrechner-export-data';
+import { exportRegime, regimeLabel, regimeShortLabel, procedureLabel, stateLabels, phaseLabels, typeLabels, formatExportDate, formatCreatedDate, toExcelDate, uniqueWarnings, exportFileSuffix, projectHeader, regelstandText, pruefeExportInhalt } from '../src/fristenrechner-export-data';
+import { webExportInhalt } from '../src/web-vorgaben';
 import { todayISO, formatDate, isVersionBefore, safeFilename } from '../src/fristenrechner-ui';
 import { beispiel, eingabe, ergebnis } from './beispiel';
 
@@ -43,10 +44,17 @@ describe('Exportdaten', () => {
     expect(uniqueWarnings(result)).toEqual(['eins', 'zwei', 'drei']);
   });
   it('Dateiname verwendet Vergabenummer oder den örtlichen Tag', () => {
-    expect(exportFileSuffix(eingabe)).toBe('test-2026-01');
-    expect(exportFileSuffix(beispiel({ projekt: { vergabenummer: '   ' } }), new Date(2026, 0, 2, 0, 30))).toBe('2026-01-02');
-    expect(exportFileSuffix(beispiel({ projekt: { vergabenummer: '???' } }))).toBe('terminplan');
-    expect(exportFileSuffix(beispiel({ projekt: { vergabenummer: 'Ä-Ö_Ü' } }))).toBe('a-o_u');
+    expect(exportFileSuffix(eingabe, '2026-01-02')).toBe('test-2026-01');
+    expect(exportFileSuffix(beispiel({ projekt: { vergabenummer: '   ' } }), '2026-01-02')).toBe('2026-01-02');
+    expect(exportFileSuffix(beispiel({ projekt: { vergabenummer: '???' } }), '2026-01-02')).toBe('terminplan');
+    expect(exportFileSuffix(beispiel({ projekt: { vergabenummer: 'Ä-Ö_Ü' } }), '2026-01-02')).toBe('a-o_u');
+  });
+  it.each(['http://example.org', 'javascript:alert(1)', 'data:text/html,test', '/kontakt', 'keine-adresse'])('Exportadresse %s wird abgewiesen', href => {
+    expect(() => pruefeExportInhalt({ ...webExportInhalt, adresse: { text: 'Kontakt', href } })).toThrow();
+  });
+  it('Exportadresse ist optional und HTTPS bleibt zugelassen', () => {
+    expect(() => pruefeExportInhalt(webExportInhalt)).not.toThrow();
+    expect(() => pruefeExportInhalt({ ...webExportInhalt, adresse: undefined })).not.toThrow();
   });
   it('Kopf entfernt nur Leerraum am Rand', () => {
     expect(projectHeader(eingabe)).toBe('Kunde: Beispiel & Partner <Test> - Projekt: Geräte\nund Zubehör - Vergabenummer: TEST-2026/01');
