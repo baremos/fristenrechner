@@ -141,6 +141,9 @@ export function erstelleTestDom(dokument = new TestDocument()) {
   if (start < 0) throw new Error('Komponentenwurzel fehlt.');
   let vorlage = quelle.slice(start).replace(/<style[\s\S]*?<\/style>/g, '').replace(/<script[\s\S]*?<\/script>/g, '')
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  // Die optionale Importbedienung ist im Testdoppel zunächst das Dateifeld.
+  // Beide echten Astro-Zweige werden zusätzlich durch Render-Tests geprüft.
+  vorlage = vorlage.replace(/\{importBedienung === 'schaltflaeche' \? <button[\s\S]*?<\/button> : (<label[\s\S]*?<\/label>)\}/, '$1');
   // Diese eine dynamische Feldliste wird aus ihrer statischen Astro-Vorgabe aufgebaut.
   const liste = quelle.match(/const bundeslaender = \[([\s\S]*?)\] as const;/)?.[1];
   if (!liste) throw new Error('Bundeslandvorgaben fehlen.');

@@ -39,13 +39,13 @@ import { webTexte, webExportInhalt } from '@baremos/fristenrechner-ui/ui';
 </script>
 ```
 
-Die Props `texte` und `exportInhalt` sind erforderlich. Die Komponente stellt sie als JSON in `data-gastgeber-texte` und `data-export-inhalt` bereit. Astro maskiert die Attributwerte. Das Beispiel liest diese Werte; die Bedienlogik erwartet keine eingebetteten Skripte und setzt Gastgebertexte nicht als HTML ein.
+Die Props `texte` und `exportInhalt` sind erforderlich. Der optionale Prop `importBedienung` wählt `dateifeld` (Vorgabe, für den Web-Adapter) oder `schaltflaeche` (für einen passenden Importadapter). Beide Varianten haben genau ein aktives Element mit `data-project-import` und der Kennung `open-json`. Die Komponente stellt sie als JSON in `data-gastgeber-texte` und `data-export-inhalt` bereit. Astro maskiert die Attributwerte. Das Beispiel liest diese Werte; die Bedienlogik erwartet keine eingebetteten Skripte und setzt Gastgebertexte nicht als HTML ein.
 
 `rechner.dispose()` entfernt Ereignisbehandler, beendet den Speichertimer und verwirft noch nicht begonnene Schreibaufträge. Ein bereits laufender Schreibauftrag darf abschließen; bis dahin wird auch eine neue Initialisierung abgewiesen. Der Gastgeber besitzt den Adapter: Dessen gesondertes `dispose()` beendet eine offene Dateiauswahl und entfernt seine Ereignisbehandler. `Plattform` selbst verlangt keine `dispose`-Methode, weil die Lebensdauer anderer Adapter vom Gastgeber bestimmt wird.
 
 ## Plattform und Abläufe
 
-Die Typen sind über `@baremos/fristenrechner-ui/ui` verfügbar.
+Die Typen sind über `@baremos/fristenrechner-ui/ui` verfügbar, ebenso `WEB_SPEICHERSCHLUESSEL`, `FEHLERCODES`, `PlattformFehler`, `MAX_PROJEKT_BYTES` und `pruefeProjektGroesse`. App-Adapter benötigen dafür keine Importe in Paketinnereien.
 
 | Teil der Plattform | Aufgabe |
 |---|---|
@@ -58,13 +58,13 @@ Die Typen sind über `@baremos/fristenrechner-ui/ui` verfügbar.
 
 Der Web-Adapter nutzt `localStorage` mit dem Schlüssel `baremos-fristenrechner-projekt-v1`, das sichtbare Dateifeld `#open-json` und einen Download über Blob und Link. Ein Abbruch verändert das vorhandene Projekt nicht. Er kann im Browser nur die Bereitstellung einer Datei melden, nicht deren dauerhafte Speicherung bestätigen.
 
-Projektdateien sind auf 1 MiB begrenzt. Ein Import-Adapter muss die Grenze vor dem Lesen prüfen. Der Web-Adapter prüft dazu `File.size`; anschließend prüfen Adapter und Bedienlogik die UTF-8-Größe vor dem Parsen. Die Bedienlogik prüft auch geladene Speicherinhalte mit dem Projektdatei-Leser des Kerns. Eine unlesbare gespeicherte Datei bleibt erhalten; automatisches Speichern bleibt bis zum Import oder Zurücksetzen gesperrt und eine Meldung erklärt den Zustand.
+Projektdateien sind beim Import und beim Export auf 1 MiB UTF-8 begrenzt; auch die Einrückung des exportierten JSON zählt mit. Ein Import-Adapter muss die Grenze vor dem Lesen prüfen. Der Web-Adapter prüft dazu `File.size`; anschließend prüfen Adapter und Bedienlogik die UTF-8-Größe vor dem Parsen. Die Bedienlogik prüft auch geladene Speicherinhalte mit dem Projektdatei-Leser des Kerns. Eine unlesbare gespeicherte Datei bleibt erhalten; automatisches Speichern bleibt bis zum Import oder Zurücksetzen gesperrt und eine Meldung erklärt den Zustand.
 
-Eingaben werden nach 350 ms gespeichert. Schreibvorgänge laufen der Reihe nach; Import, Zurücksetzen und Aufräumen verwerfen wartende ältere Schreibaufträge und warten vor dem Ersetzen auf den bereits laufenden Auftrag. Fehler bei einer Aktion erscheinen in deren eigener Statusregion. Berechnungen bleiben bei einem Speicherfehler möglich. Ein laufender Export verwendet den beim Start festgehaltenen Eingabe- und Ergebnisstand.
+Eingaben werden nach 350 ms gespeichert. Schreibvorgänge laufen der Reihe nach; Import, Zurücksetzen und Aufräumen verwerfen wartende ältere Schreibaufträge und warten vor dem Ersetzen auf den bereits laufenden Auftrag. Fehler bei einer Aktion erscheinen in deren eigener Statusregion. Berechnungen bleiben bei einem Speicherfehler möglich. Ein laufender Export verwendet den beim Start einmal festgehaltenen Eingabe- und Ergebnisstand sowie die Exportzeit. Dieselbe Aktionserzeugung übernimmt Speichern und Teilen, erzeugt genau eine Datei und ruft genau einen Adapterweg auf. Während eines Datei-Auftrags sind alle Ausgabewege, Import und Zurücksetzen gegeneinander gesperrt; nach Erfolg, Fehler oder Abbruch werden sie freigegeben. Ein Abbruch stellt die vorherige Aktionsmeldung wieder her. Schlägt nach einer Importübernahme das automatische Speichern fehl, bleibt das geöffnete Projekt sichtbar und die Meldung empfiehlt seinen Export zur Sicherung.
 
 ## Texte, Inhalte und Darstellung
 
-`GastgeberTexte` enthält `datenschutzTitel`, `datenschutzText`, `speicherNichtVerfuegbar`, `exportErfolg` und `importBeschriftung`. `webTexte` erhält die bisherigen Browsertexte. Eine App übergibt passende Texte zur Verarbeitung auf dem Gerät.
+`GastgeberTexte` enthält `datenschutzTitel`, `datenschutzText`, `speicherNichtVerfuegbar`, `exportErfolg` und `importBeschriftung`. `webTexte` erhält die bisherigen Browsertexte. Optional ergänzen `ausgabeErfolg[weg][format]` und `ausgabeFehler[weg][format]` getrennte Texte für `exportieren`/`teilen` und `projekt`/`excel`/`pdf`; `erzeugungsFehler[format]` gilt vor der Übergabe an den Adapter. Beim Export bleibt `exportErfolg` der Rückfall, beim Teilen meldet die Vorgabe nur die Bereitstellung. Nur wenn `plattform.ausgabe.teilen` vorhanden ist, ergänzt die Bedienlogik drei Teilen-Aktionen. Eine App übergibt passende Texte zur Verarbeitung auf dem Gerät und darf erfolgreiches Speichern erst nach bestätigtem Schreiben und Schließen melden.
 
 `ExportInhalt` enthält `herausgeber`, `titel`, `dateiPraefix` und optional `adresse: { text, href }`. Für `href` ist nur HTTPS zulässig. `webExportInhalt` enthält die bisherigen BAREMOS-Werte. Das Dateipräfix betrifft Excel und PDF; Projektdateien behalten ihren aus Projektname oder Vergabenummer abgeleiteten Namen. Regelversion, Rechtsstand und der Hinweis auf die unverbindliche Rechenhilfe sind keine austauschbaren Gastgebertexte.
 

@@ -99,7 +99,7 @@ export async function pruefeBedienung(vorlage: HTMLElement): Promise<string[]> {
       pruefe(el(status).textContent === webTexte.exportErfolg, 'Eigener Exportstatus ' + endung);
     }
     ausgabeStatus = 'abgebrochen'; click('save-json'); await pause();
-    pruefe(el('export-message').textContent === '', 'Exportabbruch ohne Erfolg oder Fehler');
+    pruefe(el('export-message').textContent === webTexte.exportErfolg, 'Exportabbruch erhält die vorherige Meldung');
     erfolge.push('Drei Byte-Exporte über Ausgabeadapter und eigener Status, Ausgabeabbruch');
 
     const ausgabe = offen<{ status: 'ok' }>();

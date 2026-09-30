@@ -417,7 +417,7 @@ describe('Ausgabe über die Plattform', () => {
     env.click('save-json'); await warten();
     expect(env.el('save-json').disabled).toBe(false);
     if (fall === 'abgebrochen') expect(env.el('export-message').textContent).toBe('');
-    else expect(env.el('export-message').textContent).toContain('nicht erstellt oder ausgegeben');
+    else expect(env.el('export-message').textContent).toContain('nicht zum Speichern bereitgestellt');
   });
 
   it('verhindert Doppelklick und späte Statusänderung nach dispose während der Projektausgabe', async () => {
@@ -429,5 +429,131 @@ describe('Ausgabe über die Plattform', () => {
     instanz.dispose(); const text = env.root.textContent;
     ausgabe.resolve({ status: 'ok' }); await warten();
     expect(env.root.textContent).toBe(text);
+  });
+});
+
+describe('Gemeinsame Dateiaktionen und optionale Fähigkeiten', () => {
+  const aktionen = ['save-json', 'export-excel', 'export-pdf', 'share-json', 'share-excel', 'share-pdf', 'open-json', 'reset-project'] as const;
+
+  it('ergänzt beim Web-Vertrag keine Teilen-Aktion und erlaubt weitere Ergebnisaktionen', async () => {
+    const env = vorbereiten(json());
+    const extra = env.dokument.createElement('button');
+    extra.setAttribute('data-requires-result', ''); env.root.append(extra);
+    env.start(); await warten();
+    expect(env.root.querySelectorAll('[data-file-share]')).toHaveLength(0);
+    expect(extra.disabled).toBe(false);
+  });
+
+  it.each(['save-json', 'export-excel', 'export-pdf'])('weist eine fehlende erforderliche Aktion %s ab', id => {
+    const env = vorbereiten(); env.el(id).remove();
+    expect(env.start).toThrow('unvollständig');
+  });
+
+  it('weist mehrere Importelemente ab', () => {
+    const env = vorbereiten();
+    const extra = env.dokument.createElement('button'); extra.setAttribute('data-project-import', ''); env.root.append(extra);
+    expect(env.start).toThrow('unvollständig');
+  });
+
+  it('bietet bei Teilen-Fähigkeit genau drei Aktionen und entfernt sie bei dispose', async () => {
+    const env = vorbereiten(json()); env.plattform.ausgabe.teilen = vi.fn<NonNullable<Plattform['ausgabe']['teilen']>>(async () => ({ status: 'ok' }));
+    const instanz = env.start(); await warten();
+    expect(env.root.querySelectorAll('[data-file-share]').map(el => el.textContent)).toEqual(['Projekt teilen', 'Excel teilen', 'PDF teilen']);
+    instanz.dispose(); await warten();
+    expect(env.root.querySelectorAll('[data-file-share]')).toHaveLength(0);
+    env.start(); await warten();
+    expect(env.root.querySelectorAll('[data-file-share]')).toHaveLength(3);
+  });
+
+  it.each(['projekt', 'excel', 'pdf'] as const)('übergibt %s einmal an Teilen, mit einer Zeit und einem festen Stand', async format => {
+    const env = vorbereiten(json());
+    const ausgabe = offen<DateiErgebnis>();
+    const teilen = vi.fn<NonNullable<Plattform['ausgabe']['teilen']>>(() => ausgabe.promise); env.plattform.ausgabe.teilen = teilen;
+    env.start(); await warten(); vi.mocked(env.plattform.zeit).mockClear();
+    env.click(format === 'projekt' ? 'share-json' : 'share-' + format);
+    await vi.waitFor(() => expect(teilen).toHaveBeenCalledTimes(1));
+    expect(env.plattform.zeit).toHaveBeenCalledTimes(1);
+    expect(env.exportieren).not.toHaveBeenCalled();
+    const datei = teilen.mock.calls[0]![0];
+    env.aendern('projektname', 'Nächster Auftrag', 'change');
+    if (format === 'projekt') {
+      expect(JSON.parse(new TextDecoder().decode(datei.bytes)).input.projekt.projektname).toBe('Geladen');
+    } else {
+      expect(exporte[format]).toHaveBeenCalledTimes(1);
+      expect(exporte[format].mock.calls[0]![0].projekt.projektname).toBe('Geladen');
+      expect(exporte[format].mock.calls[0]![2]).toEqual(zeit);
+    }
+    ausgabe.resolve({ status: 'ok' }); await warten();
+    expect(env.el(format === 'projekt' ? 'export-message' : format + '-message').textContent).toBe(
+      `Die ${format === 'projekt' ? 'Projektdatei' : format === 'excel' ? 'Excel-Datei' : 'PDF-Datei'} wurde zum Teilen bereitgestellt.`);
+  });
+
+  it.each(aktionen)('%s sperrt alle Dateiaktionen bis zum Abbruch und gibt sie danach frei', async id => {
+    const env = vorbereiten(json());
+    const ausgabe = offen<DateiErgebnis>(); const auswahl = offen<Auswahl<{ name: string; text: string }>>(); const bestaetigung = offen<boolean>();
+    const teilen = vi.fn<NonNullable<Plattform['ausgabe']['teilen']>>(() => ausgabe.promise);
+    env.plattform.ausgabe.teilen = teilen;
+    env.exportieren.mockReturnValue(ausgabe.promise); env.waehlen.mockReturnValue(auswahl.promise); env.bestaetigen.mockReturnValue(bestaetigung.promise);
+    env.start(); await warten();
+    const meldungen = ['export-message', 'excel-message', 'pdf-message', 'import-message', 'reset-message'];
+    meldungen.forEach(id => { env.el(id).textContent = 'Vorherige Meldung ' + id; });
+    env.click(id); await warten();
+    const anzahl = () => env.exportieren.mock.calls.length + teilen.mock.calls.length + env.waehlen.mock.calls.length + env.bestaetigen.mock.calls.length;
+    expect(anzahl()).toBe(1);
+    for (const andere of aktionen) {
+      if (andere === 'open-json') expect(env.el(andere).attribute.get('aria-disabled')).toBe('true');
+      else expect(env.el(andere).disabled).toBe(true);
+      env.click(andere);
+    }
+    await warten(); expect(anzahl()).toBe(1);
+    ausgabe.resolve({ status: 'abgebrochen' }); auswahl.resolve({ status: 'abgebrochen' }); bestaetigung.resolve(false); await warten();
+    for (const aktion of aktionen) expect(env.el(aktion).disabled).toBe(false);
+    expect(env.el('open-json').attribute.has('aria-disabled')).toBe(false);
+    for (const meldung of meldungen) expect(env.el(meldung).textContent).toBe('Vorherige Meldung ' + meldung);
+    expect(env.feld('projektname').value).toBe('Geladen'); expect(env.gespeichert()).toBe(json());
+    env.exportieren.mockResolvedValue({ status: 'ok' }); env.click('save-json'); await warten();
+    expect(anzahl()).toBe(2);
+  });
+
+  it('sperrt einen Importbutton und nutzt denselben Importvertrag', async () => {
+    const env = vorbereiten(json()); env.el('open-json').remove();
+    const button = env.dokument.createElement('button'); button.setAttribute('id', 'open-json'); button.setAttribute('data-project-import', ''); env.root.append(button);
+    const auswahl = offen<Auswahl<{ name: string; text: string }>>(); env.waehlen.mockReturnValue(auswahl.promise);
+    env.start(); await warten(); env.click('open-json');
+    expect(button.disabled).toBe(true); env.click('open-json'); expect(env.waehlen).toHaveBeenCalledTimes(1);
+    auswahl.resolve({ status: 'ok', wert: { name: 'projekt.json', text: json('Vom Button') } }); await warten();
+    expect(button.disabled).toBe(false); expect(env.feld('projektname').value).toBe('Vom Button');
+  });
+
+  it('meldet nach geöffnetem Import einen Speicherfehler ehrlich und lässt den Export zu', async () => {
+    const vorher = json(); const env = vorbereiten(vorher); env.start(); await warten();
+    env.el('form-message').textContent = 'Kein Terminplan berechenbar — bitte die festen Starttermine korrigieren.';
+    env.el('reset-message').textContent = 'Neues Projekt angelegt.';
+    env.schreiben.mockRejectedValueOnce(new PlattformFehler('kein-speicher', 'Probe'));
+    env.auswaehlen(json('Geöffnet')); await warten();
+    expect(env.feld('projektname').value).toBe('Geöffnet'); expect(env.gespeichert()).toBe(vorher);
+    expect(env.el('import-message').textContent).toBe('Die Projektdatei ist geöffnet, konnte aber nicht automatisch gespeichert werden. Exportieren Sie die Eingaben zur Sicherung.');
+    expect(env.el('storage-status').textContent).toBe(webTexte.speicherNichtVerfuegbar);
+    expect(env.el('form-message').textContent).toBe(''); expect(env.el('reset-message').textContent).toBe('');
+    env.click('save-json'); await warten();
+    expect(JSON.parse(new TextDecoder().decode(env.exportieren.mock.calls[0]![0].bytes)).input.projekt.projektname).toBe('Geöffnet');
+    env.auswaehlen(json('Danach')); await warten(); expect(env.feld('projektname').value).toBe('Danach');
+  });
+
+  it('weist einen zu großen Projektexport vor dem Transport ab und gibt die Aktionen frei', async () => {
+    const env = vorbereiten(json()); env.start(); await warten();
+    env.aendern('projektname', 'ä'.repeat(MAX_PROJEKT_BYTES / 2), 'change');
+    env.click('save-json'); await warten();
+    expect(env.exportieren).not.toHaveBeenCalled(); expect(env.el('export-message').textContent).toBe('Die Projektdatei ist größer als 1 MiB.');
+    expect(env.el('save-json').disabled).toBe(false); expect(env.el('export-excel').disabled).toBe(false);
+    env.aendern('projektname', 'Passt', 'change'); env.click('save-json'); await warten(); expect(env.exportieren).toHaveBeenCalledTimes(1);
+  });
+
+  it('gibt bei einem Fehler der Exportzeit alle Aktionen wieder frei', async () => {
+    const env = vorbereiten(json()); env.start(); await warten();
+    vi.mocked(env.plattform.zeit).mockImplementationOnce(() => { throw new Error('Uhr'); });
+    env.click('export-pdf'); await warten();
+    expect(env.exportieren).not.toHaveBeenCalled(); expect(env.el('pdf-message').textContent).toContain('nicht geladen oder erstellt');
+    expect(env.el('save-json').disabled).toBe(false); env.click('save-json'); await warten(); expect(env.exportieren).toHaveBeenCalledTimes(1);
   });
 });
