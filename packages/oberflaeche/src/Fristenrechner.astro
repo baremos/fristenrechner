@@ -1,14 +1,15 @@
 ---
-import type { ExportInhalt, GastgeberTexte, ImportBedienung } from './plattform';
+import type { ExportInhalt, GastgeberTexte, HinweisPosition, ImportBedienung } from './plattform';
 import { pruefeExportInhalt } from './fristenrechner-export-data';
 
 interface Props {
   texte: GastgeberTexte;
   exportInhalt: ExportInhalt;
   importBedienung?: ImportBedienung;
+  hinweisPosition?: HinweisPosition;
 }
 
-const { texte, exportInhalt, importBedienung = 'dateifeld' } = Astro.props;
+const { texte, exportInhalt, importBedienung = 'dateifeld', hinweisPosition = 'oben' } = Astro.props;
 pruefeExportInhalt(exportInhalt);
 const fusszeilenAdresse = exportInhalt.adresse ? new URL(exportInhalt.adresse.href).hostname : '';
 
@@ -23,11 +24,11 @@ const bundeslaender = [
 
 <div class="fristenrechner" data-fristenrechner data-pagefind-ignore="all"
      data-gastgeber-texte={JSON.stringify(texte)} data-export-inhalt={JSON.stringify(exportInhalt)}>
-  <div class="privacy-note">
+  {hinweisPosition === 'oben' && <div class="privacy-note">
     <strong>{texte.datenschutzTitel}</strong>
     {texte.datenschutzText}
     <span id="storage-status" role="status" aria-live="polite"></span>
-  </div>
+  </div>}
   <p id="project-file-meta" class="project-file-meta" role="status" aria-live="polite" hidden></p>
 
   <noscript>
@@ -460,7 +461,11 @@ const bundeslaender = [
       ohne Gewähr. Maßgeblich sind die anwendbaren Rechtsvorschriften und die konkreten Vergabeunterlagen.
       Der PDF- und Excel-Export nutzt die Open-Source-Bibliotheken jsPDF, jsPDF-AutoTable und fflate (MIT-Lizenz).
     </p>
-  </section>
+  </section>{hinweisPosition === 'unten' && <div class="privacy-note privacy-note-unten">
+    <strong>{texte.datenschutzTitel}</strong>
+    {texte.datenschutzText}
+    <span id="storage-status" role="status" aria-live="polite"></span>
+  </div>}
   <slot name="nach-hinweis" />
 </div>
 
@@ -492,6 +497,11 @@ const bundeslaender = [
   .fristenrechner .privacy-note {
     margin-bottom: 0.75rem;
     border-left: 4px solid #4d6b3c;
+  }
+
+  .fristenrechner .privacy-note-unten {
+    margin-top: 0.75rem;
+    margin-bottom: 0;
   }
 
   .fristenrechner .privacy-note strong {
