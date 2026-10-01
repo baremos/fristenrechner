@@ -164,6 +164,12 @@ Nicht erfasst sind die Abhängigkeiten, die Gradle für `@capacitor/android` lä
 
 Damit gehört das vorgebaute Browser-Bündel von ExcelJS nicht mehr zum aktuellen npm-Bestand. Seine frühere Auswertung ist kein Nachweis für den Inhalt eines neuen Website- oder App-Builds. Der eigene Excel-Schreiber und die vollständige Oberfläche sind in diesem Lauf nicht gebaut worden. Die erzeugten Bündel und die Originalhinweise ihrer tatsächlich enthaltenen Fremdanteile bleiben vor der Auslieferung zu prüfen; das gilt auch für die übrigen Exportbibliotheken.
 
+## Testempfänger und Testvarianten der App
+
+Der Testempfänger mit DocumentsProvider unter `scripts/emulator/testempfaenger` besteht aus eigenen Java-Quellen und nutzt das Android-Framework ohne zusätzliche Bibliotheksabhängigkeiten. Er enthält keinen übernommenen Fremdcode. Für diese Quellen gilt wie für das Repository Apache-2.0. Das Gradle-Projekt verwendet beim Variantenbau die bereits vorhandenen Build-Werkzeuge und das Projekt-SDK; daraus folgt keine zusätzliche Laufzeitabhängigkeit der Produkt-App.
+
+Der Emulatorrahmen baut den Testempfänger sowie die Gegenprobe und die Varianten für die Fehlerseite ausschließlich in seinem Ausgabeordner. Die Gegenprobe und die Fehlerseitenvarianten verwenden Kopien der App und ihrer vorhandenen Abhängigkeiten; deren Lizenzpflichten bleiben bestehen. Diese Test-APKs und der nur für die Prüfläufe verwendete Testempfänger gehören zur Testumgebung und werden nicht mit der Produkt-App oder den npm-Paketen ausgeliefert. Keine Klasse des Testempfängers wird in die Produkt-App kopiert. Einzelheiten stehen in der [Beschreibung der Test-App](../scripts/emulator/testempfaenger/README.md) und in [app.md](app.md#dateiphase-auf-api-30-und-36).
+
 ## Lauf und Befund
 
 Die Prüfung läuft offline, ohne npm-Aufruf und ohne Ausführung von Code oder Installationsskripten aus Abhängigkeiten:

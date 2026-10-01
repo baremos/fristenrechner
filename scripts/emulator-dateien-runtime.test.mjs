@@ -150,6 +150,27 @@ test('Listenzeile wird mit Enter statt Tap geöffnet; Ordner dürfen Auswahl off
   await zeileOeffnen(ctx,'probe','probe.json',xml(...row('probe.json')),{schliessen:false});
   assert.ok(!commands.includes('dumpsys activity activities'));
 });
+// Verdeckter Fokus am Listenende (Fläche [0,0][0,0]) ohne sichtbaren Titel: weiter nach unten,
+// bei unverändertem Baum abwechselnd Ende und Pos1, nach 80 Schritten Abbruch ohne Enter.
+const verdeckt=()=>xml(...row('anderes.json',false,200),node('','[0,0][0,0]',{focused:'true','resource-id':'com.android.documentsui:id/item_root'}));
+test('Stillstand am Listenende wechselt zwischen Ende und Pos1 und endet nach 80 Schritten ohne Enter',async()=>{
+  const commands=[],ctx={shell:async s=>{commands.push(s);return '';},sleep:async()=>{},uiBaum:async()=>verdeckt(),shot:async()=>{},save:async()=>{}};
+  await assert.rejects(zeileOeffnen(ctx,'probe','probe.json',verdeckt(),{schliessen:false}),/nicht eindeutig fokussieren/);
+  const tasten=commands.filter(s=>s.startsWith('input keyevent ')).map(s=>s.slice('input keyevent '.length));
+  assert.equal(tasten[0],'KEYCODE_MOVE_HOME');
+  assert.equal(tasten.length,81);
+  assert.deepEqual(tasten.slice(1,5),['KEYCODE_DPAD_DOWN','KEYCODE_DPAD_DOWN','KEYCODE_MOVE_END','KEYCODE_MOVE_HOME']);
+  assert.ok(tasten.filter(t=>t==='KEYCODE_MOVE_END').length>=39);
+  assert.ok(!tasten.includes('KEYCODE_ENTER'));
+  assert.equal(commands.filter(s=>s.startsWith('input tap')).length,0);
+});
+test('Nach dem Stillstand öffnet ein veränderter Baum mit passendem Fokus die Zeile',async()=>{
+  let abzug=0;
+  const commands=[],ctx={shell:async s=>{commands.push(s);return '';},sleep:async()=>{},uiBaum:async()=>(++abzug<=4?verdeckt():xml(...row('probe.json'))),shot:async()=>{},save:async()=>{}};
+  await zeileOeffnen(ctx,'probe','probe.json',verdeckt(),{schliessen:false});
+  const tasten=commands.filter(s=>s.startsWith('input keyevent ')).map(s=>s.slice('input keyevent '.length));
+  assert.deepEqual(tasten,['KEYCODE_MOVE_HOME','KEYCODE_DPAD_DOWN','KEYCODE_DPAD_DOWN','KEYCODE_MOVE_END','KEYCODE_MOVE_HOME','KEYCODE_ENTER']);
+});
 test('Empfänger-Schaltfläche wird gescrollt gesucht und exakt getroffen',async()=>{
   let n=0;const commands=[],ctx={uiBaum:async()=>xml(node(n++?'Dateiprobe':'Andere','[0,0][500,1000]')),shell:async s=>commands.push(s),sleep:async()=>{}};
   await nativeSchaltflaeche(ctx,'probe','Dateiprobe',undefined,{scroll:true});

@@ -24,6 +24,7 @@ const quelldateien = [
   'packages/oberflaeche/src/web-plattform.ts',
   'app/src/adapters/dateiausgabe.ts',
   'app/src/adapters/dateiimport.ts', 'app/src/adapters/dateiablauf-vertrag.ts', 'app/src/adapters/app-plattform.ts',
+  'docs/datenschutz.md',
   'app/android/app/src/main/java/de/baremos/fristenrechner/io/DateiablaufPlugin.java',
 ];
 let nummer = 0;
@@ -63,6 +64,10 @@ for (const [titel, datei, ersetzen, durch] of [
   ['Formularfeld fehlt', quelldateien[0], 'name="projektname"', 'name="anderes_feld"'],
   ['Ergebnistabelle fehlt', quelldateien[0], 'id="schedule-table-body"', 'id="andere_tabelle"'],
   ['App-Fehlerfalle fehlt', quelldateien[1], 'id="app-startfehler"', 'id="anderer_hinweis"'],
+  ['Datenschutzquelle ersetzt', quelldateien[1], "from '../../../docs/datenschutz.md'", "from '../../../docs/anderes.md'"],
+  ['Datenschutzabschnitt fehlt', quelldateien[1], 'id="app-datenschutz"', 'id="anderer_abschnitt"'],
+  ['Datenschutzinhalt fehlt', quelldateien[1], '<Datenschutz />', '<p>Leerer Ersatz</p>'],
+  ['Datenschutzdokument leer', 'docs/datenschutz.md', /^#[\s\S]+/, ''],
   ['Speicherschlüssel fehlt', quelldateien[4], 'const WEB_SPEICHERSCHLUESSEL =', 'const ANDERER_KEY ='],
   ['Webadapter nutzt anderen Schlüssel', quelldateien[4], 'getItem(WEB_SPEICHERSCHLUESSEL)', "getItem('anderer-schluessel')"],
   ['Initialisierung fehlt', quelldateien[1], 'initFristenrechner(root,', 'andereInitialisierung(root,'],

@@ -18,13 +18,13 @@ The repository is under construction. Nothing has been released yet.
 | Project scaffold | in place |
 | Calculation core | in place, with tests and reference cases |
 | User interface | in place, with interfaces for saving, importing and exporting |
-| Android app | builds and runs in the emulator; exporting, sharing and importing files are still to follow |
+| Android app | builds and runs in the emulator; Save as, separate sharing actions and project import are implemented and tested on API 30 and 36 with documented limitations |
 
 The work packages are listed in [docs/arbeitspakete.md](docs/arbeitspakete.md). The documents in the folder `docs` are in German.
 
 ## What the software will calculate
 
-This section describes the scope of version 1. The repository implements the calculation core, the user interface and the app project for Android. The app still lacks the file workflows: exporting, sharing and importing.
+This section describes the scope of version 1. The repository implements the calculation core, the user interface and the app project for Android, including the file workflows. Tests on a physical device are still outstanding.
 
 From the data entered, the software produces a schedule of dates and deadlines for a procurement procedure. Version 1 calculates the same as the [calculator on www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). The scope is defined in [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md).
 
@@ -35,6 +35,14 @@ From the data entered, the software produces a schedule of dates and deadlines f
 | Public holidays | statutory public holidays per federal state, calculated without network access |
 | Output | PDF, Excel and project file |
 | Traceability | Every calculation and every export states the rule version and the date of the legal status |
+
+## Files and privacy in the app
+
+“Projekt exportieren”, “Excel exportieren” and “PDF exportieren” open the Android picker to save under a chosen name and at a chosen location. The separate actions “Projekt teilen”, “Excel teilen” and “PDF teilen” make the respective file available to a selected target app; the message does not confirm that it has been sent. “Projekt importieren” opens a JSON project file through the Android picker, with a limit of 1 MiB. Cancelling preserves the existing project.
+
+The current project is saved in the local storage of the WebView. The app has no internet permission; selected document providers and target apps may transfer data themselves. [Privacy](docs/datenschutz.md) describes temporary file cleanup, backup, device migration and deletion limits. The same German text is available offline in the app under “Datenschutz” and is initially a working draft awaiting approval.
+
+The emulator evidence and its limitations are documented in [docs/app.md](docs/app.md#dateiphase-auf-api-30-und-36), and the outstanding tests in [docs/testmatrix.md](docs/testmatrix.md). These runs do not replace tests of physical devices, document providers and receiving applications.
 
 ## What the software will not do
 

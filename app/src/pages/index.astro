@@ -5,6 +5,7 @@ import { RECHTSSTAND, RECHTSSTAND_DATUM, REGELVERSION } from '@baremos/fristenre
 import app from '../../package.json';
 import lizenz from '../../../LICENSE?raw';
 import herausgeber from '../../../NOTICE?raw';
+import { Content as Datenschutz } from '../../../docs/datenschutz.md';
 
 const texte = {
   ...webTexte,
@@ -52,6 +53,10 @@ const texte = {
       <p>Regelversion {REGELVERSION} · Rechtsstand {RECHTSSTAND} ({RECHTSSTAND_DATUM})</p>
       <p>Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.</p>
       <p>Herausgeber: BAREMOS IT GmbH, Berlin</p>
+    </details>
+    <details class="app-abschnitt" id="app-datenschutz">
+      <summary>Datenschutz</summary>
+      <Datenschutz />
     </details>
     <details class="app-abschnitt">
       <summary>Lizenzen</summary>

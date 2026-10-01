@@ -18,13 +18,13 @@ Das Repository ist im Aufbau. Es gibt noch keine Veröffentlichung.
 | Projektgerüst | vorhanden |
 | Rechenkern | vorhanden, mit Tests und Referenzfällen |
 | Oberfläche | vorhanden, mit Schnittstellen für Speichern, Importieren und Exportieren |
-| Android-App | baut und läuft im Emulator; Exportieren, Teilen und Importieren von Dateien folgen |
+| Android-App | baut und läuft im Emulator; Speichern unter, getrenntes Teilen und Projektimport sind umgesetzt und auf API 30 und 36 mit dokumentierten Grenzen geprüft |
 
 Die Arbeitspakete stehen in [docs/arbeitspakete.md](docs/arbeitspakete.md). Die Dokumente im Ordner `docs` sind deutsch.
 
 ## Was die Software rechnen wird
 
-Dieser Abschnitt beschreibt den Umfang von Version 1. Im Repository sind der Rechenkern, die Oberfläche und das App-Projekt für Android umgesetzt. In der App fehlen noch die Dateiabläufe: Exportieren, Teilen und Importieren.
+Dieser Abschnitt beschreibt den Umfang von Version 1. Im Repository sind der Rechenkern, die Oberfläche und das App-Projekt für Android einschließlich der Dateiabläufe umgesetzt. Prüfungen auf einem echten Gerät stehen noch aus.
 
 Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren. Version 1 rechnet dasselbe wie der [Fristenrechner auf www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). Den Umfang legt [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md) fest.
 
@@ -35,6 +35,14 @@ Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren.
 | Feiertage | gesetzliche Feiertage je Bundesland, berechnet ohne Netzwerkzugriff |
 | Ausgabe | PDF, Excel und Projektdatei |
 | Nachvollziehbarkeit | Jede Berechnung und jeder Export nennt Regelversion und Rechtsstand |
+
+## Dateien und Datenschutz in der App
+
+„Projekt exportieren“, „Excel exportieren“ und „PDF exportieren“ öffnen die Android-Auswahl zum Speichern unter einem gewählten Namen und Speicherort. Die getrennten Aktionen „Projekt teilen“, „Excel teilen“ und „PDF teilen“ stellen die jeweilige Datei einer gewählten Ziel-App bereit; die Meldung bestätigt keinen Versand. „Projekt importieren“ öffnet eine JSON-Projektdatei über die Android-Auswahl, mit einer Grenze von 1 MiB. Ein Abbruch erhält das bisherige Projekt.
+
+Der aktuelle Projektstand wird im lokalen Speicher der WebView gespeichert. Die App hat keine Internetberechtigung; gewählte Dokumentanbieter und Ziel-Apps können selbst Daten übertragen. Die Bereinigung temporärer Dateien, Sicherung, Gerätewechsel und Löschgrenzen beschreibt [Datenschutz](docs/datenschutz.md). Derselbe Text ist in der App im Abschnitt „Datenschutz“ offline lesbar und liegt zunächst als Arbeitsfassung zur Freigabe vor.
+
+Die Emulatornachweise und ihre Grenzen stehen in [docs/app.md](docs/app.md#dateiphase-auf-api-30-und-36), die offenen Prüfungen in [docs/testmatrix.md](docs/testmatrix.md). Die Läufe ersetzen keine Prüfung echter Geräte, Dokumentanbieter und Empfängerprogramme.
 
 ## Was die Software nicht tun wird
 

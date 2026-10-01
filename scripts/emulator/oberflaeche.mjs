@@ -34,6 +34,13 @@ export function quellvertrag(wurzel) {
     if (!markup.includes(s)) throw new Error(`Oberflächenvertrag geändert: ${s}`);
   }
   for (const s of ['id="app-startfehler"', 'id="app-rechtsstand-hinweis"']) if (!app.includes(s)) throw new Error(`App-Markup geändert: ${s}`);
+  if (!/import\s*\{\s*Content as Datenschutz\s*\}\s*from\s*'\.\.\/\.\.\/\.\.\/docs\/datenschutz\.md';/.test(app)
+    || !/<details class="app-abschnitt" id="app-datenschutz">\s*<summary>Datenschutz<\/summary>\s*<Datenschutz\s*\/>\s*<\/details>/.test(app)) {
+    throw new Error('Offline-Datenschutz aus gemeinsamer Markdown-Quelle geändert.');
+  }
+  if (!/^# Datenschutz\r?\n/.test(readFileSync(join(wurzel, 'docs/datenschutz.md'), 'utf8'))) {
+    throw new Error('Datenschutzdokument geändert oder nicht gefunden.');
+  }
   for (const id of ['import-message', 'reset-message']) {
     if (!new RegExp(`<p\\s[^>]*id="${id}"[^>]*role="status"[^>]*aria-live="polite"`).test(markup)
       || !ui.includes(`('#${id}')`)) throw new Error(`Statuszeile geändert: ${id}`);
