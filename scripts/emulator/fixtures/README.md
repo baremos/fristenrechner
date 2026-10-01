@@ -49,3 +49,43 @@ Ergänzungen aus der vierten Serie am 30.09.2026 mit der neuen Oberfläche:
 Die vierte Serie belegt auf API 30 auch die korrigierte Oberfläche, A8-Messungen und A10. Die separate Überlaufnachmessung gilt auf API 30 und 36 bei 412 CSS-Pixeln und den Schriftfaktoren 1,0, 1,3 und 2,0. Der vollständige API-36-Lauf der vierten Serie brach erneut am Systemdialog ab. Die Wait-Betätigung ist mit den Prüfdaten getestet; im Lauf der fünften Serie vom 2026-09-30 auf API 36 erschien der Dialog nach dem Systemstart und war nach einer Wait-Betätigung nicht mehr sichtbar. Sichturteile werden getrennt von diesen automatisierten Tests mit Bildprüfsumme im jeweiligen Lauf protokolliert.
 
 Der Bau der Android-Temp-Kopien und die Umlenkung ihrer Gradle-Ausgaben wurden am 30.09. auf beiden Abbildern ausgeführt; die geschützten Build-Verzeichnisse blieben bytegleich. Die vierte Serie auf API 36 bestätigt in `lauf.log`, Zeile 1, die Wiederverwendung einer Variante mit übereinstimmendem Quellenstand und übereinstimmenden APK-Prüfsummen. Ein eigener öffentlicher Rohbeleg für das automatische Entfernen der Cache-Kopie ist hier nicht enthalten. Tests mit ersetzten Prozessaufrufen ersetzen keinen Laufnachweis.
+
+Dateiabläufe: Ausschnitte der Proben vom 30.09. und 01.10.2026:
+
+| Dateien | Ursprüngliche Aufzeichnung und Auswahl |
+|---|---|
+| `dateien-c3-api30.json` | `probe.log` und `befunde.json` der Speichern-/Teilen-Probe auf API 30: Bytezahlen und SHA-256 der drei Formate, MIME des Brückenauftrags, Abbruchantwort, Activity-Namen von Auswahl und direktem Bluetooth-Empfänger. Der fehlende JSON-Empfänger ist eine Umgebungsgrenze. Pfade, Zeitstempel, Dateinamen und Projektinhalte entfallen. Die Binärdateien lagen in diesem Ausschnitt nicht vor: Ein Hash allein darf in den Tests ausdrücklich keinen Transfer bestehen lassen. |
+| `dateien-c4-api30.json`, `dateien-c4-api36.json` | `zustand-3-import-projekt.json`, `zustand-4-import-abbruch.json`, `zustand-5-import-gross.json`, `zustand-6-import-grenze.json`, `zustand-7-import-kaputt.json`, `reset-abbrechen-dialog.xml` und `probe.log`: native Antworten, Fokus auf Abbrechen, Seitenkennung und PID vor/nach Neuerstellung sowie Schriftfaktor. Nur die synthetischen Projektfelder der Probe bleiben; keine Rechnerpfade oder Benutzernamen. Die damalige Grenzdatei hatte kein gültiges Projektschema: native Größenprüfung und Parserantwort werden getrennt aufgezeichnet. |
+
+Die neuen Tests erzeugen kleine JSON-, ZIP- und PDF-Dateien selbst. Diese Bytes,
+zusätzliche Zustandsfelder, Providerdaten und negative Varianten sind ausdrücklich
+konstruierte Prüfdaten. Die Ausschnitte beweisen keinen Lauf der neuen Dateiphase,
+des Testproviders oder der Release-APK. Das aktuelle Rohschema steht bei den
+Auswertern in `../dateien-auswertung.mjs`; Feldnamen entsprechen deren einzelnen
+Fallprüfungen. `dateien-roh.json` enthält Schema 1, die API und `faelle`. Jeder Fall
+nennt Variante, D-Nummer, Teilfallname, Umgebung und relative Rohbelegpfade.
+Dateibelege nennen Name, MIME, Bytezahl, SHA-256 und entweder eine relative Datei
+oder kanonische Base64-Rohbytes. Die Neuauswertung liest Dateien selbst und prüft
+deren Größe, SHA-256 und Struktur. Ein ursprünglicher Status oder UI-Erfolgstext
+ersetzt weder Bytes noch die übrigen Messwerte. D12 verwendet gesonderte
+Netzrohbelege sowie die bisherigen Sicherungsbelege.
+
+Pflichtfelder innerhalb des Dateischemas (zusätzlich zu den gemeinsamen Feldern):
+
+| Fall | Rohwerte und Prüfung |
+|---|---|
+| D1, D5 | `format`, `referenz`, `ziel`; Quelle der Referenz ist `bruecke`, auch für Release. Beide Dateibelege enthalten `name`, `mime`, `bytes`, `sha256`, `base64` oder `datei`. D5 ergänzt den vollständigen Empfängerbericht mit den tatsächlich versuchten URIs und `SecurityException` für verbotene Zugriffe. |
+| D2 | Genau zwei `exporte`, bei JSON `zeitFixiert`, bei XLSX beide `tage`. Gleiche Rohbytes werden neu gehasht; ein Tageswechsel bleibt eine Grenze. |
+| D3 | Abbruch: native Antwort, Download-Inventare vorher/nachher und freie Aktionen. Wiederholung: vollständiger Transferbeleg. Gleicher Name: zusätzlich tatsächliche `kopie`. Schließfehler: ausdrücklich begründete, nicht provozierbare Grenze. |
+| D4 | Modus, oberste Activity vor/während/nach Teilen, native Antwort und erneuter Auftrag. Ohne Empfänger ist dessen Systemhinweis Pflicht; das Ergebnis bleibt eine Grenze. |
+| D6 | Dokumentauswahl, Quellen- und empfangener Texthash, Projekt vorher/nachher/erwartet, gespeicherter Stand, genau ein Aufruf, freigegebene Aktionen. BOM wird vor dem Texthash ausdrücklich entfernt. |
+| D7, D8 | Zusätzlich tatsächliche Bytezahl und Providerbericht mit Dokumentkennung, Dateiname, Quellenhash, angegebener Größe, angebotenen und gelesenen Bytes, Streamabschluss und Fehler. Größenmetadaten dürfen von den Bytes abweichen, die 1-MiB-Grenze nicht. |
+| D9 | Deutsche Frage und Schaltflächen, fokussierte Resource-ID, Projekt und gespeicherter Stand vor/nach der Entscheidung, genau ein Rücksetzaufruf. Nur die frei eingegebenen Projektfelder werden beim Zurücksetzen auf Leerung geprüft. |
+| D10 | PID und Devtools-Seitenkennung vorher/nachher, Fortbestand des externen Hakens, Projektzustand und Aufrufzahlen. Schriftfaktor beziehungsweise Drehung werden mit Ausgangs-, Zwischen- und wiederhergestelltem Wert aufgezeichnet. |
+| D11 | Alte und frische Freigabe, Präferenzrohtexte, Zeiten und Dateizeit, Kontrollhash außerhalb von `export/`, gleiche PID. Vor dem bereinigenden Teilen muss die alte URI nachweisbar zu öffnen sein; danach muss dieselbe URI mit `SecurityException` scheitern. |
+
+Fehlende Pflichtfälle, doppelte Fallkennungen, unlesbare Rohdateien, beschädigte
+Base64-Daten, abweichende Hashes und nicht wiederhergestellte Messzustände werden
+gesondert ausgewiesen. Die Datei-Neuauswertung verlangt außerdem die beiden
+Netzfenster und die zum gewählten Abbild gehörenden Sicherungsrohbelege. Ein
+berichteter Laufabbruch bleibt ungültig, selbst wenn ein Teil der Daten lesbar ist.

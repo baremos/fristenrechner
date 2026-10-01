@@ -8,7 +8,8 @@ import { homedir } from 'node:os';
 import { findeJdk } from './werkzeuge.mjs';
 import { befund, zusammenfassen, rueckgabewert, zaehleBefunde, evaluiereActivity, evaluiereReleaseFlags, evaluiereUnixSockets, evaluiereInstallation, evaluiereReleaseStart, evaluiereRuhe, SICHTPRUEFUNGEN, sichtpruefungAusstehend } from './emulator-auswertung.mjs';
 import { APP, GEGEN, SERIAL, Cdp, argumente, dateiNoetig, echterPfad, innen, mitAufraeumen, netzmelder, pause, prozess, schreiber, sha256, websocketPruefen } from './emulator/rahmen.mjs';
-import { baueVarianten, signiereRelease } from './emulator/bauen.mjs';
+import { baueVarianten, signiereRelease, TESTEMPFANGER } from './emulator/bauen.mjs';
+import { dateien } from './emulator/dateien.mjs';
 import { ablaufA, ablaufA8, ablaufA10, datumBefehl, fehlerseite } from './emulator/oberflaeche.mjs';
 import { netz, navigation, sicherung, netzGueltigkeit } from './emulator/pruefungen.mjs';
 
@@ -53,15 +54,17 @@ export function ansichtsKnoten(xml) {
     if (!teil.startsWith('<')) { if (teil.trim()) return null; continue; }
     const ende = /^<\/(hierarchy|node)\s*>$/.exec(teil);
     if (ende) { if (stapel.pop() !== ende[1]) return null; continue; }
-    const anfang = /^<(hierarchy|node)((?:\s+[\w:-]+="[^"<>]*")*)\s*(\/?)>$/.exec(teil);
+    // uiautomator setzt einen Wert in einfache Anführungszeichen, wenn er doppelte enthält
+    // (beobachtet 2026-10-01 bei einer Meldung der Oberfläche mit „"999"“).
+    const anfang = /^<(hierarchy|node)((?:\s+[\w:-]+=(?:"[^"<>]*"|'[^'<>]*'))*)\s*(\/?)>$/.exec(teil);
     if (!anfang) return null;
     const [, art, roh, selbst] = anfang;
     if (art === 'hierarchy') { if (stapel.length || wurzeln++) return null; }
     else if (!stapel.length) return null;
     const attribute = {};
-    for (const [, key, value] of roh.matchAll(/\s+([\w:-]+)="([^"<>]*)"/g)) {
+    for (const [, key, doppelt, einfach] of roh.matchAll(/\s+([\w:-]+)=(?:"([^"<>]*)"|'([^'<>]*)')/g)) {
       if (Object.hasOwn(attribute, key)) return null;
-      attribute[key] = value;
+      attribute[key] = doppelt ?? einfach;
     }
     if (art === 'node') knoten.push(attribute);
     if (!selbst) stapel.push(art);
@@ -90,20 +93,47 @@ export function systemWaitPunkt(xml) {
 
 export const ANSICHT_REMOTE = '/data/local/tmp/fristenrechner-emulator.xml';
 
+// Nur im aktuellen Lauf ausdrücklich übernommene Dateien, niemals der ganze
+// Download-Ordner: dort können Belege anderer Läufe liegen.
+export async function dateienAufraeumen(ctx) {
+  const befunde = [], fehler = [];
+  for (const pfad of ctx.dateienDateien ?? []) {
+    try {
+      if (typeof pfad !== 'string' || !/^\/sdcard\/Download\/[^/\\\x00-\x1f]+$/.test(pfad) || ['.', '..'].includes(pfad.slice('/sdcard/Download/'.length))) throw new Error('Ungültiger Dateipfad für das Aufräumen.');
+      const q = `'${pfad.replaceAll("'", "'\\''")}'`;
+      await ctx.shell(`rm -f -- ${q}`);
+      const nachher = await ctx.shell(`if [ -e ${q} ]; then echo vorhanden; else echo entfernt; fi`);
+      if (nachher !== 'entfernt') throw new Error('Datei nach dem Aufräumen noch vorhanden.');
+      befunde.push({ pfad, entfernt: true });
+    } catch (e) { befunde.push({ pfad, entfernt: false, fehler: e.message }); fehler.push(e.message); }
+  }
+  ctx.save('dateien-aufraeumen.json', { schema: 1, dateien: befunde });
+  if (fehler.length) throw new Error(fehler.join('; '));
+}
+
 export async function leseAnsichtsbaum(ctx, name, { timeoutMs = 120000 } = {}) {
   const remote = ANSICHT_REMOTE;
-  // Eine alte Datei darf nach einem erfolglosen dump nicht als neuer Beleg gelten.
-  await ctx.shell(`rm -f ${remote}`, { timeoutMs });
+  // Während die Oberfläche sich ändert, liefert uiautomator gelegentlich keinen
+  // Baum („null root node“, beobachtet 2026-10-01 auf fr-api30 beim Öffnen der
+  // Dateiauswahl). Bis zu drei Versuche; jeder wird mit seinem Ergebnis belegt.
+  const versuche = [];
   try {
-    const dump = await ctx.adb(['shell', `uiautomator dump ${remote}`], { timeoutMs });
-    const lesen = await ctx.adb(['shell', `cat ${remote}`], { timeoutMs });
-    const xml = lesen.out.replaceAll('\r\n', '\n').trim();
-    ctx.save(`${name}-ansicht.xml`, xml);
-    const vollstaendig = ansichtsKnoten(xml) !== null;
-    const gueltig = [0, 137].includes(dump.code) && lesen.code === 0 && vollstaendig;
-    ctx.save(`${name}-uiautomator.json`, { dump, lesen: { code: lesen.code, err: lesen.err }, vollstaendig, gueltig });
-    if (!gueltig) throw new Error(`Ansichtsbaum nicht lesbar (dump ${dump.code}, Lesen ${lesen.code}, vollständig ${vollstaendig}).`);
-    return xml;
+    for (let versuch = 1; versuch <= 3; versuch++) {
+      // Eine alte Datei darf nach einem erfolglosen dump nicht als neuer Beleg gelten.
+      await ctx.shell(`rm -f ${remote}`, { timeoutMs });
+      const dump = await ctx.adb(['shell', `uiautomator dump ${remote}`], { timeoutMs });
+      const lesen = await ctx.adb(['shell', `cat ${remote}`], { timeoutMs });
+      const xml = lesen.out.replaceAll('\r\n', '\n').trim();
+      ctx.save(`${name}-ansicht.xml`, xml);
+      const vollstaendig = ansichtsKnoten(xml) !== null;
+      const gueltig = [0, 137].includes(dump.code) && lesen.code === 0 && vollstaendig;
+      versuche.push({ versuch, dump, lesen: { code: lesen.code, err: lesen.err }, vollstaendig, gueltig });
+      ctx.save(`${name}-uiautomator.json`, { ...versuche.at(-1), versuche });
+      if (gueltig) return xml;
+      if (versuch < 3) await (ctx.sleep ? ctx.sleep(700) : Promise.resolve());
+    }
+    const letzter = versuche.at(-1);
+    throw new Error(`Ansichtsbaum nicht lesbar (dump ${letzter.dump.code}, Lesen ${letzter.lesen.code}, vollständig ${letzter.vollstaendig}; ${versuche.length} Versuche).`);
   } finally { await ctx.shell(`rm -f ${remote}`, { timeoutMs }); }
 }
 
@@ -205,7 +235,8 @@ export function repositories() {
 
 export function variantePlan(phasen) {
   return [...new Set([
-    ...(phasen.some(p => ['a', 'b', 'netz', 'navigation', 'sicherung'].includes(p)) ? ['gegenprobe'] : []),
+    ...(phasen.some(p => ['a', 'b', 'netz', 'navigation', 'sicherung', 'dateien'].includes(p)) ? ['gegenprobe'] : []),
+    ...(phasen.includes('dateien') ? ['testempfaenger'] : []),
     ...(phasen.includes('fehlerseite') ? ['fehlerseite', 'ohne-fehlerseite'] : []),
   ])];
 }
@@ -268,7 +299,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
   const controller = new AbortController();
   const signal = () => { abbruch = true; controller.abort(); };
   process.once('SIGINT', signal); process.once('SIGTERM', signal);
-  const ctx = { ...optionen, wurzel, app: APP, gegen: GEGEN, sdk, env, ausgabe: optionen.ausgabe, save,
+  const ctx = { ...optionen, wurzel, app: APP, gegen: GEGEN, sdk, env, ausgabe: optionen.ausgabe, save, dateienDateien: new Set(),
     log(message) { const z = `${new Date().toISOString()} ${message}`; console.log(z); appendFileSync(join(optionen.ausgabe, 'lauf.log'), `${z}\n`); },
     async sleep(ms) { for (let rest = ms; rest > 0; rest -= 1000) { if (abbruch && !cleaning) throw new Error('Lauf unterbrochen.'); await sleep(Math.min(rest, 1000)); } },
     befund(id, wert) { daten.befund.push({ id, ...wert }); ctx.log(`${id}: ${wert.status} – ${wert.grund}`); save('ergebnis.json', daten); },
@@ -330,11 +361,11 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
       if (neu) { verbindungen.get(pkg)?.close(); verbindungen.delete(pkg); }
       if (verbindungen.get(pkg)?.closed) verbindungen.delete(pkg);
       if (verbindungen.has(pkg)) return verbindungen.get(pkg);
-      let socket;
+      let socket, socketPid;
       for (let i = 0; i < 25; i++) {
         const pid = (await ctx.shell(`pidof ${pkg}`)).trim();
         const text = await ctx.shell('cat /proc/net/unix');
-        if (/^\d+$/.test(pid) && new RegExp(`@webview_devtools_remote_${pid}\\b`).test(text)) { socket = `webview_devtools_remote_${pid}`; break; }
+        if (/^\d+$/.test(pid) && new RegExp(`@webview_devtools_remote_${pid}\\b`).test(text)) { socket = `webview_devtools_remote_${pid}`; socketPid = pid; break; }
         await ctx.sleep(1000);
       }
       if (!socket) throw new Error(`Kein WebView-Devtools-Socket für ${pkg}.`);
@@ -350,6 +381,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
       const seite = Array.isArray(liste) && liste.find(p => p.type === 'page');
       if (!seite || !/^[A-Za-z0-9_-]+$/.test(seite.id)) throw new Error('CDP-Ziel nicht lesbar.');
       const c = await Cdp.connect(`ws://127.0.0.1:${port}/devtools/page/${seite.id}`);
+      c.pageId = seite.id; c.pid = socketPid;
       try { for (const d of ['Runtime', 'Page', 'Network', 'Log']) await c.send(`${d}.enable`); }
       catch (e) { c.close(); throw e; }
       verbindungen.set(pkg, c);
@@ -386,6 +418,8 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
   const cleanup = [
     ['CDP schließen', async () => { for (const c of verbindungen.values()) c.close(); verbindungen.clear(); }],
     ['Zusätzliche Einstellungen', async () => { const errors = []; for (const f of deferred.reverse()) { try { await f(); } catch (e) { errors.push(e.message); } } if (errors.length) throw new Error(errors.join('; ')); }],
+    ['Dateiprüfung: Download-Dateien', async () => { if (deviceOwned) await dateienAufraeumen(ctx); }],
+    ['Testempfänger deinstallieren', async () => { if (deviceOwned && owned.has(TESTEMPFANGER)) await ctx.uninstall(TESTEMPFANGER); }],
     ['App deinstallieren', async () => { if (deviceOwned && owned.has(APP)) await ctx.uninstall(APP); }],
     ['Gegenprobe deinstallieren', async () => { if (deviceOwned && owned.has(GEGEN)) await ctx.uninstall(GEGEN); }],
     ['Uhr zurückstellen', async () => { if (deviceOwned && snapshot) await ctx.restoreClock(); }],
@@ -428,8 +462,8 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
     await mitAufraeumen(async () => {
       try {
         dateiNoetig(adbExe); dateiNoetig(emulatorExe); dateiNoetig(optionen.debug);
-        if (optionen.phasen.includes('b')) dateiNoetig(optionen.release);
-        daten.apkEingang = { debug: sha256(optionen.debug), ...(optionen.phasen.includes('b') ? { release: sha256(optionen.release) } : {}) };
+        if (optionen.phasen.some(p => ['b', 'dateien'].includes(p))) dateiNoetig(optionen.release);
+        daten.apkEingang = { debug: sha256(optionen.debug), ...(optionen.phasen.some(p => ['b', 'dateien'].includes(p)) ? { release: sha256(optionen.release) } : {}) };
         const devices = await run(adbExe, ['devices'], { env });
         const tasks = await run('tasklist.exe', ['/FO', 'CSV', '/NH'], { env });
         save('geraete-vorher.txt', devices.out); save('prozesse-vorher.txt', tasks.out);
@@ -470,13 +504,13 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
         daten.geraet = { ...await geraeteDaten(ctx, optionen.api, optionen.phasen), id };
         ctx.geraet = daten.geraet;
         save('geraet.json', daten.geraet);
-        for (const pkg of [APP, GEGEN]) if ((await ctx.shell(`pm list packages ${pkg}`)).split('\n').includes(`package:${pkg}`)) throw new Error(`Paket ${pkg} ist schon installiert. Lauf abgebrochen, vorhandene Daten bleiben erhalten.`);
+        for (const pkg of [APP, GEGEN, ...(optionen.phasen.includes('dateien') ? [TESTEMPFANGER] : [])]) if ((await ctx.shell(`pm list packages ${pkg}`)).split('\n').includes(`package:${pkg}`)) throw new Error(`Paket ${pkg} ist schon installiert. Lauf abgebrochen, vorhandene Daten bleiben erhalten.`);
         logcatFd = openSync(join(optionen.ausgabe, 'logcat.txt'), 'w');
         logcat = launch(adbExe, ['-s', SERIAL, 'logcat', '-v', 'time'], { env, windowsHide: true, stdio: ['ignore', logcatFd, logcatFd] });
         logcat.on('error', e => { logcatFehler = `Fortlaufendes logcat: ${e.message}`; });
         logcat.on('exit', (code, sig) => { if (!cleaning) logcatFehler = `Fortlaufendes logcat endete vor dem Aufräumen (Code ${code}, Signal ${sig}).`; });
         await ctx.sleep(200); if (logcatFehler || !logcat.pid) throw new Error('Fortlaufendes logcat kann nicht gestartet werden.');
-        if (optionen.phasen.some(p => ['a', 'a8'].includes(p))) {
+        if (optionen.phasen.some(p => ['a', 'a8', 'dateien'].includes(p))) {
           const vorher = { epoch: Number(await ctx.shell('date +%s')), host: Date.now() };
           if (!Number.isSafeInteger(vorher.epoch) || vorher.epoch < 1) throw new Error('Gerätezeit nicht lesbar.');
           for (const [table, key] of [['global', 'auto_time'], ['global', 'auto_time_zone'], ['system', 'font_scale'], ['system', 'accelerometer_rotation'], ['system', 'user_rotation']]) {
@@ -505,6 +539,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
               await (phase === 'a8' ? ablaufA8 : ablaufA10)(ctx);
             }
             else if (phase === 'b') await ablaufB(ctx);
+            else if (phase === 'dateien') await dateien(ctx);
             else if (phase === 'fehlerseite') await fehlerseite(ctx);
             else {
               await ctx.uninstall(APP); await ctx.install(optionen.debug, APP);
@@ -536,7 +571,11 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
 export async function main(argv = process.argv.slice(2)) {
   let optionen;
   try { optionen = argumente(argv, wurzel, repositories()); }
-  catch (e) { console.error(`Argumentfehler: ${e.message}\nAufruf: node scripts/emulator-lauf.mjs --api 36|30|24 --ablauf a|a8|a10|b|netz|navigation|sicherung|fehlerseite|installation|alle --ausgabe <Ordner> [--apk-debug <Datei>] [--apk-release <Datei>] [--varianten <Ordner>] [--wipe-data]`); return 64; }
+  catch (e) { console.error(`Argumentfehler: ${e.message}\nAufruf: node scripts/emulator-lauf.mjs --api 36|30|24 --ablauf a|a8|a10|b|netz|navigation|dateien|sicherung|fehlerseite|installation|alle --ausgabe <Ordner> [--apk-debug <Datei>] [--apk-release <Datei>] [--varianten <Ordner>] [--wipe-data] [--nur-argumente]`); return 64; }
+  if (optionen.nurArgumente) {
+    console.log(JSON.stringify({ ...optionen, varianten: variantePlan(optionen.phasen), emulatorGestartet: false, hinweis: 'Nur Argumentprüfung; keine APK-Prüfung, kein Build, kein Emulatorstart und keine Ausgabe angelegt.' }, null, 2));
+    return 0;
+  }
   try { return await lauf(optionen); }
   catch (e) { console.error(`Messung ungültig: ${e.message}`); return 2; }
 }

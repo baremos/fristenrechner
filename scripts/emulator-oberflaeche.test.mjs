@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { quellvertrag, formularWerte, datumBefehl, ablaufA, ablaufA8, ablaufA10, domAriaNamen, evaluiereDomAria, ueberlaufMessung, tastaturTippPunkt } from './emulator/oberflaeche.mjs';
+import { quellvertrag, dateiMethodenVertrag, formularWerte, datumBefehl, ablaufA, ablaufA8, ablaufA10, domAriaNamen, evaluiereDomAria, ueberlaufMessung, tastaturTippPunkt } from './emulator/oberflaeche.mjs';
 import { runInNewContext } from 'node:vm';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -24,6 +24,7 @@ const quelldateien = [
   'packages/oberflaeche/src/web-plattform.ts',
   'app/src/adapters/dateiausgabe.ts',
   'app/src/adapters/dateiimport.ts', 'app/src/adapters/dateiablauf-vertrag.ts', 'app/src/adapters/app-plattform.ts',
+  'app/android/app/src/main/java/de/baremos/fristenrechner/io/DateiablaufPlugin.java',
 ];
 let nummer = 0;
 function quellkopie(datei, ersetzen, durch) {
@@ -48,6 +49,15 @@ test('Quellvertrag liest das öffentliche Formular und seine Regelanzeige', () =
   assert.match(q.datum, /^\d{4}-\d{2}-\d{2}$/);
   assert.match(q.text, /^Regelversion: .+ · Rechtsstand: .+ \(\d{4}-\d{2}-\d{2}\)$/);
   assert.equal(quellvertrag(quellkopie()).text, q.text);
+});
+
+test('Datei-Quellvertrag schließt zusätzliche Diagnose- und URI-Methoden aus', () => {
+  const java = readFileSync(join(wurzel, quelldateien.at(-1)), 'utf8');
+  assert.equal(dateiMethodenVertrag(java).length, 8);
+  assert.throws(() => dateiMethodenVertrag(java + '\n@PluginMethod public void leseBeliebigeUri(PluginCall call) {}'), /Testmethoden/);
+  assert.throws(() => dateiMethodenVertrag(java.replace('public void teilen', 'public void diagnose')), /Testmethoden/);
+  assert.throws(() => dateiMethodenVertrag(java.replace('@PluginMethod public void teilen', '@PluginMethod(returnType = "none") public void teilen')), /Testmethoden/);
+  assert.equal(dateiMethodenVertrag(java + '\n// @PluginMethod public void diagnose(PluginCall call) {}').length, 8);
 });
 for (const [titel, datei, ersetzen, durch] of [
   ['Formularfeld fehlt', quelldateien[0], 'name="projektname"', 'name="anderes_feld"'],

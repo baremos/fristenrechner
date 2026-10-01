@@ -9,7 +9,8 @@ import { dateiNoetig, innen, sha256 } from './rahmen.mjs';
 import { ohneGradleKommentare } from '../app-pruefungen.mjs';
 
 const groovy = value => `'${value.replaceAll('\\', '/').replaceAll("'", "\\'")}'`;
-const varianten = ['gegenprobe', 'fehlerseite', 'ohne-fehlerseite'];
+export const TESTEMPFANGER = 'org.example.dateiprobe';
+const varianten = ['gegenprobe', 'fehlerseite', 'ohne-fehlerseite', 'testempfaenger'];
 const ignoriert = new Set(['build', '.gradle', '.idea', 'local.properties', '.git']);
 const kopieren = p => !ignoriert.has(basename(p));
 
@@ -30,6 +31,8 @@ export function variantenQuellenstand(ctx) {
     else throw new Error('Verknüpfung in den Variantenquellen.');
   }
   for (const p of ['app/android', 'node_modules/@capacitor/android/capacitor']) walk(join(ctx.wurzel, p), p);
+  const testquelle = 'scripts/emulator/testempfaenger';
+  if (existsSync(join(ctx.wurzel, testquelle))) walk(join(ctx.wurzel, testquelle), testquelle);
   for (const p of ['package-lock.json', 'scripts/toolchain.json']) {
     dateiNoetig(join(ctx.wurzel, p));
     daten[p] = sha256(join(ctx.wurzel, p));
@@ -94,6 +97,18 @@ export function gegenprobeQuellen({ manifest, gradle, activity }) {
   const registrierungen = [...ohneGradleKommentare(activity).matchAll(/\bregisterPlugin\s*\(([^)]*)\)/g)].map(m => m[1].replace(/\s/g, ''));
   if (/android:(fullBackupContent|dataExtractionRules)=/.test(manifest) || registrierungen.length !== 1 || registrierungen[0] !== 'DateiablaufPlugin.class') throw new Error('Gegenprobe enthält noch Sicherungsregeln oder abweichende Pluginregistrierungen.');
   return { manifest, gradle, activity };
+}
+
+// Das Testprojekt verwendet ausschließlich das Android-Framework. AGP und SDK
+// stammen aus der vorhandenen App-Vorlage; kein weiterer Maven-Baustein ist nötig.
+export async function testempfaengerProjekt(ctx, projekt) {
+  const quelle = join(ctx.wurzel, 'scripts/emulator/testempfaenger');
+  for (const p of ['settings.gradle', 'app/build.gradle', 'app/src/main/AndroidManifest.xml']) dateiNoetig(join(quelle, p));
+  await cp(quelle, projekt, { recursive: true, dereference: true, filter: kopieren });
+  for (const p of ['build.gradle', 'variables.gradle', 'gradle.properties']) {
+    dateiNoetig(join(ctx.wurzel, 'app/android', p));
+    copyFileSync(join(ctx.wurzel, 'app/android', p), join(projekt, p));
+  }
 }
 
 function baumHash(wurzel) {
@@ -181,13 +196,17 @@ export async function baueVarianten(ctx, arten) {
     for (const art of arten) {
       const projekt = join(privat, art, 'android');
       await mkdir(projekt, { recursive: true });
-      await cp(join(ctx.wurzel, 'app/android'), projekt, { recursive: true, dereference: true,
-        filter: kopieren });
-      // Nicht nur Build-Ausgaben umlenken: auch das Capacitor-Projekt selbst wird kopiert.
-      const capacitor = join(privat, art, 'capacitor-android');
-      await cp(join(ctx.wurzel, 'node_modules/@capacitor/android/capacitor'), capacitor, { recursive: true, dereference: true,
-        filter: kopieren });
-      writeFileSync(join(projekt, 'capacitor.settings.gradle'), `include ':capacitor-android'\nproject(':capacitor-android').projectDir = new File(${groovy(capacitor)})\n`);
+      if (art === 'testempfaenger') {
+        await testempfaengerProjekt(ctx, projekt);
+      } else {
+        await cp(join(ctx.wurzel, 'app/android'), projekt, { recursive: true, dereference: true,
+          filter: kopieren });
+        // Nicht nur Build-Ausgaben umlenken: auch das Capacitor-Projekt selbst wird kopiert.
+        const capacitor = join(privat, art, 'capacitor-android');
+        await cp(join(ctx.wurzel, 'node_modules/@capacitor/android/capacitor'), capacitor, { recursive: true, dereference: true,
+          filter: kopieren });
+        writeFileSync(join(projekt, 'capacitor.settings.gradle'), `include ':capacitor-android'\nproject(':capacitor-android').projectDir = new File(${groovy(capacitor)})\n`);
+      }
       writeFileSync(join(projekt, 'local.properties'), `sdk.dir=${ctx.sdk.replaceAll('\\', '/').replaceAll(':', '\\:')}\n`);
       const init = join(projekt, 'ausgaben.gradle');
       writeFileSync(init, `gradle.beforeProject { p ->\n    p.layout.buildDirectory.set(new File(${groovy(join(privat, art, 'build'))}, p.path.replace(':', '_')))\n}\n`);
@@ -197,7 +216,7 @@ export async function baueVarianten(ctx, arten) {
       if (art === 'gegenprobe') {
         const q = gegenprobeQuellen({ manifest: readFileSync(mf, 'utf8'), gradle: readFileSync(gf, 'utf8'), activity: readFileSync(af, 'utf8') });
         writeFileSync(mf, q.manifest); writeFileSync(gf, q.gradle); writeFileSync(af, q.activity);
-      } else {
+      } else if (art !== 'testempfaenger') {
         const cf = join(projekt, 'app/src/main/assets/capacitor.config.json');
         const config = JSON.parse(readFileSync(cf, 'utf8'));
         if (config.android?.minWebViewVersion !== 83 || config.server?.errorPath !== 'startfehler.html') throw new Error('Unerwartete Ausgangskonfiguration der Fehlerseite.');

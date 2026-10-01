@@ -1,0 +1,11 @@
+{
+  "api": 36,
+  "dialog": { "frage": "Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?", "abbrechen": "ABBRECHEN", "bestaetigen": "ZURÜCKSETZEN", "fokus": "android:id/button2" },
+  "import": { "status": "ok", "textLaenge": 1357, "projektname": "Importiertes Testprojekt", "gespeichert": { "projektname": "Importiertes Testprojekt", "vergabenummer": "EMU-42" } },
+  "abbruch": { "status": "abgebrochen" },
+  "zuGross": { "code": "zu-gross", "bytes": 1048577 },
+  "grenze": { "status": "ok", "textLaenge": 1048576, "parser": "schema" },
+  "utf8": { "code": "lesen" },
+  "neuerstellung": { "pidVor": 2212, "pidNach": 2212, "seiteVor": "38BD869DECBB885844A3EFAD1E187A45", "seiteNach": "A16365EB740ADD062B0C6DF2455072B7", "fontScale": { "vor": "1.0", "waehrend": "1.15", "nach": "1.0" } },
+  "obenNach": "topResumedActivity=ActivityRecord{49621597 u0 de.baremos.fristenrechner/.MainActivity t77}"
+}

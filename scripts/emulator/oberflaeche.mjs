@@ -3,6 +3,15 @@ import { join } from 'node:path';
 import { hinweisGrenze } from '../../app/src/rechtsstand-hinweis.ts';
 import { STATUS, SICHTPRUEFUNGEN, sichtpruefungAusstehend, befund, evaluiereBeobachtungen, evaluiereBarrierebaum, evaluiereUeberlauf, evaluiereFehlerseite, evaluiereBruecke, evaluiereFehlerfalleGegenprobe, evaluiereTastatur, evaluiereFehlerseiteGegenprobe, evaluiereZurueck } from '../emulator-auswertung.mjs';
 import { navigation, netz } from './pruefungen.mjs';
+import { ohneGradleKommentare } from '../app-pruefungen.mjs';
+
+export function dateiMethodenVertrag(java) {
+  const quelltext = ohneGradleKommentare(java);
+  const erwartet = ['ausgabeBeginnen', 'ausgabeBlock', 'ausgabeAbschliessen', 'ausgabeVerwerfen', 'speichernUnter', 'teilen', 'projektWaehlen', 'zuruecksetzenBestaetigen'].sort();
+  const methoden = [...quelltext.matchAll(/@PluginMethod\s+public\s+void\s+(\w+)\s*\(PluginCall\s+call\)/g)].map(m => m[1]).sort();
+  if ((quelltext.match(/@PluginMethod\b/g) ?? []).length !== erwartet.length || JSON.stringify(methoden) !== JSON.stringify(erwartet)) throw new Error('Dateiablauf enthält unbekannte Brücken- oder Testmethoden.');
+  return methoden;
+}
 
 // Selektoren belegt durch packages/oberflaeche/src/Fristenrechner.astro:
 // #schedule-form, name=..., submit, #schedule-table-body, #result-regelstand.
@@ -12,6 +21,7 @@ import { navigation, netz } from './pruefungen.mjs';
 // Uhr der WebView verwenden die gemeinsamen Funktionen aus web-plattform.ts.
 // Ein bestandener Quellvertrag ist kein Nachweis eines erneuten Emulatorlaufs.
 export function quellvertrag(wurzel) {
+  dateiMethodenVertrag(readFileSync(join(wurzel, 'app/android/app/src/main/java/de/baremos/fristenrechner/io/DateiablaufPlugin.java'), 'utf8'));
   const markup = readFileSync(join(wurzel, 'packages/oberflaeche/src/Fristenrechner.astro'), 'utf8');
   const app = readFileSync(join(wurzel, 'app/src/pages/index.astro'), 'utf8');
   const ui = readFileSync(join(wurzel, 'packages/oberflaeche/src/fristenrechner-ui.ts'), 'utf8');

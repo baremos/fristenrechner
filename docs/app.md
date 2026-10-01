@@ -254,8 +254,8 @@ node scripts/emulator-lauf.mjs --api 24 --ablauf installation --ausgabe scratchp
 
 | Abbild | WebView des vorgesehenen Abbilds | Auswahl mit `--ablauf` |
 |---|---|---|
-| `fr-api36` | 133.0.6943.137 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `sicherung`, `alle`; Sicherung einschließlich Gerätewechsel |
-| `fr-api30` | 83.0.4103.120 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `sicherung`, `fehlerseite`, `alle`; Sicherung ohne Gerätewechsel |
+| `fr-api36` | 133.0.6943.137 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `dateien`, `sicherung`, `alle`; Sicherung einschließlich Gerätewechsel |
+| `fr-api30` | 83.0.4103.120 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `dateien`, `sicherung`, `fehlerseite`, `alle`; Sicherung ohne Gerätewechsel |
 | `fr-api24` | 52 | `installation`, `alle`; erwartete Ablehnung mit `INSTALL_FAILED_OLDER_SDK` |
 
 Der Lauf verwendet jeweils nur einen Emulator auf Port 5554 mit `-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect`. Nach dem Systemstart wartet er zunächst 45 Sekunden und prüft vor dem ersten Ablauf auf einen Dialog der Systemoberfläche. Dieselbe Prüfung gilt vor der Activity-Wertung und vor Fotos: Eine oben liegende App-Activity schließt einen verdeckenden Systemdialog nicht aus. Erkennt der Rahmen „System UI isn't responding“, liest er den Ansichtsbaum und tippt ausschließlich auf die Mitte des Knotens mit exakt „Wait“ oder „Warten“. Pro Dialogprüfung sind höchstens drei Versuche mit erneuter Prüfung zulässig; Baum, Koordinaten und Ergebnis werden aufgezeichnet. Fehlt der passende Knoten oder bleibt der Dialog sichtbar, ist der Ablauf ungültig. „Close app“ und andere Knoten werden nie betätigt. Ein vollständiger Ansichtsbaum (`<hierarchy … </hierarchy>`) ist auch dann lesbar, wenn `uiautomator dump` nach dem Schreiben mit Rückgabewert 137 endet. Ein erfolgreiches Betätigen erscheint eigens als „Systemdialog mit Wait geschlossen“ im Ergebnis. Navigationsfotos und die Gegenprobe ohne Fehlerseite benötigen keinen UI-Automator-Baum; sie sind ergänzende Rohbelege. Umgebungsvariablen für SDK und Testgeräte gelten nur für den gestarteten Prozess.
@@ -265,6 +265,7 @@ Der Lauf verwendet jeweils nur einen Emulator auf Port 5554 mit `-no-window -no-
 | Ablauf A, Debug über CDP | Start und Fehlerfalle, Formular und Berechnung mit Regelversion und Rechtsstand, Brückenaufruf, gespeicherte Eingaben nach `force-stop` und deren Löschung nach `pm clear`, Rechtsstandhinweis an der Grenze und am Folgetag, Navigation, Netz, Darstellung, Zurück-Taste und Barrierebaum. |
 | Darstellung innerhalb von A | Bildschirmfotos bei Schriftgröße 1,3 und 2,0, Nachtmodus, gedrehtem Bildschirm und eingeblendeter Tastatur. Vergleich von `scrollWidth` und `clientWidth`; bei Überlauf zusätzlich Elemente mit Text und Maßen, außer dem zulässigen Tabelleninnenraum. Rotation mit begrenzten Wiederholungen und tatsächlicher Ansichtsrichtung. Tastatur mit Eingabedienst, sichtbarer IME-Fläche und Fokus auf dem Eingabefeld; ergänzende Sichtprüfung der Bilder. |
 | Ablauf B, Release | Signierte Kopie der Release-APK im Ausgabeordner, Startbild und Fehlerfalle, Paketkennzeichen ohne `DEBUGGABLE` und `ALLOW_BACKUP`. Devtools-Sockets sind nur beim Build-Typ `user` als Release-Eigenschaft bewertbar. Netzmelder nach 60 Sekunden Ruhe, Hintergrund und Rückkehr. |
+| Dateien, Debug und Release | Speichern und Teilen mit SHA-256 gegen die Bytes vor dem nativen Transport, Import über DocumentsUI, Fehlerfälle über den Testprovider, Fokus und Lebenszyklus, Freigaben und Cache-Bereinigung. UID-Netzbeobachtung während aller Dateiwege; anschließend bestehende Sicherungsprüfung. Lauf am 2026-10-01 auf fr-api30 (47 bestanden, 3 dokumentierte Grenzen) und fr-api36 (50 bestanden, 1 dokumentierte Grenze), siehe unten. |
 | Netz | TCP-Netzmelder, Gegenprobe vor und nach der App sowie je nutzbarem Zugriffsweg: Fetch, XHR, Bild, Iframe, WebSocket, Beacon, EventSource, Prefetch und CapacitorHttp. Eine `.invalid`-Adresse ergänzt die Fehlerbeobachtung. Dazu `/proc/net`, auf API 36 die UID-Tabelle von `netstats` und eine nicht automatisch ausgewertete Paketaufzeichnung. |
 | Navigation | `location.href`, `window.open`, Link mit `target=_blank`, `mailto:`, `tel:`, `intent:`, `file:`, `content:` und `data:`; Prüfung von oberster Activity, lokaler Herkunft, Netzmelder und Protokollmeldungen. |
 | Sicherung | App vor `backupnow` starten und `stopped=false` prüfen. LocalTransport darf keine App-Daten ablegen; die Gegenprobe muss den gespeicherten Marker unter `app_webview/Default/Local Storage` sichern. Auf API 36 zusätzlich Gerätewechsel. |
@@ -281,6 +282,117 @@ Der Ausgabeordner enthält `ergebnis.json`, `zusammenfassung.txt`, `logcat.txt`,
 
 Auch nach einem Fehler räumt der Lauf auf: App und Gegenprobe deinstallieren, geänderte Uhr-, Schrift-, Nachtmodus- und Sicherungseinstellungen zurücksetzen, Emulator beenden, dessen `snapshots` löschen und eigene ADB-Weiterleitungen entfernen. Fehler beim Aufräumen gehören zum Ergebnis.
 
+### Dateiphase auf API 30 und 36
+
+Die Phase `dateien` ist am 2026-10-01 auf beiden Abbildern gelaufen, mit der
+Debug-APK `9dd552d0…690d` und der unveränderten Release-APK `06dadbca…b64e`:
+fr-api30 (WebView 83) 47 bestanden, 0 nicht bestanden, 0 ungültig,
+3 dokumentierte Grenzen, Rückgabewert 3, 45 Minuten; fr-api36 50 bestanden,
+0 nicht bestanden, 0 ungültig, 1 dokumentierte Grenze, Rückgabewert 3,
+45 Minuten. Die Neuauswertung aus den Rohbelegen ergibt dasselbe. Dokumentierte
+Grenzen sind der nicht provozierbare Schließfehler (beide Abbilder) und auf
+API 30 die fehlenden UID-Zähler von `netstats` im Datei-Netzfenster (Debug und
+Release). Alle übrigen Teilfälle D1 bis D12 und die Release-Fälle sind
+bestanden, darunter der Empfang im Testempfänger mit verweigertem Schreib-,
+Nachbar- und Projektzugriff, die Größenprüfung unabhängig von den Metadaten des
+Testproviders, der Streamfehler, die Cache-Bereinigung mit Widerruf und die
+Lebenszyklusfälle einschließlich `force-stop`. Vier Läufe davor auf fr-api30
+scheiterten an der Testumgebung, nicht an der App, und führten zu Korrekturen am
+Rahmen: Ein vorübergehend fehlender Wurzelknoten von `uiautomator` wird bis zu
+dreimal wiederholt; Werte mit doppelten Anführungszeichen schreibt
+`uiautomator` in einfache; die Resumed-Zeile von `dumpsys` fehlt im
+Activity-Wechsel kurz; eine Zeile am Ende einer langen Liste der
+Android-Auswahl bleibt unter der Navigationsleiste und lässt sich per Tastatur
+nicht zuverlässig fokussieren, deshalb verteilt der Testprovider seine
+Dokumente auf zwei kurze Wurzeln und die Importdateien in `Download` stehen
+mit dem Vorsatz `0-` oben; der Streamfehler des Testproviders liegt bei
+256 KiB, weil ein kurzes Lesen vor dem Fehler über FUSE als Dateiende ankommt.
+Ein Lauf brach ab, weil der Testempfänger von einem Handversuch noch
+installiert war; der Rahmen lehnt vorhandene Pakete ab.
+Die zuvor beschriebenen Handläufe ersetzen ihre Abnahme nicht. `alle` führt nach A
+und B die Dateiphase und anschließend die bisherige Sicherungsprüfung aus.
+Auch `--ablauf dateien` enthält diese Sicherungsprüfung; auf API 36 kommt
+der Gerätewechsel hinzu.
+
+Zuerst die Argumente ohne Build, APK-Zugriff oder Emulatorstart prüfen, dann
+die beiden Abbilder nacheinander ausführen. Die Ausgabeordner der echten
+Läufe müssen neu oder leer sein:
+
+```sh
+node scripts/emulator-lauf.mjs --api 30 --ablauf dateien --ausgabe scratchpad/paket-2.6/api30-dateien --nur-argumente
+node scripts/emulator-lauf.mjs --api 36 --ablauf dateien --ausgabe scratchpad/paket-2.6/api36-dateien --nur-argumente
+node scripts/emulator-lauf.mjs --api 30 --ablauf dateien --ausgabe scratchpad/paket-2.6/api30-dateien
+node scripts/emulator-lauf.mjs --api 36 --ablauf dateien --ausgabe scratchpad/paket-2.6/api36-dateien --varianten scratchpad/paket-2.6/api30-dateien/varianten
+```
+
+Die Wiederverwendung prüft auch den Quellstand der Test-App. Nach Änderungen
+ist ein neuer Variantenbau ohne `--varianten` erforderlich. Für einen ersten
+Durchlauf sind etwa 40 bis 75 Minuten je Abbild einzuplanen, zusätzlich der
+isolierte Variantenbau und die Cache-Kopie beim ersten Lauf. Dies ist ein
+Planwert, keine gemessene Laufzeit. Einzelne UI-Automator-Aufrufe oder eine
+gestörte Systemoberfläche können den Lauf verlängern oder ungültig machen.
+
+Der Rahmen installiert Debug-App, Gegenprobe und die separate Test-App
+`org.example.dateiprobe`. Der Testempfänger und dessen DocumentsProvider
+entstehen ausschließlich aus [Testquellen](../scripts/emulator/testempfaenger/README.md)
+im Ausgabeordner: Java 17, Mindest-API 30, Android-Framework ohne zusätzliche
+Bibliotheken oder angeforderte Berechtigungen. Gebaut wird offline aus dem
+vorhandenen Gradle-Cache, signiert mit dem vorhandenen Emulator-Debugschlüssel.
+Anschließend laufen Speichern, Teilen und Import auch gegen eine mit diesem
+Schlüssel signierte Kopie der unveränderten Release-APK. Ihre Ergebnisse
+werden getrennt von Debug ausgewiesen. Der Devtools-Zugang dieser
+`userdebug`-Abbilder ist keine zugesagte Eigenschaft eines Release-Geräts.
+
+`dateien-roh.json` enthält die Fälle D1 bis D11 und die Release-Fälle mit
+Schemafassung und Verweisen auf ihre Rohbelege. Dazu gehören Brückenaufträge
+und Antworten, Referenzbytes je Auftrag, gezogene Zieldateien, Empfänger- und
+Providerberichte, Formular- und Speicherzustände, Activity-/Seitenkennungen,
+Ansichtsbäume und Bilder. D12 steht in `dateien-netz-debug.json` und
+`dateien-netz-release.json`: Netzmelder vor/nach dem Fenster, UID-Socketproben
+während aller Wege und UID-Zähler auf API 36. `netz.pcap` bleibt ein
+ergänzender Rohbeleg. Die Sicherungsbelege, Installationsprüfsummen und
+`dateien-aufraeumen.json` bleiben ebenfalls im Laufordner.
+
+Speichern und Empfang können nur mit SHA-256-Gleichheit der gesammelten
+Brückenbytes und der tatsächlichen Zieldatei bestehen, einschließlich Name,
+MIME-Typ, Größe und JSON-/ZIP-/PDF-Struktur. Für zwei JSON- und XLSX-Exporte
+wird die WebView-Uhr für den Vergleich festgehalten; XLSX enthält einen
+Kalendertag. PDF wird gegen die Referenz genau seines Auftrags geprüft.
+Eine Erfolgsmeldung oder eine Datei im App-Cache allein genügt nicht.
+
+DocumentsUI wird in der Listenansicht bedient. Dateizeilen werden anhand
+des fokussierten `item_root` und der Titelfläche mit den Richtungstasten
+gewählt und mit Enter geöffnet. Neue Download-Dateien werden aus der
+Verzeichnisdifferenz ermittelt; vorhandene Dateien anderer Läufe bleiben
+erhalten. Bei Wiederholung kann Android den Namen um ` (1)` ergänzen.
+Neuerstellung wird über `font_scale` und den Wechsel der Devtools-Seite bei
+gleicher PID belegt; Rotation zählt dafür nicht. Einstellungen werden
+gesichert und auch nach einem Abbruch wiederhergestellt. Nur im Lauf
+registrierte Download-Dateien und Testinstallationen werden entfernt.
+
+Für D11 wird die Gerätezeit vorübergehend vorgestellt. Eine alte Freigabe
+wird zusätzlich über Präferenzdatei und Dateizeit gealtert; die frische
+Freigabe entsteht mit zeitlichem Abstand. Der App-Prozess bleibt bestehen.
+Vor dem nächsten Teilen muss die alte URI noch lesbar sein, danach muss ihr
+Zugriff verweigert werden. Die ursprüngliche Zeitautomatik und Gerätezeit
+werden anschließend wiederhergestellt, auch beim Aufräumen nach Abbruch.
+
+Die Neuauswertung prüft die binären Dateien erneut:
+
+```sh
+node scripts/emulator-auswertung.mjs --lauf scratchpad/paket-2.6/api30-dateien --ausgabe scratchpad/paket-2.6/api30-auswertung
+node scripts/emulator-auswertung.mjs --lauf scratchpad/paket-2.6/api36-dateien --ausgabe scratchpad/paket-2.6/api36-auswertung
+```
+
+Als dokumentierte Grenzen kommen ein nicht ohne Produktänderung auslösbarer
+Schließfehler, eine Auswahl ohne externen Empfänger und die fehlenden
+UID-Zähler von API 30 in Betracht. Damit ist der jeweilige Nachweis nicht
+bestanden. Der eigene Testempfänger und Testprovider müssen dagegen vorhanden
+und auswertbar sein; ihr Fehlen, ein fehlender Picker, fehlende Rohbytes oder
+unvollständige Lebenszyklusdaten machen den betroffenen Fall ungültig.
+Echte Empfängerprogramme, TalkBack, Herstelleranbieter und voller Speicher
+bleiben zusätzlich auf einem Gerät zu prüfen.
+
 ### Grenzen und Bewertung
 Die [Chromium-Quellen zu SharedStatics, AwInit und BuildInfo](https://chromium.googlesource.com/chromium/src/+/3546854f59..2e285ebae2) erklären das erzwungene WebView-Debugging auf `eng` und `userdebug`. Die genaue Zuordnung dieser Quellen zu den verwendeten WebView-Binärdateien wurde nicht geprüft. Die Release-App hat kein `DEBUGGABLE`; Capacitor übergibt deshalb ohne eigene Überschreibung `false`. Auf einem Abbild mit Build-Typ ungleich `user` bleibt die Socketprüfung unabhängig vom Socketfund eine dokumentierte Grenze. Bei historischen Läufen wird der Typ ausdrücklich aus dem Gerätefingerabdruck abgeleitet; neue Läufe erfassen `ro.build.type` direkt. Der Emulatorrahmen verlangt `adb root` und ist nicht direkt für den fehlenden Nachweis auf einem Gerät mit Build-Typ `user` verwendbar.
 
@@ -289,7 +401,7 @@ Die [Chromium-Quellen zu SharedStatics, AwInit und BuildInfo](https://chromium.g
 - `dumpsys dnsresolver` lieferte auch für die Gegenprobe keine Anfragen und ist kein DNS-Nachweis. Auf API 30 enthält `dumpsys netstats detail` keine auswertbaren Zeilen je UID. Die Tabelle `mAppUidStatsMap` auf API 36 ist nur ein zusätzlicher Beleg; `/proc/net` erfasst Momentaufnahmen.
 - Auf den vorgesehenen AOSP-Abbildern fehlen Empfänger für `mailto:` und `intent:`. Deren Gegenproben können die Sperre nicht belegen. `file:`, `content:` und `data:` werden bereits von Chromium gesperrt; erwartet werden dessen konkrete Fehlermeldungen statt einer Meldung des Plugins. Auch hier fehlt eine wirksame Gegenprobe für das Plugin. Diese fünf Fälle bleiben ausdrücklich als Grenzen sichtbar.
 - A8 baut nach Darstellungswechseln die CDP-Verbindung neu auf: In den Läufen vom 30.09.2026 wurde die Activity bei geändertem `font_scale` neu erzeugt. A10 verwendet ebenfalls eine frische Verbindung und ruft vor `Accessibility.getFullAXTree` zuerst `Accessibility.enable` auf. Bleibt allein die AX-Abfrage trotz erreichbarem DOM unbeantwortet oder ist die Methode nicht vorhanden, lautet der Befund „dokumentierte Grenze: nicht verfügbar“. Namenquellen der Bedienelemente aus DOM und ARIA werden separat geprüft. Sie ersetzen weder einen berechneten Barrierebaum noch TalkBack. Die alten Zeitüberschreitungen auf der veralteten Verbindung belegen keine fehlende AX-Unterstützung.
-- Die Bilder benötigen eine Sichtprüfung, insbesondere für Systemleisten, Startverhalten, Verdeckung und Lesbarkeit. Der automatische Überlauftest deckt diese Punkte nicht ab. Dateiimport, Exporte, Teilen und Bestätigungsdialog sowie TalkBack auf einem echten Gerät sind nicht Teil dieses Emulatornachweises.
+- Die Bilder benötigen eine Sichtprüfung, insbesondere für Systemleisten, Startverhalten, Verdeckung und Lesbarkeit. Der automatische Überlauftest deckt diese Punkte nicht ab. Die Dateiphase ergänzt Import, Exporte, Teilen und Bestätigung; sie ersetzt weder TalkBack noch die Prüfung echter Empfänger und Dokumentanbieter auf einem Gerät.
 - LocalTransport prüft nur das beschriebene Verhalten dieser Abbilder. Die Meldung „Transport rejected package“ beim Gerätewechsel belegt allein keine Ursache; entscheidend sind fehlende App-Daten und die wirksame Gegenprobe. Ein fehlender oder nicht auswertbarer Transport ergibt keinen dynamischen Nachweis. Die statische Prüfung der Sicherungsregeln bleibt davon getrennt.
 
 Die Auswertung unterscheidet „bestanden“, „nicht bestanden“, „ungültig“, „dokumentierte Grenze“ und „Sichtprüfung ausstehend“. Rückgabewert `0` bedeutet, dass alle gewählten Prüfungen und ihre Gegenproben bestanden sind; `1` kennzeichnet einen Fehler, `2` eine ungültige oder unvollständige Messung und `3` ausschließlich dokumentierte Grenzen neben bestandenen Prüfungen. `4` bedeutet ausstehende Sichtprüfungen, gegebenenfalls neben dokumentierten Grenzen: Die Messung ist dadurch nicht ungültig, aber die Abnahme ist unvollständig. Fehler und ungültige Messungen haben Vorrang vor `4`, ausstehende Sichtprüfung hat Vorrang vor `3`. `64` bedeutet falsche oder fehlende Laufargumente. Unbekannte Formate, fehlende Abschnitte und unwirksame Gegenproben sind kein Bestehen. Die bekannten Navigationsgrenzen haben eine eigene Stufe mit Begründung; andere unwirksame Gegenproben bleiben ungültig. Für die Abnahme sind Grenzen einzeln ausdrücklich als Einschränkung zu akzeptieren oder durch zusätzliche Belege zu schließen; Codes `3` und `4` dürfen nicht als vollständiges Bestehen behandelt werden.
