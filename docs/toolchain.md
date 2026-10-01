@@ -206,6 +206,7 @@ So bleiben die Revisionen unter Kontrolle:
 - Ist eine vorhandene `package.xml` unlesbar oder beschreibt sie ein anderes Paket, gilt das Paket als ungültig. Das Programm greift dann nicht auf `source.properties` zurück.
 - Revisionen aus Zahlen und Punkten vergleicht das Programm Stelle für Stelle, fehlende Stellen gelten als 0. Revisionen mit Zusatz wie `36.0.0 rc5` vergleicht es als Text.
 - `scripts/sdk-pruefung.test.mjs` prüft das Programm: `node --test "scripts/*.test.mjs"`. Der Test braucht ein JDK 21.
+- Auch die XML-Quellprüfung der App nutzt dieses Muster: `java scripts/XmlQuelle.java <Datei>` liest Manifest und Exportpfade mit dem Parser des JDK, ohne DTD oder externe Entitäten. Die Tests in `scripts/app-pruefungen.test.mjs` und `scripts/xml-quelle.test.mjs` setzen deshalb ebenfalls ein JDK 21 voraus.
 - Das Build-Skript vergleicht vor jedem Build die Pakete beider Gruppen. Mit `--ohne-testgruppe` übergibt es nur die Gruppe „Build" an dasselbe Prüfprogramm und nennt diese Auswahl in der Ausgabe:
 
 | Befund | Folge |

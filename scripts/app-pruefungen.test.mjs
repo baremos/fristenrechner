@@ -444,6 +444,33 @@ function nativeProbe(w) {
 test('K3/K4: native Quelldateien bestehen', () => {
   assert.deepEqual(pruefeNativeQuellen({ wurzel: projekt }), []);
 });
+for (const datei of ['AndroidManifest.xml', 'res/xml/export_paths.xml']) {
+  for (const [titel, aendere] of [
+    ['nachgestellte offene Klammer', xml => xml + '<'],
+    ['nachgestellte XML-Deklaration', xml => xml + '<?xml version="1.0"?>'],
+    ['DOCTYPE', xml => xml.replace(/<\?xml[^?]*\?>\s*/, '')
+      .replace(/<(manifest|paths)\b/, '<!DOCTYPE $1><$1')],
+    ['unbekannte Entität', xml => xml.replace(/<\/(manifest|paths)>/, '&unbekannt;</$1>')],
+    ['zwei Wurzeln', xml => xml + '<weitere/>'],
+    ['unvollständiger Abschluss', xml => xml.replace(/<\/(manifest|paths)>/, '</$1')],
+  ]) {
+    test(`K3/K4 native XML-Gegenprobe: ${datei}, ${titel}`, () => {
+      const w = ordner({}); nativeProbe(w);
+      const pfad = join(w, 'app/android/app/src/main', datei);
+      writeFileSync(pfad, aendere(readFileSync(pfad, 'utf8')));
+      erwartetFehler(`${datei}: ${titel}`, pruefeNativeQuellen({ wurzel: w }), /XML-Quellprüfung fehlgeschlagen/);
+    });
+  }
+}
+test('K3/K4: Kommentare und Verarbeitungsanweisungen ändern den Quellenvertrag nicht', () => {
+  const w = ordner({}); nativeProbe(w);
+  for (const datei of ['AndroidManifest.xml', 'res/xml/export_paths.xml']) {
+    const pfad = join(w, 'app/android/app/src/main', datei);
+    writeFileSync(pfad, readFileSync(pfad, 'utf8').replace(/<\/(manifest|paths)>/,
+      '<!-- <fremd/> --><?probe ignorieren?></$1>') + '<?nachher ignorieren?>');
+  }
+  assert.deepEqual(pruefeNativeQuellen({ wurzel: w }), []);
+});
 for (const [titel, datei, von, nach, muster] of [
   ['exported=true', 'AndroidManifest.xml', /android:authorities="\$\{applicationId\}\.exportdateien"\s+android:exported="false"/, 'android:authorities="${applicationId}.exportdateien" android:exported="true"', /ExportFileProvider/],
   ['andere Authority', 'AndroidManifest.xml', '${applicationId}.exportdateien', '${applicationId}.anders', /ExportFileProvider/],

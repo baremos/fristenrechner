@@ -21,10 +21,11 @@ import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpat
 import { createHash } from 'node:crypto';
 import { basename, extname, join, relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { crc32, inflateRawSync } from 'node:zlib';
 import { parse } from '@babel/parser';
-import { standardSdk, windows } from './werkzeuge.mjs';
+import { findeJdk, standardSdk, vorgabe as werkzeugVorgabe, windows } from './werkzeuge.mjs';
 
 const HIER = new URL('.', import.meta.url);
 export const VORGABE = JSON.parse(readFileSync(new URL('app-pruefungen.json', HIER), 'utf8'));
@@ -611,7 +612,7 @@ export function leseAndroidZustand({ wurzel, umgebung = process.env } = {}) {
  * erfassten Zustand nicht verändern. Ohne Git kein Bestehen. */
 export function pruefeSync({ wurzel, vorher, vorgabe = VORGABE, umgebung = process.env } = {}) {
   const fehler = [];
-  fehler.push(...pruefeNativeQuellen({ wurzel }));
+  fehler.push(...pruefeNativeQuellen({ wurzel, umgebung }));
   versucht(fehler, 'K3 Dateien', () => {
     const haupt = join(wurzel, 'app/android/app/src/main');
     fehler.push(...pruefePublic(dateiBaum(join(haupt, 'assets/public')), dateiBaum(join(wurzel, 'app/dist')), vorgabe.sync.leereDateien));
@@ -698,7 +699,7 @@ function versionscode(version) {
 
 export function pruefeGradle({ wurzel, vorgabe = VORGABE, umgebung = process.env } = {}) {
   const fehler = [];
-  fehler.push(...pruefeNativeQuellen({ wurzel }));
+  fehler.push(...pruefeNativeQuellen({ wurzel, umgebung }));
   versucht(fehler, 'K4 Git', () => {
     // Nur der Index legt den Modus künftiger Klone fest. Der Dateisystemmodus
     // unter Windows belegt das Ausführungsrecht für einen Linux-Klon nicht.
@@ -758,33 +759,15 @@ export function pruefeGradle({ wurzel, vorgabe = VORGABE, umgebung = process.env
   return fehler;
 }
 
-// Enger XML-Leser für unsere nativen Quelldateien. Unbekannte Syntax wird abgewiesen.
-function quellXml(text) {
-  text = text.replace(/<\?xml[^?]*\?>/g, '').replace(/<!--[\s\S]*?-->/g, '');
-  const root = { name: '#', attribute: {}, kinder: [] };
-  const stack = [root];
-  for (const teil of text.match(/<[^>]*>|[^<]+/g) ?? []) {
-    if (!teil.startsWith('<')) { if (teil.trim()) throw new Error('Unerwarteter XML-Text.'); continue; }
-    if (/^<\//.test(teil)) {
-      if (stack.length < 2 || teil !== `</${stack.pop().name}>`) throw new Error('XML-Abschluss weicht ab.');
-      continue;
-    }
-    const m = /^<([A-Za-z][\w:.-]*)([\s\S]*?)(\/?)>$/.exec(teil);
-    if (!m) throw new Error('XML-Syntax nicht unterstützt.');
-    const attribute = {};
-    let rest = m[2];
-    while (rest.trim()) {
-      const a = /^\s+([A-Za-z][\w:.-]*)\s*=\s*(?:"([^"<&]*)"|'([^'<&]*)')/.exec(rest);
-      if (!a || Object.hasOwn(attribute, a[1])) throw new Error('XML-Attribut unbekannt oder doppelt.');
-      attribute[a[1]] = a[2] ?? a[3];
-      rest = rest.slice(a[0].length);
-    }
-    const k = { name: m[1], attribute, kinder: [] };
-    stack.at(-1).kinder.push(k);
-    if (!m[3]) stack.push(k);
+// Wie SdkPruefung.java direkt aus der Quelle starten, ohne Compile-Schritt.
+function leseQuellXml(datei, java, umgebung) {
+  const lauf = spawnSync(java, [fileURLToPath(new URL('XmlQuelle.java', HIER)), datei], {
+    encoding: 'utf8', env: umgebung, timeout: 30_000,
+  });
+  if (lauf.error || lauf.status !== 0) {
+    throw new Error(`${basename(datei)}: XML-Quellprüfung fehlgeschlagen (${lauf.error?.code ?? `Rückgabewert ${lauf.status}`}).`);
   }
-  if (stack.length !== 1 || root.kinder.length !== 1) throw new Error('XML-Wurzel fehlt oder ist mehrdeutig.');
-  return root;
+  return JSON.parse(lauf.stdout);
 }
 
 function pruefeExportPfade(baum) {
@@ -805,13 +788,16 @@ const DATEIABLAUF_TEXTE = {
 };
 
 /** K3/K4: Quellenvertrag ergänzt die Prüfung des zusammengeführten APK-Manifests. */
-export function pruefeNativeQuellen({ wurzel } = {}) {
+export function pruefeNativeQuellen({ wurzel, umgebung = process.env } = {}) {
   const fehler = [];
   versucht(fehler, 'Native Quellen', () => {
     const src = join(wurzel, 'app/android/app/src');
     const dateien = alleDateien(src);
     if (!isDeepStrictEqual(dateien.filter(p => p.endsWith('AndroidManifest.xml')), ['main/AndroidManifest.xml'])) throw new Error('Genau ein Quellmanifest erwartet.');
-    const baum = quellXml(readFileSync(join(src, 'main/AndroidManifest.xml'), 'utf8'));
+    const jdk = findeJdk(umgebung);
+    if (!jdk.pfad) throw new Error(`Kein JDK ${werkzeugVorgabe.jdk.hauptversion} für die XML-Quellprüfung gefunden. Siehe docs/toolchain.md.`);
+    const java = join(jdk.pfad, 'bin', windows ? 'java.exe' : 'java');
+    const baum = leseQuellXml(join(src, 'main/AndroidManifest.xml'), java, umgebung);
     const manifests = nachfahren(baum, 'manifest');
     const apps = nachfahren(baum, 'application');
     if (manifests.length !== 1 || apps.length !== 1) throw new Error('Manifest/application ist nicht eindeutig.');
@@ -830,7 +816,7 @@ export function pruefeNativeQuellen({ wurzel } = {}) {
       || !isDeepStrictEqual(p[0].kinder[0].attribute, { 'android:name': 'android.support.FILE_PROVIDER_PATHS', 'android:resource': '@xml/export_paths' })) fehler.push('ExportFileProvider: Klasse, Authority, exported, Grants oder Pfadressource weichen ab.');
     const pfade = dateien.filter(p => /\/res\/xml[^/]*\/export_paths\.xml$/.test(p));
     if (!isDeepStrictEqual(pfade, ['main/res/xml/export_paths.xml'])) fehler.push('export_paths: genau eine unqualifizierte Pfadressource, keine Varianten erwartet.');
-    if (!pruefeExportPfade(quellXml(readFileSync(join(src, 'main/res/xml/export_paths.xml'), 'utf8')))) fehler.push('export_paths: genau ein cache-path export/ ohne weitere Pfadtypen erwartet.');
+    if (!pruefeExportPfade(leseQuellXml(join(src, 'main/res/xml/export_paths.xml'), java, umgebung))) fehler.push('export_paths: genau ein cache-path export/ ohne weitere Pfadtypen erwartet.');
     const wertDateien = dateien.filter(p => /\/res\/values[^/]*\/[^/]+\.xml$/.test(p))
       .map(p => ({ pfad: p, text: readFileSync(join(src, p), 'utf8').replace(/<!--[\s\S]*?-->/g, '') }));
     for (const { text } of wertDateien) {
