@@ -40,7 +40,7 @@ From the data entered, the software produces a schedule of dates and deadlines f
 
 “Projekt exportieren”, “Excel exportieren” and “PDF exportieren” open the Android picker to save under a chosen name and at a chosen location. The separate actions “Projekt teilen”, “Excel teilen” and “PDF teilen” make the respective file available to a selected target app; the message does not confirm that it has been sent. “Projekt importieren” opens a JSON project file through the Android picker, with a limit of 1 MiB. Cancelling preserves the existing project.
 
-The current project is saved in the local storage of the WebView. The app has no internet permission; selected document providers and target apps may transfer data themselves. [Privacy](docs/datenschutz.md) describes temporary file cleanup, backup, device migration and deletion limits. The same German text is available offline in the app under “Datenschutz” and is initially a working draft awaiting approval.
+The current project is saved in the local storage of the WebView. The app has no internet permission; selected document providers and target apps may transfer data themselves. [Privacy](docs/datenschutz.md) describes temporary file cleanup, backup, device migration and deletion limits. The same German text is available offline in the app under “Datenschutz”.
 
 The emulator evidence and its limitations are documented in [docs/app.md](docs/app.md#dateiphase-auf-api-30-und-36), and the outstanding tests in [docs/testmatrix.md](docs/testmatrix.md). These runs do not replace tests of physical devices, document providers and receiving applications.
 

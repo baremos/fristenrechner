@@ -1,7 +1,5 @@
 # Datenschutz
 
-Arbeitsfassung für die Textprüfung und die Freigabe durch Andreas Schmidt. Dieser Text ist noch nicht freigegeben.
-
 ## Verarbeitung und Zwecke
 
 Der Fristenrechner verarbeitet Ihre Eingaben, um Termine und Fristen eines Vergabeverfahrens zu berechnen. Dazu gehören die gewählte Vergabeordnung und Verfahrensart, das Bundesland, Datumsangaben, Fristen und weitere Berechnungsoptionen. Freiwillige Angaben zu Kunde oder Auftraggeber, Projektname und Vergabenummer dienen der Zuordnung Ihres Projekts und erscheinen auch in den Ausgaben.
