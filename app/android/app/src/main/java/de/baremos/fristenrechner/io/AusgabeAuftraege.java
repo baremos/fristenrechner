@@ -140,6 +140,8 @@ final class AusgabeAuftraege implements AutoCloseable {
         return a;
     }
 
+    synchronized boolean hatAktivenAuftrag() { return aktiv != null; }
+
     synchronized File zumTeilenBereitstellen(String id) throws DateiablaufFehler {
         AusgabeAuftrag a = holeAbgeschlossen(id);
         // Vor dem Chooser persistent machen: ein Prozessende darf freigegebene Bytes nicht entfernen.

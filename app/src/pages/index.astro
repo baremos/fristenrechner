@@ -45,7 +45,7 @@ const texte = {
     <p id="app-startfehler" class="app-hinweis" role="alert" hidden>Im Fristenrechner ist ein Fehler aufgetreten. Bitte starten Sie die App neu. Tritt der Fehler erneut auf, ist die Systemkomponente „Android System WebView“ möglicherweise zu alt.</p>
     <p id="app-rechtsstand-hinweis" class="app-hinweis" role="status" hidden
        data-rechtsstand={RECHTSSTAND_DATUM}>Diese Fassung rechnet mit dem Rechtsstand {RECHTSSTAND}. Seitdem sind mehr als zwölf Monate vergangen. Eine neuere Version des Fristenrechners kann vorliegen. Die Berechnung bleibt möglich.</p>
-    <Fristenrechner texte={texte} exportInhalt={webExportInhalt} />
+    <Fristenrechner texte={texte} exportInhalt={webExportInhalt} importBedienung="schaltflaeche" />
     <details class="app-abschnitt">
       <summary>Über diese App</summary>
       <p>Fristenrechner Vergabe, Version {app.version}</p>
@@ -61,15 +61,15 @@ const texte = {
   </main>
   <script>
     import '../rechtsstand-anzeige';
-    import { erzeugeNativeDateiAusgabe } from '../adapters/dateiausgabe';
-    import { erzeugeWebPlattform, initFristenrechner } from '@baremos/fristenrechner-ui/ui';
+    import { erzeugeAppPlattform } from '../adapters/app-plattform';
+    import { initFristenrechner } from '@baremos/fristenrechner-ui/ui';
     import type { ExportInhalt, GastgeberTexte } from '@baremos/fristenrechner-ui/ui';
 
     const root = document.querySelector<HTMLElement>('[data-fristenrechner]');
     if (root) {
       const texte = JSON.parse(root.dataset.gastgeberTexte!) as GastgeberTexte;
       const exportInhalt = JSON.parse(root.dataset.exportInhalt!) as ExportInhalt;
-      const plattform = { ...erzeugeWebPlattform(root), ausgabe: erzeugeNativeDateiAusgabe() };
+      const plattform = erzeugeAppPlattform(root);
       initFristenrechner(root, { plattform, texte, exportInhalt });
     }
   </script>

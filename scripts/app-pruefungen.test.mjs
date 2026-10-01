@@ -11,7 +11,7 @@ import { standardSdk, windows } from './werkzeuge.mjs';
 
 const echteKonfiguration = JSON.parse(readFileSync(new URL('../app/capacitor.config.json', import.meta.url), 'utf8'));
 const projekt = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const scratchpad = join(projekt, 'scratchpad/paket-2.5-c3');
+const scratchpad = process.env.TMP ?? join(projekt, 'scratchpad/paket-2.6/tmp');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'app-pruefungen-'));
 after(() => rmSync(arbeit, { recursive: true, force: true }));
@@ -179,8 +179,8 @@ const SAUBER = {
   '_astro/a.AbCdEfGh.css': '.a{background:url(data:image/png;base64,AA==)}',
 };
 
-// Konstruierter Ausschnitt mit denselben sechs Aufrufstellen wie der Appadapter.
-// Der zweite gleichnamige Parameter zeigt, dass die Oberfläche nicht mitzählt.
+// Konstruierter Ausschnitt mit denselben acht Aufrufstellen wie die Appadapter.
+// Gleichnamige Parameter und Methoden der Oberfläche zählen nicht mit.
 const DATEIAUSGABE = `
 function adapter(p = dateiablauf) {
   async function ausgeben() {
@@ -192,11 +192,15 @@ function adapter(p = dateiablauf) {
     await p.ausgabeVerwerfen({ auftragId });
   }
 }
-function oberflaeche(p) { p.teilen(datei); }
+function eingabe(p = dateiablauf) {
+  p.projektWaehlen();
+  p.zuruecksetzenBestaetigen();
+}
+function oberflaeche(p) { p.teilen(datei); p.zuruecksetzenBestaetigen(); }
 `;
-const BRUECKENZAHLEN = { ausgabeBeginnen: 1, ausgabeBlock: 1, ausgabeAbschliessen: 1, speichernUnter: 1, teilen: 1, ausgabeVerwerfen: 1 };
+const BRUECKENZAHLEN = { ausgabeBeginnen: 1, ausgabeBlock: 1, ausgabeAbschliessen: 1, speichernUnter: 1, teilen: 1, ausgabeVerwerfen: 1, projektWaehlen: 1, zuruecksetzenBestaetigen: 1 };
 
-test('K2: native Ausgabe zählt nur die sechs Aufrufstellen am Plugin und die UTF-8-Bytes', () => {
+test('K2: native Dateiabläufe zählen nur die acht Aufrufstellen am Plugin und die UTF-8-Bytes', () => {
   const name = '_astro/app.AbCdEfGh.js';
   const inhalt = `${DATEIAUSGABE}\nconst meldung = 'Größe';`;
   const { fehler, bericht } = pruefeDist(ordner({ ...SAUBER, [name]: inhalt }));
@@ -214,6 +218,13 @@ for (const [titel, vorher, nachher] of [
   ['zusätzliches Speicherfeld', 'speichernUnter({ auftragId })', 'speichernUnter({ auftragId, mime })'],
   ['falsches Teilenfeld', 'teilen({ auftragId })', 'teilen({ id: auftragId })'],
   ['zusätzliches Verwerfenfeld', 'ausgabeVerwerfen({ auftragId })', 'ausgabeVerwerfen({ auftragId, force: true })'],
+  ...['projektWaehlen', 'zuruecksetzenBestaetigen'].flatMap(name => [
+    [`${name} mit leerem Objekt`, `p.${name}();`, `p.${name}({});`],
+    [`${name} mit Feld`, `p.${name}();`, `p.${name}({ pfad });`],
+    [`${name} mit undefined`, `p.${name}();`, `p.${name}(undefined);`],
+    [`${name} fehlt`, `p.${name}();`, ''],
+    [`${name} doppelt`, `p.${name}();`, `p.${name}(); p.${name}();`],
+  ]),
   ['zweites Argument', 'teilen({ auftragId })', 'teilen({ auftragId }, true)'],
   ['ausgebreitete Felder', 'teilen({ auftragId })', 'teilen({ ...kennung })'],
   ['doppeltes Feld', 'teilen({ auftragId })', 'teilen({ auftragId, auftragId })'],
@@ -425,7 +436,7 @@ function schreibe(w, name, text) {
   writeFileSync(join(w, name), text);
 }
 function nativeProbe(w) {
-  for (const p of ['AndroidManifest.xml', 'res/xml/export_paths.xml', 'java/de/baremos/fristenrechner/MainActivity.java']) {
+  for (const p of ['AndroidManifest.xml', 'res/xml/export_paths.xml', 'res/values/strings.xml', 'java/de/baremos/fristenrechner/MainActivity.java']) {
     const relativ = 'app/android/app/src/main/' + p;
     schreibe(w, relativ, readFileSync(join(projekt, relativ), 'utf8'));
   }
@@ -442,6 +453,11 @@ for (const [titel, datei, von, nach, muster] of [
   ['zusätzliches Plugin', 'java/de/baremos/fristenrechner/MainActivity.java', 'super.onCreate', 'registerPlugin(WeiteresPlugin.class); super.onCreate', /MainActivity/],
   ['doppeltes Datei-Plugin', 'java/de/baremos/fristenrechner/MainActivity.java', 'super.onCreate', 'registerPlugin(DateiablaufPlugin.class); super.onCreate', /MainActivity/],
   ['zusätzliche Berechtigung', 'AndroidManifest.xml', '<application', '<uses-permission android:name="android.permission.INTERNET"/><application', /Berechtigung/],
+  ...['datei_teilen_titel', 'projekt_zuruecksetzen_frage', 'projekt_zuruecksetzen_abbrechen', 'projekt_zuruecksetzen_bestaetigen'].flatMap(name => [
+    [`${name} fehlt`, 'res/values/strings.xml', new RegExp(`<string name="${name}">[^<]*</string>`), '', new RegExp(name)],
+    [`${name} geändert`, 'res/values/strings.xml', new RegExp(`(<string name="${name}">)[^<]*`), '$1Anderer Text', new RegExp(name)],
+    [`${name} als Alias`, 'res/values/strings.xml', new RegExp(`<string name="${name}">[^<]*</string>`), `<item type="string" name="${name}">@string/app_name</item>`, new RegExp(name)],
+  ]),
 ]) {
   test(`K3/K4 native Gegenprobe: ${titel}`, () => {
     const w = ordner({}); nativeProbe(w);
@@ -457,6 +473,13 @@ test('K3/K4 native Gegenprobe: alternative Pfadressource und Alias', () => {
   schreibe(w, 'app/android/app/src/main/res/values/pfade.xml', '<resources><item type="xml" name="export_paths">@xml/anders</item></resources>');
   erwartetFehler('Alias', pruefeNativeQuellen({ wurzel: w }), /Ressourcenalias/);
 });
+for (const name of ['projekt_zuruecksetzen_frage', 'projekt_zuruecksetzen_abbrechen', 'projekt_zuruecksetzen_bestaetigen']) {
+  test(`K3/K4 native Gegenprobe: ${name} mit Variante`, () => {
+    const w = ordner({}); nativeProbe(w);
+    schreibe(w, 'app/android/app/src/main/res/values-de/strings.xml', `<resources><string name="${name}">Anderer Text</string></resources>`);
+    erwartetFehler(name, pruefeNativeQuellen({ wurzel: w }), new RegExp(name));
+  });
+}
 function syncProbe() {
   const w = ordner({
     'app/dist/index.html': '<head></head>',
@@ -767,12 +790,18 @@ function aapt(args) {
   assert.equal(r.status, 0, `aapt2 ${args.join(' ')}\n${r.stdout}\n${r.stderr}`);
 }
 function apkProbe(optionen = {}) {
+  let dateiablaufTexte = `<string name="datei_teilen_titel">Datei teilen</string>
+    <string name="projekt_zuruecksetzen_frage">Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?</string>
+    <string name="projekt_zuruecksetzen_abbrechen">Abbrechen</string>
+    <string name="projekt_zuruecksetzen_bestaetigen">Zurücksetzen</string>`;
+  if (optionen.dateiablaufTexte) dateiablaufTexte = optionen.dateiablaufTexte(dateiablaufTexte);
   const w = ordner({
     'scripts/toolchain.json': JSON.stringify(toolchain), 'app/package.json': JSON.stringify({ version: appVersion }),
     'app/capacitor.config.json': JSON.stringify(echteKonfiguration), 'app/dist/index.html': '<head></head>',
-    'res/values/strings.xml': '<resources><string name="titel">Test</string></resources>',
+    'res/values/strings.xml': `<resources><string name="titel">Test</string>${dateiablaufTexte}</resources>`,
     'res/values-de/strings.xml': '<resources><string name="titel">Deutsch</string></resources>',
   });
+  if (optionen.dateiablaufVariante) schreibe(w, 'res/values-v31/strings.xml', `<resources><string name="${optionen.dateiablaufVariante}">Anderer Text</string></resources>`);
   const erlaubt = VORGABE.apk.berechtigung;
   const ausschluesse = VORGABE.apk.sicherungsDomaenen.map((domain) => `<exclude domain="${domain}" path="."/>`).join('');
   let regeln = `<data-extraction-rules><cloud-backup>${ausschluesse}</cloud-backup><device-transfer>${ausschluesse}</device-transfer></data-extraction-rules>`;
@@ -827,6 +856,12 @@ const faelleApk = [
   ['zusätzlicher Cachepfad', { exportPfade: r => r.replace('</paths>', '<cache-path name="extra" path="mehr/"/></paths>') }, /export_paths: genau ein cache-path/],
   ['root-path', { exportPfade: r => r.replace('cache-path', 'root-path') }, /export_paths: genau ein cache-path/],
   ['Exportpfadvariante', { exportVariante: true }, /export_paths: genau eine unqualifizierte/],
+  ...['datei_teilen_titel', 'projekt_zuruecksetzen_frage', 'projekt_zuruecksetzen_abbrechen', 'projekt_zuruecksetzen_bestaetigen'].flatMap(name => [
+    [`${name} fehlt`, { dateiablaufTexte: r => r.replace(new RegExp(`<string name="${name}">[^<]*</string>`), '') }, new RegExp(name)],
+    [`${name} geändert`, { dateiablaufTexte: r => r.replace(new RegExp(`(<string name="${name}">)[^<]*`), '$1Anderer Text') }, new RegExp(name)],
+    [`${name} als Alias`, { dateiablaufTexte: r => r.replace(new RegExp(`<string name="${name}">[^<]*</string>`), `<item type="string" name="${name}">@string/titel</item>`) }, new RegExp(name)],
+    [`${name} mit Variante`, { dateiablaufVariante: name }, new RegExp(name)],
+  ]),
   ['zusätzliche nicht exportierte Komponente', manifestAendern('</application>', '<service android:name="de.baremos.Extra" android:exported="false"/></application>'), /Gesamtinventar/],
   ['INTERNET statt erlaubter Berechtigung', manifestAendern(permissionTag, '<uses-permission android:name="android.permission.INTERNET"/>'), /Berechtigungen: erwartet ausschließlich/],
   ['zweite Berechtigung INTERNET', manifestAendern(permissionTag, permissionTag + '<uses-permission android:name="android.permission.INTERNET"/>'), /Berechtigungen: erwartet ausschließlich/],

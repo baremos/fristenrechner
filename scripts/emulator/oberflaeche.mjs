@@ -6,9 +6,10 @@ import { navigation, netz } from './pruefungen.mjs';
 
 // Selektoren belegt durch packages/oberflaeche/src/Fristenrechner.astro:
 // #schedule-form, name=..., submit, #schedule-table-body, #result-regelstand.
-// Speichern/Wiederherstellen: fristenrechner-ui.ts und Webadapter web-plattform.ts.
+// Speichern/Wiederherstellen: fristenrechner-ui.ts und erzeugeWebSpeicher.
 // Hinweis/Fehlerfalle: app/src/pages/index.astro und rechtsstand-anzeige.ts.
-// Die Ausgabe nutzt Dateiablauf; Import und Rücksetzen bleiben im Webadapter.
+// App-Plattform: Ausgabe, Import und Rücksetzen über Dateiablauf; Speicher und
+// Uhr der WebView verwenden die gemeinsamen Funktionen aus web-plattform.ts.
 // Ein bestandener Quellvertrag ist kein Nachweis eines erneuten Emulatorlaufs.
 export function quellvertrag(wurzel) {
   const markup = readFileSync(join(wurzel, 'packages/oberflaeche/src/Fristenrechner.astro'), 'utf8');
@@ -16,6 +17,9 @@ export function quellvertrag(wurzel) {
   const ui = readFileSync(join(wurzel, 'packages/oberflaeche/src/fristenrechner-ui.ts'), 'utf8');
   const web = readFileSync(join(wurzel, 'packages/oberflaeche/src/web-plattform.ts'), 'utf8');
   const ausgabe = readFileSync(join(wurzel, 'app/src/adapters/dateiausgabe.ts'), 'utf8');
+  const eingabe = readFileSync(join(wurzel, 'app/src/adapters/dateiimport.ts'), 'utf8');
+  const vertrag = readFileSync(join(wurzel, 'app/src/adapters/dateiablauf-vertrag.ts'), 'utf8');
+  const plattform = readFileSync(join(wurzel, 'app/src/adapters/app-plattform.ts'), 'utf8');
   for (const s of ['id="schedule-form"', 'id="result-regelstand"', 'id="schedule-table-body"', 'type="submit"', 'name="kunde"', 'name="projektname"', 'name="vergabenummer"', 'name="vergabeordnung"', 'name="verfahrensart"', 'name="bundesland"', 'name="bekanntmachung"']) {
     if (!markup.includes(s)) throw new Error(`Oberflächenvertrag geändert: ${s}`);
   }
@@ -25,15 +29,25 @@ export function quellvertrag(wurzel) {
       || !ui.includes(`('#${id}')`)) throw new Error(`Statuszeile geändert: ${id}`);
   }
   if (!app.includes("'[data-fristenrechner]'")
-    || !/import\s*\{\s*erzeugeNativeDateiAusgabe\s*\}\s*from\s*'\.\.\/adapters\/dateiausgabe';/.test(app)
-    || !/const plattform\s*=\s*\{\s*\.\.\.erzeugeWebPlattform\(root\),\s*ausgabe:\s*erzeugeNativeDateiAusgabe\(\),?\s*\}/.test(app)
+    || !/import\s*\{\s*erzeugeAppPlattform\s*\}\s*from\s*'\.\.\/adapters\/app-plattform';/.test(app)
+    || !/const plattform\s*=\s*erzeugeAppPlattform\(root\);/.test(app)
+    || !app.includes('importBedienung="schaltflaeche"')
+    || /erzeugeWebPlattform\s*\(/.test(app + plattform)
     || !/initFristenrechner\(root,\s*\{\s*plattform,\s*texte,\s*exportInhalt\s*\}\)/.test(app)) {
     throw new Error('Ausdrückliche Initialisierung der App geändert.');
   }
-  if (!/import\s*\{\s*registerPlugin\s*\}\s*from\s*'@capacitor\/core';/.test(ausgabe)
-    || !ausgabe.includes("registerPlugin<DateiablaufPlugin>('Dateiablauf')")) throw new Error('Native Dateiausgabe geändert: Registrierung.');
+  for (const s of ['const fenster = root.ownerDocument.defaultView!', 'const sperre = erzeugeNativeAuftragsSperre()',
+    'speicher: erzeugeWebSpeicher(fenster)', 'zeit: webZeit', 'ausgabe: erzeugeNativeDateiAusgabe(plugin, sperre)',
+    '...erzeugeNativeProjektEingabe(plugin, sperre)', 'dispose() { sperre.dispose(); }']) {
+    if (!plattform.includes(s)) throw new Error(`App-Plattform geändert: ${s}.`);
+  }
+  if (!/import\s*\{\s*registerPlugin\s*\}\s*from\s*'@capacitor\/core';/.test(vertrag)
+    || !vertrag.includes("registerPlugin<DateiablaufPlugin>('Dateiablauf')")) throw new Error('Nativer Dateiablauf geändert: Registrierung.');
   for (const name of ['ausgabeBeginnen', 'ausgabeBlock', 'ausgabeAbschliessen', 'speichernUnter', 'teilen', 'ausgabeVerwerfen']) {
     if (!ausgabe.includes(`await plugin.${name}({`)) throw new Error(`Native Dateiausgabe geändert: ${name}.`);
+  }
+  for (const name of ['projektWaehlen', 'zuruecksetzenBestaetigen']) {
+    if (!eingabe.includes(`await plugin.${name}()`)) throw new Error(`Native Projekteingabe geändert: ${name}.`);
   }
   for (const [weg, endung] of [['exportieren', 'gespeichert.'], ['teilen', 'zum Teilen bereitgestellt.']]) {
     const texte = `    ${weg}: { projekt: 'Projektdatei ${endung}', excel: 'Excel-Datei ${endung}', pdf: 'PDF ${endung}' }`;
@@ -41,6 +55,8 @@ export function quellvertrag(wurzel) {
   }
   const storage = /export const WEB_SPEICHERSCHLUESSEL = '([^']+)';/.exec(web)?.[1];
   if (!storage) throw new Error('Schlüssel zum Speichern nicht im Quelltext gefunden.');
+  if (!web.includes('export function erzeugeWebSpeicher(') || !web.includes('speicher: erzeugeWebSpeicher(fenster)')
+    || !web.includes('export function webZeit(') || !web.includes('zeit: webZeit')) throw new Error('Gemeinsamer Web-Speicher oder Uhr geändert.');
   for (const aktion of ['getItem', 'setItem', 'removeItem']) if (!web.includes(`localStorage.${aktion}(WEB_SPEICHERSCHLUESSEL`)) throw new Error(`Web-Speichervertrag geändert: ${aktion}`);
   const kern = readFileSync(join(wurzel, 'packages/kern/src/fristen.ts'), 'utf8');
   const konstante = name => {

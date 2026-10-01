@@ -2,7 +2,7 @@
 
 Die JSON- und Textausschnitte stammen aus der Emulatorprobe vom 29.09.2026 sowie den Läufen der App vom 30.09.2026 auf Android API 24, 30 und 36. Übernommen sind nur die für die Auswertung nötigen Felder und Zeilen. Rechnerpfade, Benutzernamen, Rechnernamen und Geräteseriennummern gehören nicht zu den Prüfdaten. Android-Paketnamen, generische Emulator-Adressen und die geprüften Android-Datenpfade bleiben als technische Testwerte erhalten.
 
-Der Quellvertrag erwartet inzwischen die native Dateiausgabe für „Speichern unter“ und „Teilen“; Import und Rücksetzen verwenden weiter den Webadapter. Seine Tests enthalten konstruierte Änderungen an der Adapterkomposition, den Brückenaufrufen und den Erfolgstexten. Die aufgezeichneten Prüfdaten bleiben unverändert und belegen keinen erneuten Emulatorlauf mit diesem Anschluss. Die Fälle der nativen Dateiausgabe sind bis zu neuen Läufen auf API 30 und 36 offen.
+Der Quellvertrag erwartet die eigene App-Plattform: „Speichern unter“, „Teilen“, Import und die Bestätigung zum Zurücksetzen laufen über den nativen Dateiablauf; Speicher und Uhr verwenden dieselben Funktionen wie die Website über die WebView. Die Importbedienung ist eine Schaltfläche. Seine Tests enthalten konstruierte Änderungen an der Adapterkomposition, der gemeinsamen Sperre, den acht Brückenaufrufen und den Erfolgstexten. Die aufgezeichneten Prüfdaten bleiben unverändert und belegen keinen erneuten Emulatorlauf mit diesem Anschluss. Der Handlauf zur nativen Ausgabe vom 30.09.2026 ist gesondert in `docs/app.md` beschrieben; er belegt weder den neuen Import noch den Dialog. Diese beiden Abläufe und ihre Zusammensetzung mit der Ausgabe sind bis zu neuen Läufen auf API 30 und 36 offen.
 
 | Dateien | Ursprüngliche Aufzeichnung und Auswahl |
 |---|---|

@@ -134,13 +134,15 @@ function adressenIn(text) {
   return [...treffer, ...[...rest.matchAll(OHNE_SCHEMA)].map((m) => m[0])];
 }
 
-const DATEIAUSGABE_FELDER = {
+const DATEIABLAUF_FELDER = {
   ausgabeBeginnen: ['anzahlBytes', 'mime', 'name'],
   ausgabeBlock: ['auftragId', 'base64', 'offset'],
   ausgabeAbschliessen: ['auftragId'],
   speichernUnter: ['auftragId'],
   teilen: ['auftragId'],
   ausgabeVerwerfen: ['auftragId'],
+  projektWaehlen: [],
+  zuruecksetzenBestaetigen: [],
 };
 
 // Der Adapter nutzt einen Plugin-Parameter und direkte Aufrufe. Gleichnamige
@@ -161,24 +163,28 @@ function dateiausgabeAufrufe(ast, fehler) {
     if (!['MemberExpression', 'OptionalMemberExpression'].includes(c?.type) || c.object?.type !== 'Identifier') return;
     const name = eigenschaftsname(c), schluessel = bindung(k, c.object.name);
     aufrufe.push({ k, name, schluessel });
-    if (name !== 'teilen' && Object.hasOwn(DATEIAUSGABE_FELDER, name)) empfaenger.add(schluessel);
+    if (name !== 'teilen' && name !== 'zuruecksetzenBestaetigen' && Object.hasOwn(DATEIABLAUF_FELDER, name)) empfaenger.add(schluessel);
   });
   for (const { k, name, schluessel } of aufrufe) {
     if (!empfaenger.has(schluessel)) continue;
-    if (!Object.hasOwn(DATEIAUSGABE_FELDER, name)) {
+    if (!Object.hasOwn(DATEIABLAUF_FELDER, name)) {
       fehler.push(`Dateiablauf: unbekannte Methode ${name ?? '(berechnet)'}.`);
       continue;
     }
     anzahl[name] = (anzahl[name] ?? 0) + 1;
+    if (!DATEIABLAUF_FELDER[name].length) {
+      if (k.arguments.length !== 0) fehler.push(`Dateiablauf.${name}: kein Argument erwartet.`);
+      continue;
+    }
     const arg = k.arguments[0];
     const felder = arg?.type === 'ObjectExpression' ? arg.properties.map(p => p.type !== 'ObjectProperty' ? null
       : p.computed ? konstanterText(p.key) : p.key.type === 'Identifier' ? p.key.name : konstanterText(p.key)) : [];
     if (k.arguments.length !== 1 || arg?.type !== 'ObjectExpression' || felder.some(f => f === null)
-      || !isDeepStrictEqual(felder.sort(), DATEIAUSGABE_FELDER[name])) {
-      fehler.push(`Dateiablauf.${name}: genau ein Objekt mit ${DATEIAUSGABE_FELDER[name].join(', ')} erwartet.`);
+      || !isDeepStrictEqual(felder.sort(), DATEIABLAUF_FELDER[name])) {
+      fehler.push(`Dateiablauf.${name}: genau ein Objekt mit ${DATEIABLAUF_FELDER[name].join(', ')} erwartet.`);
     }
   }
-  if (empfaenger.size) for (const name of Object.keys(DATEIAUSGABE_FELDER)) {
+  if (empfaenger.size) for (const name of Object.keys(DATEIABLAUF_FELDER)) {
     if (anzahl[name] !== 1) fehler.push(`Dateiablauf.${name}: genau eine Aufrufstelle erwartet, gefunden ${anzahl[name] ?? 0}.`);
   }
   return anzahl;
@@ -789,6 +795,15 @@ function pruefeExportPfade(baum) {
     && isDeepStrictEqual(p.kinder[0].attribute, { name: 'exportdateien', path: 'export/' });
 }
 
+// Diese eigenen Texte müssen unabhängig von der Gerätesprache deutsch bleiben.
+// Sie sind Ressourcen vorhandener Komponenten und erweitern deren Inventar nicht.
+const DATEIABLAUF_TEXTE = {
+  datei_teilen_titel: 'Datei teilen',
+  projekt_zuruecksetzen_frage: 'Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?',
+  projekt_zuruecksetzen_abbrechen: 'Abbrechen',
+  projekt_zuruecksetzen_bestaetigen: 'Zurücksetzen',
+};
+
 /** K3/K4: Quellenvertrag ergänzt die Prüfung des zusammengeführten APK-Manifests. */
 export function pruefeNativeQuellen({ wurzel } = {}) {
   const fehler = [];
@@ -816,8 +831,17 @@ export function pruefeNativeQuellen({ wurzel } = {}) {
     const pfade = dateien.filter(p => /\/res\/xml[^/]*\/export_paths\.xml$/.test(p));
     if (!isDeepStrictEqual(pfade, ['main/res/xml/export_paths.xml'])) fehler.push('export_paths: genau eine unqualifizierte Pfadressource, keine Varianten erwartet.');
     if (!pruefeExportPfade(quellXml(readFileSync(join(src, 'main/res/xml/export_paths.xml'), 'utf8')))) fehler.push('export_paths: genau ein cache-path export/ ohne weitere Pfadtypen erwartet.');
-    for (const p of dateien.filter(p => /\/res\/values[^/]*\/[^/]+\.xml$/.test(p))) {
-      if (/\bname\s*=\s*["']export_paths["']/.test(readFileSync(join(src, p), 'utf8'))) fehler.push('export_paths: Ressourcenalias ist nicht erlaubt.');
+    const wertDateien = dateien.filter(p => /\/res\/values[^/]*\/[^/]+\.xml$/.test(p))
+      .map(p => ({ pfad: p, text: readFileSync(join(src, p), 'utf8').replace(/<!--[\s\S]*?-->/g, '') }));
+    for (const { text } of wertDateien) {
+      if (/\bname\s*=\s*["']export_paths["']/.test(text)) fehler.push('export_paths: Ressourcenalias ist nicht erlaubt.');
+    }
+    for (const [name, text] of Object.entries(DATEIABLAUF_TEXTE)) {
+      const funde = wertDateien.flatMap(datei => [...datei.text.matchAll(new RegExp(`\\bname\\s*=\\s*["']${name}["']`, 'g'))].map(() => datei));
+      if (funde.length !== 1 || funde[0].pfad !== 'main/res/values/strings.xml'
+        || !funde[0].text.includes(`<string name="${name}">${text}</string>`)) {
+        fehler.push(`${name}: genau eine unqualifizierte String-Ressource mit erwartetem Wortlaut in strings.xml, ohne Alias oder Varianten erwartet.`);
+      }
     }
     const activity = readFileSync(join(src, 'main/java/de/baremos/fristenrechner/MainActivity.java'), 'utf8');
     const erwarteteActivity = `package de.baremos.fristenrechner;
@@ -1000,6 +1024,14 @@ export function pruefeApk(apkPfad, { wurzel, debug, vorgabe = VORGABE, sdk, umge
     const badgingDebug = /^application-debuggable\s*$/m.test(badging);
     if (debug ? !aWahr(a['android:debuggable']) || !badgingDebug : (a['android:debuggable'] !== undefined && !aFalsch(a['android:debuggable'])) || badgingDebug) fehler.push(`debuggable: erwartet ${debug ? 'true im Debug-Build' : 'fehlend oder false im Release-Build'}.`);
     const resources = dump('resources');
+    bericht.dateiablaufTexte = {};
+    for (const [name, text] of Object.entries(DATEIABLAUF_TEXTE)) {
+      const abschnitte = [...resources.matchAll(new RegExp(`(?:^|\\n) *resource 0x[0-9a-f]+ string/${name}\\r?\\n([\\s\\S]*?)(?=\\n *resource |\\n *type |$)`, 'g'))];
+      const zeilen = abschnitte.length === 1 ? abschnitte[0][1].trim().split(/\r?\n/).filter(z => z.trim()) : [];
+      if (zeilen.length !== 1 || zeilen[0].trim() !== `() "${text}"`) {
+        fehler.push(`${name}: genau eine unqualifizierte String-Ressource mit erwartetem Wortlaut, ohne Alias oder Varianten erwartet.`);
+      } else bericht.dateiablaufTexte[name] = text;
+    }
     const exportAbschnitte = [...resources.matchAll(/(?:^|\n) *resource (0x[0-9a-f]+) xml\/export_paths\r?\n([\s\S]*?)(?=\n *resource |\n *type |$)/g)];
     const exportZeilen = exportAbschnitte.length === 1 ? exportAbschnitte[0][2].trim().split(/\r?\n/).filter(z => z.trim()) : [];
     const exportDatei = exportZeilen.length === 1 ? /^\s*\(\) \(file\) (res\/[^\s]+\.xml) type=XML\s*$/.exec(exportZeilen[0]) : null;

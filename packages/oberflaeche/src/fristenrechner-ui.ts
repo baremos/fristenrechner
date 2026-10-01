@@ -21,7 +21,7 @@ import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type AusgabeF
 import { speicherWarteschlange } from './speicher-warteschlange';
 import { ausgabeBeschriftung, runDateiAusgabe } from './fristenrechner-export-action';
 export * from './plattform';
-export { erzeugeWebPlattform, WEB_SPEICHERSCHLUESSEL } from './web-plattform';
+export { erzeugeWebPlattform, erzeugeWebSpeicher, webZeit, WEB_SPEICHERSCHLUESSEL } from './web-plattform';
 export { webTexte, webExportInhalt } from './web-vorgaben';
 export { projektAlsDatei, safeFilename } from './projekt-datei';
 

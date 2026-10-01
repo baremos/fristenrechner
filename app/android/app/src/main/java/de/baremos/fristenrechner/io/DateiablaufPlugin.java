@@ -3,10 +3,12 @@ package de.baremos.fristenrechner.io;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import androidx.activity.result.ActivityResult;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -21,7 +23,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 
-/** Native Ausgabebasis. Jeder öffentliche Aufruf hat genau einen Abschluss. */
+/** Native Dateiabläufe und Bestätigung. Jeder öffentliche Aufruf hat genau einen Abschluss. */
 @CapacitorPlugin(name = "Dateiablauf")
 public final class DateiablaufPlugin extends Plugin {
     private final Object sperre = new Object();
@@ -35,6 +37,7 @@ public final class DateiablaufPlugin extends Plugin {
     private Context kontext;
     private boolean chooserOffen;
     private boolean chooserHatPause;
+    private AlertDialog bestaetigungDialog;
 
     private static final class Aufruf {
         final PluginCall call;
@@ -160,6 +163,94 @@ public final class DateiablaufPlugin extends Plugin {
         }
     }
 
+    @PluginMethod public void projektWaehlen(PluginCall call) {
+        aufIoThread(call, () -> {
+            ohneFelder(call, "lesen");
+            if (auftraege.hatAktivenAuftrag()) throw new DateiablaufFehler("nicht-verfuegbar", false);
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/json");
+            getBridge().executeOnMainThread(() -> {
+                synchronized (sperre) {
+                    if (!istLebenderAufruf(call, "projektWaehlen")) return;
+                    try {
+                        if (getActivity() == null || getActivity().isFinishing() || getActivity().isDestroyed()) throw new IllegalStateException();
+                        laufend.wartet = true;
+                        startActivityForResult(call, intent, "nachProjektWaehlen");
+                    } catch (RuntimeException e) {
+                        laufend.wartet = false;
+                        // Die Auswahl ist nicht verfügbar; der Text zu kein-ziel betrifft die Ausgabe.
+                        gescheitert(call, new DateiablaufFehler("nicht-verfuegbar", false));
+                    }
+                }
+            });
+        });
+    }
+
+    @ActivityCallback private void nachProjektWaehlen(PluginCall call, ActivityResult result) {
+        synchronized (sperre) {
+            if (!istLebenderAufruf(call, "projektWaehlen") || !laufend.wartet) return;
+            laufend.wartet = false;
+            fortsetzen(call, () -> {
+                if (result != null && result.getResultCode() == Activity.RESULT_CANCELED) {
+                    erledigt(call, new JSObject().put("status", "abgebrochen"));
+                    return;
+                }
+                Uri quelle = result != null && result.getResultCode() == Activity.RESULT_OK && result.getData() != null
+                    ? result.getData().getData() : null;
+                if (quelle == null || !"content".equals(quelle.getScheme())) throw new DateiablaufFehler("lesen", false);
+                DokumentZugriff.GelesenesProjekt projekt = dokumente.leseProjekt(quelle, DokumentZugriff.MAX_PROJEKT_BYTES);
+                erledigt(call, new JSObject().put("status", "ok").put("name", projekt.name).put("text", projekt.text));
+            });
+        }
+    }
+
+    @PluginMethod public void zuruecksetzenBestaetigen(PluginCall call) {
+        aufIoThread(call, () -> {
+            ohneFelder(call, "nicht-verfuegbar");
+            if (auftraege.hatAktivenAuftrag()) throw new DateiablaufFehler("nicht-verfuegbar", false);
+            getBridge().executeOnMainThread(() -> zeigeZuruecksetzenDialog(call));
+        });
+    }
+
+    private void zeigeZuruecksetzenDialog(PluginCall call) {
+        synchronized (sperre) {
+            if (!istLebenderAufruf(call, "zuruecksetzenBestaetigen")) return;
+            try {
+                if (getActivity() == null || getActivity().isFinishing() || getActivity().isDestroyed()) throw new IllegalStateException();
+                AlertDialog dialog = new AlertDialog.Builder(getActivity())
+                    .setMessage(R.string.projekt_zuruecksetzen_frage)
+                    .setNegativeButton(R.string.projekt_zuruecksetzen_abbrechen, (auswahl, taste) -> bestaetigungBeenden(call, false))
+                    .setPositiveButton(R.string.projekt_zuruecksetzen_bestaetigen, (auswahl, taste) -> bestaetigungBeenden(call, true))
+                    .setCancelable(true)
+                    .create();
+                bestaetigungDialog = dialog;
+                dialog.setOnCancelListener(auswahl -> bestaetigungBeenden(call, false));
+                dialog.setOnDismissListener(auswahl -> bestaetigungBeenden(call, false));
+                dialog.show();
+                dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setFocusableInTouchMode(true);
+                dialog.getButton(DialogInterface.BUTTON_NEGATIVE).requestFocus();
+            } catch (RuntimeException e) {
+                // Ein nicht anzeigbarer Dialog ist keine belegte Bestätigung.
+                bestaetigungBeenden(call, false);
+            }
+        }
+    }
+
+    private void bestaetigungBeenden(PluginCall call, boolean bestaetigt) {
+        synchronized (sperre) {
+            if (!istLebenderAufruf(call, "zuruecksetzenBestaetigen")) return;
+            AlertDialog dialog = bestaetigungDialog;
+            bestaetigungDialog = null;
+            erledigt(call, new JSObject().put("bestaetigt", bestaetigt));
+            // Der Aufruf ist bereits beendet; OnDismiss und OnCancel bleiben idempotent.
+            if (dialog != null) {
+                try { dialog.dismiss(); }
+                catch (RuntimeException e) { /* Activity bereits abgebaut; keine zweite Rückgabe. */ }
+            }
+        }
+    }
+
     @PluginMethod public void teilen(PluginCall call) {
         aufIoThread(call, () -> {
             nurKennung(call);
@@ -177,6 +268,8 @@ public final class DateiablaufPlugin extends Plugin {
                 ClipData clip = ClipData.newRawUri("", uri);
                 intent.setClipData(clip);
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                // Android ab 10 blendet diesen Titel aus, also auch alle unterstützten Versionen.
+                // Die feste Ressource bleibt als deklarierter Titel der Auswahl erhalten.
                 Intent chooser = Intent.createChooser(intent, getContext().getString(R.string.datei_teilen_titel));
                 chooser.setClipData(clip);
                 chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -225,6 +318,10 @@ public final class DateiablaufPlugin extends Plugin {
         if (call.getData().length() != 1 || call.getString("auftragId") == null) throw new DateiablaufFehler("schreiben", false);
     }
 
+    private static void ohneFelder(PluginCall call, String fehlercode) throws DateiablaufFehler {
+        if (call.getData().length() != 0) throw new DateiablaufFehler(fehlercode, false);
+    }
+
     private void aufIoThread(PluginCall call, IoAktion aktion) {
         synchronized (sperre) {
             if (zerstoert || laufend != null || chooserOffen || PluginCall.CALLBACK_ID_DANGLING.equals(call.getCallbackId())) {
@@ -247,7 +344,11 @@ public final class DateiablaufPlugin extends Plugin {
                     if (zerstoert || Thread.currentThread().isInterrupted() || auftraege == null || dokumente == null) throw new DateiablaufFehler("nicht-verfuegbar", false);
                     aktion.ausfuehren();
                 } catch (DateiablaufFehler e) { fehlerImIo(call, e); }
-                catch (RuntimeException e) { fehlerImIo(call, new DateiablaufFehler("schreiben", false)); }
+                catch (RuntimeException e) {
+                    String code = "projektWaehlen".equals(call.getMethodName()) ? "lesen"
+                        : "zuruecksetzenBestaetigen".equals(call.getMethodName()) ? "nicht-verfuegbar" : "schreiben";
+                    fehlerImIo(call, new DateiablaufFehler(code, false));
+                }
                 finally { arbeiter = null; }
             });
         } catch (RejectedExecutionException e) { gescheitert(call, new DateiablaufFehler("nicht-verfuegbar", false)); }
@@ -255,7 +356,10 @@ public final class DateiablaufPlugin extends Plugin {
 
     private void fehlerImIo(PluginCall call, DateiablaufFehler fehler) {
         // Auch ungültige Brückenargumente beenden nur den zugehörigen eigenen Auftrag.
-        try { if (auftraege != null) auftraege.verwerfen(call.getString("auftragId")); }
+        try {
+            if (auftraege != null && !"projektWaehlen".equals(call.getMethodName())
+                && !"zuruecksetzenBestaetigen".equals(call.getMethodName())) auftraege.verwerfen(call.getString("auftragId"));
+        }
         catch (DateiablaufFehler | RuntimeException e) { /* Unbekannte Kennung oder spätere Startbereinigung. */ }
         gescheitert(call, fehler);
     }
@@ -309,6 +413,11 @@ public final class DateiablaufPlugin extends Plugin {
     @Override protected void handleOnDestroy() {
         synchronized (sperre) {
             if (zerstoert) return;
+            if (laufend != null && "zuruecksetzenBestaetigen".equals(laufend.call.getMethodName())) {
+                bestaetigungBeenden(laufend.call, false);
+            } else if (laufend != null && "projektWaehlen".equals(laufend.call.getMethodName())) {
+                gescheitert(laufend.call, new DateiablaufFehler("nicht-verfuegbar", false));
+            }
             zerstoert = true;
             generation++;
             if (laufend != null) getBridge().releaseCall(laufend.call);

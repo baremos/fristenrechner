@@ -1,6 +1,38 @@
-import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type Auswahl, type Plattform } from './plattform';
+import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type Auswahl, type ExportZeit, type Plattform, type ProjektSpeicher } from './plattform';
 
 export const WEB_SPEICHERSCHLUESSEL = 'baremos-fristenrechner-projekt-v1';
+
+/** Website und WebView verwenden denselben Schlüssel, dieselben Prüfungen und Texte. */
+export function erzeugeWebSpeicher(fenster: Pick<Window, 'localStorage'>): ProjektSpeicher {
+  return {
+    async lesen() {
+      try {
+        const text = fenster.localStorage.getItem(WEB_SPEICHERSCHLUESSEL);
+        if (text !== null) pruefeProjektGroesse(text);
+        return text;
+      } catch (error) {
+        if (error instanceof PlattformFehler) throw error;
+        throw new PlattformFehler('nicht-verfuegbar', 'Der lokale Speicher konnte nicht gelesen werden.');
+      }
+    },
+    async schreiben(json) {
+      try { fenster.localStorage.setItem(WEB_SPEICHERSCHLUESSEL, json); }
+      catch { throw new PlattformFehler('kein-speicher', 'Das Projekt konnte nicht gespeichert werden.'); }
+    },
+    async entfernen() {
+      try { fenster.localStorage.removeItem(WEB_SPEICHERSCHLUESSEL); }
+      catch { throw new PlattformFehler('schreiben', 'Das gespeicherte Projekt konnte nicht entfernt werden.'); }
+    },
+  };
+}
+
+export function webZeit(): ExportZeit {
+  const jetzt = new Date();
+  return {
+    zeitpunkt: jetzt.toISOString(),
+    kalendertag: `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, '0')}-${String(jetzt.getDate()).padStart(2, '0')}`,
+  };
+}
 
 /** Der Gastgeber besitzt den Adapter und räumt ihn nach dem Rechner mit dispose auf. */
 export function erzeugeWebPlattform(root: HTMLElement): Plattform & { dispose(): void } {
@@ -16,26 +48,7 @@ export function erzeugeWebPlattform(root: HTMLElement): Plattform & { dispose():
   };
   feld.addEventListener('click', aktiviertDurchKlick, true);
   return {
-    speicher: {
-      async lesen() {
-        try {
-          const text = fenster.localStorage.getItem(WEB_SPEICHERSCHLUESSEL);
-          if (text !== null) pruefeProjektGroesse(text);
-          return text;
-        } catch (error) {
-          if (error instanceof PlattformFehler) throw error;
-          throw new PlattformFehler('nicht-verfuegbar', 'Der lokale Speicher konnte nicht gelesen werden.');
-        }
-      },
-      async schreiben(json) {
-        try { fenster.localStorage.setItem(WEB_SPEICHERSCHLUESSEL, json); }
-        catch { throw new PlattformFehler('kein-speicher', 'Das Projekt konnte nicht gespeichert werden.'); }
-      },
-      async entfernen() {
-        try { fenster.localStorage.removeItem(WEB_SPEICHERSCHLUESSEL); }
-        catch { throw new PlattformFehler('schreiben', 'Das gespeicherte Projekt konnte nicht entfernt werden.'); }
-      },
-    },
+    speicher: erzeugeWebSpeicher(fenster),
     import: {
       waehlen(vorgabe) {
         if (geschlossen) return Promise.resolve({ status: 'abgebrochen' });
@@ -110,13 +123,7 @@ export function erzeugeWebPlattform(root: HTMLElement): Plattform & { dispose():
         }
       },
     },
-    zeit() {
-      const jetzt = new Date();
-      return {
-        zeitpunkt: jetzt.toISOString(),
-        kalendertag: `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, '0')}-${String(jetzt.getDate()).padStart(2, '0')}`,
-      };
-    },
+    zeit: webZeit,
     async zuruecksetzenBestaetigen() { return fenster.confirm('Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?'); },
     dispose() {
       geschlossen = true;

@@ -1,20 +1,12 @@
-import { registerPlugin } from '@capacitor/core';
 import {
-  FEHLERCODES, PlattformFehler,
+  PlattformFehler,
   type AusgabeDatei, type AusgabeWeg, type DateiAusgabe, type DateiErgebnis,
 } from '@baremos/fristenrechner-ui/ui';
-
-/** Ausschließlich der native Transportvertrag; keine Dateipfade oder Inhalte in Meldungen. */
-export interface DateiablaufPlugin {
-  ausgabeBeginnen(vorgabe: { name: string; mime: AusgabeDatei['mime']; anzahlBytes: number }): Promise<{ auftragId: string }>;
-  ausgabeBlock(block: { auftragId: string; offset: number; base64: string }): Promise<void>;
-  ausgabeAbschliessen(auftrag: { auftragId: string }): Promise<void>;
-  speichernUnter(auftrag: { auftragId: string }): Promise<{ status: 'ok' | 'abgebrochen' }>;
-  teilen(auftrag: { auftragId: string }): Promise<{ status: 'bereitgestellt' }>;
-  ausgabeVerwerfen(auftrag: { auftragId: string }): Promise<void>;
-}
-
-const dateiablauf = registerPlugin<DateiablaufPlugin>('Dateiablauf');
+import {
+  dateiablauf, erzeugeNativeAuftragsSperre, transportFehler,
+  type DateiablaufPlugin, type NativeAuftragsSperre,
+} from './dateiablauf-vertrag';
+export type { DateiablaufPlugin } from './dateiablauf-vertrag';
 const BLOCK_BYTES = 65_536;
 const grenzen = {
   'application/pdf': 2 * 1024 * 1024,
@@ -42,27 +34,11 @@ function base64Block(bytes: Uint8Array): string {
   return text;
 }
 
-function transportFehler(error: unknown, fallback: string): PlattformFehler {
-  if (typeof error === 'object' && error !== null && 'code' in error && 'message' in error) {
-    const { code, message } = error;
-    if (typeof code === 'string' && typeof message === 'string' && message.trim() !== '') {
-      const bekannt = FEHLERCODES.find(wert => wert === code);
-      // DateiablaufFehler liefert ausschließlich eigene deutsche Texte und enthält
-      // bei data.zielrestMoeglich bereits den Hinweis auf einen möglichen Zielrest.
-      if (bekannt) return new PlattformFehler(bekannt, message);
-    }
-  }
-  return new PlattformFehler('schreiben', fallback);
-}
-
-export function erzeugeNativeDateiAusgabe(plugin: DateiablaufPlugin = dateiablauf): DateiAusgabe {
-  let belegt = false;
-
+export function erzeugeNativeDateiAusgabe(
+  plugin: DateiablaufPlugin = dateiablauf,
+  sperre: NativeAuftragsSperre = erzeugeNativeAuftragsSperre(),
+): DateiAusgabe {
   async function ausgeben(datei: AusgabeDatei, weg: AusgabeWeg): Promise<DateiErgebnis> {
-    if (belegt) {
-      throw new PlattformFehler('nicht-verfuegbar', 'Die Dateifunktion ist gerade nicht verfügbar. Bitte versuchen Sie es erneut.');
-    }
-    belegt = true;
     let auftragId: string | undefined;
     const fallback = `Die ${namen[datei.mime]} konnte nicht zum ${weg === 'teilen' ? 'Teilen' : 'Speichern'} bereitgestellt werden. Bitte versuchen Sie es erneut.`;
     try {
@@ -94,13 +70,11 @@ export function erzeugeNativeDateiAusgabe(plugin: DateiablaufPlugin = dateiablau
         catch { /* Der ursprüngliche Fehler bleibt maßgeblich. */ }
       }
       throw transportFehler(error, fallback);
-    } finally {
-      belegt = false;
     }
   }
 
   return {
-    exportieren: datei => ausgeben(datei, 'exportieren'),
-    teilen: datei => ausgeben(datei, 'teilen'),
+    exportieren: datei => sperre.ausfuehren(() => ausgeben(datei, 'exportieren')),
+    teilen: datei => sperre.ausfuehren(() => ausgeben(datei, 'teilen')),
   };
 }

@@ -136,6 +136,14 @@ class PluginFake implements DateiablaufPlugin {
     try { await this.aufruf('ausgabeVerwerfen', args); }
     finally { this.aktiv = false; }
   }
+
+  async projektWaehlen(): ReturnType<DateiablaufPlugin['projektWaehlen']> {
+    throw new Error('Der Ausgabetest darf keinen Import starten.');
+  }
+
+  async zuruecksetzenBestaetigen(): ReturnType<DateiablaufPlugin['zuruecksetzenBestaetigen']> {
+    throw new Error('Der Ausgabetest darf keinen Dialog starten.');
+  }
 }
 
 function methoden(plugin: PluginFake) {
