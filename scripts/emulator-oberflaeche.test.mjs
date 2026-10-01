@@ -4,13 +4,13 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { quellvertrag, formularWerte, datumBefehl, ablaufA, ablaufA8, ablaufA10, domAriaNamen, evaluiereDomAria, ueberlaufMessung, tastaturTippPunkt } from './emulator/oberflaeche.mjs';
+import { quellvertrag, dateiMethodenVertrag, formularWerte, datumBefehl, ablaufA, ablaufA8, ablaufA10, domAriaNamen, evaluiereDomAria, ueberlaufMessung, tastaturTippPunkt } from './emulator/oberflaeche.mjs';
 import { runInNewContext } from 'node:vm';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cdpFehler = JSON.parse(readFileSync(join(wurzel, 'scripts/emulator/fixtures/cdp-fehler-2026-09-30.json'), 'utf8'));
 const axZeitgrenze = cdpFehler.api36.find(e => e.meldung.startsWith('A10:')).meldung.split(' – ')[1];
-const tmp = join(wurzel, 'scratchpad/paket-2.5-c4/tmp');
+const tmp = process.env.TMP ?? join(wurzel, 'scratchpad/paket-2.6/tmp');
 mkdirSync(tmp, { recursive: true });
 const arbeit = mkdtempSync(join(tmp, 'oberflaeche-test-'));
 // Der Ordner entsteht ausschließlich unter der bekannten Testwurzel.
@@ -22,6 +22,10 @@ const quelldateien = [
   'packages/oberflaeche/src/Fristenrechner.astro', 'app/src/pages/index.astro',
   'packages/oberflaeche/src/fristenrechner-ui.ts', 'packages/kern/src/fristen.ts',
   'packages/oberflaeche/src/web-plattform.ts',
+  'app/src/adapters/dateiausgabe.ts',
+  'app/src/adapters/dateiimport.ts', 'app/src/adapters/dateiablauf-vertrag.ts', 'app/src/adapters/app-plattform.ts',
+  'docs/datenschutz.md',
+  'app/android/app/src/main/java/de/baremos/fristenrechner/io/DateiablaufPlugin.java',
 ];
 let nummer = 0;
 function quellkopie(datei, ersetzen, durch) {
@@ -47,13 +51,49 @@ test('Quellvertrag liest das öffentliche Formular und seine Regelanzeige', () =
   assert.match(q.text, /^Regelversion: .+ · Rechtsstand: .+ \(\d{4}-\d{2}-\d{2}\)$/);
   assert.equal(quellvertrag(quellkopie()).text, q.text);
 });
+
+test('Datei-Quellvertrag schließt zusätzliche Diagnose- und URI-Methoden aus', () => {
+  const java = readFileSync(join(wurzel, quelldateien.at(-1)), 'utf8');
+  assert.equal(dateiMethodenVertrag(java).length, 8);
+  assert.throws(() => dateiMethodenVertrag(java + '\n@PluginMethod public void leseBeliebigeUri(PluginCall call) {}'), /Testmethoden/);
+  assert.throws(() => dateiMethodenVertrag(java.replace('public void teilen', 'public void diagnose')), /Testmethoden/);
+  assert.throws(() => dateiMethodenVertrag(java.replace('@PluginMethod public void teilen', '@PluginMethod(returnType = "none") public void teilen')), /Testmethoden/);
+  assert.equal(dateiMethodenVertrag(java + '\n// @PluginMethod public void diagnose(PluginCall call) {}').length, 8);
+});
 for (const [titel, datei, ersetzen, durch] of [
   ['Formularfeld fehlt', quelldateien[0], 'name="projektname"', 'name="anderes_feld"'],
   ['Ergebnistabelle fehlt', quelldateien[0], 'id="schedule-table-body"', 'id="andere_tabelle"'],
   ['App-Fehlerfalle fehlt', quelldateien[1], 'id="app-startfehler"', 'id="anderer_hinweis"'],
+  ['Datenschutzquelle ersetzt', quelldateien[1], "from '../../../docs/datenschutz.md'", "from '../../../docs/anderes.md'"],
+  ['Datenschutzabschnitt fehlt', quelldateien[1], 'id="app-datenschutz"', 'id="anderer_abschnitt"'],
+  ['Datenschutzinhalt fehlt', quelldateien[1], '<Datenschutz />', '<p>Leerer Ersatz</p>'],
+  ['Datenschutzdokument leer', 'docs/datenschutz.md', /^#[\s\S]+/, ''],
   ['Speicherschlüssel fehlt', quelldateien[4], 'const WEB_SPEICHERSCHLUESSEL =', 'const ANDERER_KEY ='],
   ['Webadapter nutzt anderen Schlüssel', quelldateien[4], 'getItem(WEB_SPEICHERSCHLUESSEL)', "getItem('anderer-schluessel')"],
   ['Initialisierung fehlt', quelldateien[1], 'initFristenrechner(root,', 'andereInitialisierung(root,'],
+  ['App-Plattform nicht komponiert', quelldateien[1], 'erzeugeAppPlattform(root)', 'anderePlattform(root)'],
+  ['Web-Plattform wieder komponiert', quelldateien[1], 'erzeugeAppPlattform(root)', 'erzeugeWebPlattform(root)'],
+  ['Import wieder als Dateifeld', quelldateien[1], 'importBedienung="schaltflaeche"', 'importBedienung="dateifeld"'],
+  ['Native Ausgabe nicht komponiert', quelldateien[8], 'ausgabe: erzeugeNativeDateiAusgabe(plugin, sperre)', 'ausgabe: andereAusgabe()'],
+  ['Import und Dialog anders komponiert', quelldateien[8], '...erzeugeNativeProjektEingabe(plugin, sperre)', '...andereEingabe(plugin, sperre)'],
+  ['Speicher anders komponiert', quelldateien[8], 'speicher: erzeugeWebSpeicher(fenster)', 'speicher: andererSpeicher(fenster)'],
+  ['Uhr anders komponiert', quelldateien[8], 'zeit: webZeit', 'zeit: andereZeit'],
+  ['Ausgabe ohne gemeinsame Sperre', quelldateien[8], 'erzeugeNativeDateiAusgabe(plugin, sperre)', 'erzeugeNativeDateiAusgabe(plugin)'],
+  ['Import ohne gemeinsame Sperre', quelldateien[8], 'erzeugeNativeProjektEingabe(plugin, sperre)', 'erzeugeNativeProjektEingabe(plugin)'],
+  ['Sperre bei dispose nicht geschlossen', quelldateien[8], 'sperre.dispose()', 'andereAktion()'],
+  ['Gemeinsamer Speicher der Website fehlt', quelldateien[4], 'speicher: erzeugeWebSpeicher(fenster)', 'speicher: andererSpeicher(fenster)'],
+  ['Gemeinsame Uhr der Website fehlt', quelldateien[4], 'zeit: webZeit', 'zeit: andereZeit'],
+  ['Adapterimport fehlt', quelldateien[1], "from '../adapters/app-plattform'", "from '../adapters/andere'"],
+  ['Pluginregistrierung anders', quelldateien[7], "registerPlugin<DateiablaufPlugin>('Dateiablauf')", "registerPlugin<DateiablaufPlugin>('AnderesPlugin')"],
+  ['Speichererfolg anders', quelldateien[1], 'PDF gespeichert.', 'PDF heruntergeladen.'],
+  ['Teilenerfolg anders', quelldateien[1], 'PDF zum Teilen bereitgestellt.', 'PDF geteilt.'],
+  ...['ausgabeBeginnen', 'ausgabeBlock', 'ausgabeAbschliessen', 'speichernUnter', 'teilen', 'ausgabeVerwerfen'].map(name => [
+    `Native Methode ${name} fehlt`, quelldateien[5], `await plugin.${name}({`, 'await plugin.andereMethode({',
+  ]),
+  ...['projektWaehlen', 'zuruecksetzenBestaetigen'].flatMap(name => [
+    [`Native Methode ${name} fehlt`, quelldateien[6], `await plugin.${name}()`, 'await plugin.andereMethode()'],
+    [`Native Methode ${name} übergibt Felder`, quelldateien[6], `await plugin.${name}()`, `await plugin.${name}({ pfad })`],
+  ]),
   ['Importmeldung fehlt', quelldateien[0], 'id="import-message"', 'id="andere-meldung"'],
   ['Rücksetzmeldung fehlt', quelldateien[0], 'id="reset-message"', 'id="andere-meldung"'],
   ['Importstatus nicht live', quelldateien[0], 'id="import-message" class="action-message" role="status" aria-live="polite"', 'id="import-message"'],

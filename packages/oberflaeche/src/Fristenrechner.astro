@@ -1,13 +1,14 @@
 ---
-import type { ExportInhalt, GastgeberTexte } from './plattform';
+import type { ExportInhalt, GastgeberTexte, ImportBedienung } from './plattform';
 import { pruefeExportInhalt } from './fristenrechner-export-data';
 
 interface Props {
   texte: GastgeberTexte;
   exportInhalt: ExportInhalt;
+  importBedienung?: ImportBedienung;
 }
 
-const { texte, exportInhalt } = Astro.props;
+const { texte, exportInhalt, importBedienung = 'dateifeld' } = Astro.props;
 pruefeExportInhalt(exportInhalt);
 const fusszeilenAdresse = exportInhalt.adresse ? new URL(exportInhalt.adresse.href).hostname : '';
 
@@ -401,10 +402,10 @@ const bundeslaender = [
       </div>
       <div class="export-actions" aria-label="Projekt- und Exportaktionen">
         <button type="button" class="button button-secondary" id="save-json" data-requires-result disabled>Projekt exportieren</button>
-        <label class="button button-secondary file-button">
+        {importBedienung === 'schaltflaeche' ? <button type="button" class="button button-secondary" id="open-json" data-project-import>{texte.importBeschriftung}</button> : <label class="button button-secondary file-button">
           {texte.importBeschriftung}
           <input type="file" id="open-json" accept="application/json,.json" data-project-import />
-        </label>
+        </label>}
         <button type="button" class="button button-secondary" id="export-excel" data-requires-result data-schedule-export="excel" disabled>Excel exportieren</button>
         <button type="button" class="button button-secondary" id="export-pdf" data-requires-result data-schedule-export="pdf" disabled>PDF exportieren</button>
       </div>

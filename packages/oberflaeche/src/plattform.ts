@@ -10,8 +10,14 @@ export interface AusgabeDatei {
   bytes: Uint8Array<ArrayBuffer>;
 }
 export type Auswahl<T> = { status: 'ok'; wert: T } | { status: 'abgebrochen' };
+/** ok bestätigt nur den jeweiligen Adapterweg, niemals einen Versand an Empfänger. */
 export type DateiErgebnis = { status: 'ok' } | { status: 'abgebrochen' };
-export type Fehlercode = 'nicht-verfuegbar' | 'kein-speicher' | 'zu-gross' | 'lesen' | 'schreiben' | 'kein-ziel';
+export const FEHLERCODES = ['nicht-verfuegbar', 'kein-speicher', 'zu-gross', 'lesen', 'schreiben', 'kein-ziel'] as const;
+export type Fehlercode = typeof FEHLERCODES[number];
+export type AusgabeFormat = 'projekt' | 'excel' | 'pdf';
+export type AusgabeWeg = 'exportieren' | 'teilen';
+export type ImportBedienung = 'dateifeld' | 'schaltflaeche';
+export type AusgabeTexte = Partial<Record<AusgabeWeg, Partial<Record<AusgabeFormat, string>>>>;
 export class PlattformFehler extends Error {
   constructor(readonly code: Fehlercode, message: string) { super(message); this.name = 'PlattformFehler'; }
 }
@@ -24,7 +30,9 @@ export interface DateiImport {
   waehlen(vorgabe: { mime: 'application/json'; endungen: readonly ['.json']; maxBytes: number }): Promise<Auswahl<{ name: string; text: string }>>;
 }
 export interface DateiAusgabe {
+  /** Web: zum Speichern bereitgestellt; native Adapter können geschlossenes Schreiben bestätigen. */
   exportieren(datei: AusgabeDatei): Promise<DateiErgebnis>;
+  /** Vollständige Datei und gestartete Teilen-Auswahl; keine Versandbestätigung. */
   teilen?: (datei: AusgabeDatei) => Promise<DateiErgebnis>;
 }
 export interface Plattform {
@@ -40,6 +48,10 @@ export interface GastgeberTexte {
   speicherNichtVerfuegbar: string;
   exportErfolg: string;
   importBeschriftung: string;
+  /** Optional je Weg/Format. exportErfolg bleibt der Rückfall für exportieren. */
+  ausgabeErfolg?: AusgabeTexte;
+  ausgabeFehler?: AusgabeTexte;
+  erzeugungsFehler?: Partial<Record<AusgabeFormat, string>>;
 }
 export interface ExportInhalt {
   herausgeber: string;

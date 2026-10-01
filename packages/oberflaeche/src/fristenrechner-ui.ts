@@ -17,11 +17,11 @@ import {
 
 import { regelstandText } from './fristenrechner-export-data';
 import { leerenUndAnhaengen } from './dom';
-import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type RechnerOptionen } from './plattform';
+import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type AusgabeFormat, type AusgabeWeg, type RechnerOptionen } from './plattform';
 import { speicherWarteschlange } from './speicher-warteschlange';
-import { projektAlsDatei } from './projekt-datei';
+import { ausgabeBeschriftung, runDateiAusgabe } from './fristenrechner-export-action';
 export * from './plattform';
-export { erzeugeWebPlattform } from './web-plattform';
+export { erzeugeWebPlattform, erzeugeWebSpeicher, webZeit, WEB_SPEICHERSCHLUESSEL } from './web-plattform';
 export { webTexte, webExportInhalt } from './web-vorgaben';
 export { projektAlsDatei, safeFilename } from './projekt-datei';
 
@@ -170,10 +170,12 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
   const resetMessage = root.querySelector<HTMLElement>('#reset-message');
   const excelMessage = root.querySelector<HTMLElement>('#excel-message');
   const pdfMessage = root.querySelector<HTMLElement>('#pdf-message');
-  const importAktion = root.querySelector<HTMLElement>('[data-project-import]');
+  const importAktion = root.querySelector<HTMLInputElement | HTMLButtonElement>('[data-project-import]');
   const resetButton = root.querySelector<HTMLButtonElement>('#reset-project');
   const exportActions = root.querySelector<HTMLElement>('.export-actions');
   const saveJsonButton = root.querySelector<HTMLButtonElement>('#save-json');
+  const excelButton = root.querySelector<HTMLButtonElement>('#export-excel');
+  const pdfButton = root.querySelector<HTMLButtonElement>('#export-pdf');
   const resultActionButtons = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-requires-result]'));
   const elektronischLabel = root.querySelector<HTMLElement>('[data-elektronisch-label]');
   const elektronischHinweis = root.querySelector<HTMLElement>('[data-elektronisch-hinweis]');
@@ -190,7 +192,9 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
     || !einladungVersandField || !vuAnpassungRunde1Field || !vuAnpassungRunde2Field
     || verhandlungsFelder.length !== 2 || !startLabel
     || !bindefristTageField || !bindefristTerminField || !exportMessage || !exportActions
-    || !saveJsonButton || resultActionButtons.length !== 3
+    || !saveJsonButton || !excelButton || !pdfButton
+    || ![saveJsonButton, excelButton, pdfButton].every(button => resultActionButtons.includes(button))
+    || root.querySelectorAll('[data-project-import]').length !== 1
     || !elektronischLabel || !elektronischHinweis
     || !bieterinfoField || !infoVersandField || !wartefristField || !dringlichkeitHinweis
     || !aufforderungField || !importMessage || !resetMessage || !excelMessage || !pdfMessage || !importAktion || !resetButton) {
@@ -203,8 +207,8 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
   let speichernGesperrt = false;
   let aenderungen = 0;
   let projektAktion = false;
+  let dateiAuftrag = false;
   let speichernVorgemerkt = false;
-  const beschaeftigt = new Set<HTMLButtonElement>();
   const abmelden: (() => void)[] = [];
   const speicher = speicherWarteschlange(plattform.speicher);
   const hoeren = (ziel: EventTarget, typ: string, fn: (event: Event) => void): void => {
@@ -217,8 +221,26 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
 
   const setResultActionsEnabled = (enabled: boolean): void => {
     resultActionButtons.forEach((button) => {
-      button.disabled = !enabled || beschaeftigt.has(button);
+      button.disabled = !enabled || dateiAuftrag || !geladen;
     });
+    resetButton.disabled = dateiAuftrag || !geladen;
+    // Ein Dateifeld darf während seines Klicks nicht disabled werden: sonst
+    // kann der Browser die gerade angeforderte Auswahl unterdrücken. Weitere
+    // Klicks sperrt der Handler mit preventDefault; der App-Button wird disabled.
+    if (importAktion instanceof HTMLInputElement) {
+      if (dateiAuftrag || !geladen) importAktion.setAttribute('aria-disabled', 'true');
+      else importAktion.removeAttribute('aria-disabled');
+    } else importAktion.disabled = dateiAuftrag || !geladen;
+  };
+  const dateiAuftragBeginnen = (): boolean => {
+    if (dateiAuftrag || !geladen || disposed) return false;
+    dateiAuftrag = true;
+    setResultActionsEnabled(Boolean(currentResult));
+    return true;
+  };
+  const dateiAuftragBeenden = (): void => {
+    dateiAuftrag = false;
+    if (!disposed) setResultActionsEnabled(Boolean(currentResult));
   };
 
   const readInput = (): ScheduleInput => {
@@ -831,10 +853,8 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
   };
 
   hoeren(resetButton, 'click', async () => {
-    if (projektAktion || !geladen || disposed) return;
+    if (!dateiAuftragBeginnen()) return;
     projektAktion = true;
-    resetButton.disabled = true;
-    resetMessage.textContent = '';
     try {
       if (!await plattform.zuruecksetzenBestaetigen() || disposed) return;
       resetMessage.textContent = 'Projekt wird zurückgesetzt …';
@@ -869,86 +889,80 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       if (!disposed) resetMessage.textContent = 'Das Projekt konnte nicht vollständig zurückgesetzt und gespeichert werden. Bitte versuchen Sie es erneut.';
     } finally {
       projektAktionBeenden();
-      if (!disposed) resetButton.disabled = false;
-    }
-  });
-
-  hoeren(saveJsonButton, 'click', async () => {
-    if (disposed || beschaeftigt.has(saveJsonButton)) return;
-    beschaeftigt.add(saveJsonButton);
-    saveJsonButton.disabled = true;
-    exportMessage.textContent = 'Projektdatei wird erstellt …';
-    try {
-      const datei = projektAlsDatei(currentInput ?? readInput(), plattform.zeit());
-      const ausgabe = await plattform.ausgabe.exportieren(datei);
-      if (!disposed) exportMessage.textContent = ausgabe.status === 'ok' ? texte.exportErfolg : '';
-    } catch {
-      if (!disposed) exportMessage.textContent = 'Die Projektdatei konnte nicht erstellt oder ausgegeben werden. Bitte versuchen Sie es erneut.';
-    } finally {
-      beschaeftigt.delete(saveJsonButton);
-      if (!disposed) setResultActionsEnabled(Boolean(currentResult));
+      dateiAuftragBeenden();
     }
   });
 
   hoeren(importAktion, 'click', async (event) => {
-    if (projektAktion || !geladen || disposed) { event.preventDefault(); return; }
+    if (!dateiAuftragBeginnen()) { event.preventDefault(); return; }
     projektAktion = true;
+    const vorher = importMessage.textContent;
+    let geoeffnet = false;
     importMessage.textContent = 'Projektdatei auswählen …';
     try {
       const auswahl = await plattform.import.waehlen({ mime: 'application/json', endungen: ['.json'], maxBytes: MAX_PROJEKT_BYTES });
       if (disposed) return;
-      if (auswahl.status === 'abgebrochen') { importMessage.textContent = ''; return; }
+      if (auswahl.status === 'abgebrochen') { importMessage.textContent = vorher; return; }
       pruefeProjektGroesse(auswahl.wert.text);
       const parsed = parseProjektDatei(auswahl.wert.text);
       if (!parsed.ok) { importMessage.textContent = parsed.fehler.join(' '); return; }
       await stoppeSpeichern();
       if (disposed) return;
       setInput(parsed.datei.input);
+      geoeffnet = true;
       // Über das Formular normalisiert rendern — readInput wendet die
       // Relevanz-Guards an (z. B. zwischenbewertungAT ohne Präsentation,
       // Verhandlung und optimierte Angebotsrunde), damit Restwerte aus der
       // Datei weder den Kern erreichen noch reexportiert werden
       render(readInput(), false);
       showProjectFileMeta(parsed.datei);
+      formMessage.textContent = currentResult ? '' : 'Kein Terminplan berechenbar — bitte die festen Starttermine korrigieren.';
+      resetMessage.textContent = '';
       speichernGesperrt = false;
       await speicher.schreiben(JSON.stringify(erstelleProjektDatei(readInput(), plattform.zeit().zeitpunkt)));
       if (disposed) return;
-      formMessage.textContent = currentResult ? '' : 'Kein Terminplan berechenbar — bitte die festen Starttermine korrigieren.';
-      resetMessage.textContent = '';
       importMessage.textContent = `Projektdatei geöffnet (Rechenkern ${parsed.datei.rechenkernVersion}, Rechtsstand: ${parsed.datei.rechtsstand}).`;
       storageStatus.textContent = 'Zuletzt automatisch gespeichert: gerade eben.';
     } catch (error) {
-      if (!disposed) importMessage.textContent = groessenOderFehler(error, 'Die Projektdatei konnte nicht vollständig geladen und gespeichert werden. Bitte versuchen Sie es erneut.');
-    } finally { projektAktionBeenden(); }
+      if (!disposed) {
+        importMessage.textContent = geoeffnet
+          ? 'Die Projektdatei ist geöffnet, konnte aber nicht automatisch gespeichert werden. Exportieren Sie die Eingaben zur Sicherung.'
+          : groessenOderFehler(error, 'Die Projektdatei konnte nicht vollständig geladen und gespeichert werden. Bitte versuchen Sie es erneut.');
+        if (geoeffnet) storageStatus.textContent = texte.speicherNichtVerfuegbar;
+      }
+    } finally { projektAktionBeenden(); dateiAuftragBeenden(); }
   });
 
-  hoeren(exportActions, 'click', async (event) => {
-    const target = event.target;
-    if (!(target instanceof Element) || !currentInput || !currentResult || disposed) return;
-    const button = target.closest<HTMLButtonElement>('button[data-schedule-export]');
-    if (!button || !exportActions.contains(button) || beschaeftigt.has(button)) return;
-    const kind = button.dataset.scheduleExport;
-    if (kind !== 'excel' && kind !== 'pdf') return;
-    const input = currentInput;
-    const result = currentResult;
-    const message = kind === 'excel' ? excelMessage : pdfMessage;
-    const idleLabel = button.textContent ?? '';
-    beschaeftigt.add(button);
-    button.disabled = true;
-    message.textContent = `${kind === 'excel' ? 'Excel' : 'PDF'}-Export wird geladen und erstellt …`;
-    try {
-      const zeit = plattform.zeit();
-      const { runScheduleExport } = await import('./fristenrechner-export-action');
-      if (disposed) return;
-      await runScheduleExport(kind, button, message, input, result, optionen, zeit, () => !disposed);
-    } catch {
-      if (!disposed) message.textContent = `Der ${kind === 'excel' ? 'Excel' : 'PDF'}-Export konnte nicht geladen werden. Bitte versuchen Sie es erneut.`;
-    } finally {
-      beschaeftigt.delete(button);
-      if (!disposed) { button.textContent = idleLabel; setResultActionsEnabled(Boolean(currentResult)); }
+  const ausgabeAktionen: { format: AusgabeFormat; button: HTMLButtonElement; message: HTMLElement }[] = [
+    { format: 'projekt', button: saveJsonButton, message: exportMessage },
+    { format: 'excel', button: excelButton, message: excelMessage },
+    { format: 'pdf', button: pdfButton, message: pdfMessage },
+  ];
+  const bindeAusgabe = (format: AusgabeFormat, weg: AusgabeWeg, button: HTMLButtonElement, message: HTMLElement): void => {
+    hoeren(button, 'click', async () => {
+      if (!currentInput || !currentResult || !dateiAuftragBeginnen()) return;
+      try {
+        await runDateiAusgabe(format, weg, button, message,
+          () => ({ input: currentInput!, result: currentResult!, zeit: plattform.zeit() }), optionen, () => !disposed);
+      } finally { dateiAuftragBeenden(); }
+    });
+  };
+  for (const { format, button, message } of ausgabeAktionen) {
+    bindeAusgabe(format, 'exportieren', button, message);
+    if (plattform.ausgabe.teilen) {
+      const teilen = seite.createElement('button');
+      teilen.setAttribute('type', 'button');
+      teilen.setAttribute('id', format === 'projekt' ? 'share-json' : `share-${format}`);
+      teilen.setAttribute('data-file-share', format);
+      teilen.setAttribute('data-requires-result', '');
+      teilen.className = 'button button-secondary';
+      teilen.textContent = ausgabeBeschriftung(format, 'teilen');
+      exportActions.append(teilen);
+      resultActionButtons.push(teilen);
+      bindeAusgabe(format, 'teilen', teilen, message);
+      abmelden.push(() => teilen.remove());
     }
-  });
-
+  }
   field<HTMLInputElement>(form, 'bekanntmachung').value = plattform.zeit().kalendertag;
   updateVerfahrensartOptionen();
   updateConditionalFields();
@@ -989,7 +1003,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
           ? error.message + ' Ein vorhandenes Projekt bleibt erhalten. Importieren Sie eine Projektdatei oder setzen Sie das Projekt zurück.'
           : texte.speicherNichtVerfuegbar + ' Ein vorhandenes Projekt bleibt erhalten. Sie können weiter rechnen und die Eingaben als Projektdatei exportieren.';
       }
-    } finally { geladen = true; }
+    } finally { geladen = true; if (!disposed) setResultActionsEnabled(Boolean(currentResult)); }
   })();
 
   return {

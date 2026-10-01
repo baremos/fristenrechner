@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { pathToFileURL } from 'node:url';
+export { evaluiereDateiFall, dateiFallId } from './emulator/dateien-auswertung.mjs';
 // Die einzelnen Auswerter sind rein; der optionale CLI liest vorhandene Rohbelege.
 export const STATUS = Object.freeze({ bestanden: 'bestanden', fehler: 'nicht bestanden', ungueltig: 'ungültig', grenze: 'dokumentierte Grenze', sicht: 'Sichtprüfung ausstehend' });
 export const SICHTPRUEFUNGEN = Object.freeze({
@@ -478,6 +479,24 @@ export async function werteLaufAus(lauf) {
     try { setzen(id, await auswerten(), quellen); }
     catch (e) { setzen(id, ungueltig(`Rohbeleg nicht auswertbar: ${e.message}`), quellen); }
   };
+  const dateienAngefordert = vorhanden.has('dateien-roh.json') || original.auswahl?.ablauf === 'dateien' || original.auswahl?.phasen?.includes('dateien') || original.befund.some(b => b.id?.startsWith('dateien-'));
+  if (dateienAngefordert) {
+    const { werteDateienAus } = await import('./emulator/dateien-auswertung.mjs');
+    const dateibefunde = await werteDateienAus(lauf, 'dateien-roh.json', original.auswahl?.api);
+    for (const { id, ...wert } of dateibefunde) setzen(id, wert, ['dateien-roh.json']);
+    for (const b of original.befund.filter(b => b.id?.startsWith('dateien-'))) {
+      if (!dateibefunde.some(n => n.id === b.id)) setzen(b.id, ungueltig('Der ursprüngliche Dateibefund hat keinen vollständigen Rohfall in dateien-roh.json.'), ['dateien-roh.json']);
+    }
+    const { evalDateienNetz } = await import('./emulator/dateien-netz.mjs');
+    for (const variante of ['debug', 'release']) {
+      const name = `dateien-netz-${variante}.json`;
+      await neu(`D12-netz-${variante}`, [name], async () => evalDateienNetz(await json(name)));
+    }
+    for (const phase of original.auswahl?.api === 36 ? ['standard', 'geraetewechsel'] : ['standard']) {
+      const name = `sicherung-${phase}-app-backupnow.txt`;
+      if (!vorhanden.has(name)) setzen(`sicherung-${phase}`, ungueltig('Dateiphase enthält keinen Rohbeleg der erforderlichen Sicherungsprüfung.'), [name]);
+    }
+  }
   if (vorhanden.has('b-unix.txt')) await neu('B-Socket', ['b-unix.txt', 'b-debug-unix.txt', 'geraet.json'], async () => {
     const g = await json('geraet.json');
     const buildType = g.buildType ?? /:([^/:]+)\/[^/]+$/.exec(g.fingerprint ?? '')?.[1];

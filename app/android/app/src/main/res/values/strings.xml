@@ -5,4 +5,8 @@
     <string name="package_name">de.baremos.fristenrechner</string>
     <string name="custom_url_scheme">de.baremos.fristenrechner</string>
     <string name="no_webview_text">Der Fristenrechner benötigt die Systemkomponente Android System WebView. Sie ist auf diesem Gerät nicht verfügbar.</string>
+    <string name="datei_teilen_titel">Datei teilen</string>
+    <string name="projekt_zuruecksetzen_frage">Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?</string>
+    <string name="projekt_zuruecksetzen_abbrechen">Abbrechen</string>
+    <string name="projekt_zuruecksetzen_bestaetigen">Zurücksetzen</string>
 </resources>

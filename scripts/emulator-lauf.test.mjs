@@ -6,11 +6,11 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { dirname, join, relative, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { lauf, variantePlan, avdName, geraeteDaten, stelleEinstellungZurueck, systemDialog, systemWaitPunkt, ansichtsKnoten, leseAnsichtsbaum, bildschirmfoto, warteAufSystemoberflaeche } from './emulator-lauf.mjs';
+import { lauf, variantePlan, avdName, geraeteDaten, stelleEinstellungZurueck, systemDialog, systemWaitPunkt, ansichtsKnoten, leseAnsichtsbaum, bildschirmfoto, warteAufSystemoberflaeche, dateienAufraeumen } from './emulator-lauf.mjs';
 import { APP, argumente, ausgabePruefen, echterPfad, innen, mitAufraeumen, prozess, schreiber, websocketPruefen } from './emulator/rahmen.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const basis = join(repo, 'scratchpad', 'paket-2.5-c4', 'tmp');
+const basis = process.env.TMP ?? join(repo, 'scratchpad', 'paket-2.6', 'tmp');
 mkdirSync(basis, { recursive: true });
 const arbeit = mkdtempSync(join(basis, 'emulator-lauf-test-'));
 test.after(() => {
@@ -65,6 +65,12 @@ const freierBaum = '<hierarchy rotation="0"></hierarchy>';
 
 test('Wait wird ausschließlich aus dem eindeutigen echten Android-Knoten abgeleitet', () => {
   assert.equal(ansichtsKnoten(dialogFixture.xml).length, 3);
+  // Werte mit doppelten Anführungszeichen schreibt uiautomator in einfache.
+  const einfach = ansichtsKnoten(`<hierarchy rotation="0"><node index="0" text='Unbekannte Schema-Version "999"' resource-id="import-message" bounds="[0,0][10,10]" /></hierarchy>`);
+  assert.equal(einfach?.length, 1);
+  assert.equal(einfach[0].text, 'Unbekannte Schema-Version "999"');
+  assert.equal(einfach[0]['resource-id'], 'import-message');
+  assert.equal(ansichtsKnoten(`<hierarchy rotation="0"><node text='a<b' /></hierarchy>`), null);
   assert.deepEqual(systemWaitPunkt(dialogFixture.xml), { text: 'Wait', bounds: [70, 1269, 1010, 1395], x: 540, y: 1332 });
   assert.deepEqual(systemWaitPunkt(dialogFixture.xml.replace('text="Wait"', 'text="Warten"')), { text: 'Warten', bounds: [70, 1269, 1010, 1395], x: 540, y: 1332 });
   assert.equal(systemDialog(dialogFixture), true);
@@ -222,11 +228,36 @@ for (const [name, code, xml, readCode, gueltig] of [
     save: (name, d) => saved.set(name, d),
   };
   if (gueltig) assert.equal(await leseAnsichtsbaum(ctx, 'probe'), xml);
-  else await assert.rejects(leseAnsichtsbaum(ctx, 'probe'), /Ansichtsbaum nicht lesbar/);
-  assert.deepEqual(calls, ['rm -f /data/local/tmp/fristenrechner-emulator.xml', 'uiautomator dump /data/local/tmp/fristenrechner-emulator.xml', 'cat /data/local/tmp/fristenrechner-emulator.xml', 'rm -f /data/local/tmp/fristenrechner-emulator.xml']);
+  else await assert.rejects(leseAnsichtsbaum(ctx, 'probe'), /Ansichtsbaum nicht lesbar .*3 Versuche/);
+  // Ein ungültiger Abzug wird bis zu dreimal wiederholt; jeder Versuch beginnt ohne alte Datei.
+  const versuch = ['rm -f /data/local/tmp/fristenrechner-emulator.xml', 'uiautomator dump /data/local/tmp/fristenrechner-emulator.xml', 'cat /data/local/tmp/fristenrechner-emulator.xml'];
+  assert.deepEqual(calls, [...Array(gueltig ? 1 : 3).fill(versuch).flat(), 'rm -f /data/local/tmp/fristenrechner-emulator.xml']);
   assert.equal(saved.get('probe-uiautomator.json').gueltig, gueltig);
   assert.equal(saved.get('probe-uiautomator.json').dump.code, code);
+  assert.equal(saved.get('probe-uiautomator.json').versuche.length, gueltig ? 1 : 3);
   assert.equal(saved.get('probe-ansicht.xml'), xml);
+});
+
+test('UI-Baum: ein vorübergehend fehlender Wurzelknoten wird im zweiten Versuch gelesen', async () => {
+  const calls = [], saved = new Map();
+  let dumps = 0;
+  const ctx = {
+    shell: async command => { calls.push(command); },
+    sleep: async () => { calls.push('sleep'); },
+    adb: async args => {
+      calls.push(args[1]);
+      if (args[1].startsWith('uiautomator ')) return ++dumps === 1 ? { code: 0, out: '', err: 'ERROR: null root node returned by UiTestAutomationBridge.\r\n' } : { code: 0, out: '', err: '' };
+      return dumps === 1 ? { code: 1, out: '', err: 'No such file or directory' } : { code: 0, out: dialogFixture.xml, err: '' };
+    },
+    save: (name, d) => saved.set(name, d),
+  };
+  assert.equal(await leseAnsichtsbaum(ctx, 'probe'), dialogFixture.xml);
+  assert.equal(calls.filter(c => c.startsWith('uiautomator ')).length, 2);
+  assert.equal(calls.filter(c => c === 'sleep').length, 1);
+  const beleg = saved.get('probe-uiautomator.json');
+  assert.equal(beleg.gueltig, true);
+  assert.deepEqual(beleg.versuche.map(v => v.gueltig), [false, true]);
+  assert.match(beleg.versuche[0].dump.err, /null root node/);
 });
 
 test('Wiederverwendung und gezielte A8/A10-Läufe benötigen keinen Variantenbau', () => {
@@ -248,8 +279,8 @@ for (const [vorher, antworten, gueltig] of [
 });
 
 for (const [api, phasen] of [
-  ['36', ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'sicherung', 'alle']],
-  ['30', ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'sicherung', 'fehlerseite', 'alle']],
+  ['36', ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'dateien', 'sicherung', 'alle']],
+  ['30', ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'dateien', 'sicherung', 'fehlerseite', 'alle']],
   ['24', ['installation', 'alle']],
 ]) {
   test(`Argumente erlauben genau die vorgesehenen Phasen für API ${api}`, () => {
@@ -264,12 +295,47 @@ for (const [api, phasen] of [
 }
 
 test('Alle wiederholt integrierte Netz- und Navigationsphasen nicht doppelt', () => {
-  assert.deepEqual(argumente(args('36', 'alle'), repo).phasen, ['a', 'b', 'sicherung']);
-  assert.deepEqual(argumente(args('30', 'alle'), repo).phasen, ['a', 'b', 'sicherung', 'fehlerseite']);
+  assert.deepEqual(argumente(args('36', 'alle'), repo).phasen, ['a', 'b', 'dateien', 'sicherung']);
+  assert.deepEqual(argumente(args('30', 'alle'), repo).phasen, ['a', 'b', 'dateien', 'sicherung', 'fehlerseite']);
   assert.deepEqual(argumente(args('24', 'alle'), repo).phasen, ['installation']);
   assert.deepEqual(variantePlan(['a', 'b', 'netz', 'navigation', 'sicherung']), ['gegenprobe']);
   assert.deepEqual(variantePlan(['installation']), []);
   assert.deepEqual(variantePlan(['fehlerseite']), ['fehlerseite', 'ohne-fehlerseite']);
+  for (const api of ['30', '36']) {
+    const o = argumente(args(api, 'dateien'), repo);
+    assert.deepEqual(o.phasen, ['dateien', 'sicherung']);
+    assert.deepEqual(variantePlan(o.phasen), ['gegenprobe', 'testempfaenger']);
+  }
+  assert.throws(() => argumente(args('24', 'dateien'), repo), /nicht vorgesehen/);
+});
+
+for (const api of ['30', '36']) test(`Datei-Argumentprüfung API ${api} startet keinen Prozess und legt keine Ausgabe an`, () => {
+  const ziel = join(arbeit, `nur-argumente-${api}`);
+  const r = spawnSync(process.execPath, [join(repo, 'scripts/emulator-lauf.mjs'), ...args(api, 'dateien', ziel), '--nur-argumente'], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const plan = JSON.parse(r.stdout);
+  assert.deepEqual(plan.phasen, ['dateien', 'sicherung']);
+  assert.deepEqual(plan.varianten, ['gegenprobe', 'testempfaenger']);
+  assert.equal(plan.emulatorGestartet, false);
+  assert.equal(existsSync(ziel), false);
+});
+
+test('Argumentprüfung bleibt streng bei doppelten oder mit Werten belegten Prüfschaltern', () => {
+  assert.throws(() => argumente([...args(), '--nur-argumente', '--nur-argumente'], repo), /doppelt/);
+  assert.throws(() => argumente([...args(), '--nur-argumente', 'true'], repo), /Unbekanntes Argument/);
+});
+
+test('Dateibereinigung löscht nur einzeln registrierte Download-Dateien und versucht nach Fehlern weiter', async () => {
+  const commands = [], saved = [];
+  const ctx = { dateienDateien: new Set(['/sdcard/Download/../fremd', '/sdcard/Download/.', '/sdcard/Download/neu (1).json', '/sdcard/Download/fehler.json', '/sdcard/Download/weiter.json']),
+    save: (name, value) => saved.push({ name, value }),
+    shell: async cmd => { commands.push(cmd); if (cmd.includes('fehler.json')) throw new Error('Probe'); return cmd.startsWith('if ') ? 'entfernt' : ''; } };
+  await assert.rejects(dateienAufraeumen(ctx), /Ungültiger Dateipfad/);
+  assert.equal(commands.some(c => c.includes('../fremd')), false);
+  assert.equal(commands.some(c => c.includes('weiter.json')), true);
+  assert.equal(commands.some(c => /rm -rf|Download\/\*/.test(c)), false);
+  assert.equal(saved[0].name, 'dateien-aufraeumen.json');
+  assert.equal(saved[0].value.dateien.filter(d => d.entfernt).length, 2);
 });
 
 test('Wipe ist nur ausdrücklich aktiv und APK-Dateien bleiben getrennte Eingaben', () => {

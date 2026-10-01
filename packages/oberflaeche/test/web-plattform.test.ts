@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MAX_PROJEKT_BYTES, type AusgabeDatei, type Auswahl } from '../src/plattform';
-import { erzeugeWebPlattform, WEB_SPEICHERSCHLUESSEL } from '../src/web-plattform';
+import { erzeugeWebPlattform, erzeugeWebSpeicher, webZeit, WEB_SPEICHERSCHLUESSEL } from '../src/web-plattform';
 
 // Diese Stubs prüfen Ereignisse und Adapteraufrufe; sie bilden keinen nativen
 // Dateidialog, Browserdownload oder das Fokusverhalten einer WebView nach.
@@ -64,6 +64,17 @@ function aufgeraeumt(env: Umgebung): void {
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('Web-Speicher', () => {
+  it('verwendet den gemeinsamen Speicher auch unabhängig vom Dateifeld', async () => {
+    const env = umgebung();
+    const speicher = erzeugeWebSpeicher(env.fenster as unknown as Window);
+    await speicher.schreiben('{"projekt":2}');
+    expect(await env.adapter.speicher.lesen()).toBe('{"projekt":2}');
+    await env.adapter.speicher.entfernen();
+    expect(await speicher.lesen()).toBeNull();
+    expect(env.feld.click).not.toHaveBeenCalled();
+    env.adapter.dispose();
+  });
+
   it('liest, schreibt und entfernt unter dem bisherigen Schlüssel', async () => {
     const env = umgebung();
     expect(WEB_SPEICHERSCHLUESSEL).toBe('baremos-fristenrechner-projekt-v1');
@@ -375,6 +386,7 @@ describe('Web-Ausgabe und Plattformdienste', () => {
     vi.setSystemTime(datum);
     const env = umgebung();
     expect(env.adapter.zeit()).toEqual({ zeitpunkt: datum.toISOString(), kalendertag: '2026-09-30' });
+    expect(webZeit()).toEqual(env.adapter.zeit());
     env.adapter.dispose();
   });
 

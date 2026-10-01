@@ -2,7 +2,7 @@
   "appId": "de.baremos.fristenrechner",
   "appName": "Fristenrechner Vergabe",
   "webDir": "dist",
-  "loggingBehavior": "debug",
+  "loggingBehavior": "none",
   "includePlugins": [],
   "server": {
     "hostname": "localhost",

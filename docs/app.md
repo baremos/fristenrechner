@@ -1,6 +1,6 @@
 # Android-App
 
-Stand 2026-09-30, App-Version 0.1.0. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
+Stand 2026-10-01, App-Version 0.1.0. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
 
 ## Aufbau
 
@@ -48,6 +48,43 @@ Der vollständige Dateivergleich mit der Android-Vorlage von Capacitor 8.5.2, di
 - Die Adressen in Kommentaren der unverändert übernommenen Dateien `app/android/app/proguard-rules.pro`, `app/android/gradle.properties` und `app/android/gradlew` bleiben mit diesen Dateien bytegleich zur Vorlage erhalten; diese Kommentaradressen werden weder zur Laufzeit noch beim Build aufgerufen.
 
 `assets/capacitor.config.json` ist nach geparstem JSON mit der Quelle identisch, aber anders formatiert. `assets/capacitor.plugins.json` enthält `[]`. Die erzeugten Assets, `config.xml`, das Cordova-Modul und die Build-Ausgaben bleiben von Git ausgeschlossen. Die zwei erzeugten Gradle-Dateien `capacitor.settings.gradle` und `app/capacitor.build.gradle` sind dagegen eingecheckt und müssen nach erneutem Sync unverändert sein.
+
+## Dateiabläufe: Speichern unter, Teilen, Import und Dialog nativ
+
+Die App bindet über [app-plattform.ts](../app/src/adapters/app-plattform.ts) die native Ausgabe, den Import und die Bestätigung beim Zurücksetzen ein. Die Website behält ihr Dateifeld und ihre Web-Adapter. Der automatische Projektspeicher der App bleibt `localStorage` unter `baremos-fristenrechner-projekt-v1`; die Uhr liefert Zeitpunkt und Kalenderfelder der Ortszeit. Beide Funktionen stammen unverändert aus dem gemeinsamen Web-Adapter.
+
+| Weg | Verhalten und Grenze |
+|---|---|
+| Speichern unter | Projektdatei, Excel und PDF öffnen die Android-Auswahl. Erfolg erst nach Schreiben und Schließen, mit „Projektdatei gespeichert.“, „Excel-Datei gespeichert.“ oder „PDF gespeichert.“. Abbruch stellt die vorherige Meldung wieder her. Nicht entfernbarer Zielrest wird im Fehlertext benannt. |
+| Teilen | Eigene Aktion je Format. Erfolg bedeutet nur „Projektdatei zum Teilen bereitgestellt.“, „Excel-Datei zum Teilen bereitgestellt.“ oder „PDF zum Teilen bereitgestellt.“. Die gestartete Auswahl bestätigt keinen Versand oder Empfang. |
+| Import | „Projekt importieren“ öffnet `ACTION_OPEN_DOCUMENT` mit `CATEGORY_OPENABLE` und `application/json`. Nur eine ausgewählte `content`-URI, keine dauerhafte URI-Berechtigung. Kein Ausschluss fremder Cloud-Anbieter durch diesen Aufruf. |
+| Zurücksetzen | Deutscher `AlertDialog`, initialer Fokus auf „Abbrechen“. Nur die positive Auswahl bestätigt das Zurücksetzen; Abbrechen, Zurück und Dialog- oder Activity-Abbau bestätigen es nicht. |
+
+Der [Plugin-Vertrag](../app/src/adapters/dateiablauf-vertrag.ts) hat acht Methoden: `ausgabeBeginnen`, `ausgabeBlock`, `ausgabeAbschliessen`, `speichernUnter`, `teilen`, `ausgabeVerwerfen`, `projektWaehlen` und `zuruecksetzenBestaetigen`. Beginn erhält `name`, `mime`, `anzahlBytes` und liefert `auftragId`; Blöcke enthalten `auftragId`, `offset`, `base64`. Die vier übrigen Ausgabemethoden verwenden nur `auftragId`, Import und Bestätigung keine Felder. Speichern liefert `ok` oder `abgebrochen`, Teilen `bereitgestellt`, Import `abgebrochen` oder `{ status: 'ok', name, text }`, der Dialog `{ bestaetigt: boolean }`.
+
+Der [Ausgabeadapter](../app/src/adapters/dateiausgabe.ts) prüft höchstens 2 MiB PDF oder 1 MiB Excel beziehungsweise Projektdatei vor Beginn. Er übergibt den vorgeschlagenen Namen unverändert; nativ wird der Basename auf ASCII-Zeichen bereinigt, auch Umlaute werden dabei ersetzt. Er kodiert höchstens 64 KiB je Base64-Block ohne Zeilenumbrüche und wartet jeden Brückenaufruf ab. Offsets, Längen, Zustände und Pfade werden nativ geprüft; erst nach vollständigem Schreiben und Schließen ist Speichern oder Teilen möglich. Ein serieller IO-Pfad verarbeitet Dateien, Auswahlfenster starten auf dem UI-Thread. Ausgabe, Import und Dialog teilen eine Sperre; auch nativ wird die Belegung geprüft. Bei Transportfehlern versucht der Adapter, den eigenen Auftrag zu verwerfen, ohne den ursprünglichen Fehler zu verdecken.
+
+Der [Importadapter](../app/src/adapters/dateiimport.ts) lässt nativ höchstens 1 MiB plus ein Prüfbyte lesen, unabhängig von Größenmetadaten des Anbieters. Das zusätzliche Byte ergibt `zu-gross`; sichtbar ist „Die Projektdatei ist größer als 1 MiB.“. Strenges UTF-8 weist ungültige Bytefolgen mit `lesen` ab; eine führende BOM wird erst nach der Byteprüfung entfernt. Streams und Cursor werden auch bei Fehlern geschlossen. Der Anzeigename stammt aus `DISPLAY_NAME`, ersatzweise `Projekt.json`, ohne Pfadangaben. Adapter und Oberfläche prüfen Textgröße und Projektformat erneut; der Adapter berücksichtigt ein kleineres Limit des Aufrufers. Ein erfolgreicher Import übernimmt die Eingaben und versucht anschließend, sie automatisch zu speichern. Ein dabei auftretender Speicherfehler benennt den bereits geöffneten Stand.
+
+Bekannte Ausgabefehler zeigen die eigenen deutschen Plugintexte einschließlich eines möglichen Zielresthinweises; unbekannte Fehler verwenden allgemeine Texte. Gastgebertexte haben Vorrang. Beim Import zeigt die Oberfläche außer dem Größenfehler ihren allgemeinen Importfehlertext. Betriebssystemmeldungen, URI, Pfad und Dateiinhalt werden nicht als Transportfehlertext ausgegeben. Die [Adaptertests](../app/test/dateiausgabe.test.ts) verwenden ein Plugin-Testdoppel; sie belegen keinen Android-Dateidialog.
+
+Der Rücksetzdialog bindet die Ressourcen `projekt_zuruecksetzen_frage` („Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?“), `projekt_zuruecksetzen_abbrechen` („Abbrechen“) und `projekt_zuruecksetzen_bestaetigen` („Zurücksetzen“) über `R.string`. Jeder Aufruf endet höchstens einmal. Fehler oder unerwartete Ergebnisse des Dialogs wirken wie Abbrechen, ohne zusätzliche Meldung. Ein Activity-Neustart nimmt keinen alten Datei-Auftrag wieder auf; verspätete Ergebnisse werden nicht als neuer Auftrag übernommen. Zielreste werden nur für das Ergebnis der noch zugeordneten eigenen Speichern-Auswahl bestmöglich entfernt.
+
+Laufende und zum Teilen bereitgestellte Ausgaben liegen unter `cacheDir/export/<zufällige Kennung>/<bereinigter Basename>`. Der Provider ist nicht exportiert; nur die konkrete geteilte URI erhält Leserecht. Die Präferenzdatei enthält Kennungen und Bereitstellungszeiten, keine Dateinamen oder Inhalte. Das Budget der eigenen Ausgabedateien beträgt 16 MiB; eine neue Ausgabe verdrängt keine frische geteilte Datei. Beim Start, vor einer neuen Ausgabe und vor weiterem Teilen werden nicht aktive Reste ohne Freigabemarkierung sowie mindestens 24 Stunden alte Bereitstellungen bereinigt. Maßgeblich ist die Gerätezeit; bei Fehlern kann die Bereinigung ausbleiben. Android kann Cachedateien früher entfernen. Der Widerruf löscht keine Empfängerkopien und schließt keine dort bereits offenen Deskriptoren.
+
+Capacitor-Protokollierung ist mit `loggingBehavior: "none"` abgeschaltet. K1 verlangt diesen Wert und eine leere npm-Pluginliste. K2 prüft im Bündel jede der acht Brückenmethoden mit genau einer Aufrufstelle und den vereinbarten Feldern. K3/K4 prüfen Registrierungen, Provider, Pfadressource und Dialogressourcen. K5 prüft Komponentenverzeichnis, Provider-Authority und Ressourcen in der APK. Import und Dialog ergänzen keine Android-Komponente. Die Navigations-Gegenprobe behält das Datei-Plugin. `datei_teilen_titel` bleibt mit Quellkommentar erhalten; die unterstützten Android-Versionen zeigen diesen Titel nicht an.
+
+[Datenschutz](datenschutz.md) beschreibt Verarbeitung, Speicherung und Grenzen; der Text ist am 2026-10-01 freigegeben, ebenso der Hinweistext im Kasten der App („Die App verarbeitet Ihre Eingaben auf diesem Gerät. Sie hat keinen Internetzugriff. Von Ihnen gewählte Dateianbieter und Ziel-Apps können Dateien übertragen.“). Die App bindet dieselbe Markdown-Datei beim Build im offline lesbaren Abschnitt „Datenschutz“ ein; es gibt keine zweite Textfassung und keinen Abruf zur Laufzeit.
+
+### Frühere Builds und Handläufe
+
+Debug- und Release-Build samt K1 bis K5 sind mit der angeschlossenen Ausgabe am 2026-09-30 unter Windows gelaufen (Debug `c4b3ccdd…731c`, 9 874 075 Bytes; Release unsigniert `092cf913…b355`, 7 741 661 Bytes). Mit Import und Dialog sind sie am 2026-10-01 erneut gelaufen (Debug `9dd552d0…690d`, 9 730 977 Bytes; Release unsigniert `06dadbca…b64e`, 7 749 401 Bytes); mit dem Datenschutzabschnitt am selben Tag noch einmal (Debug `a7eda425…a105`, 9 730 977 Bytes; Release unsigniert `4bd9eb9b…442b`, 7 752 293 Bytes) und nach der Textfreigabe mit dem enger gefassten Hinweistext (Debug `dd19e14f…1988`, 9 730 977 Bytes; Release unsigniert `5a8e751d…8699`, 7 752 245 Bytes).
+
+Erster Handlauf am 2026-09-30 mit der Debug-APK auf den Abbildern fr-api30 (WebView 83) und fr-api36 ohne Root, gesteuert über die Devtools der WebView und `uiautomator`; die Bytes jedes Auftrags wurden an der Brücke mitgeschrieben und mit der gespeicherten Datei verglichen: Projektdatei, Excel und PDF über „Speichern unter“ in der Android-Auswahl gespeichert, die Datei in `Download` ist jeweils bytegleich zu den gesendeten Bytes (1 359, 6 437 bis 6 439 und 23 212 Bytes, je ein Block); Aufruffolge Beginn, Block, Abschluss, Speichern mit genau den vereinbarten Feldern; Erfolgsmeldung erst nach `ok`; Abbruch der Auswahl liefert `abgebrochen`, lässt alle Meldungen stehen und legt keine Datei an; Teilen aller drei Formate öffnet die Auswahl von Android und meldet „bereitgestellt“; nach dem Schließen der Auswahl ist ein weiteres Speichern möglich; der Cache enthält danach genau die drei bereitgestellten Dateien mit Freigabemarkierung, nach dem Speichern keine; logcat ohne Fehlerzeile und ohne Pfad oder Dateiname aus dem eigenen Prozess. Beobachtungen der Abbilder, keine Fehler der App: Android ab Version 10 zeigt den Titel der Teilen-Auswahl nicht an (die Ressource `datei_teilen_titel` bleibt ohne sichtbare Wirkung); bei genau einem Empfänger (Excel: Bluetooth) startet Android ihn direkt; ohne Empfänger (Projektdatei auf den Abbildern ohne weitere Apps) zeigt die Auswahl nur den Hinweis, dass keine App die Aktion ausführen kann, die Meldung der Oberfläche bleibt bei „bereitgestellt“. Auf fr-api36 steht nach dem Start gelegentlich der Dialog „System UI isn't responding“ des Abbilds, der mit „Wait“ geschlossen wird.
+
+Handlauf zu Import und Dialog am 2026-10-01 mit der Debug-APK `9dd552d0…690d` auf fr-api30 (WebView 83) und fr-api36 ohne Root, gesteuert über die Devtools der WebView, `uiautomator` und Tasteneingaben; je Abbild 63 Befunde bestanden: Eine über „Speichern unter“ erzeugte Projektdatei wurde mit geändertem Projektnamen nach `Download` gelegt und über „Projekt importieren“ in der Android-Auswahl geöffnet; `projektWaehlen` wird genau einmal ohne Felder aufgerufen, die Antwort trägt Anzeigename und Text, die Meldung lautet „Projektdatei geöffnet (Rechenkern 1.9.0, Rechtsstand: Juli 2026).“, Formular und Speicher zeigen den importierten Stand. Abbruch der Auswahl mit Zurück liefert `abgebrochen` und lässt Meldung, Formular und Speicher unverändert. Eine Datei mit genau 1 048 576 Bytes wird gelesen und scheitert erst am Format; ein Byte mehr ergibt `zu-gross` mit „Die Projektdatei ist größer als 1 MiB.“; ungültiges UTF-8 ergibt `lesen`, die Oberfläche zeigt dazu wie auf der Website ihren allgemeinen Text; eine führende BOM wird entfernt und die Datei geöffnet. Nach jedem Fehler bleibt das Projekt unverändert, und die Schaltflächen sind wieder frei. Der Dialog zum Zurücksetzen zeigt die drei Ressourcen, „Abbrechen“ (`android:id/button2`) hat vor der ersten Eingabe `focused="true"`; Abbrechen und Zurück liefern `bestaetigt: false` ohne Änderung, nur „Zurücksetzen“ liefert `true` und legt ein neues Projekt an. Das Thema der App zeigt die Schaltflächen in Großbuchstaben. Eine echte Neuerstellung der Activity bei offenem Dialog, ausgelöst über eine geänderte Systemschrift (`fontScale` steht nicht in `android:configChanges`), schließt den Dialog, setzt nichts zurück, erhält das gespeicherte Projekt und baut die WebView neu auf (neue Seitenkennung in den Devtools, derselbe Prozess); Dialog und Import sind danach wieder bedienbar. logcat ohne Fehlerzeile und ohne Namen oder Inhalt der Projektdateien aus dem eigenen Prozess. Beobachtungen der Abbilder, keine Fehler der App: `input tap` auf eine Zeile der Dateiauswahl wirkt nicht, Chips und Schaltflächen daneben reagieren; die Zeile lässt sich mit den Pfeiltasten fokussieren und mit Enter öffnen. In der Kachelansicht hat der Dateiname im Abzug von `uiautomator` keine Fläche. Auf fr-api36 erschien der Dialog „System UI isn't responding“ einmal und wurde mit „Wait“ geschlossen. Dieser Handlauf belegte noch keine Neuerstellung bei offener Dateiauswahl, keinen Prozessverlust und keinen Hintergrundwechsel ohne Neuerstellung. Diese Fälle wurden anschließend in der Dateiphase geprüft; ein echtes Gerät bleibt offen.
+
+Die Dateiphase vom 2026-10-01 ergänzt diese Handläufe, siehe [Ergebnisse und Rohbelege](#dateiphase-auf-api-30-und-36). Weiter offen sind ein echtes Gerät mit TalkBack und Herstelleranbietern, verzögertes Lesen durch echte Empfänger, fehlende Speicherziele, voller Speicher beziehungsweise Cache sowie Schreib- und Schließfehler mit und ohne Zielrest. Die Importgrößengrenzen, Cache-Bereinigung, Freigaben und die genannten Lebenszyklusfälle sind auf den beiden Abbildern belegt; daraus folgt kein Nachweis aller Fehlerfälle. Der Schließfehler blieb eine dokumentierte Grenze, ebenso die fehlenden UID-Zähler auf API 30.
 
 ## Bauen
 
@@ -226,8 +263,8 @@ node scripts/emulator-lauf.mjs --api 24 --ablauf installation --ausgabe scratchp
 
 | Abbild | WebView des vorgesehenen Abbilds | Auswahl mit `--ablauf` |
 |---|---|---|
-| `fr-api36` | 133.0.6943.137 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `sicherung`, `alle`; Sicherung einschließlich Gerätewechsel |
-| `fr-api30` | 83.0.4103.120 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `sicherung`, `fehlerseite`, `alle`; Sicherung ohne Gerätewechsel |
+| `fr-api36` | 133.0.6943.137 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `dateien`, `sicherung`, `alle`; Sicherung einschließlich Gerätewechsel |
+| `fr-api30` | 83.0.4103.120 | `a`, `a8`, `a10`, `b`, `netz`, `navigation`, `dateien`, `sicherung`, `fehlerseite`, `alle`; Sicherung ohne Gerätewechsel |
 | `fr-api24` | 52 | `installation`, `alle`; erwartete Ablehnung mit `INSTALL_FAILED_OLDER_SDK` |
 
 Der Lauf verwendet jeweils nur einen Emulator auf Port 5554 mit `-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect`. Nach dem Systemstart wartet er zunächst 45 Sekunden und prüft vor dem ersten Ablauf auf einen Dialog der Systemoberfläche. Dieselbe Prüfung gilt vor der Activity-Wertung und vor Fotos: Eine oben liegende App-Activity schließt einen verdeckenden Systemdialog nicht aus. Erkennt der Rahmen „System UI isn't responding“, liest er den Ansichtsbaum und tippt ausschließlich auf die Mitte des Knotens mit exakt „Wait“ oder „Warten“. Pro Dialogprüfung sind höchstens drei Versuche mit erneuter Prüfung zulässig; Baum, Koordinaten und Ergebnis werden aufgezeichnet. Fehlt der passende Knoten oder bleibt der Dialog sichtbar, ist der Ablauf ungültig. „Close app“ und andere Knoten werden nie betätigt. Ein vollständiger Ansichtsbaum (`<hierarchy … </hierarchy>`) ist auch dann lesbar, wenn `uiautomator dump` nach dem Schreiben mit Rückgabewert 137 endet. Ein erfolgreiches Betätigen erscheint eigens als „Systemdialog mit Wait geschlossen“ im Ergebnis. Navigationsfotos und die Gegenprobe ohne Fehlerseite benötigen keinen UI-Automator-Baum; sie sind ergänzende Rohbelege. Umgebungsvariablen für SDK und Testgeräte gelten nur für den gestarteten Prozess.
@@ -237,6 +274,7 @@ Der Lauf verwendet jeweils nur einen Emulator auf Port 5554 mit `-no-window -no-
 | Ablauf A, Debug über CDP | Start und Fehlerfalle, Formular und Berechnung mit Regelversion und Rechtsstand, Brückenaufruf, gespeicherte Eingaben nach `force-stop` und deren Löschung nach `pm clear`, Rechtsstandhinweis an der Grenze und am Folgetag, Navigation, Netz, Darstellung, Zurück-Taste und Barrierebaum. |
 | Darstellung innerhalb von A | Bildschirmfotos bei Schriftgröße 1,3 und 2,0, Nachtmodus, gedrehtem Bildschirm und eingeblendeter Tastatur. Vergleich von `scrollWidth` und `clientWidth`; bei Überlauf zusätzlich Elemente mit Text und Maßen, außer dem zulässigen Tabelleninnenraum. Rotation mit begrenzten Wiederholungen und tatsächlicher Ansichtsrichtung. Tastatur mit Eingabedienst, sichtbarer IME-Fläche und Fokus auf dem Eingabefeld; ergänzende Sichtprüfung der Bilder. |
 | Ablauf B, Release | Signierte Kopie der Release-APK im Ausgabeordner, Startbild und Fehlerfalle, Paketkennzeichen ohne `DEBUGGABLE` und `ALLOW_BACKUP`. Devtools-Sockets sind nur beim Build-Typ `user` als Release-Eigenschaft bewertbar. Netzmelder nach 60 Sekunden Ruhe, Hintergrund und Rückkehr. |
+| Dateien, Debug und Release | Speichern und Teilen mit SHA-256 gegen die Bytes vor dem nativen Transport, Import über DocumentsUI, Fehlerfälle über den Testprovider, Fokus und Lebenszyklus, Freigaben und Cache-Bereinigung. UID-Netzbeobachtung während aller Dateiwege; anschließend bestehende Sicherungsprüfung. Lauf am 2026-10-01 auf fr-api30 (47 bestanden, 3 dokumentierte Grenzen) und fr-api36 (50 bestanden, 1 dokumentierte Grenze), siehe unten. |
 | Netz | TCP-Netzmelder, Gegenprobe vor und nach der App sowie je nutzbarem Zugriffsweg: Fetch, XHR, Bild, Iframe, WebSocket, Beacon, EventSource, Prefetch und CapacitorHttp. Eine `.invalid`-Adresse ergänzt die Fehlerbeobachtung. Dazu `/proc/net`, auf API 36 die UID-Tabelle von `netstats` und eine nicht automatisch ausgewertete Paketaufzeichnung. |
 | Navigation | `location.href`, `window.open`, Link mit `target=_blank`, `mailto:`, `tel:`, `intent:`, `file:`, `content:` und `data:`; Prüfung von oberster Activity, lokaler Herkunft, Netzmelder und Protokollmeldungen. |
 | Sicherung | App vor `backupnow` starten und `stopped=false` prüfen. LocalTransport darf keine App-Daten ablegen; die Gegenprobe muss den gespeicherten Marker unter `app_webview/Default/Local Storage` sichern. Auf API 36 zusätzlich Gerätewechsel. |
@@ -253,6 +291,117 @@ Der Ausgabeordner enthält `ergebnis.json`, `zusammenfassung.txt`, `logcat.txt`,
 
 Auch nach einem Fehler räumt der Lauf auf: App und Gegenprobe deinstallieren, geänderte Uhr-, Schrift-, Nachtmodus- und Sicherungseinstellungen zurücksetzen, Emulator beenden, dessen `snapshots` löschen und eigene ADB-Weiterleitungen entfernen. Fehler beim Aufräumen gehören zum Ergebnis.
 
+### Dateiphase auf API 30 und 36
+
+Die Phase `dateien` ist am 2026-10-01 auf beiden Abbildern gelaufen, mit der
+Debug-APK `9dd552d0…690d` und der unveränderten Release-APK `06dadbca…b64e`:
+fr-api30 (WebView 83) 47 bestanden, 0 nicht bestanden, 0 ungültig,
+3 dokumentierte Grenzen, Rückgabewert 3, 45 Minuten; fr-api36 50 bestanden,
+0 nicht bestanden, 0 ungültig, 1 dokumentierte Grenze, Rückgabewert 3,
+45 Minuten. Die Neuauswertung aus den Rohbelegen ergibt dasselbe. Dokumentierte
+Grenzen sind der nicht provozierbare Schließfehler (beide Abbilder) und auf
+API 30 die fehlenden UID-Zähler von `netstats` im Datei-Netzfenster (Debug und
+Release). Alle übrigen Teilfälle D1 bis D12 und die Release-Fälle sind
+bestanden, darunter der Empfang im Testempfänger mit verweigertem Schreib-,
+Nachbar- und Projektzugriff, die Größenprüfung unabhängig von den Metadaten des
+Testproviders, der Streamfehler, die Cache-Bereinigung mit Widerruf und die
+Lebenszyklusfälle einschließlich `force-stop`. Vier Läufe davor auf fr-api30
+scheiterten an der Testumgebung, nicht an der App, und führten zu Korrekturen am
+Rahmen: Ein vorübergehend fehlender Wurzelknoten von `uiautomator` wird mit
+bis zu drei Versuchen behandelt; Werte mit doppelten Anführungszeichen schreibt
+`uiautomator` in einfache; die Resumed-Zeile von `dumpsys` fehlt im
+Activity-Wechsel kurz; eine Zeile am Ende einer langen Liste der
+Android-Auswahl bleibt unter der Navigationsleiste und lässt sich per Tastatur
+nicht zuverlässig fokussieren, deshalb verteilt der Testprovider seine
+Dokumente auf zwei kurze Wurzeln und die Importdateien in `Download` stehen
+mit dem Vorsatz `0-` bei alphabetischer Sortierung oben; der Streamfehler des Testproviders liegt bei
+256 KiB, weil ein kurzes Lesen vor dem Fehler über FUSE als Dateiende ankommt.
+Ein Lauf brach ab, weil der Testempfänger von einem Handversuch noch
+installiert war; der Rahmen lehnt vorhandene Pakete ab.
+Die zuvor beschriebenen Handläufe ersetzen ihre Abnahme nicht. `alle` führt nach A
+und B die Dateiphase und anschließend die bisherige Sicherungsprüfung aus.
+Auch `--ablauf dateien` enthält diese Sicherungsprüfung; auf API 36 kommt
+der Gerätewechsel hinzu.
+
+Zuerst die Argumente ohne Build, APK-Zugriff oder Emulatorstart prüfen, dann
+die beiden Abbilder nacheinander ausführen. Die Ausgabeordner der echten
+Läufe müssen neu oder leer sein:
+
+```sh
+node scripts/emulator-lauf.mjs --api 30 --ablauf dateien --ausgabe scratchpad/paket-2.6/api30-dateien --nur-argumente
+node scripts/emulator-lauf.mjs --api 36 --ablauf dateien --ausgabe scratchpad/paket-2.6/api36-dateien --nur-argumente
+node scripts/emulator-lauf.mjs --api 30 --ablauf dateien --ausgabe scratchpad/paket-2.6/api30-dateien
+node scripts/emulator-lauf.mjs --api 36 --ablauf dateien --ausgabe scratchpad/paket-2.6/api36-dateien --varianten scratchpad/paket-2.6/api30-dateien/varianten
+```
+
+Die Wiederverwendung prüft auch den Quellstand der Test-App. Nach Änderungen
+ist ein neuer Variantenbau ohne `--varianten` erforderlich. Für einen ersten
+Durchlauf sind etwa 40 bis 75 Minuten je Abbild einzuplanen, zusätzlich der
+isolierte Variantenbau und die Cache-Kopie beim ersten Lauf. Dies ist ein
+Planwert, keine gemessene Laufzeit. Einzelne UI-Automator-Aufrufe oder eine
+gestörte Systemoberfläche können den Lauf verlängern oder ungültig machen.
+
+Der Rahmen installiert Debug-App, Gegenprobe und die separate Test-App
+`org.example.dateiprobe`. Der Testempfänger und dessen DocumentsProvider
+entstehen ausschließlich aus [Testquellen](../scripts/emulator/testempfaenger/README.md)
+im Ausgabeordner: Java 17, Mindest-API 30, Android-Framework ohne zusätzliche
+Bibliotheken oder angeforderte Berechtigungen. Gebaut wird offline aus dem
+vorhandenen Gradle-Cache, signiert mit dem vorhandenen Emulator-Debugschlüssel.
+Anschließend laufen Speichern, Teilen und Import auch gegen eine mit diesem
+Schlüssel signierte Kopie der unveränderten Release-APK. Ihre Ergebnisse
+werden getrennt von Debug ausgewiesen. Der Devtools-Zugang dieser
+`userdebug`-Abbilder ist keine zugesagte Eigenschaft eines Release-Geräts.
+
+`dateien-roh.json` enthält die Fälle D1 bis D11 und die Release-Fälle mit
+Schemafassung und Verweisen auf ihre Rohbelege. Dazu gehören Brückenaufträge
+und Antworten, Referenzbytes je Auftrag, gezogene Zieldateien, Empfänger- und
+Providerberichte, Formular- und Speicherzustände, Activity-/Seitenkennungen,
+Ansichtsbäume und Bilder. D12 steht in `dateien-netz-debug.json` und
+`dateien-netz-release.json`: Netzmelder vor/nach dem Fenster, UID-Socketproben
+während aller Wege und UID-Zähler auf API 36. `netz.pcap` bleibt ein
+ergänzender Rohbeleg. Die Sicherungsbelege, Installationsprüfsummen und
+`dateien-aufraeumen.json` bleiben ebenfalls im Laufordner.
+
+Speichern und Empfang können nur mit SHA-256-Gleichheit der gesammelten
+Brückenbytes und der tatsächlichen Zieldatei bestehen, einschließlich Name,
+MIME-Typ, Größe und JSON-/ZIP-/PDF-Struktur. Für zwei JSON- und XLSX-Exporte
+wird die WebView-Uhr für den Vergleich festgehalten; XLSX enthält einen
+Kalendertag. PDF wird gegen die Referenz genau seines Auftrags geprüft.
+Eine Erfolgsmeldung oder eine Datei im App-Cache allein genügt nicht.
+
+DocumentsUI wird in der Listenansicht bedient. Dateizeilen werden anhand
+des fokussierten `item_root` und der Titelfläche mit den Richtungstasten
+gewählt und mit Enter geöffnet. Neue Download-Dateien werden aus der
+Verzeichnisdifferenz ermittelt; vorhandene Dateien anderer Läufe bleiben
+erhalten. Bei Wiederholung kann Android den Namen um ` (1)` ergänzen.
+Neuerstellung wird über `font_scale` und den Wechsel der Devtools-Seite bei
+gleicher PID belegt; Rotation zählt dafür nicht. Einstellungen werden
+gesichert und auch nach einem Abbruch wiederhergestellt. Nur im Lauf
+registrierte Download-Dateien und Testinstallationen werden entfernt.
+
+Für D11 wird die Gerätezeit vorübergehend vorgestellt. Eine alte Freigabe
+wird zusätzlich über Präferenzdatei und Dateizeit gealtert; die frische
+Freigabe entsteht mit zeitlichem Abstand. Der App-Prozess bleibt bestehen.
+Vor dem nächsten Teilen muss die alte URI noch lesbar sein, danach muss ihr
+Zugriff verweigert werden. Die ursprüngliche Zeitautomatik und Gerätezeit
+werden anschließend wiederhergestellt, auch beim Aufräumen nach Abbruch.
+
+Die Neuauswertung prüft die binären Dateien erneut:
+
+```sh
+node scripts/emulator-auswertung.mjs --lauf scratchpad/paket-2.6/api30-dateien --ausgabe scratchpad/paket-2.6/api30-auswertung
+node scripts/emulator-auswertung.mjs --lauf scratchpad/paket-2.6/api36-dateien --ausgabe scratchpad/paket-2.6/api36-auswertung
+```
+
+Als dokumentierte Grenzen kommen ein nicht ohne Produktänderung auslösbarer
+Schließfehler, eine Auswahl ohne externen Empfänger und die fehlenden
+UID-Zähler von API 30 in Betracht. Damit ist der jeweilige Nachweis nicht
+bestanden. Der eigene Testempfänger und Testprovider müssen dagegen vorhanden
+und auswertbar sein; ihr Fehlen, ein fehlender Picker, fehlende Rohbytes oder
+unvollständige Lebenszyklusdaten machen den betroffenen Fall ungültig.
+Echte Empfängerprogramme, TalkBack, Herstelleranbieter und voller Speicher
+bleiben zusätzlich auf einem Gerät zu prüfen.
+
 ### Grenzen und Bewertung
 Die [Chromium-Quellen zu SharedStatics, AwInit und BuildInfo](https://chromium.googlesource.com/chromium/src/+/3546854f59..2e285ebae2) erklären das erzwungene WebView-Debugging auf `eng` und `userdebug`. Die genaue Zuordnung dieser Quellen zu den verwendeten WebView-Binärdateien wurde nicht geprüft. Die Release-App hat kein `DEBUGGABLE`; Capacitor übergibt deshalb ohne eigene Überschreibung `false`. Auf einem Abbild mit Build-Typ ungleich `user` bleibt die Socketprüfung unabhängig vom Socketfund eine dokumentierte Grenze. Bei historischen Läufen wird der Typ ausdrücklich aus dem Gerätefingerabdruck abgeleitet; neue Läufe erfassen `ro.build.type` direkt. Der Emulatorrahmen verlangt `adb root` und ist nicht direkt für den fehlenden Nachweis auf einem Gerät mit Build-Typ `user` verwendbar.
 
@@ -261,7 +410,7 @@ Die [Chromium-Quellen zu SharedStatics, AwInit und BuildInfo](https://chromium.g
 - `dumpsys dnsresolver` lieferte auch für die Gegenprobe keine Anfragen und ist kein DNS-Nachweis. Auf API 30 enthält `dumpsys netstats detail` keine auswertbaren Zeilen je UID. Die Tabelle `mAppUidStatsMap` auf API 36 ist nur ein zusätzlicher Beleg; `/proc/net` erfasst Momentaufnahmen.
 - Auf den vorgesehenen AOSP-Abbildern fehlen Empfänger für `mailto:` und `intent:`. Deren Gegenproben können die Sperre nicht belegen. `file:`, `content:` und `data:` werden bereits von Chromium gesperrt; erwartet werden dessen konkrete Fehlermeldungen statt einer Meldung des Plugins. Auch hier fehlt eine wirksame Gegenprobe für das Plugin. Diese fünf Fälle bleiben ausdrücklich als Grenzen sichtbar.
 - A8 baut nach Darstellungswechseln die CDP-Verbindung neu auf: In den Läufen vom 30.09.2026 wurde die Activity bei geändertem `font_scale` neu erzeugt. A10 verwendet ebenfalls eine frische Verbindung und ruft vor `Accessibility.getFullAXTree` zuerst `Accessibility.enable` auf. Bleibt allein die AX-Abfrage trotz erreichbarem DOM unbeantwortet oder ist die Methode nicht vorhanden, lautet der Befund „dokumentierte Grenze: nicht verfügbar“. Namenquellen der Bedienelemente aus DOM und ARIA werden separat geprüft. Sie ersetzen weder einen berechneten Barrierebaum noch TalkBack. Die alten Zeitüberschreitungen auf der veralteten Verbindung belegen keine fehlende AX-Unterstützung.
-- Die Bilder benötigen eine Sichtprüfung, insbesondere für Systemleisten, Startverhalten, Verdeckung und Lesbarkeit. Der automatische Überlauftest deckt diese Punkte nicht ab. Dateiimport, Exporte, Teilen und Bestätigungsdialog sowie TalkBack auf einem echten Gerät sind nicht Teil dieses Emulatornachweises.
+- Die Bilder benötigen eine Sichtprüfung, insbesondere für Systemleisten, Startverhalten, Verdeckung und Lesbarkeit. Der automatische Überlauftest deckt diese Punkte nicht ab. Die Dateiphase ergänzt Import, Exporte, Teilen und Bestätigung; sie ersetzt weder TalkBack noch die Prüfung echter Empfänger und Dokumentanbieter auf einem Gerät.
 - LocalTransport prüft nur das beschriebene Verhalten dieser Abbilder. Die Meldung „Transport rejected package“ beim Gerätewechsel belegt allein keine Ursache; entscheidend sind fehlende App-Daten und die wirksame Gegenprobe. Ein fehlender oder nicht auswertbarer Transport ergibt keinen dynamischen Nachweis. Die statische Prüfung der Sicherungsregeln bleibt davon getrennt.
 
 Die Auswertung unterscheidet „bestanden“, „nicht bestanden“, „ungültig“, „dokumentierte Grenze“ und „Sichtprüfung ausstehend“. Rückgabewert `0` bedeutet, dass alle gewählten Prüfungen und ihre Gegenproben bestanden sind; `1` kennzeichnet einen Fehler, `2` eine ungültige oder unvollständige Messung und `3` ausschließlich dokumentierte Grenzen neben bestandenen Prüfungen. `4` bedeutet ausstehende Sichtprüfungen, gegebenenfalls neben dokumentierten Grenzen: Die Messung ist dadurch nicht ungültig, aber die Abnahme ist unvollständig. Fehler und ungültige Messungen haben Vorrang vor `4`, ausstehende Sichtprüfung hat Vorrang vor `3`. `64` bedeutet falsche oder fehlende Laufargumente. Unbekannte Formate, fehlende Abschnitte und unwirksame Gegenproben sind kein Bestehen. Die bekannten Navigationsgrenzen haben eine eigene Stufe mit Begründung; andere unwirksame Gegenproben bleiben ungültig. Für die Abnahme sind Grenzen einzeln ausdrücklich als Einschränkung zu akzeptieren oder durch zusätzliche Belege zu schließen; Codes `3` und `4` dürfen nicht als vollständiges Bestehen behandelt werden.

@@ -42,3 +42,13 @@ describe('Dateinamen', () => {
     expect(safeFilename(eingang)).toBe(erwartet);
   });
 });
+
+it('begrenzt den formatierten Projektexport auf genau 1 MiB einschließlich UTF-8', () => {
+  const max = 1024 * 1024;
+  const input = beispiel({ projekt: { projektname: 'Grenze', kunde: '' } });
+  const grundBytes = projektAlsDatei(input, zeit).bytes.length;
+  input.projekt!.kunde = 'ä'.repeat(Math.floor((max - grundBytes) / 2)) + 'a'.repeat((max - grundBytes) % 2);
+  expect(projektAlsDatei(input, zeit).bytes.length).toBe(max);
+  input.projekt!.kunde += 'a';
+  expect(() => projektAlsDatei(input, zeit)).toThrow('Die Projektdatei ist größer als 1 MiB.');
+});

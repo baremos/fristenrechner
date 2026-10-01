@@ -64,13 +64,14 @@ export function pruefeKonfiguration(config, { publicOrdner, vorgabe = VORGABE } 
   }
   for (const pfad of ['loggingBehavior', 'android.loggingBehavior']) {
     const w = wert(config, pfad);
-    if (w !== undefined && w !== vorgabe.konfiguration.loggingBehavior) {
+    if ((pfad === 'loggingBehavior' || w !== undefined) && w !== vorgabe.konfiguration.loggingBehavior) {
       fehler.push(`${pfad} muss ${JSON.stringify(vorgabe.konfiguration.loggingBehavior)} sein, ist ${JSON.stringify(w)}.`);
     }
   }
   if (!Array.isArray(config.includePlugins) || !config.includePlugins.every((p) => typeof p === 'string')) {
     fehler.push('includePlugins muss eine Liste von Paketnamen sein.');
   }
+  if (!isDeepStrictEqual(config.includePlugins, [])) fehler.push('includePlugins muss genau [] sein.');
   const version = wert(config, 'android.minWebViewVersion');
   if (!Number.isInteger(version) || version < vorgabe.konfiguration.minWebViewVersion) {
     fehler.push(`android.minWebViewVersion muss eine ganze Zahl ab ${vorgabe.konfiguration.minWebViewVersion} sein, ist ${JSON.stringify(version)}.`);
@@ -133,13 +134,69 @@ function adressenIn(text) {
   return [...treffer, ...[...rest.matchAll(OHNE_SCHEMA)].map((m) => m[0])];
 }
 
+const DATEIABLAUF_FELDER = {
+  ausgabeBeginnen: ['anzahlBytes', 'mime', 'name'],
+  ausgabeBlock: ['auftragId', 'base64', 'offset'],
+  ausgabeAbschliessen: ['auftragId'],
+  speichernUnter: ['auftragId'],
+  teilen: ['auftragId'],
+  ausgabeVerwerfen: ['auftragId'],
+  projektWaehlen: [],
+  zuruecksetzenBestaetigen: [],
+};
+
+// Der Adapter nutzt einen Plugin-Parameter und direkte Aufrufe. Gleichnamige
+// Methoden der Oberfläche (teilen) oder anderer Funktionen zählen nicht mit.
+// Dynamische Empfänger, Aliase und berechnete Methodennamen bildet dies nicht ab.
+function dateiausgabeAufrufe(ast, fehler) {
+  const eltern = new WeakMap(), aufrufe = [], empfaenger = new Set(), anzahl = {};
+  besuche(ast.program, (k, p) => { if (p) eltern.set(k, p); });
+  const bindung = (k, name) => {
+    for (let p = k; p; p = eltern.get(p)) {
+      if (FUNKTIONEN.has(p.type) && p.params?.some(a => (a.type === 'AssignmentPattern' ? a.left : a)?.name === name)) return `${p.start}:${name}`;
+    }
+    return `global:${name}`;
+  };
+  besuche(ast.program, k => {
+    if (!['CallExpression', 'OptionalCallExpression'].includes(k.type)) return;
+    const c = k.callee;
+    if (!['MemberExpression', 'OptionalMemberExpression'].includes(c?.type) || c.object?.type !== 'Identifier') return;
+    const name = eigenschaftsname(c), schluessel = bindung(k, c.object.name);
+    aufrufe.push({ k, name, schluessel });
+    if (name !== 'teilen' && name !== 'zuruecksetzenBestaetigen' && Object.hasOwn(DATEIABLAUF_FELDER, name)) empfaenger.add(schluessel);
+  });
+  for (const { k, name, schluessel } of aufrufe) {
+    if (!empfaenger.has(schluessel)) continue;
+    if (!Object.hasOwn(DATEIABLAUF_FELDER, name)) {
+      fehler.push(`Dateiablauf: unbekannte Methode ${name ?? '(berechnet)'}.`);
+      continue;
+    }
+    anzahl[name] = (anzahl[name] ?? 0) + 1;
+    if (!DATEIABLAUF_FELDER[name].length) {
+      if (k.arguments.length !== 0) fehler.push(`Dateiablauf.${name}: kein Argument erwartet.`);
+      continue;
+    }
+    const arg = k.arguments[0];
+    const felder = arg?.type === 'ObjectExpression' ? arg.properties.map(p => p.type !== 'ObjectProperty' ? null
+      : p.computed ? konstanterText(p.key) : p.key.type === 'Identifier' ? p.key.name : konstanterText(p.key)) : [];
+    if (k.arguments.length !== 1 || arg?.type !== 'ObjectExpression' || felder.some(f => f === null)
+      || !isDeepStrictEqual(felder.sort(), DATEIABLAUF_FELDER[name])) {
+      fehler.push(`Dateiablauf.${name}: genau ein Objekt mit ${DATEIABLAUF_FELDER[name].join(', ')} erwartet.`);
+    }
+  }
+  if (empfaenger.size) for (const name of Object.keys(DATEIABLAUF_FELDER)) {
+    if (anzahl[name] !== 1) fehler.push(`Dateiablauf.${name}: genau eine Aufrufstelle erwartet, gefunden ${anzahl[name] ?? 0}.`);
+  }
+  return anzahl;
+}
+
 /**
  * Wertet ein Skript aus. art: "module" oder "script".
  * Ergebnis: { syntax: {Merkmal: Anzahl}, laufzeit: {Name: Anzahl}, dynamisch: {Name: Anzahl},
  *            adressen: [Wortlaut], fehler }
  */
 export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufzeitNamen } = {}) {
-  const ergebnis = { syntax: {}, laufzeit: {}, dynamisch: {}, adressen: [], fehler: [] };
+  const ergebnis = { syntax: {}, laufzeit: {}, dynamisch: {}, dateiausgabe: {}, adressen: [], fehler: [] };
   let ast;
   try {
     ast = parse(quelltext, {
@@ -152,6 +209,7 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
     ergebnis.fehler.push(`Nicht lesbar: ${fehler.message}`);
     return ergebnis;
   }
+  ergebnis.dateiausgabe = dateiausgabeAufrufe(ast, ergebnis.fehler);
   const zaehle = (feld, name) => { ergebnis[feld][name] = (ergebnis[feld][name] ?? 0) + 1; };
   const methoden = new Set(laufzeitNamen.filter((n) => n.art === 'methode').map((n) => n.name));
   const globale = new Set(laufzeitNamen.filter((n) => n.art === 'global').map((n) => n.name));
@@ -392,7 +450,7 @@ function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
  */
 export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorgabe = VORGABE, quellOrdner = [] } = {}) {
   const fehler = [];
-  const bericht = { dateien: 0, syntax: {}, laufzeit: {}, dynamisch: {}, adressen: {} };
+  const bericht = { dateien: 0, skriptBytes: {}, syntax: {}, laufzeit: {}, dynamisch: {}, dateiausgabe: {}, adressen: {} };
   // Jeder Eintrag der Regeldatei braucht Datei, eine Höchstzahl ab 1 und einen Grund.
   for (const liste of ['laufzeitAusnahmen', 'dynamischerCode', 'adressen']) {
     if (!Array.isArray(vorgabe[liste])) { fehler.push(`app-pruefungen.json: ${liste} fehlt oder ist keine Liste.`); continue; }
@@ -421,6 +479,7 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
     for (const [name, n] of Object.entries(a.syntax)) zaehle('syntax', stamm, name, n);
     for (const [name, n] of Object.entries(a.laufzeit)) zaehle('laufzeit', stamm, name, n);
     for (const [name, n] of Object.entries(a.dynamisch)) zaehle('dynamisch', stamm, name, n);
+    for (const [name, n] of Object.entries(a.dateiausgabe)) zaehle('dateiausgabe', stamm, name, n);
     for (const adresse of a.adressen) zaehle('adressen', stamm, adresse, 1);
   };
   for (const datei of dateien) {
@@ -428,7 +487,9 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
     const endung = extname(datei).toLowerCase();
     if (endung === '.map') { fehler.push(`${datei}: Source-Maps gehören nicht in die App.`); continue; }
     if (endung === '.js' || endung === '.mjs') {
-      werteSkriptAus(readFileSync(pfad, 'utf8'), 'module', dateistamm(datei), datei);
+      const inhalt = readFileSync(pfad);
+      bericht.skriptBytes[datei] = inhalt.length;
+      werteSkriptAus(inhalt.toString('utf8'), 'module', dateistamm(datei), datei);
     } else if (endung === '.css') {
       pruefeCss(readFileSync(pfad, 'utf8'), datei, fehler);
     } else if (endung === '.html') {
@@ -550,6 +611,7 @@ export function leseAndroidZustand({ wurzel, umgebung = process.env } = {}) {
  * erfassten Zustand nicht verändern. Ohne Git kein Bestehen. */
 export function pruefeSync({ wurzel, vorher, vorgabe = VORGABE, umgebung = process.env } = {}) {
   const fehler = [];
+  fehler.push(...pruefeNativeQuellen({ wurzel }));
   versucht(fehler, 'K3 Dateien', () => {
     const haupt = join(wurzel, 'app/android/app/src/main');
     fehler.push(...pruefePublic(dateiBaum(join(haupt, 'assets/public')), dateiBaum(join(wurzel, 'app/dist')), vorgabe.sync.leereDateien));
@@ -636,6 +698,7 @@ function versionscode(version) {
 
 export function pruefeGradle({ wurzel, vorgabe = VORGABE, umgebung = process.env } = {}) {
   const fehler = [];
+  fehler.push(...pruefeNativeQuellen({ wurzel }));
   versucht(fehler, 'K4 Git', () => {
     // Nur der Index legt den Modus künftiger Klone fest. Der Dateisystemmodus
     // unter Windows belegt das Ausführungsrecht für einen Linux-Klon nicht.
@@ -691,6 +754,109 @@ export function pruefeGradle({ wurzel, vorgabe = VORGABE, umgebung = process.env
       const funde = [...wrapper.matchAll(new RegExp(`^\\s*${name}\\s*[=:]\\s*(.*?)\\s*$`, 'gm'))].map((m) => m[1].replace(/\\:/g, ':'));
       if (!isDeepStrictEqual(funde, [soll])) fehler.push(`gradle-wrapper.properties: ${name} muss genau einmal ${soll} sein.`);
     }
+  });
+  return fehler;
+}
+
+// Enger XML-Leser für unsere nativen Quelldateien. Unbekannte Syntax wird abgewiesen.
+function quellXml(text) {
+  text = text.replace(/<\?xml[^?]*\?>/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const root = { name: '#', attribute: {}, kinder: [] };
+  const stack = [root];
+  for (const teil of text.match(/<[^>]*>|[^<]+/g) ?? []) {
+    if (!teil.startsWith('<')) { if (teil.trim()) throw new Error('Unerwarteter XML-Text.'); continue; }
+    if (/^<\//.test(teil)) {
+      if (stack.length < 2 || teil !== `</${stack.pop().name}>`) throw new Error('XML-Abschluss weicht ab.');
+      continue;
+    }
+    const m = /^<([A-Za-z][\w:.-]*)([\s\S]*?)(\/?)>$/.exec(teil);
+    if (!m) throw new Error('XML-Syntax nicht unterstützt.');
+    const attribute = {};
+    let rest = m[2];
+    while (rest.trim()) {
+      const a = /^\s+([A-Za-z][\w:.-]*)\s*=\s*(?:"([^"<&]*)"|'([^'<&]*)')/.exec(rest);
+      if (!a || Object.hasOwn(attribute, a[1])) throw new Error('XML-Attribut unbekannt oder doppelt.');
+      attribute[a[1]] = a[2] ?? a[3];
+      rest = rest.slice(a[0].length);
+    }
+    const k = { name: m[1], attribute, kinder: [] };
+    stack.at(-1).kinder.push(k);
+    if (!m[3]) stack.push(k);
+  }
+  if (stack.length !== 1 || root.kinder.length !== 1) throw new Error('XML-Wurzel fehlt oder ist mehrdeutig.');
+  return root;
+}
+
+function pruefeExportPfade(baum) {
+  const p = baum.kinder[0];
+  return baum.kinder.length === 1 && p.name === 'paths'
+    && Object.keys(p.attribute).every(k => k === 'xmlns:android')
+    && p.kinder.length === 1 && p.kinder[0].name === 'cache-path' && !p.kinder[0].kinder.length
+    && isDeepStrictEqual(p.kinder[0].attribute, { name: 'exportdateien', path: 'export/' });
+}
+
+// Diese eigenen Texte müssen unabhängig von der Gerätesprache deutsch bleiben.
+// Sie sind Ressourcen vorhandener Komponenten und erweitern deren Inventar nicht.
+const DATEIABLAUF_TEXTE = {
+  datei_teilen_titel: 'Datei teilen',
+  projekt_zuruecksetzen_frage: 'Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?',
+  projekt_zuruecksetzen_abbrechen: 'Abbrechen',
+  projekt_zuruecksetzen_bestaetigen: 'Zurücksetzen',
+};
+
+/** K3/K4: Quellenvertrag ergänzt die Prüfung des zusammengeführten APK-Manifests. */
+export function pruefeNativeQuellen({ wurzel } = {}) {
+  const fehler = [];
+  versucht(fehler, 'Native Quellen', () => {
+    const src = join(wurzel, 'app/android/app/src');
+    const dateien = alleDateien(src);
+    if (!isDeepStrictEqual(dateien.filter(p => p.endsWith('AndroidManifest.xml')), ['main/AndroidManifest.xml'])) throw new Error('Genau ein Quellmanifest erwartet.');
+    const baum = quellXml(readFileSync(join(src, 'main/AndroidManifest.xml'), 'utf8'));
+    const manifests = nachfahren(baum, 'manifest');
+    const apps = nachfahren(baum, 'application');
+    if (manifests.length !== 1 || apps.length !== 1) throw new Error('Manifest/application ist nicht eindeutig.');
+    if (nachfahren(baum, 'uses-permission').length || nachfahren(baum, 'permission').length
+        || manifests[0].kinder.some(k => k.name !== 'application')) fehler.push('Quellmanifest: zusätzliche Berechtigung oder Komponente.');
+    const komponenten = apps[0].kinder.filter(k => k.name !== 'meta-data');
+    const namen = komponenten.map(k => `${k.name}:${k.attribute['android:name']}`).sort();
+    if (!isDeepStrictEqual(namen, ['activity:.MainActivity', 'provider:.io.ExportFileProvider', 'provider:androidx.startup.InitializationProvider'])) fehler.push('Quellmanifest: Komponentenbestand weicht ab.');
+    for (const k of komponenten) {
+      if (k.attribute['android:exported'] !== (k.name === 'activity' ? 'true' : 'false')) fehler.push('Quellmanifest: exportierte Komponenten weichen ab.');
+    }
+    const p = komponenten.filter(k => k.attribute['android:name'] === '.io.ExportFileProvider');
+    const soll = { 'android:name': '.io.ExportFileProvider', 'android:authorities': '${applicationId}.exportdateien', 'android:exported': 'false', 'android:grantUriPermissions': 'true' };
+    if (p.length !== 1 || !isDeepStrictEqual(p[0].attribute, soll) || p[0].kinder.length !== 1
+      || p[0].kinder[0].name !== 'meta-data' || p[0].kinder[0].kinder.length
+      || !isDeepStrictEqual(p[0].kinder[0].attribute, { 'android:name': 'android.support.FILE_PROVIDER_PATHS', 'android:resource': '@xml/export_paths' })) fehler.push('ExportFileProvider: Klasse, Authority, exported, Grants oder Pfadressource weichen ab.');
+    const pfade = dateien.filter(p => /\/res\/xml[^/]*\/export_paths\.xml$/.test(p));
+    if (!isDeepStrictEqual(pfade, ['main/res/xml/export_paths.xml'])) fehler.push('export_paths: genau eine unqualifizierte Pfadressource, keine Varianten erwartet.');
+    if (!pruefeExportPfade(quellXml(readFileSync(join(src, 'main/res/xml/export_paths.xml'), 'utf8')))) fehler.push('export_paths: genau ein cache-path export/ ohne weitere Pfadtypen erwartet.');
+    const wertDateien = dateien.filter(p => /\/res\/values[^/]*\/[^/]+\.xml$/.test(p))
+      .map(p => ({ pfad: p, text: readFileSync(join(src, p), 'utf8').replace(/<!--[\s\S]*?-->/g, '') }));
+    for (const { text } of wertDateien) {
+      if (/\bname\s*=\s*["']export_paths["']/.test(text)) fehler.push('export_paths: Ressourcenalias ist nicht erlaubt.');
+    }
+    for (const [name, text] of Object.entries(DATEIABLAUF_TEXTE)) {
+      const funde = wertDateien.flatMap(datei => [...datei.text.matchAll(new RegExp(`\\bname\\s*=\\s*["']${name}["']`, 'g'))].map(() => datei));
+      if (funde.length !== 1 || funde[0].pfad !== 'main/res/values/strings.xml'
+        || !funde[0].text.includes(`<string name="${name}">${text}</string>`)) {
+        fehler.push(`${name}: genau eine unqualifizierte String-Ressource mit erwartetem Wortlaut in strings.xml, ohne Alias oder Varianten erwartet.`);
+      }
+    }
+    const activity = readFileSync(join(src, 'main/java/de/baremos/fristenrechner/MainActivity.java'), 'utf8');
+    const erwarteteActivity = `package de.baremos.fristenrechner;
+      import android.os.Bundle;
+      import com.getcapacitor.BridgeActivity;
+      import de.baremos.fristenrechner.io.DateiablaufPlugin;
+      public class MainActivity extends BridgeActivity {
+        @Override protected void onCreate(Bundle savedInstanceState) {
+          registerPlugin(NavigationssperrePlugin.class);
+          registerPlugin(DateiablaufPlugin.class);
+          super.onCreate(savedInstanceState);
+        }
+      }`;
+    const normal = text => ohneGradleKommentare(text).replace(/\s+/g, '');
+    if (normal(activity) !== normal(erwarteteActivity)) fehler.push('MainActivity: genau NavigationssperrePlugin und DateiablaufPlugin vor super.onCreate registrieren.');
   });
   return fehler;
 }
@@ -850,9 +1016,34 @@ export function pruefeApk(apkPfad, { wurzel, debug, vorgabe = VORGABE, sdk, umge
     const exportierte = komponenten.filter((k) => aWahr(k.attribute['android:exported'])).map((k) => ({ art: k.name, name: k.attribute['android:name'], berechtigung: k.attribute['android:permission'] ?? null })).sort((x, y) => x.name.localeCompare(y.name));
     bericht.exportierteKomponenten = exportierte;
     if (!isDeepStrictEqual(exportierte, [...vorgabe.apk.exportierteKomponenten].sort((x, y) => x.name.localeCompare(y.name)))) fehler.push('Exportierte Komponenten: erwartet nur MainActivity und ProfileInstallReceiver mit android.permission.DUMP.');
+    const inventar = komponenten.map(k => ({ art: k.name, name: k.attribute['android:name'], exportiert: aWahr(k.attribute['android:exported']),
+      berechtigung: k.attribute['android:permission'] ?? null, authority: k.attribute['android:authorities'] ?? null,
+      grants: aWahr(k.attribute['android:grantUriPermissions']) })).sort((x, y) => x.name.localeCompare(y.name));
+    bericht.komponenten = inventar;
+    if (!isDeepStrictEqual(inventar, [...vorgabe.apk.komponenten].sort((x, y) => x.name.localeCompare(y.name)))) fehler.push('Gesamtinventar der Komponenten weicht ab.');
     const badgingDebug = /^application-debuggable\s*$/m.test(badging);
     if (debug ? !aWahr(a['android:debuggable']) || !badgingDebug : (a['android:debuggable'] !== undefined && !aFalsch(a['android:debuggable'])) || badgingDebug) fehler.push(`debuggable: erwartet ${debug ? 'true im Debug-Build' : 'fehlend oder false im Release-Build'}.`);
     const resources = dump('resources');
+    bericht.dateiablaufTexte = {};
+    for (const [name, text] of Object.entries(DATEIABLAUF_TEXTE)) {
+      const abschnitte = [...resources.matchAll(new RegExp(`(?:^|\\n) *resource 0x[0-9a-f]+ string/${name}\\r?\\n([\\s\\S]*?)(?=\\n *resource |\\n *type |$)`, 'g'))];
+      const zeilen = abschnitte.length === 1 ? abschnitte[0][1].trim().split(/\r?\n/).filter(z => z.trim()) : [];
+      if (zeilen.length !== 1 || zeilen[0].trim() !== `() "${text}"`) {
+        fehler.push(`${name}: genau eine unqualifizierte String-Ressource mit erwartetem Wortlaut, ohne Alias oder Varianten erwartet.`);
+      } else bericht.dateiablaufTexte[name] = text;
+    }
+    const exportAbschnitte = [...resources.matchAll(/(?:^|\n) *resource (0x[0-9a-f]+) xml\/export_paths\r?\n([\s\S]*?)(?=\n *resource |\n *type |$)/g)];
+    const exportZeilen = exportAbschnitte.length === 1 ? exportAbschnitte[0][2].trim().split(/\r?\n/).filter(z => z.trim()) : [];
+    const exportDatei = exportZeilen.length === 1 ? /^\s*\(\) \(file\) (res\/[^\s]+\.xml) type=XML\s*$/.exec(exportZeilen[0]) : null;
+    if (!exportDatei) fehler.push('export_paths: genau eine unqualifizierte XML-Ressource erwartet; zusätzliche Varianten sind nicht erlaubt.');
+    const provider = komponenten.filter(k => k.name === 'provider' && k.attribute['android:name'] === 'de.baremos.fristenrechner.io.ExportFileProvider');
+    const p = provider[0];
+    if (provider.length !== 1 || !aFalsch(p.attribute['android:exported']) || !aWahr(p.attribute['android:grantUriPermissions'])
+      || p.attribute['android:authorities'] !== `${vorgabe.konfiguration.werte.appId}.exportdateien`
+      || Object.keys(p.attribute).some(k => !['android:name', 'android:exported', 'android:authorities', 'android:grantUriPermissions'].includes(k))
+      || p.kinder.length !== 1 || p.kinder[0].name !== 'meta-data' || p.kinder[0].kinder.length
+      || !exportDatei || !isDeepStrictEqual(p.kinder[0].attribute, { 'android:name': 'android.support.FILE_PROVIDER_PATHS', 'android:resource': `@${exportAbschnitte[0]?.[1]}` })) fehler.push('ExportFileProvider: Klasse, Authority, exported, Grants oder Pfadressource weichen ab.');
+    if (exportDatei && !pruefeExportPfade(aaptBaum(dump('xmltree', '--file', exportDatei[1])))) fehler.push('export_paths: genau ein cache-path export/ ohne weitere Pfadtypen erwartet.');
     // Release kann Dateipfade kürzen. Maßgeblich sind Ressourcenname, ID und
     // dessen tatsächliche Datei, nicht der ursprüngliche Quellpfad.
     const abschnitt = /(?:^|\n) *resource (0x[0-9a-f]+) xml\/data_extraction_rules\r?\n([\s\S]*?)(?=\n *resource |\n *type |$)/.exec(resources);

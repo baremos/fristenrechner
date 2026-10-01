@@ -1,0 +1,15 @@
+{
+  "api": 30,
+  "speichern": [
+    { "format": "xlsx", "bytes": 6438, "sha256": "d568a9cc3cd150eae4d281600521bf43e003540beeae7825990c2694f180687b", "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+    { "format": "pdf", "bytes": 23212, "sha256": "43a45b5887fe35882da988235036ce77db134c9f4e30f13a1f7a6823763d1b8f", "mime": "application/pdf" },
+    { "format": "json", "bytes": 1359, "sha256": "a4423d4297d718a1e1a3ff13ef1c04655219c190eaccfe62162618aca11d856e", "mime": "application/json;charset=utf-8" }
+  ],
+  "aufruffolge": ["ausgabeBeginnen", "ausgabeBlock", "ausgabeAbschliessen", "speichernUnter"],
+  "abbruch": { "status": "abgebrochen" },
+  "teilen": [
+    { "format": "pdf", "modus": "auswahl", "obenTeilen": "android/com.android.internal.app.ChooserActivity", "antwort": { "status": "bereitgestellt" } },
+    { "format": "xlsx", "modus": "direkt", "obenTeilen": "com.android.settings/.bluetooth.DevicePickerActivity", "antwort": { "status": "bereitgestellt" } },
+    { "format": "json", "modus": "ohne-empfaenger", "obenTeilen": "android/com.android.internal.app.ChooserActivity", "antwort": { "status": "bereitgestellt" }, "hinweis": "No apps can perform this action" }
+  ]
+}
