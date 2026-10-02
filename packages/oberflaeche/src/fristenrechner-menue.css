@@ -21,7 +21,8 @@
 .fr-menue-neu { margin-top: .5rem; padding-top: .5rem; border-top: 1px solid var(--color-border, #ddd); }
 .fr-menue-sperre { margin: .5rem; padding: .5rem; border: 1px solid #777; background: #f2f2f2; overflow-wrap: anywhere; }
 .fr-menue-sperre[hidden] { display: none; }
-.fr-menue-leiste :focus, .fr-menue-overlay :focus { outline: 2px solid var(--color-accent, #a7303c); outline-offset: -2px; }
+.fr-menue-leiste:not(.fr-menue-tastatur) :focus, .fr-menue-overlay:not(.fr-menue-tastatur) :focus { outline: none; }
+.fr-menue-leiste.fr-menue-tastatur :focus, .fr-menue-overlay.fr-menue-tastatur :focus { outline: 2px solid var(--color-accent, #a7303c); outline-offset: -2px; }
 .fr-menue-sheet.fr-menue-kompakt { display: block; overflow-y: auto; overscroll-behavior-y: contain; }
 .fr-menue-kompakt .fr-menue-liste { overflow: visible; }
 @media print {

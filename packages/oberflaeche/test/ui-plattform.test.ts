@@ -734,6 +734,29 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
     expect(env.dokument.activeElement).toBe(a.liste); a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.x);
     ausgabe.resolve({ status: 'abgebrochen' }); await warten();
   });
+  it.each(['pointerdown', 'touchstart'])('wechselt zwischen Tastatur und %s für Leiste und Sheet, auch nach Fokus-Rückkehr', async eingabe => {
+    const env = vorbereiten(json(), menue); const z = mitZurueck(env);
+    const instanz = env.start(); await warten(); const a = ansicht(env);
+    const leiste = env.root.querySelector('.fr-menue-leiste')!;
+    const modus = (aktiv: boolean) => {
+      expect(leiste.classList.contains('fr-menue-tastatur')).toBe(aktiv);
+      expect(a.overlay.classList.contains('fr-menue-tastatur')).toBe(aktiv);
+    };
+    modus(false);
+    a.taste('Tab'); modus(true); // Schon bei geschlossenem Menü.
+    a.taste('Enter'); a.oeffnen(); modus(true);
+    expect(env.dokument.activeElement!.id).toBe(a.sheet.getAttribute('aria-labelledby'));
+    a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.x); modus(true);
+    a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.liste); modus(true);
+    a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.buttons[0]); modus(true);
+    a.taste('Escape'); expect(env.dokument.activeElement).toBe(a.knopf); modus(true);
+    env.senden(a.knopf, eingabe); a.oeffnen(); modus(false);
+    z.empfangen(); expect(env.dokument.activeElement).toBe(a.knopf); modus(false);
+    a.oeffnen(); a.taste('Tab'); modus(true);
+    env.senden(a.x, eingabe); env.senden(a.x, 'click'); modus(false);
+    expect(env.dokument.activeElement).toBe(a.knopf);
+    instanz.dispose(); a.taste('Tab'); modus(false); // Globale Listener entfernt.
+  });
   it.each([true, false])('stellt Hintergrundattribute und Scrollstil exakt wieder her; dispose offen=%s räumt auf', async offen => {
     const env = vorbereiten(json(), menue); const z = mitZurueck(env);
     const gast = env.dokument.createElement('section'); gast.setAttribute('aria-hidden', 'false');

@@ -14,8 +14,9 @@ export function erzeugeMenue(root: HTMLElement, option: Exclude<MenueOption, 'au
     return el;
   };
   const hoeren = (ziel: EventTarget, typ: string, fn: (e: Event) => void, capture = false): void => {
-    ziel.addEventListener(typ, fn, capture);
-    abmelden.push(() => ziel.removeEventListener(typ, fn, capture));
+    const optionen = { capture };
+    ziel.addEventListener(typ, fn, optionen);
+    abmelden.push(() => ziel.removeEventListener(typ, fn, optionen));
   };
   // Eine Rechnerinstanz je Dokument; IDs trotzdem gegen Gastgeber-IDs absichern.
   let nummer = 1;
@@ -175,7 +176,16 @@ export function erzeugeMenue(root: HTMLElement, option: Exclude<MenueOption, 'au
   });
   hoeren(x, 'click', schliessen);
   hoeren(overlay, 'click', e => { if (e.target === overlay) { e.preventDefault(); e.stopPropagation(); schliessen(); } });
+  // WebView 83 kennt :focus-visible noch nicht. Die Eingabeart gilt auch bei
+  // geschlossenem Sheet, damit bereits der erste Tab zur Leiste sichtbar ist.
+  const tastaturFokus = (aktiv: boolean): void => {
+    leiste.classList.toggle('fr-menue-tastatur', aktiv);
+    overlay.classList.toggle('fr-menue-tastatur', aktiv);
+  };
+  hoeren(doc, 'pointerdown', () => tastaturFokus(false), true);
+  hoeren(doc, 'touchstart', () => tastaturFokus(false), true);
   hoeren(doc, 'keydown', e => {
+    tastaturFokus(true);
     if (!offen) return;
     const event = e as KeyboardEvent;
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); schliessen(); }
