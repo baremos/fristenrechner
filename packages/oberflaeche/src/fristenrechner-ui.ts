@@ -17,7 +17,7 @@ import {
 
 import { regelstandText } from './fristenrechner-export-data';
 import { leerenUndAnhaengen } from './dom';
-import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type AusgabeFormat, type AusgabeWeg, type RechnerOptionen } from './plattform';
+import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type AusgabeFormat, type AusgabeWeg, type DateiAktion, type DateiAktionsZustand, type RechnerAktionen, type RechnerInstanz, type RechnerOptionen } from './plattform';
 import { speicherWarteschlange } from './speicher-warteschlange';
 import { ausgabeBeschriftung, runDateiAusgabe } from './fristenrechner-export-action';
 export * from './plattform';
@@ -128,7 +128,7 @@ function appendMilestoneDate(container: HTMLElement, milestone: Meilenstein): vo
   }
 }
 
-export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen): { dispose(): void } {
+export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen): RechnerInstanz {
   const seite = root.ownerDocument;
   if (aktiveSeiten.has(seite) || seite.querySelectorAll('[data-fristenrechner]').length > 1) {
     throw new Error('Es ist nur ein Fristenrechner je Seite und eine Initialisierung erlaubt.');
@@ -219,6 +219,32 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
   let currentResult: ScheduleResult | undefined;
   let saveTimer: number | undefined;
 
+  const zustand = (): Readonly<DateiAktionsZustand> => Object.freeze({
+    geladen, beschaeftigt: dateiAuftrag, hatErgebnis: Boolean(currentResult),
+    kannTeilen: Boolean(plattform.ausgabe.teilen), beendet: disposed,
+  });
+  const istErlaubt = (aktion: DateiAktion): boolean => !disposed && geladen && !dateiAuftrag
+    && (aktion.art !== 'ausgabe' || (Boolean(currentInput && currentResult)
+      && (aktion.weg !== 'teilen' || Boolean(plattform.ausgabe.teilen))));
+  const beobachter = new Set<{ fn: (stand: Readonly<DateiAktionsZustand>) => void }>();
+  let letzterStand = zustand();
+  const benachrichtigen = (fn: (stand: Readonly<DateiAktionsZustand>) => void, stand: Readonly<DateiAktionsZustand>): void => {
+    // Ein fremder Beobachter darf weder den Dateiauftrag noch das Aufräumen abbrechen.
+    try { fn(stand); } catch { /* Der Beobachter verantwortet seine Fehlerbehandlung. */ }
+  };
+  const zustandMelden = (): void => {
+    const stand = zustand();
+    if (stand.geladen === letzterStand.geladen && stand.beschaeftigt === letzterStand.beschaeftigt
+      && stand.hatErgebnis === letzterStand.hatErgebnis && stand.kannTeilen === letzterStand.kannTeilen
+      && stand.beendet === letzterStand.beendet) return;
+    letzterStand = stand;
+    for (const beobachtung of Array.from(beobachter)) {
+      // Rückrufe können abmelden, aufräumen oder einen neueren Stand auslösen.
+      if (letzterStand !== stand) break;
+      if (beobachter.has(beobachtung)) benachrichtigen(beobachtung.fn, stand);
+    }
+    if (disposed) beobachter.clear();
+  };
   const setResultActionsEnabled = (enabled: boolean): void => {
     resultActionButtons.forEach((button) => {
       button.disabled = !enabled || dateiAuftrag || !geladen;
@@ -231,16 +257,18 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       if (dateiAuftrag || !geladen) importAktion.setAttribute('aria-disabled', 'true');
       else importAktion.removeAttribute('aria-disabled');
     } else importAktion.disabled = dateiAuftrag || !geladen;
+    zustandMelden();
   };
-  const dateiAuftragBeginnen = (): boolean => {
-    if (dateiAuftrag || !geladen || disposed) return false;
+  const dateiAuftragBeginnen = (aktion: DateiAktion): boolean => {
+    if (!istErlaubt(aktion)) return false;
     dateiAuftrag = true;
     setResultActionsEnabled(Boolean(currentResult));
-    return true;
+    return !disposed;
   };
   const dateiAuftragBeenden = (): void => {
+    if (disposed) return;
     dateiAuftrag = false;
-    if (!disposed) setResultActionsEnabled(Boolean(currentResult));
+    setResultActionsEnabled(Boolean(currentResult));
   };
 
   const readInput = (): ScheduleInput => {
@@ -734,6 +762,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       // wäre irreführend.
       currentResult = undefined;
       setResultActionsEnabled(false);
+      if (disposed) return false;
       resultWarnings.hidden = true;
       leerenUndAnhaengen(resultWarnings);
       resultBindefrist.hidden = true;
@@ -753,6 +782,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
     tableSection.hidden = false;
     currentResult = result;
     setResultActionsEnabled(true);
+    if (disposed) return false;
     renderWarnings(result);
     renderTimeline(result);
     renderTable(result);
@@ -803,6 +833,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
     event.preventDefault();
     if (!form.reportValidity()) return;
     const erfolgreich = render(readInput());
+    if (disposed) return;
     // Statuszeile konfliktabhängig — keine falsche Erfolgsmeldung in der
     // aria-live-Region
     formMessage.textContent = erfolgreich
@@ -831,6 +862,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       // Statuszeile nachziehen: eine erfolgreiche Live-Neuberechnung räumt
       // eine stehengebliebene Konfliktmeldung ab
       const erfolgreich = render(readInput(), false);
+      if (disposed) return;
       schedulePersist();
       formMessage.textContent = erfolgreich
         ? ''
@@ -852,8 +884,8 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
     }
   };
 
-  hoeren(resetButton, 'click', async () => {
-    if (!dateiAuftragBeginnen()) return;
+  const neuesProjekt = async (): Promise<void> => {
+    if (!dateiAuftragBeginnen({ art: 'neues-projekt' })) return;
     projektAktion = true;
     try {
       if (!await plattform.zuruecksetzenBestaetigen() || disposed) return;
@@ -874,6 +906,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       updateConditionalFields();
       updateDefaultFields();
       render(readInput(), false);
+      if (disposed) return;
       speichernGesperrt = false;
       // Der neue Stand wird vor dem Freigeben weiterer Projektaktionen geschrieben.
       await speicher.schreiben(JSON.stringify(erstelleProjektDatei(readInput(), plattform.zeit().zeitpunkt)));
@@ -891,16 +924,24 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       projektAktionBeenden();
       dateiAuftragBeenden();
     }
-  });
+  };
 
-  hoeren(importAktion, 'click', async (event) => {
-    if (!dateiAuftragBeginnen()) { event.preventDefault(); return; }
+  let adapterKlickErlaubt = false;
+  const projektImportieren = async (): Promise<void> => {
+    if (!dateiAuftragBeginnen({ art: 'import' })) return;
     projektAktion = true;
     const vorher = importMessage.textContent;
     let geoeffnet = false;
     importMessage.textContent = 'Projektdatei auswählen …';
     try {
-      const auswahl = await plattform.import.waehlen({ mime: 'application/json', endungen: ['.json'], maxBytes: MAX_PROJEKT_BYTES });
+      // Nur der erste synchrone Klick aus waehlen darf die bereits gesperrte
+      // Dateifeld-UI passieren. Die Erlaubnis endet vor dem ersten await.
+      let auswahlAuftrag: ReturnType<typeof plattform.import.waehlen>;
+      adapterKlickErlaubt = importAktion instanceof HTMLInputElement;
+      try {
+        auswahlAuftrag = plattform.import.waehlen({ mime: 'application/json', endungen: ['.json'], maxBytes: MAX_PROJEKT_BYTES });
+      } finally { adapterKlickErlaubt = false; }
+      const auswahl = await auswahlAuftrag;
       if (disposed) return;
       if (auswahl.status === 'abgebrochen') { importMessage.textContent = vorher; return; }
       pruefeProjektGroesse(auswahl.wert.text);
@@ -915,6 +956,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       // Verhandlung und optimierte Angebotsrunde), damit Restwerte aus der
       // Datei weder den Kern erreichen noch reexportiert werden
       render(readInput(), false);
+      if (disposed) return;
       showProjectFileMeta(parsed.datei);
       formMessage.textContent = currentResult ? '' : 'Kein Terminplan berechenbar — bitte die festen Starttermine korrigieren.';
       resetMessage.textContent = '';
@@ -931,24 +973,29 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
         if (geoeffnet) storageStatus.textContent = texte.speicherNichtVerfuegbar;
       }
     } finally { projektAktionBeenden(); dateiAuftragBeenden(); }
+  };
+  hoeren(resetButton, 'click', () => { void neuesProjekt(); });
+  hoeren(importAktion, 'click', (event) => {
+    if (adapterKlickErlaubt) { adapterKlickErlaubt = false; return; }
+    if (!istErlaubt({ art: 'import' })) { event.preventDefault(); return; }
+    void projektImportieren();
   });
 
-  const ausgabeAktionen: { format: AusgabeFormat; button: HTMLButtonElement; message: HTMLElement }[] = [
-    { format: 'projekt', button: saveJsonButton, message: exportMessage },
-    { format: 'excel', button: excelButton, message: excelMessage },
-    { format: 'pdf', button: pdfButton, message: pdfMessage },
+  const ausgabeAktionen: { format: AusgabeFormat; weg: AusgabeWeg; button: HTMLButtonElement; message: HTMLElement }[] = [
+    { format: 'projekt', weg: 'exportieren', button: saveJsonButton, message: exportMessage },
+    { format: 'excel', weg: 'exportieren', button: excelButton, message: excelMessage },
+    { format: 'pdf', weg: 'exportieren', button: pdfButton, message: pdfMessage },
   ];
-  const bindeAusgabe = (format: AusgabeFormat, weg: AusgabeWeg, button: HTMLButtonElement, message: HTMLElement): void => {
-    hoeren(button, 'click', async () => {
-      if (!currentInput || !currentResult || !dateiAuftragBeginnen()) return;
-      try {
-        await runDateiAusgabe(format, weg, button, message,
-          () => ({ input: currentInput!, result: currentResult!, zeit: plattform.zeit() }), optionen, () => !disposed);
-      } finally { dateiAuftragBeenden(); }
-    });
+  const ausgeben = async (format: AusgabeFormat, weg: AusgabeWeg): Promise<void> => {
+    const darstellung = ausgabeAktionen.find(aktion => aktion.format === format && aktion.weg === weg);
+    const input = currentInput; const result = currentResult;
+    if (!darstellung || !dateiAuftragBeginnen({ art: 'ausgabe', format, weg })) return;
+    try {
+      await runDateiAusgabe(format, weg, darstellung.button, darstellung.message,
+        () => ({ input: input!, result, zeit: plattform.zeit() }), optionen, () => !disposed);
+    } finally { dateiAuftragBeenden(); }
   };
-  for (const { format, button, message } of ausgabeAktionen) {
-    bindeAusgabe(format, 'exportieren', button, message);
+  for (const { format, message } of ausgabeAktionen.slice()) {
     if (plattform.ausgabe.teilen) {
       const teilen = seite.createElement('button');
       teilen.setAttribute('type', 'button');
@@ -959,10 +1006,23 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       teilen.textContent = ausgabeBeschriftung(format, 'teilen');
       exportActions.append(teilen);
       resultActionButtons.push(teilen);
-      bindeAusgabe(format, 'teilen', teilen, message);
+      ausgabeAktionen.push({ format, weg: 'teilen', button: teilen, message });
       abmelden.push(() => teilen.remove());
     }
   }
+  for (const { format, weg, button } of ausgabeAktionen) {
+    hoeren(button, 'click', () => { void ausgeben(format, weg); });
+  }
+  const aktionen: RechnerAktionen = {
+    ausgeben, projektImportieren, neuesProjekt, zustand, istErlaubt,
+    beobachten(fn) {
+      if (disposed) return () => {};
+      const beobachtung = { fn };
+      beobachter.add(beobachtung);
+      benachrichtigen(fn, zustand());
+      return () => { beobachter.delete(beobachtung); };
+    },
+  };
   field<HTMLInputElement>(form, 'bekanntmachung').value = plattform.zeit().kalendertag;
   updateVerfahrensartOptionen();
   updateConditionalFields();
@@ -985,6 +1045,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
           setInput(parsed.datei.input);
           // normalisiert wie beim Import einer Projektdatei
           render(readInput(), false);
+          if (disposed) return;
           showProjectFileMeta(parsed.datei);
           // TT.MM.JJJJ mit führenden Nullen — toLocaleString('de-DE') allein
           // liefert z. B. „23.7.2026“
@@ -1003,18 +1064,21 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
           ? error.message + ' Ein vorhandenes Projekt bleibt erhalten. Importieren Sie eine Projektdatei oder setzen Sie das Projekt zurück.'
           : texte.speicherNichtVerfuegbar + ' Ein vorhandenes Projekt bleibt erhalten. Sie können weiter rechnen und die Eingaben als Projektdatei exportieren.';
       }
-    } finally { geladen = true; if (!disposed) setResultActionsEnabled(Boolean(currentResult)); }
+    } finally { if (!disposed) { geladen = true; setResultActionsEnabled(Boolean(currentResult)); } }
   })();
 
   return {
+    aktionen,
     dispose() {
       if (disposed) return;
       disposed = true;
+      dateiAuftrag = false;
       window.clearTimeout(saveTimer);
       abmelden.forEach(fn => fn());
       // Während eines bereits begonnenen Schreibvorgangs darf keine neue Instanz
       // denselben Speicher übernehmen. Wartende alte Aufträge werden verworfen.
       void speicher.dispose().then(() => aktiveSeiten.delete(seite));
+      zustandMelden();
     },
   };
 }
