@@ -48,9 +48,18 @@ export function quellvertrag(wurzel) {
     throw new Error('Menüansicht der App geändert: nicht ausdrücklich aktiviert.');
   }
   for (const s of ["'fr-menue-leiste'", "'fr-menue-overlay'", "'fr-menue-sheet'", "'Dateiaktionen'", "'Schließen'",
+    "knopf.setAttribute('aria-controls', id); knopf.setAttribute('aria-expanded', 'false')",
+    "overlay.hidden = true; knopf.setAttribute('aria-expanded', 'false')", "knopf.setAttribute('aria-expanded', 'true')",
     "sheet.setAttribute('role', 'dialog')", 'zurueck.beobachten(schliessen)', 'zurueckSetzen(true)', 'zurueckSetzen(false)',
+    "leiste.classList.toggle('fr-menue-tastatur', aktiv)", "overlay.classList.toggle('fr-menue-tastatur', aktiv)",
     'aktionen.ausgeben(aktion.format, aktion.weg)', 'aktionen.projektImportieren()', 'aktionen.neuesProjekt()']) {
     if (!sheet.includes(s)) throw new Error(`Sheetvertrag geändert: ${s}.`);
+  }
+  if (/\baria-haspopup\b/.test(sheet)) throw new Error('Sheetvertrag geändert: Menüknopf darf kein aria-haspopup tragen.');
+  for (const text of ['.app-rahmen > h1, .app-abschnitt { overflow-wrap: anywhere; }',
+    '.app-rahmen > h1, .app-abschnitt h2, .app-abschnitt h3 { hyphens: auto; }',
+    'padding: min(1rem, 4vw)']) {
+    if (!app.includes(text)) throw new Error('App-Umbruchvertrag geändert: ' + text);
   }
   if (/\b(?:pushState|popstate|replaceChildren)\b|\.at\s*\(|\.showModal\s*\(/.test(sheet)) throw new Error('Sheetvertrag geändert: nicht erlaubter Navigations- oder Laufzeitweg.');
   for (const s of ["registerPlugin<MenueZurueckPlugin>('MenueZurueck')", "plugin.addListener('zurueck', empfangen)",

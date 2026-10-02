@@ -71,6 +71,15 @@ test('Menü-Quellvertrag hat eine eigene Methodenliste', () => {
   }
 });
 for (const [titel, datei, ersetzen, durch] of [
+  ['Menüknopf mit Popup-Rolle', quelldateien[11], "leiste.append(knopf)", "knopf.setAttribute('aria-haspopup', 'dialog'); leiste.append(knopf)"],
+  ['Menüknopf ohne Dialogbezug', quelldateien[11], "knopf.setAttribute('aria-controls', id)", "knopf.setAttribute('data-controls', id)"],
+  ['Menüknopf ohne geschlossenen Zustand', quelldateien[11], "knopf.setAttribute('aria-expanded', 'false')", "knopf.setAttribute('data-expanded', 'false')"],
+  ['Menüknopf ohne offenen Zustand', quelldateien[11], "knopf.setAttribute('aria-expanded', 'true')", "knopf.setAttribute('data-expanded', 'true')"],
+  ['Fokusklasse der Leiste fehlt', quelldateien[11], "leiste.classList.toggle('fr-menue-tastatur', aktiv)", "leiste.classList.toggle('anders', aktiv)"],
+  ['Fokusklasse des Sheet fehlt', quelldateien[11], "overlay.classList.toggle('fr-menue-tastatur', aktiv)", "overlay.classList.toggle('anders', aktiv)"],
+  ['App-Wortumbruch fehlt', quelldateien[1], 'overflow-wrap: anywhere;', 'overflow-wrap: normal;'],
+  ['App-Silbentrennung fehlt', quelldateien[1], 'hyphens: auto;', 'hyphens: none;'],
+  ['App-Außenabstand unbegrenzt', quelldateien[1], 'padding: min(1rem, 4vw)', 'padding: 1rem'],
   ['Sheet nicht aktiviert', quelldateien[1], "menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }}", 'menue="aus"'],
   ['Sheet nicht initialisiert', quelldateien[2], 'erzeugeMenue(root, menue, aktionen, plattform.zurueck)', 'anderesMenue()'],
   ['Sheet ohne Dialogrolle', quelldateien[11], "sheet.setAttribute('role', 'dialog')", "sheet.setAttribute('role', 'menu')"],

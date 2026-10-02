@@ -572,7 +572,7 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
     ['open-json', 'Projekt importieren'], ['reset-project', 'Neues Projekt'],
   ] as const;
   function ansicht(env: ReturnType<typeof vorbereiten>) {
-    const knopf = env.root.querySelector('[aria-haspopup="dialog"]')!;
+    const knopf = env.root.querySelector('.fr-menue-leiste')!.querySelector('button[aria-controls]')!;
     const overlay = env.root.querySelector('.fr-menue-overlay')!;
     const sheet = overlay.querySelector('[role="dialog"]')!;
     const x = overlay.querySelector('[aria-label="Schließen"]')!;
@@ -658,6 +658,10 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
     const ids = env.dokument.querySelectorAll('[id]').map(el => el.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(a.knopf.getAttribute('aria-controls')).toBe(a.sheet.id);
+    expect(a.knopf.tagName).toBe('button');
+    expect(a.knopf.getAttribute('aria-label')).toBe('Dateiaktionen');
+    expect(a.knopf.getAttribute('aria-haspopup')).toBeNull();
+    expect(a.knopf.getAttribute('aria-expanded')).toBe('false');
     expect(a.sheet.getAttribute('aria-modal')).toBe('true');
     expect(a.overlay.hidden).toBe(true); expect(env.root.querySelectorAll('[data-project-import]')).toHaveLength(1);
     expect(a.sheet.querySelectorAll('[role="status"]')).toHaveLength(0);

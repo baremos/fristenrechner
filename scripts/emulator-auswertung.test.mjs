@@ -274,7 +274,7 @@ async function sichtordner(t) {
 
 test('Sichtprüfung wird ohne neuen Lauf eingelesen, gruppiert und mit Namen und Datum ausgegeben', async t => {
   const dir = await sichtordner(t), lauf = join(dir, 'lauf'); await mkdir(lauf);
-  const bilder = Object.values(SICHTPRUEFUNGEN).flat();
+  const bilder = [...SICHTPRUEFUNGEN.A8, ...SICHTPRUEFUNGEN['B-Sichtprüfung']];
   for (const bild of bilder) await writeFile(join(lauf, bild), pruefPng);
   const original = { ergebnis: UNGUELTIG, code: 2, befund: [
     { id: 'A8', status: UNGUELTIG, grund: 'Bilder für Systemleisten, Verdeckung und Lesbarkeit müssen noch gesichtet werden.' },

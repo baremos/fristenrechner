@@ -279,8 +279,8 @@ for (const [vorher, antworten, gueltig] of [
 });
 
 for (const [api, phasen] of [
-  ['36', ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'dateien', 'sicherung', 'alle']],
-  ['30', ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'dateien', 'sicherung', 'fehlerseite', 'alle']],
+  ['36', ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'dateien', 'menue', 'sicherung', 'alle']],
+  ['30', ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'dateien', 'menue', 'sicherung', 'fehlerseite', 'alle']],
   ['24', ['installation', 'alle']],
 ]) {
   test(`Argumente erlauben genau die vorgesehenen Phasen für API ${api}`, () => {
@@ -295,8 +295,8 @@ for (const [api, phasen] of [
 }
 
 test('Alle wiederholt integrierte Netz- und Navigationsphasen nicht doppelt', () => {
-  assert.deepEqual(argumente(args('36', 'alle'), repo).phasen, ['a', 'b', 'dateien', 'sicherung']);
-  assert.deepEqual(argumente(args('30', 'alle'), repo).phasen, ['a', 'b', 'dateien', 'sicherung', 'fehlerseite']);
+  assert.deepEqual(argumente(args('36', 'alle'), repo).phasen, ['a', 'b', 'dateien', 'menue', 'sicherung']);
+  assert.deepEqual(argumente(args('30', 'alle'), repo).phasen, ['a', 'b', 'dateien', 'menue', 'sicherung', 'fehlerseite']);
   assert.deepEqual(argumente(args('24', 'alle'), repo).phasen, ['installation']);
   assert.deepEqual(variantePlan(['a', 'b', 'netz', 'navigation', 'sicherung']), ['gegenprobe']);
   assert.deepEqual(variantePlan(['installation']), []);

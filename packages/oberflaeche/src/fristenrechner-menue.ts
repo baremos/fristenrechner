@@ -42,7 +42,7 @@ export function erzeugeMenue(root: HTMLElement, option: Exclude<MenueOption, 'au
     button.append(svg); return button;
   };
   const knopf = symbol('Dateiaktionen', false);
-  knopf.setAttribute('aria-haspopup', 'dialog'); knopf.setAttribute('aria-controls', id); knopf.setAttribute('aria-expanded', 'false');
+  knopf.setAttribute('aria-controls', id); knopf.setAttribute('aria-expanded', 'false');
   leiste.append(knopf);
   const overlay = element('div', 'fr-menue-overlay'); overlay.hidden = true;
   const sheet = element('div', 'fr-menue-sheet'); sheet.id = id;
