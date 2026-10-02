@@ -38,6 +38,14 @@ function setze(objekt, pfad, wert) {
 
 // K1 -------------------------------------------------------------------------
 
+test('K2: eingebetteter Menüstil wird auf externe Ressourcen geprüft', () => {
+  const sauber = analysiereSkript('const css = ".fr-menue-overlay{display:flex}";', 'module');
+  assert.deepEqual(sauber.fehler, []);
+  for (const css of ['.fr-menue-overlay{background:url(https://example.org/bild.png)}', '@import "fremd.css"; .fr-menue-overlay{}']) {
+    assert.ok(analysiereSkript(`const css = ${JSON.stringify(css)};`, 'module').fehler.some(f => f.includes('Menüstil')));
+  }
+});
+
 test('K1: die eingecheckte Konfiguration besteht', () => {
   const pub = ordner({ 'startfehler.html': '<!doctype html><head></head>' });
   assert.deepEqual(pruefeKonfiguration(echteKonfiguration, { publicOrdner: pub }), []);

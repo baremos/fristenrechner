@@ -42,6 +42,17 @@ export function quellvertrag(wurzel) {
   const vertrag = readFileSync(join(wurzel, 'app/src/adapters/dateiablauf-vertrag.ts'), 'utf8');
   const plattform = readFileSync(join(wurzel, 'app/src/adapters/app-plattform.ts'), 'utf8');
   const menue = readFileSync(join(wurzel, 'app/src/adapters/menue-zurueck.ts'), 'utf8');
+  const sheet = readFileSync(join(wurzel, 'packages/oberflaeche/src/fristenrechner-menue.ts'), 'utf8');
+  if (!app.includes("menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }}")
+    || !markup.includes('data-menue=') || !ui.includes('erzeugeMenue(root, menue, aktionen, plattform.zurueck)')) {
+    throw new Error('Menüansicht der App geändert: nicht ausdrücklich aktiviert.');
+  }
+  for (const s of ["'fr-menue-leiste'", "'fr-menue-overlay'", "'fr-menue-sheet'", "'Dateiaktionen'", "'Schließen'",
+    "sheet.setAttribute('role', 'dialog')", 'zurueck.beobachten(schliessen)', 'zurueckSetzen(true)', 'zurueckSetzen(false)',
+    'aktionen.ausgeben(aktion.format, aktion.weg)', 'aktionen.projektImportieren()', 'aktionen.neuesProjekt()']) {
+    if (!sheet.includes(s)) throw new Error(`Sheetvertrag geändert: ${s}.`);
+  }
+  if (/\b(?:pushState|popstate|replaceChildren)\b|\.at\s*\(|\.showModal\s*\(/.test(sheet)) throw new Error('Sheetvertrag geändert: nicht erlaubter Navigations- oder Laufzeitweg.');
   for (const s of ["registerPlugin<MenueZurueckPlugin>('MenueZurueck')", "plugin.addListener('zurueck', empfangen)",
     'await plugin.setzen({ aktiv, folge })', 'await handle.remove()', 'if (beendet || !aktiv', 'beobachter.clear()']) {
     if (!menue.includes(s)) throw new Error(`Menüadapter geändert: ${s}.`);

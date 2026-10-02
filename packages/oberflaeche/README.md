@@ -8,6 +8,14 @@ Stand 2026-09-30: Die Bedienlogik erhält Speicher, Import, Dateiausgabe, Zeit u
 
 Eine Komponente je Seite verwenden. Eine zweite Komponente oder erneute Initialisierung löst einen Fehler aus; feste Formular-Kennungen bleiben damit eindeutig. `initFristenrechner(root, optionen)` erhält dieselben Texte und Exportinhalte, die beim Rendern an die Komponente übergeben wurden.
 
+Optional aktiviert `menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }}` eine feste obere Leiste und den Dialog „Dateiaktionen“. Vorgabe ist `aus`; ausgelassen oder ausdrücklich ausgeschaltet entstehen keine Menüknoten, Attribute, Listener oder Stile. Eine unbekannte Darstellung löst einen Fehler aus. Die Initialisierung liest die Option aus der Komponente; ein gleichnamiger Eintrag in `RechnerOptionen` kann sie ausdrücklich überschreiben.
+
+Das Sheet nutzt dieselben Dateiaktionen, Sperren und Statusregionen wie die bisherigen Schaltflächen. Ohne Teilen-Fähigkeit fehlen die drei Teilen-Einträge. Eine Auswahl schließt synchron und ruft anschließend die Aktion auf. X, Escape, Außentipp und das optionale Ereignis von `plattform.zurueck` schließen mit Fokus zurück zum Knopf. Ohne diese Schnittstelle gibt es keinen Zurück-Weg; Web-Historie und Wischgeste werden nicht verwendet.
+
+Die Komponente reserviert die gemessene Leistenhöhe selbst vor dem Body-Inhalt, auch für Seitenabschnitte außerhalb des Rechners. Leiste und Overlay bleiben in der Komponente. Während des Dialogs werden Hintergrundattribute gesichert, Geschwister entlang des Pfads zum Body verborgen, Fokusziele gesperrt und neue Hintergrundknoten beobachtet. Eine Fokusfalle und ein fixierter Body mit gesicherter Scrollposition ergänzen die Sperre. `dispose()` stellt Attribute und Scrollstil wieder her, entfernt Reserve, Menü und Beobachter und deaktiviert den Zurück-Weg; der Gastgeber beendet seinen Plattformadapter selbst.
+
+Das Layout verwendet die sichtbare Viewport-Höhe, lässt Text umbrechen und scrollt bei geringer Höhe das ganze Sheet. Es benötigt einen Seitenrahmen ohne transformierte oder abschneidende Vorfahren der Komponente. Die Umsetzung verwendet kein natives Web-Dialogelement und setzt Chromium 83 voraus. DOM-Tests prüfen den Vertrag; Schrift, Bildschirmtastatur, Systemleisten und Hilfstechnik benötigen zusätzlich eine Geräteprüfung. Die Menütexte sind Arbeitsfassungen.
+
 ```astro
 ---
 import Fristenrechner from '@baremos/fristenrechner-ui';
@@ -80,7 +88,7 @@ Beim Web-Dateifeld ruft der Klickpfad den Importadapter unmittelbar vor dem erst
 
 Der optionale Slot `herausgeber` steht in der Fußzeile für ein vom Gastgeber bereitgestelltes Logo oder andere Herausgeberinhalte. `nach-hinweis` folgt auf den fachlichen Hinweis und kann Kontaktinhalte aufnehmen. Das Paket liefert kein Logo und keine festen Kontaktlinks. Die sichtbare Fußzeile nennt den Herausgeber und, sofern vorhanden, den Hostnamen der Exportadresse.
 
-Alle CSS-Selektoren sind auf `.fristenrechner` begrenzt. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
+Die Rechnerstile sind auf `.fristenrechner` begrenzt. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
 
 | CSS-Variable | Vorgabe |
 |---|---|

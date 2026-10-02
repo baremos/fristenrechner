@@ -6,10 +6,11 @@ import * as laufzeit from 'astro/compiler-runtime';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 import { expect, it } from 'vitest';
 import * as exportDaten from '../src/fristenrechner-export-data';
+import * as plattform from '../src/plattform';
 import { webExportInhalt, webTexte } from '../src/web-vorgaben';
-import type { HinweisPosition, ImportBedienung } from '../src/plattform';
+import type { HinweisPosition, ImportBedienung, MenueOption } from '../src/plattform';
 
-async function rendern(importBedienung?: ImportBedienung, importBeschriftung = webTexte.importBeschriftung, hinweisPosition?: HinweisPosition) {
+async function rendern(importBedienung?: ImportBedienung, importBeschriftung = webTexte.importBeschriftung, hinweisPosition?: HinweisPosition, menue?: MenueOption) {
   const quelle = readFileSync(new URL('../src/Fristenrechner.astro', import.meta.url), 'utf8');
   const kompiliert = transform(quelle, {
     filename: 'Fristenrechner.astro',
@@ -26,13 +27,14 @@ async function rendern(importBedienung?: ImportBedienung, importBeschriftung = w
   const laden = (pfad: string): unknown => {
     if (pfad === 'astro/compiler-runtime') return laufzeit;
     if (pfad === './fristenrechner-export-data') return exportDaten;
+    if (pfad === './plattform') return plattform;
     if (pfad === 'Fristenrechner.astro?astro&type=style&index=0&lang.css') return {};
     throw new Error(`Unerwarteter Komponentenimport: ${pfad}`);
   };
   new Function('require', 'module', 'exports', code)(laden, modul, modul.exports);
   const container = await AstroContainer.create();
   return container.renderToString(modul.exports.default, {
-    props: { texte: { ...webTexte, importBeschriftung }, exportInhalt: webExportInhalt, importBedienung, hinweisPosition },
+    props: { texte: { ...webTexte, importBeschriftung }, exportInhalt: webExportInhalt, importBedienung, hinweisPosition, menue },
   });
 }
 
@@ -40,6 +42,18 @@ it('behält das vorgerenderte HTML mit den Web-Vorgaben vollständig bei', async
   const html = await rendern();
   // Referenz aus der unveränderten Komponente von main (427995a), mit demselben Renderer.
   expect(createHash('sha256').update(html).digest('hex')).toBe('e6465ae87407c4e1e53036ecae4f9f2ac7e1f90b90fb5362483436fab41e8898');
+});
+
+it('lässt mit menue aus auch Attribute und Styles im Website-HTML unverändert', async () => {
+  expect(await rendern(undefined, undefined, undefined, 'aus')).toBe(await rendern());
+  expect(await rendern()).not.toContain('data-menue');
+});
+
+it('gibt nur für das eingeschaltete Menü seine Konfiguration aus und lehnt unbekannte Darstellungen ab', async () => {
+  const html = await rendern(undefined, undefined, undefined, { darstellung: 'bottom-sheet', titel: 'Fristenrechner' });
+  expect(html).toContain('data-menue=');
+  expect(html.match(/data-menue=/g)).toHaveLength(1);
+  await expect(rendern(undefined, undefined, undefined, { darstellung: 'unbekannt' } as unknown as MenueOption)).rejects.toThrow('Unbekannte Darstellung');
 });
 
 it('erhält bei ausgelassener und ausdrücklicher Dateifeld-Vorgabe dasselbe HTML', async () => {

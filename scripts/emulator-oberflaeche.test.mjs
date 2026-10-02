@@ -26,6 +26,7 @@ const quelldateien = [
   'app/src/adapters/dateiimport.ts', 'app/src/adapters/dateiablauf-vertrag.ts', 'app/src/adapters/app-plattform.ts',
   'docs/datenschutz.md',
   'app/src/adapters/menue-zurueck.ts',
+  'packages/oberflaeche/src/fristenrechner-menue.ts',
   'app/android/app/src/main/java/de/baremos/fristenrechner/MenueZurueckPlugin.java',
   'app/android/app/src/main/java/de/baremos/fristenrechner/io/DateiablaufPlugin.java',
 ];
@@ -70,6 +71,11 @@ test('Menü-Quellvertrag hat eine eigene Methodenliste', () => {
   }
 });
 for (const [titel, datei, ersetzen, durch] of [
+  ['Sheet nicht aktiviert', quelldateien[1], "menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }}", 'menue="aus"'],
+  ['Sheet nicht initialisiert', quelldateien[2], 'erzeugeMenue(root, menue, aktionen, plattform.zurueck)', 'anderesMenue()'],
+  ['Sheet ohne Dialogrolle', quelldateien[11], "sheet.setAttribute('role', 'dialog')", "sheet.setAttribute('role', 'menu')"],
+  ['Sheet ohne Zurück-Beobachter', quelldateien[11], 'zurueck.beobachten(schliessen)', 'andererBeobachter()'],
+  ['Sheet mit Web-Historie', quelldateien[11], 'overlay.hidden = true;', 'overlay.hidden = true; history.pushState({}, "");'],
   ['Menüadapter fehlt', quelldateien[8], 'const zurueck = erzeugeMenueZurueck(zurueckPlugin)', 'const zurueck = andererAdapter()'],
   ['Menüadapter nicht beendet', quelldateien[8], 'zurueck.dispose()', 'andereAktion()'],
   ['Menüregistrierung geändert', quelldateien[10], "('MenueZurueck')", "('AnderesPlugin')"],

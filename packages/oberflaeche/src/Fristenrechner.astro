@@ -1,5 +1,5 @@
 ---
-import type { ExportInhalt, GastgeberTexte, HinweisPosition, ImportBedienung } from './plattform';
+import { pruefeMenueOption, type MenueOption, type ExportInhalt, type GastgeberTexte, type HinweisPosition, type ImportBedienung } from './plattform';
 import { pruefeExportInhalt } from './fristenrechner-export-data';
 
 interface Props {
@@ -7,9 +7,11 @@ interface Props {
   exportInhalt: ExportInhalt;
   importBedienung?: ImportBedienung;
   hinweisPosition?: HinweisPosition;
+  menue?: MenueOption;
 }
 
 const { texte, exportInhalt, importBedienung = 'dateifeld', hinweisPosition = 'oben' } = Astro.props;
+const menue = pruefeMenueOption(Astro.props.menue);
 pruefeExportInhalt(exportInhalt);
 const fusszeilenAdresse = exportInhalt.adresse ? new URL(exportInhalt.adresse.href).hostname : '';
 
@@ -23,7 +25,7 @@ const bundeslaender = [
 ---
 
 <div class="fristenrechner" data-fristenrechner data-pagefind-ignore="all"
-     data-gastgeber-texte={JSON.stringify(texte)} data-export-inhalt={JSON.stringify(exportInhalt)}>
+     data-gastgeber-texte={JSON.stringify(texte)} data-export-inhalt={JSON.stringify(exportInhalt)} data-menue={menue === 'aus' ? undefined : JSON.stringify(menue)}>
   {hinweisPosition === 'oben' && <div class="privacy-note">
     <strong>{texte.datenschutzTitel}</strong>
     {texte.datenschutzText}

@@ -97,6 +97,15 @@ export interface RechnerOptionen {
   plattform: Plattform;
   texte: GastgeberTexte;
   exportInhalt: ExportInhalt;
+  menue?: MenueOption;
+}
+export type MenueOption = 'aus' | { darstellung: 'bottom-sheet'; titel?: string };
+export function pruefeMenueOption(menue: MenueOption = 'aus'): MenueOption {
+  if (menue === 'aus') return menue;
+  if (!menue || menue.darstellung !== 'bottom-sheet' || (menue.titel !== undefined && typeof menue.titel !== 'string')) {
+    throw new Error('Unbekannte Darstellung der Dateiaktionen.');
+  }
+  return menue;
 }
 export const MAX_PROJEKT_BYTES = 1024 * 1024;
 export function pruefeProjektGroesse(text: string, maxBytes = MAX_PROJEKT_BYTES): void {

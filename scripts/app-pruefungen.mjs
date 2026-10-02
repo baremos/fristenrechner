@@ -349,6 +349,9 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
         // "eval" als Zeichenkette: Reflect.get(globalThis, "eval"), { ["eval"]: e } = …
         if (text === 'eval' && !alsEigenschaft) zaehle('dynamisch', 'eval');
         if (k.type === 'StringLiteral') ergebnis.adressen.push(...adressenIn(k.value));
+        // Das optionale Sheet setzt CSS erst bei Aktivierung ein. Auch der im
+        // Skript gebündelte Stil unterliegt K2, wie eine ausgelieferte CSS-Datei.
+        if (text !== null && text.includes('.fr-menue-overlay')) pruefeCss(text, 'Menüstil im Skript', ergebnis.fehler);
         break;
       }
       case 'TemplateElement':

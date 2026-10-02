@@ -17,8 +17,9 @@ import {
 
 import { regelstandText } from './fristenrechner-export-data';
 import { leerenUndAnhaengen } from './dom';
-import { PlattformFehler, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type AusgabeFormat, type AusgabeWeg, type DateiAktion, type DateiAktionsZustand, type RechnerAktionen, type RechnerInstanz, type RechnerOptionen } from './plattform';
+import { PlattformFehler, pruefeMenueOption, pruefeProjektGroesse, MAX_PROJEKT_BYTES, type AusgabeFormat, type AusgabeWeg, type DateiAktion, type DateiAktionsZustand, type RechnerAktionen, type RechnerInstanz, type RechnerOptionen } from './plattform';
 import { speicherWarteschlange } from './speicher-warteschlange';
+import { erzeugeMenue } from './fristenrechner-menue';
 import { ausgabeBeschriftung, runDateiAusgabe } from './fristenrechner-export-action';
 export * from './plattform';
 export { erzeugeWebPlattform, erzeugeWebSpeicher, webZeit, WEB_SPEICHERSCHLUESSEL } from './web-plattform';
@@ -130,6 +131,7 @@ function appendMilestoneDate(container: HTMLElement, milestone: Meilenstein): vo
 
 export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen): RechnerInstanz {
   const seite = root.ownerDocument;
+  const menue = pruefeMenueOption(optionen.menue ?? (root.dataset.menue ? JSON.parse(root.dataset.menue) : 'aus'));
   if (aktiveSeiten.has(seite) || seite.querySelectorAll('[data-fristenrechner]').length > 1) {
     throw new Error('Es ist nur ein Fristenrechner je Seite und eine Initialisierung erlaubt.');
   }
@@ -1023,6 +1025,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       return () => { beobachter.delete(beobachtung); };
     },
   };
+  if (menue !== 'aus') abmelden.push(erzeugeMenue(root, menue, aktionen, plattform.zurueck));
   field<HTMLInputElement>(form, 'bekanntmachung').value = plattform.zeit().kalendertag;
   updateVerfahrensartOptionen();
   updateConditionalFields();

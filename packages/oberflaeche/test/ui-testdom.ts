@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs';
 
 /** Kleines Testdoppel für den UI-/Plattformvertrag. Kein HTML-Parser und kein
- * Browser: Layout, Constraint Validation, Fokus und native Dialoge fehlen.
+ * Browser: Layout, Constraint Validation und native Dialoge fehlen. Fokus wird
+ * nur als activeElement gebucht; das beweist keine Bedienbarkeit im Browser.
  * Die statischen Elemente und Feldvorgaben stammen aus der Astro-Komponente. */
 export class TestElement extends EventTarget {
   readonly kinder: TestElement[] = [];
   readonly attribute = new Map<string, string>();
   readonly dataset: Record<string, string> = {};
-  readonly style = { setProperty: (_name: string, _wert: string): void => {} };
+  readonly style = new TestStyle(this);
   parent: TestElement | undefined;
   hidden = false;
   disabled = false;
@@ -25,6 +26,16 @@ export class TestElement extends EventTarget {
 
   constructor(readonly tagName: string, readonly ownerDocument: TestDocument) { super(); }
   get id(): string { return this.attribute.get('id') ?? ''; }
+  set id(wert: string) { this.setAttribute('id', wert); }
+  get tabIndex(): number { return Number(this.getAttribute('tabindex') ?? 0); }
+  set tabIndex(wert: number) { this.setAttribute('tabindex', String(wert)); }
+  get children(): TestElement[] { return this.kinder; }
+  get parentElement(): TestElement | null { return this.parent ?? null; }
+  get isConnected(): boolean { return this.ownerDocument.documentElement.contains(this); }
+  getAttribute(name: string): string | null { return this.attribute.get(name) ?? null; }
+  hasAttribute(name: string): boolean { return this.attribute.has(name); }
+  focus(): void { this.ownerDocument.activeElement = this; }
+  getBoundingClientRect() { return { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 }; }
   get className(): string { return this.attribute.get('class') ?? ''; }
   set className(wert: string) { this.attribute.set('class', wert); }
   get firstChild(): TestElement | null { return this.kinder[0] ?? null; }
@@ -63,6 +74,10 @@ export class TestElement extends EventTarget {
       const kind = typeof knotenWert === 'string' ? this.ownerDocument.createTextNode(knotenWert) : knotenWert;
       kind.remove(); kind.parent = this; this.kinder.push(kind);
     }
+  }
+  insertBefore(kind: TestElement, vor: TestElement | null): TestElement {
+    kind.remove(); kind.parent = this;
+    this.kinder.splice(vor ? this.kinder.indexOf(vor) : this.kinder.length, 0, kind); return kind;
   }
   removeChild(kind: TestElement): TestElement {
     const index = this.kinder.indexOf(kind);
@@ -106,10 +121,35 @@ export class TestElement extends EventTarget {
     // Node-EventTarget kennt keine DOM-Eltern; der Ursprung bleibt beim Bubbling erhalten.
     if (!event.target) Object.defineProperty(event, 'target', { value: this, configurable: true });
     const ergebnis = super.dispatchEvent(event);
-    if (event.bubbles && !Reflect.get(event, 'cancelBubble')) this.parent?.dispatchEvent(event);
+    if (event.bubbles && !Reflect.get(event, 'cancelBubble')) {
+      if (this.parent) this.parent.dispatchEvent(event);
+      else if (this === this.ownerDocument.documentElement) this.ownerDocument.dispatchEvent(event);
+    }
     return ergebnis;
   }
   listenerAnzahl(): number { return [...this.handlers.values()].reduce((summe, gruppe) => summe + gruppe.size, 0); }
+}
+
+class TestStyle {
+  constructor(private el: TestElement) {}
+  private werte(): Map<string, string> {
+    return new Map((this.el.getAttribute('style') ?? '').split(';').filter(s => s.includes(':')).map(s => {
+      const i = s.indexOf(':'); return [s.slice(0, i).trim(), s.slice(i + 1).trim()];
+    }));
+  }
+  get length(): number { return this.werte().size; }
+  getPropertyValue(name: string): string { return (this.werte().get(name) ?? '').replace(/\s*!important$/, ''); }
+  getPropertyPriority(name: string): string { return this.werte().get(name)?.endsWith('!important') ? 'important' : ''; }
+  setProperty(name: string, wert: string, prioritaet = ''): void {
+    const werte = this.werte(); werte.set(name, wert + (prioritaet ? ' !important' : ''));
+    this.el.setAttribute('style', [...werte].map(([n, w]) => `${n}: ${w};`).join(' '));
+  }
+  removeProperty(name: string): void {
+    const werte = this.werte(); werte.delete(name);
+    this.el.setAttribute('style', [...werte].map(([n, w]) => `${n}: ${w};`).join(' '));
+  }
+  set top(wert: string) { this.setProperty('top', wert); }
+  set height(wert: string) { this.setProperty('height', wert); }
 }
 
 export class TestInput extends TestElement {}
@@ -120,8 +160,13 @@ class TestForm extends TestElement {
     this.querySelectorAll('input,select').forEach(feld => { feld.value = feld.defaultValue; feld.checked = feld.defaultChecked; });
   }
 }
-export class TestDocument {
+export class TestDocument extends EventTarget {
   readonly body = new TestElement('body', this);
+  readonly documentElement = new TestElement('html', this);
+  activeElement: TestElement | null = null;
+  defaultView: unknown;
+  constructor() { super(); this.documentElement.append(this.body); }
+  createElementNS(_ns: string, tag: string): TestElement { return this.createElement(tag); }
   createElement(tag: string): TestElement {
     return tag === 'input' ? new TestInput(tag, this) : tag === 'select' ? new TestSelect(tag, this)
       : tag === 'form' ? new TestForm(tag, this) : new TestElement(tag, this);
@@ -129,6 +174,7 @@ export class TestDocument {
   createTextNode(text: string): TestElement { const knoten = this.createElement('#text'); knoten.textContent = text; return knoten; }
   createDocumentFragment(): TestElement { return this.createElement('#fragment'); }
   querySelectorAll(selector: string): TestElement[] { return this.body.querySelectorAll(selector); }
+  querySelector(selector: string): TestElement | null { return this.body.querySelector(selector); }
 }
 
 function dekodiere(text: string): string {
@@ -144,6 +190,7 @@ export function erstelleTestDom(dokument = new TestDocument()) {
   // Die optionale Importbedienung ist im Testdoppel zunächst das Dateifeld.
   // Beide echten Astro-Zweige werden zusätzlich durch Render-Tests geprüft.
   vorlage = vorlage.replace(/\{importBedienung === 'schaltflaeche' \? <button[\s\S]*?<\/button> : (<label[\s\S]*?<\/label>)\}/, '$1');
+  vorlage = vorlage.replace(/\{hinweisPosition === 'unten' && <div[\s\S]*?<\/div>\}/, '');
   // Diese eine dynamische Feldliste wird aus ihrer statischen Astro-Vorgabe aufgebaut.
   const liste = quelle.match(/const bundeslaender = \[([\s\S]*?)\] as const;/)?.[1];
   if (!liste) throw new Error('Bundeslandvorgaben fehlen.');
