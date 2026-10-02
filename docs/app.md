@@ -304,7 +304,7 @@ Auch nach einem Fehler räumt der Lauf auf: App und Gegenprobe deinstallieren, g
 
 ### Menüphase auf API 30 und 36
 
-**Ergebnis: ausstehend.** Die Phase `menue` ist im Emulatorrahmen eingerichtet; Abnahme und Sichtprüfung stehen für beide Abbilder noch aus. Frühere Einzelproben der Menüleiste sind keine Läufe dieser Phase.
+**Ergebnis vom 2026-10-02** (Debug `e3fdd301…fcdf`, Release `2e95b5ac…2bb0`, Stand `018720b`): **API 36 (WebView 133.0.6943.137):** alle Fälle bestanden, dokumentierte Grenzen M-4 teilen (System öffnet einen Empfänger direkt oder hat keinen), M-5 (Sperre nur im Hintergrund-DOM belegt, die Android-Auswahl verdeckt die App) und `input swipe` ohne abgebrochene Geste; 15 Bilder von Claude gesichtet; Neuauswertung mit Sichtprüfung Rückgabewert 3. **API 30 (WebView 83.0.4103.120):** alle Fälle bestanden außer M-2 geste, der in zwei Läufen ungültig blieb: Das Umschalten auf Gestennavigation baut auf diesem Abbild die Activity neu auf, danach erreichte die Probe das geöffnete Menü nicht in der Messfrist. Belegt ist die Randgeste auf API 30 durch die Zurück-Probe (F5, Callback meldet einmal), das Schließen des Menüs über denselben Callback durch M-2 zurueck; auf API 36 besteht M-2 geste durchgehend. Gleiche Grenzen wie auf API 36, 15 Bilder gesichtet, Neuauswertung Rückgabewert 2. Laufzeit gemessen: API 30 rund 14 Minuten, API 36 rund 19 Minuten. Erste Läufe derselben Phase am Stand vor `ef94c08` und `018720b` fanden zwei echte Befunde: Export-Schaltflächen liefen im Querformat bei Schrift 2,0 über (korrigiert in `ef94c08`), und WebView 83 meldete den Drei-Punkte-Knopf wegen `aria-haspopup` als Auswahlliste (korrigiert in `018720b`).
 
 Ein Aufruf prüft zuerst den Debug-Build und danach die vorhandene Release-APK. Die Release-Kopie wird mit dem eingerichteten Android-Debugschlüssel wie in Ablauf B signiert; die Eingabe-APK bleibt unverändert. Für `menue` allein werden keine Testvarianten gebaut und keine zusätzlichen Pakete installiert. Erforderlich sind die vorhandenen APKs desselben Quellstands, das eingerichtete SDK, JDK und der Debugschlüssel. Es darf kein anderer Emulator laufen.
 
@@ -335,7 +335,7 @@ node scripts/emulator-auswertung.mjs --lauf scratchpad/paket-2.6/m3/api36-lauf1 
 
 Die Neuauswertung prüft Vollständigkeit, API, Fallkopien und unveränderte Belege; alte Ergebnisbehauptungen reichen nicht. Rückgabewerte: 0 vollständig bestanden, 1 nicht bestanden, 2 ungültig, 3 ausschließlich dokumentierte Grenzen, 4 Sichtprüfung ausstehend, gegebenenfalls zusätzlich Grenzen. Die Sperrprobe bleibt auch nach grüner Sichtprüfung eine Grenze. Der Rahmen stellt Schrift, Drehung, Tastatureinstellung und Navigation zurück, entfernt eigene Download-Dateien, Installationen und Weiterleitungen und beendet den Emulator. Fehlgeschlagenes Aufräumen wird gesondert gemeldet.
 
-Für die Menüphase sind **etwa 30 bis 60 Minuten je Abbild** einzuplanen, zuzüglich Sichtung und gegebenenfalls Wiederholung ungültiger Fälle. Das ist ein Planwert; eine gemessene Laufzeit liegt noch nicht vor. Langsame uiautomator-Abzüge oder Systemdialoge können den Lauf verlängern. Die beiden Abbilder dürfen wegen des gemeinsamen Emulatorports nicht parallel laufen.
+Gemessen am 2026-10-02: rund 14 Minuten auf API 30 und 19 Minuten auf API 36 je Lauf, zuzüglich Sichtung und gegebenenfalls Wiederholung ungültiger Fälle. Langsame uiautomator-Abzüge oder Systemdialoge können den Lauf verlängern. Die beiden Abbilder dürfen wegen des gemeinsamen Emulatorports nicht parallel laufen.
 
 ### Dateiphase auf API 30 und 36
 
