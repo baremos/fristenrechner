@@ -94,7 +94,7 @@ const texte = {
      einen Umbruch innerhalb des Worts, unabhängig von automatischer Silbentrennung. */
   .app-rahmen > h1, .app-abschnitt { overflow-wrap: anywhere; }
   /* Silbentrennung nur als Zugabe, wo die WebView sie kann (WebView 83 trägt sie nicht verlässlich). */
-  .app-rahmen > h1 { hyphens: auto; }
+  .app-rahmen > h1, .app-abschnitt h2, .app-abschnitt h3 { hyphens: auto; }
   .app-hinweis { border: 1px solid var(--color-accent); padding: 0.75rem; }
   .app-abschnitt { margin-top: 1rem; }
   .app-abschnitt pre { white-space: pre-wrap; }
