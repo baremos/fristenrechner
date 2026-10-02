@@ -436,7 +436,7 @@ function schreibe(w, name, text) {
   writeFileSync(join(w, name), text);
 }
 function nativeProbe(w) {
-  for (const p of ['AndroidManifest.xml', 'res/xml/export_paths.xml', 'res/values/strings.xml', 'java/de/baremos/fristenrechner/MainActivity.java']) {
+  for (const p of ['AndroidManifest.xml', 'res/xml/export_paths.xml', 'res/values/strings.xml', 'java/de/baremos/fristenrechner/MainActivity.java', 'java/de/baremos/fristenrechner/MenueZurueckPlugin.java']) {
     const relativ = 'app/android/app/src/main/' + p;
     schreibe(w, relativ, readFileSync(join(projekt, relativ), 'utf8'));
   }

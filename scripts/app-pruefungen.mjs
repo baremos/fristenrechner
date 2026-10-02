@@ -191,13 +191,67 @@ function dateiausgabeAufrufe(ast, fehler) {
   return anzahl;
 }
 
+// Enger Vertrag für den direkten Plugin-Parameter des Menüadapters, auch minifiziert.
+// Wie beim Dateiweg werden keine beliebigen Alias- oder Datenflussketten ausgewertet.
+function menueAufrufe(ast, fehler) {
+  const eltern = new WeakMap(), aufrufe = [], empfaenger = new Set(), registrierungen = [];
+  besuche(ast.program, (k, p) => { if (p) eltern.set(k, p); });
+  const bindung = (k, name) => {
+    for (let p = k; p; p = eltern.get(p)) {
+      if (FUNKTIONEN.has(p.type) && p.params?.some(a => (a.type === 'AssignmentPattern' ? a.left : a)?.name === name)) return p;
+    }
+    return ast.program;
+  };
+  const schluessel = (k, name) => `${bindung(k, name).start}:${name}`;
+  besuche(ast.program, k => {
+    if (!['CallExpression', 'OptionalCallExpression'].includes(k.type)) return;
+    if (konstanterText(k.arguments[0]) === 'MenueZurueck') registrierungen.push(k);
+    const c = k.callee;
+    if (!['MemberExpression', 'OptionalMemberExpression'].includes(c?.type) || c.object?.type !== 'Identifier') return;
+    const name = eigenschaftsname(c), key = schluessel(k, c.object.name);
+    aufrufe.push({ k, name, key, scope: bindung(k, c.object.name) });
+    if (name === 'addListener' && konstanterText(k.arguments[0]) === 'zurueck') empfaenger.add(key);
+    if (name === 'setzen' && k.arguments[0]?.type === 'ObjectExpression'
+      && k.arguments[0].properties.some(p => p.key?.name === 'folge')) empfaenger.add(key);
+  });
+  if (!registrierungen.length && !empfaenger.size) return {};
+  // Auch bei entfernten/umbenannten Aufrufen den Parameter der Registrierung finden.
+  const namen = registrierungen.map(k => eltern.get(k)).filter(p => p?.type === 'VariableDeclarator').map(p => p.id.name);
+  besuche(ast.program, k => {
+    if (k.type === 'AssignmentPattern' && namen.includes(k.right?.name)) empfaenger.add(schluessel(k, k.left.name));
+  });
+  const anzahl = { registrierung: registrierungen.length, setzen: 0, addListener: 0, remove: 0 };
+  if (registrierungen.length !== 1 || registrierungen[0].arguments.length !== 1) fehler.push('MenueZurueck: genau eine Registrierung erwartet.');
+  const scopes = new Set();
+  for (const { k, name, key, scope } of aufrufe) {
+    if (!empfaenger.has(key)) continue;
+    scopes.add(scope);
+    if (!['setzen', 'addListener'].includes(name)) { fehler.push(`MenueZurueck: unbekannte Methode ${name ?? '(berechnet)'}.`); continue; }
+    anzahl[name]++;
+    if (name === 'setzen') {
+      const arg = k.arguments[0];
+      const felder = arg?.type === 'ObjectExpression' ? arg.properties.map(p => p.type !== 'ObjectProperty' ? null
+        : p.computed ? konstanterText(p.key) : p.key.name ?? konstanterText(p.key)) : [];
+      if (k.arguments.length !== 1 || !isDeepStrictEqual(felder.sort(), ['aktiv', 'folge'])) fehler.push('MenueZurueck.setzen: genau aktiv und folge erwartet.');
+    } else if (k.arguments.length !== 2 || konstanterText(k.arguments[0]) !== 'zurueck') fehler.push('MenueZurueck: genau das Ereignis zurueck erwartet.');
+  }
+  for (const scope of scopes) besuche(scope, k => {
+    if (k.type === 'CallExpression' && k.callee?.type === 'MemberExpression' && eigenschaftsname(k.callee) === 'remove') {
+      anzahl.remove++;
+      if (k.arguments.length) fehler.push('MenueZurueck: remove ohne Argumente erwartet.');
+    }
+  });
+  for (const name of ['setzen', 'addListener', 'remove']) if (anzahl[name] !== 1) fehler.push(`MenueZurueck.${name}: genau eine Aufrufstelle erwartet, gefunden ${anzahl[name]}.`);
+  return anzahl;
+}
+
 /**
  * Wertet ein Skript aus. art: "module" oder "script".
  * Ergebnis: { syntax: {Merkmal: Anzahl}, laufzeit: {Name: Anzahl}, dynamisch: {Name: Anzahl},
  *            adressen: [Wortlaut], fehler }
  */
 export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufzeitNamen } = {}) {
-  const ergebnis = { syntax: {}, laufzeit: {}, dynamisch: {}, dateiausgabe: {}, adressen: [], fehler: [] };
+  const ergebnis = { syntax: {}, laufzeit: {}, dynamisch: {}, dateiausgabe: {}, menue: {}, adressen: [], fehler: [] };
   let ast;
   try {
     ast = parse(quelltext, {
@@ -211,6 +265,7 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
     return ergebnis;
   }
   ergebnis.dateiausgabe = dateiausgabeAufrufe(ast, ergebnis.fehler);
+  ergebnis.menue = menueAufrufe(ast, ergebnis.fehler);
   const zaehle = (feld, name) => { ergebnis[feld][name] = (ergebnis[feld][name] ?? 0) + 1; };
   const methoden = new Set(laufzeitNamen.filter((n) => n.art === 'methode').map((n) => n.name));
   const globale = new Set(laufzeitNamen.filter((n) => n.art === 'global').map((n) => n.name));
@@ -451,7 +506,7 @@ function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
  */
 export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorgabe = VORGABE, quellOrdner = [] } = {}) {
   const fehler = [];
-  const bericht = { dateien: 0, skriptBytes: {}, syntax: {}, laufzeit: {}, dynamisch: {}, dateiausgabe: {}, adressen: {} };
+  const bericht = { dateien: 0, skriptBytes: {}, syntax: {}, laufzeit: {}, dynamisch: {}, dateiausgabe: {}, menue: {}, adressen: {} };
   // Jeder Eintrag der Regeldatei braucht Datei, eine Höchstzahl ab 1 und einen Grund.
   for (const liste of ['laufzeitAusnahmen', 'dynamischerCode', 'adressen']) {
     if (!Array.isArray(vorgabe[liste])) { fehler.push(`app-pruefungen.json: ${liste} fehlt oder ist keine Liste.`); continue; }
@@ -481,6 +536,7 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
     for (const [name, n] of Object.entries(a.laufzeit)) zaehle('laufzeit', stamm, name, n);
     for (const [name, n] of Object.entries(a.dynamisch)) zaehle('dynamisch', stamm, name, n);
     for (const [name, n] of Object.entries(a.dateiausgabe)) zaehle('dateiausgabe', stamm, name, n);
+    for (const [name, n] of Object.entries(a.menue)) zaehle('menue', stamm, name, n);
     for (const adresse of a.adressen) zaehle('adressen', stamm, adresse, 1);
   };
   for (const datei of dateien) {
@@ -498,6 +554,13 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
       if (!/<head[\s>]/i.test(html)) fehler.push(`${datei}: <head> fehlt; Capacitor fügt seine Brücke dort ein.`);
       if (datei === fehlerseite && /<script\b/i.test(html)) fehler.push(`${datei}: Die Fehlerseite darf kein Skript enthalten.`);
       pruefeHtml(html, datei, fehler, werteSkriptAus, (adresse) => zaehle('adressen', datei, adresse, 1));
+    }
+  }
+  // Auch zwei einzeln gültige Menüadapter in verschiedenen Bündeln sind nicht erlaubt.
+  if (Object.keys(bericht.menue).length) {
+    for (const name of ['registrierung', 'setzen', 'addListener', 'remove']) {
+      const summe = Object.values(bericht.menue).reduce((n, werte) => n + (werte[name] ?? 0), 0);
+      if (summe !== 1) fehler.push(`MenueZurueck.${name}: insgesamt genau eine Aufrufstelle erwartet, gefunden ${summe}.`);
     }
   }
   // Code aus Zeichenketten: nur mit Eintrag und bis zur Höchstzahl.
@@ -838,12 +901,36 @@ export function pruefeNativeQuellen({ wurzel, umgebung = process.env } = {}) {
         @Override protected void onCreate(Bundle savedInstanceState) {
           registerPlugin(NavigationssperrePlugin.class);
           registerPlugin(DateiablaufPlugin.class);
+          registerPlugin(MenueZurueckPlugin.class);
           super.onCreate(savedInstanceState);
         }
       }`;
     const normal = text => ohneGradleKommentare(text).replace(/\s+/g, '');
-    if (normal(activity) !== normal(erwarteteActivity)) fehler.push('MainActivity: genau NavigationssperrePlugin und DateiablaufPlugin vor super.onCreate registrieren.');
+    if (normal(activity) !== normal(erwarteteActivity)) fehler.push('MainActivity: genau NavigationssperrePlugin, DateiablaufPlugin und MenueZurueckPlugin vor super.onCreate registrieren.');
+    fehler.push(...pruefeMenueQuelle(readFileSync(join(src, 'main/java/de/baremos/fristenrechner/MenueZurueckPlugin.java'), 'utf8')));
   });
+  return fehler;
+}
+
+/** Bewusst enger Quellvertrag, kein Ersatz für Java-Übersetzung und Geräteprobe. */
+export function pruefeMenueQuelle(java) {
+  const text = ohneGradleKommentare(java).replace(/\s+/g, ' '), fehler = [];
+  const noetig = [
+    '@CapacitorPlugin(name = "MenueZurueck")', 'new OnBackPressedCallback(false)',
+    'getOnBackPressedDispatcher().addCallback(getActivity(), callback)',
+    'public void handleOnBackPressed() { setEnabled(false); JSObject ereignis = new JSObject(); ereignis.put("folge", folge); notifyListeners("zurueck", ereignis, false); }',
+    'public void onPageStarted(WebView webView) { getActivity().runOnUiThread(() -> { callback.setEnabled(false); dokument++; folge = 0; removeAllListeners(); }); }',
+    'protected void handleOnDestroy() { getActivity().runOnUiThread(() -> { beendet = true; dokument++; callback.setEnabled(false); callback.remove(); bridge.removeWebViewListener(seiten); removeAllListeners(); }); }',
+    'bridge.addWebViewListener(seiten)', 'daten.length() != 2', 'aktivWert instanceof Boolean', 'folgeWert instanceof Number',
+    '!Double.isFinite(zahl)', 'zahl < 1', 'zahl > 9007199254740991d', 'zahl != Math.floor(zahl)',
+    'getActivity().runOnUiThread(() -> { if (!beendet && aufrufDokument == dokument && neueFolge > folge) { folge = neueFolge; callback.setEnabled(aktiv); } call.resolve(); });',
+  ];
+  for (const s of noetig) if (!text.includes(s)) fehler.push(`MenueZurueck: Quellvertrag geändert: ${s}`);
+  if ((text.match(/new OnBackPressedCallback\(/g) ?? []).length !== 1
+    || (text.match(/@PluginMethod\b/g) ?? []).length !== 1
+    || !/@PluginMethod public void setzen\(PluginCall call\)/.test(text)
+    || (text.match(/notifyListeners\(/g) ?? []).length !== 1) fehler.push('MenueZurueck: genau ein Callback, setzen und Ereignis erwartet.');
+  if (/\b(?:onBackPressed|KEYCODE_BACK|goBack|canGoBack|loadUrl|setWebViewClient|WindowInsetsControllerCompat|handleOnPause|handleOnStop)\b/.test(text)) fehler.push('MenueZurueck: unerlaubter Navigations- oder Lebensdauerweg.');
   return fehler;
 }
 

@@ -61,7 +61,15 @@ export interface DateiAusgabe {
   /** Vollständige Datei und gestartete Teilen-Auswahl; keine Versandbestätigung. */
   teilen?: (datei: AusgabeDatei) => Promise<DateiErgebnis>;
 }
+/** Optionaler Zurück-Weg des Gastgebers, ohne Web-Historie. */
+export interface MenueZurueck {
+  /** Öffnen/Schließen wartet nicht auf die native Bestätigung; Fehler bleiben ohne Projektmeldung. */
+  setzen(aktiv: boolean): Promise<void>;
+  beobachten(fn: () => void): () => void;
+  dispose(): void;
+}
 export interface Plattform {
+  zurueck?: MenueZurueck;
   speicher: ProjektSpeicher;
   import: DateiImport;
   ausgabe: DateiAusgabe;

@@ -3,7 +3,7 @@ import {
   FEHLERCODES, MAX_PROJEKT_BYTES, PlattformFehler, WEB_SPEICHERSCHLUESSEL, pruefeProjektGroesse, initFristenrechner,
   type AusgabeDatei, type AusgabeFormat, type AusgabeWeg, type DateiErgebnis, type DateiImport,
   type DateiAusgabe, type Fehlercode, type GastgeberTexte, type HinweisPosition, type ImportBedienung, type Plattform, type ProjektSpeicher,
-  type DateiAktion, type DateiAktionsZustand, type RechnerAktionen, type RechnerInstanz,
+  type DateiAktion, type DateiAktionsZustand, type RechnerAktionen, type RechnerInstanz, type MenueZurueck,
 } from '@baremos/fristenrechner-ui/ui';
 
 it('stellt den App-Adaptern Konstanten und Typen über den öffentlichen Einstieg bereit', () => {
@@ -17,6 +17,10 @@ it('stellt den App-Adaptern Konstanten und Typen über den öffentlichen Einstie
   const importieren: DateiImport = { waehlen: async () => ({ status: 'abgebrochen' }) };
   const ausgabe: DateiAusgabe = { exportieren: async () => ergebnis };
   const plattform: Plattform = { speicher, import: importieren, ausgabe, zeit: () => ({ zeitpunkt: '', kalendertag: '' }), zuruecksetzenBestaetigen: async () => false };
+  expect(plattform.zurueck).toBeUndefined();
+  const zurueck: MenueZurueck = { setzen: async (_aktiv) => {}, beobachten: (_fn) => () => {}, dispose() {} };
+  const appPlattform: Plattform = { ...plattform, zurueck };
+  expect(appPlattform.zurueck).toBe(zurueck);
   const texte: GastgeberTexte = { datenschutzTitel: '', datenschutzText: '', speicherNichtVerfuegbar: '', exportErfolg: '', importBeschriftung: '', ausgabeErfolg: { teilen: { projekt: '' } } };
   expect([bedienung, format, weg, datei.bytes.length, plattform.ausgabe, texte.exportErfolg]).toEqual(['schaltflaeche', 'projekt', 'teilen', 2, ausgabe, '']);
   expect(WEB_SPEICHERSCHLUESSEL).toBe('baremos-fristenrechner-projekt-v1');

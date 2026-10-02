@@ -170,7 +170,7 @@ test('Testquellen gehören zum Quellenstand und verhindern veraltete Varianten-W
   assert.equal(p.aufrufe.length, 1);
 });
 
-test('Gegenprobe behält in den tatsächlichen C2-Quellen das Dateiablauf-Plugin', () => {
+test('Gegenprobe behält in den tatsächlichen Quellen Dateiablauf- und Menü-Plugin', () => {
   const quelle = {
     manifest: readFileSync(join(repo, 'app/android/app/src/main/AndroidManifest.xml'), 'utf8'),
     gradle: readFileSync(join(repo, 'app/android/app/build.gradle'), 'utf8'),
@@ -179,4 +179,5 @@ test('Gegenprobe behält in den tatsächlichen C2-Quellen das Dateiablauf-Plugin
   const result = gegenprobeQuellen(quelle);
   assert.equal(result.activity, quelle.activity.replace('registerPlugin(NavigationssperrePlugin.class);', ''));
   assert.match(result.activity, /registerPlugin\(DateiablaufPlugin.class\)/);
+  assert.match(result.activity, /registerPlugin\(MenueZurueckPlugin.class\)/);
 });

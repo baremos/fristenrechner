@@ -51,6 +51,8 @@ Der vollständige Dateivergleich mit der Android-Vorlage von Capacitor 8.5.2, di
 
 ## Dateiabläufe: Speichern unter, Teilen, Import und Dialog nativ
 
+Der optionale Zurück-Baustein der App verwendet das eigene `MenueZurueckPlugin` ohne zusätzliche Abhängigkeit. Ein an die Activity gebundener, anfangs deaktivierter Callback meldet einmal `zurueck` und deaktiviert sich vorher; `setzen` überträgt nur `aktiv` und eine aufsteigende `folge`. Dokumentwechsel und Activity-Abbau deaktivieren ihn. Der App-Adapter registriert den Listener vor der ersten Aktivierung, ignoriert späte Ereignisse und meldet ihn bei `dispose` ab. Brückenfehler erzeugen keine Projektfehlermeldung; Öffnen und Schließen bleiben unabhängig von der Bestätigung. Die Website stellt diese optionale Schnittstelle nicht bereit. Die Menübedienung nutzt sie noch nicht; es entsteht keine Web-Historie. Stand: **Probe ausstehend**, einschließlich Tastatur und abgeschlossener Randgeste auf API 30 und 36.
+
 Die App bindet über [app-plattform.ts](../app/src/adapters/app-plattform.ts) die native Ausgabe, den Import und die Bestätigung beim Zurücksetzen ein. Die Website behält ihr Dateifeld und ihre Web-Adapter. Der automatische Projektspeicher der App bleibt `localStorage` unter `baremos-fristenrechner-projekt-v1`; die Uhr liefert Zeitpunkt und Kalenderfelder der Ortszeit. Beide Funktionen stammen unverändert aus dem gemeinsamen Web-Adapter.
 
 | Weg | Verhalten und Grenze |

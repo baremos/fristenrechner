@@ -3,7 +3,17 @@ import { join } from 'node:path';
 import { hinweisGrenze } from '../../app/src/rechtsstand-hinweis.ts';
 import { STATUS, SICHTPRUEFUNGEN, sichtpruefungAusstehend, befund, evaluiereBeobachtungen, evaluiereBarrierebaum, evaluiereUeberlauf, evaluiereFehlerseite, evaluiereBruecke, evaluiereFehlerfalleGegenprobe, evaluiereTastatur, evaluiereFehlerseiteGegenprobe, evaluiereZurueck } from '../emulator-auswertung.mjs';
 import { navigation, netz } from './pruefungen.mjs';
-import { ohneGradleKommentare } from '../app-pruefungen.mjs';
+import { ohneGradleKommentare, pruefeMenueQuelle } from '../app-pruefungen.mjs';
+
+export function menueMethodenVertrag(java) {
+  const text = ohneGradleKommentare(java);
+  const erwartet = ['setzen'];
+  const methoden = [...text.matchAll(/@PluginMethod\s+public\s+void\s+(\w+)\s*\(PluginCall\s+call\)/g)].map(m => m[1]).sort();
+  if ((text.match(/@PluginMethod\b/g) ?? []).length !== erwartet.length || JSON.stringify(methoden) !== JSON.stringify(erwartet)) throw new Error('Menüvertrag geändert: unbekannte Brücken- oder Testmethoden.');
+  const fehler = pruefeMenueQuelle(java);
+  if (fehler.length) throw new Error(fehler.join('\n'));
+  return methoden;
+}
 
 export function dateiMethodenVertrag(java) {
   const quelltext = ohneGradleKommentare(java);
@@ -22,6 +32,7 @@ export function dateiMethodenVertrag(java) {
 // Ein bestandener Quellvertrag ist kein Nachweis eines erneuten Emulatorlaufs.
 export function quellvertrag(wurzel) {
   dateiMethodenVertrag(readFileSync(join(wurzel, 'app/android/app/src/main/java/de/baremos/fristenrechner/io/DateiablaufPlugin.java'), 'utf8'));
+  menueMethodenVertrag(readFileSync(join(wurzel, 'app/android/app/src/main/java/de/baremos/fristenrechner/MenueZurueckPlugin.java'), 'utf8'));
   const markup = readFileSync(join(wurzel, 'packages/oberflaeche/src/Fristenrechner.astro'), 'utf8');
   const app = readFileSync(join(wurzel, 'app/src/pages/index.astro'), 'utf8');
   const ui = readFileSync(join(wurzel, 'packages/oberflaeche/src/fristenrechner-ui.ts'), 'utf8');
@@ -30,6 +41,12 @@ export function quellvertrag(wurzel) {
   const eingabe = readFileSync(join(wurzel, 'app/src/adapters/dateiimport.ts'), 'utf8');
   const vertrag = readFileSync(join(wurzel, 'app/src/adapters/dateiablauf-vertrag.ts'), 'utf8');
   const plattform = readFileSync(join(wurzel, 'app/src/adapters/app-plattform.ts'), 'utf8');
+  const menue = readFileSync(join(wurzel, 'app/src/adapters/menue-zurueck.ts'), 'utf8');
+  for (const s of ["registerPlugin<MenueZurueckPlugin>('MenueZurueck')", "plugin.addListener('zurueck', empfangen)",
+    'await plugin.setzen({ aktiv, folge })', 'await handle.remove()', 'if (beendet || !aktiv', 'beobachter.clear()']) {
+    if (!menue.includes(s)) throw new Error(`Menüadapter geändert: ${s}.`);
+  }
+  if (/\bzurueck\s*:/.test(web)) throw new Error('Web-Plattform geändert: Menü-Zurück bleibt optional.');
   for (const s of ['id="schedule-form"', 'id="result-regelstand"', 'id="schedule-table-body"', 'type="submit"', 'name="kunde"', 'name="projektname"', 'name="vergabenummer"', 'name="vergabeordnung"', 'name="verfahrensart"', 'name="bundesland"', 'name="bekanntmachung"']) {
     if (!markup.includes(s)) throw new Error(`Oberflächenvertrag geändert: ${s}`);
   }
@@ -55,7 +72,8 @@ export function quellvertrag(wurzel) {
   }
   for (const s of ['const fenster = root.ownerDocument.defaultView!', 'const sperre = erzeugeNativeAuftragsSperre()',
     'speicher: erzeugeWebSpeicher(fenster)', 'zeit: webZeit', 'ausgabe: erzeugeNativeDateiAusgabe(plugin, sperre)',
-    '...erzeugeNativeProjektEingabe(plugin, sperre)', 'dispose() { sperre.dispose(); }']) {
+    '...erzeugeNativeProjektEingabe(plugin, sperre)', 'const zurueck = erzeugeMenueZurueck(zurueckPlugin)',
+    '    zurueck,', 'dispose() { sperre.dispose(); zurueck.dispose(); }']) {
     if (!plattform.includes(s)) throw new Error(`App-Plattform geändert: ${s}.`);
   }
   if (!/import\s*\{\s*registerPlugin\s*\}\s*from\s*'@capacitor\/core';/.test(vertrag)
