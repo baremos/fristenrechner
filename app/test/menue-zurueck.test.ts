@@ -57,6 +57,20 @@ describe('Menü-Zurück', () => {
     expect(p.remove).toHaveBeenCalledTimes(1);
   });
 
+  it('setzt die Folge desselben Plugins in einer neuen Adapterinstanz fort', async () => {
+    // Java nimmt bis zum Dokumentwechsel nur höhere Folgen an.
+    const p = new MenueFake(), erste = erzeugeMenueZurueck(p);
+    await erste.setzen(true); await erste.setzen(false); erste.dispose(); await tick();
+    const zweite = erzeugeMenueZurueck(p), ereignis = vi.fn();
+    zweite.beobachten(ereignis);
+    await zweite.setzen(true);
+    expect(p.aufrufe.map(a => a.folge)).toEqual([1, 2, 3, 4]);
+    p.sende(4); await tick();
+    expect(ereignis).toHaveBeenCalledTimes(1);
+    zweite.dispose(); await tick();
+    expect(p.aufrufe[p.aufrufe.length - 1]).toEqual({ aktiv: false, folge: 5 });
+  });
+
   it('verwirft eine während der Registrierung geschlossene Öffnung', async () => {
     const p = new MenueFake(), a = erzeugeMenueZurueck(p), halt = tor(); p.registrierung = halt.promise;
     const lauf = a.setzen(true);

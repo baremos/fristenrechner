@@ -6,10 +6,14 @@ export interface MenueZurueckPlugin {
   addListener(name: 'zurueck', fn: (ereignis: { folge: number }) => void): Promise<PluginListenerHandle>;
 }
 export const menueZurueck = registerPlugin<MenueZurueckPlugin>('MenueZurueck');
+// Java behält die höchste Folge bis zum Dokumentwechsel. Eine neue Adapterinstanz im selben
+// Dokument setzt deshalb die Folge desselben Plugins fort, statt wieder bei 1 zu beginnen.
+const letzteFolge = new WeakMap<MenueZurueckPlugin, number>();
 
 /** Erst bei Verwendung registrieren; Brückenfehler verändern keine Projektdaten. */
 export function erzeugeMenueZurueck(plugin: MenueZurueckPlugin = menueZurueck): MenueZurueck {
-  let folge = 0;
+  let folge = letzteFolge.get(plugin) ?? 0;
+  const naechsteFolge = (): number => { folge += 1; letzteFolge.set(plugin, folge); return folge; };
   let aktiv = false;
   let beendet = false;
   let registrierung: Promise<void> | undefined;
@@ -63,7 +67,7 @@ export function erzeugeMenueZurueck(plugin: MenueZurueckPlugin = menueZurueck): 
     async setzen(wert) {
       if (beendet || folge === Number.MAX_SAFE_INTEGER) return;
       aktiv = wert;
-      await uebertragen(wert, ++folge);
+      await uebertragen(wert, naechsteFolge());
     },
     beobachten(fn) {
       if (!beendet) beobachter.add(fn);
@@ -74,7 +78,7 @@ export function erzeugeMenueZurueck(plugin: MenueZurueckPlugin = menueZurueck): 
       beendet = true;
       aktiv = false;
       beobachter.clear();
-      if (folge < Number.MAX_SAFE_INTEGER) void uebertragen(false, ++folge);
+      if (folge < Number.MAX_SAFE_INTEGER) void uebertragen(false, naechsteFolge());
       if (listener) { void abmelden(listener); listener = undefined; }
     },
   };
