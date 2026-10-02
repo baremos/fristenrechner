@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 import { pathToFileURL } from 'node:url';
+export { evaluiereMenueFall, menueFallId } from './emulator/menue-auswertung.mjs';
 export { evaluiereDateiFall, dateiFallId } from './emulator/dateien-auswertung.mjs';
 // Die einzelnen Auswerter sind rein; der optionale CLI liest vorhandene Rohbelege.
 export const STATUS = Object.freeze({ bestanden: 'bestanden', fehler: 'nicht bestanden', ungueltig: 'ungültig', grenze: 'dokumentierte Grenze', sicht: 'Sichtprüfung ausstehend' });
 export const SICHTPRUEFUNGEN = Object.freeze({
   A8: Object.freeze(['a8-schrift-1-3.png', 'a8-schrift-2-0.png', 'a8-nacht.png', 'a8-gedreht.png', 'a8-tastatur.png']),
   'B-Sichtprüfung': Object.freeze(['b-start.png']),
+  'M-Sichtprüfung': Object.freeze([
+    ...[1,2].flatMap(n => ['oben','ende','offen','unten'].map(ort => 'menue-schrift-' + n + '-' + ort + '.png')),
+    'menue-tastatur-vor.png','menue-tastatur-offen.png',
+    'menue-sperre-1-systemauswahl.png','menue-sperre-2-systemauswahl.png',
+    'menue-querformat-unten.png','menue-querformat-aktion.png','menue-release-offen.png',
+  ]),
 });
 const APP = 'de.baremos.fristenrechner';
 const GEGEN = `${APP}.gegenprobe`;
@@ -479,6 +486,17 @@ export async function werteLaufAus(lauf) {
     try { setzen(id, await auswerten(), quellen); }
     catch (e) { setzen(id, ungueltig(`Rohbeleg nicht auswertbar: ${e.message}`), quellen); }
   };
+  const menueAngefordert = vorhanden.has('menue-roh.json') || original.auswahl?.phasen?.includes('menue')
+    || original.auswahl?.ablauf === 'menue' || original.befund.some(b => b.id?.startsWith('menue-'));
+  if (menueAngefordert) {
+    const { werteMenueAus } = await import('./emulator/menue-auswertung.mjs');
+    const menu = await werteMenueAus(lauf, original.auswahl?.api);
+    for (const { id, ...wert } of menu) setzen(id, wert, ['menue-roh.json']);
+    for (const b of original.befund.filter(b => b.id?.startsWith('menue-') && b.id !== 'menue-grenzen')) {
+      if (!menu.some(n => n.id === b.id)) setzen(b.id, ungueltig('Menübefund ohne zugehörigen Rohfall.'), ['menue-roh.json']);
+    }
+    setzen('M-Sichtprüfung', sichtpruefungAusstehend(SICHTPRUEFUNGEN['M-Sichtprüfung']), SICHTPRUEFUNGEN['M-Sichtprüfung']);
+  }
   const dateienAngefordert = vorhanden.has('dateien-roh.json') || original.auswahl?.ablauf === 'dateien' || original.auswahl?.phasen?.includes('dateien') || original.befund.some(b => b.id?.startsWith('dateien-'));
   if (dateienAngefordert) {
     const { werteDateienAus } = await import('./emulator/dateien-auswertung.mjs');
@@ -592,7 +610,7 @@ export async function werteLaufAus(lauf) {
     const laufbefund = befunde.find((b) => b.id === 'ablauf-sicherung');
     if (laufbefund) laufbefund.grund += ' Einzelphasen wurden getrennt aus den erhaltenen Rohbelegen neu ausgewertet; der Lauf wurde nicht wiederholt.';
   }
-  const sichtgruppen = Object.entries(SICHTPRUEFUNGEN).filter(([id]) => original.befund.some(b => b.id === id &&
+  const sichtgruppen = Object.entries(SICHTPRUEFUNGEN).filter(([id]) => (id === 'M-Sichtprüfung' && menueAngefordert) || original.befund.some(b => b.id === id &&
     (b.status === STATUS.sicht || (b.status === STATUS.ungueltig &&
       (b.grund === 'Bilder für Systemleisten, Verdeckung und Lesbarkeit müssen noch gesichtet werden.' ||
        b.grund === 'Startbild, Systemleisten und Fehlerfalle im Bildschirmfoto noch manuell prüfen.')))));

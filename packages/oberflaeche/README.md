@@ -8,6 +8,16 @@ Stand 2026-09-30: Die Bedienlogik erhält Speicher, Import, Dateiausgabe, Zeit u
 
 Eine Komponente je Seite verwenden. Eine zweite Komponente oder erneute Initialisierung löst einen Fehler aus; feste Formular-Kennungen bleiben damit eindeutig. `initFristenrechner(root, optionen)` erhält dieselben Texte und Exportinhalte, die beim Rendern an die Komponente übergeben wurden.
 
+Optional aktiviert `menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }}` eine feste obere Leiste und den Dialog „Dateiaktionen“. Vorgabe ist `aus`; ausgelassen oder ausdrücklich ausgeschaltet entstehen keine Menüknoten, Attribute, Listener oder Stile. Eine unbekannte Darstellung löst einen Fehler aus. Die Initialisierung liest die Option aus der Komponente; ein gleichnamiger Eintrag in `RechnerOptionen` kann sie ausdrücklich überschreiben.
+
+Das Sheet nutzt dieselben Dateiaktionen, Sperren und Statusregionen wie die bisherigen Schaltflächen. Ohne Teilen-Fähigkeit fehlen die drei Teilen-Einträge. Eine Auswahl schließt synchron und ruft anschließend die Aktion auf. X, Escape, Außentipp und das optionale Ereignis von `plattform.zurueck` schließen mit Fokus zurück zum Knopf. Ohne diese Schnittstelle gibt es keinen Zurück-Weg. Die Komponente verwendet weder Web-Historie noch einen eigenen Wischhandler; die Android-Zurück-Geste erreicht das Menü in der App über `plattform.zurueck`.
+
+Der Menüknopf ist ein `button` mit dem Namen „Dateiaktionen“, `aria-expanded` und `aria-controls` auf die eindeutige Dialog-ID. Er trägt kein `aria-haspopup`, damit ältere WebViews ihn nicht als Auswahlliste abbilden. Das Sheet behält seine Dialogrolle und seinen Namen.
+
+Die Komponente reserviert die gemessene Leistenhöhe selbst vor dem Body-Inhalt, auch für Seitenabschnitte außerhalb des Rechners. Leiste und Overlay bleiben in der Komponente. Während des Dialogs werden Hintergrundattribute gesichert, Geschwister entlang des Pfads zum Body verborgen, Fokusziele gesperrt und neue Hintergrundknoten beobachtet. Eine Fokusfalle und ein fixierter Body mit gesicherter Scrollposition ergänzen die Sperre. `dispose()` stellt Attribute und Scrollstil wieder her, entfernt Reserve, Menü und Beobachter und deaktiviert den Zurück-Weg; der Gastgeber beendet seinen Plattformadapter selbst.
+
+Das Layout verwendet die sichtbare Viewport-Höhe, lässt Text umbrechen und scrollt bei geringer Höhe das ganze Sheet. Es benötigt einen Seitenrahmen ohne transformierte oder abschneidende Vorfahren der Komponente. Die Umsetzung verwendet kein natives Web-Dialogelement und setzt Chromium 83 voraus. DOM-Tests prüfen den Vertrag; Schrift, Bildschirmtastatur, Systemleisten und Hilfstechnik benötigen zusätzlich eine Geräteprüfung. Die Menütexte sind Arbeitsfassungen.
+
 ```astro
 ---
 import Fristenrechner from '@baremos/fristenrechner-ui';
@@ -62,6 +72,16 @@ Projektdateien sind beim Import und beim Export auf 1 MiB UTF-8 begrenzt; auch d
 
 Eingaben werden nach 350 ms gespeichert. Schreibvorgänge laufen der Reihe nach; Import, Zurücksetzen und Aufräumen verwerfen wartende ältere Schreibaufträge und warten vor dem Ersetzen auf den bereits laufenden Auftrag. Fehler bei einer Aktion erscheinen in deren eigener Statusregion. Berechnungen bleiben bei einem Speicherfehler möglich. Ein laufender Export verwendet den beim Start einmal festgehaltenen Eingabe- und Ergebnisstand sowie die Exportzeit. Dieselbe Aktionserzeugung übernimmt Speichern und Teilen, erzeugt genau eine Datei und ruft genau einen Adapterweg auf. Während eines Datei-Auftrags sind alle Ausgabewege, Import und Zurücksetzen gegeneinander gesperrt; nach Erfolg, Fehler oder Abbruch werden sie freigegeben. Ein Abbruch stellt die vorherige Aktionsmeldung wieder her. Schlägt nach einer Importübernahme das automatische Speichern fehl, bleibt das geöffnete Projekt sichtbar und die Meldung empfiehlt seinen Export zur Sicherung.
 
+## Aktionsschnittstelle
+
+`initFristenrechner(root, optionen)` liefert eine `RechnerInstanz` mit `aktionen` und `dispose()`. Die Typen `DateiAktion`, `DateiAktionsZustand`, `RechnerAktionen` und `RechnerInstanz` sind über `@baremos/fristenrechner-ui/ui` verfügbar. Aufrufer, die nur `dispose()` verwenden, bleiben kompatibel.
+
+`aktionen.ausgeben(format, weg)` nimmt `projekt`, `excel` oder `pdf` und `exportieren` oder `teilen` entgegen. `projektImportieren()` und `neuesProjekt()` verwenden dieselben Abläufe wie die bisherigen Schaltflächen, einschließlich Bestätigung, Fortschrittsanzeige und Statusregionen. Die Methoden liefern `Promise<void>`. Ein nicht erlaubter Aufruf löst ohne Wirkung auf: während des Ladens, bei einem laufenden Dateiauftrag, nach `dispose()` sowie bei Ausgaben ohne Ergebnis oder ohne angefragte Teilen-Fähigkeit. Dadurch bleibt auch eine inzwischen überholte Bedienbarkeitsprüfung ohne zusätzliche Fehlermeldung; angenommene Aufträge melden Fehler weiterhin in ihrer Aktionsregion. Weitere optionale Parameter können später angehängt werden; ein vorbereitender Rückruf ist derzeit nicht vorgesehen.
+
+`zustand()` liefert eine unveränderliche Momentaufnahme mit `geladen`, `beschaeftigt`, `hatErgebnis`, `kannTeilen` und `beendet`. `istErlaubt(aktion)` prüft die aktuelle Bedienbarkeit; jede Aktionsmethode prüft erneut. Die Fähigkeiten der Plattform werden für die Lebensdauer der Instanz bereitgestellt. `beobachten(fn)` liefert den Stand sofort, danach nur Änderungen; die Rückgabe meldet diesen Beobachter ab. Fehler eines Beobachters unterbrechen keine Dateiaktion. `dispose()` meldet einmal `beendet: true` und `beschaeftigt: false`, entfernt die Beobachter und nimmt keine weiteren an. Danach bleibt `zustand()` abrufbar, verspätete Dateiergebnisse verändern die Ansicht nicht. Der Gastgeber räumt seinen Plattformadapter gesondert auf.
+
+Beim Web-Dateifeld ruft der Klickpfad den Importadapter unmittelbar vor dem ersten `await` auf. Gesperrte Klicks werden mit `preventDefault()` abgefangen. Ein direkter API-Import darf genau den ersten synchronen Dateifeld-Klick aus `waehlen()` passieren lassen, ohne erneut einen Import zu starten; die Ausnahme endet schon mit dem synchronen Adapteraufruf. Die Bedienlogik löst selbst keinen Dateifeld-Klick aus.
+
 ## Texte, Inhalte und Darstellung
 
 `GastgeberTexte` enthält `datenschutzTitel`, `datenschutzText`, `speicherNichtVerfuegbar`, `exportErfolg` und `importBeschriftung`. `webTexte` erhält die bisherigen Browsertexte. Optional ergänzen `ausgabeErfolg[weg][format]` und `ausgabeFehler[weg][format]` getrennte Texte für `exportieren`/`teilen` und `projekt`/`excel`/`pdf`; `erzeugungsFehler[format]` gilt vor der Übergabe an den Adapter. Beim Export bleibt `exportErfolg` der Rückfall, beim Teilen meldet die Vorgabe nur die Bereitstellung. Nur wenn `plattform.ausgabe.teilen` vorhanden ist, ergänzt die Bedienlogik drei Teilen-Aktionen. Eine App übergibt passende Texte zur Verarbeitung auf dem Gerät und darf erfolgreiches Speichern erst nach bestätigtem Schreiben und Schließen melden.
@@ -70,7 +90,7 @@ Eingaben werden nach 350 ms gespeichert. Schreibvorgänge laufen der Reihe nach;
 
 Der optionale Slot `herausgeber` steht in der Fußzeile für ein vom Gastgeber bereitgestelltes Logo oder andere Herausgeberinhalte. `nach-hinweis` folgt auf den fachlichen Hinweis und kann Kontaktinhalte aufnehmen. Das Paket liefert kein Logo und keine festen Kontaktlinks. Die sichtbare Fußzeile nennt den Herausgeber und, sofern vorhanden, den Hostnamen der Exportadresse.
 
-Alle CSS-Selektoren sind auf `.fristenrechner` begrenzt. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
+Die Rechnerstile sind auf `.fristenrechner` begrenzt. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
 
 | CSS-Variable | Vorgabe |
 |---|---|

@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(NavigationssperrePlugin.class); // Vor dem Aufbau der Bridge registrieren.
         registerPlugin(DateiablaufPlugin.class);
+        registerPlugin(MenueZurueckPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

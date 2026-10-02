@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { quellvertrag, dateiMethodenVertrag, formularWerte, datumBefehl, ablaufA, ablaufA8, ablaufA10, domAriaNamen, evaluiereDomAria, ueberlaufMessung, tastaturTippPunkt } from './emulator/oberflaeche.mjs';
+import { quellvertrag, dateiMethodenVertrag, menueMethodenVertrag, formularWerte, datumBefehl, ablaufA, ablaufA8, ablaufA10, domAriaNamen, evaluiereDomAria, ueberlaufMessung, tastaturTippPunkt } from './emulator/oberflaeche.mjs';
 import { runInNewContext } from 'node:vm';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -25,6 +25,9 @@ const quelldateien = [
   'app/src/adapters/dateiausgabe.ts',
   'app/src/adapters/dateiimport.ts', 'app/src/adapters/dateiablauf-vertrag.ts', 'app/src/adapters/app-plattform.ts',
   'docs/datenschutz.md',
+  'app/src/adapters/menue-zurueck.ts',
+  'packages/oberflaeche/src/fristenrechner-menue.ts',
+  'app/android/app/src/main/java/de/baremos/fristenrechner/MenueZurueckPlugin.java',
   'app/android/app/src/main/java/de/baremos/fristenrechner/io/DateiablaufPlugin.java',
 ];
 let nummer = 0;
@@ -60,7 +63,34 @@ test('Datei-Quellvertrag schließt zusätzliche Diagnose- und URI-Methoden aus',
   assert.throws(() => dateiMethodenVertrag(java.replace('@PluginMethod public void teilen', '@PluginMethod(returnType = "none") public void teilen')), /Testmethoden/);
   assert.equal(dateiMethodenVertrag(java + '\n// @PluginMethod public void diagnose(PluginCall call) {}').length, 8);
 });
+test('Menü-Quellvertrag hat eine eigene Methodenliste', () => {
+  const java = readFileSync(join(wurzel, 'app/android/app/src/main/java/de/baremos/fristenrechner/MenueZurueckPlugin.java'), 'utf8');
+  assert.deepEqual(menueMethodenVertrag(java), ['setzen']);
+  for (const name of ['diagnose', 'goBack', 'projektWaehlen']) {
+    assert.throws(() => menueMethodenVertrag(java + `\n@PluginMethod public void ${name}(PluginCall call) {}`), /Menüvertrag/);
+  }
+});
 for (const [titel, datei, ersetzen, durch] of [
+  ['Menüknopf mit Popup-Rolle', quelldateien[11], "leiste.append(knopf)", "knopf.setAttribute('aria-haspopup', 'dialog'); leiste.append(knopf)"],
+  ['Menüknopf ohne Dialogbezug', quelldateien[11], "knopf.setAttribute('aria-controls', id)", "knopf.setAttribute('data-controls', id)"],
+  ['Menüknopf ohne geschlossenen Zustand', quelldateien[11], "knopf.setAttribute('aria-expanded', 'false')", "knopf.setAttribute('data-expanded', 'false')"],
+  ['Menüknopf ohne offenen Zustand', quelldateien[11], "knopf.setAttribute('aria-expanded', 'true')", "knopf.setAttribute('data-expanded', 'true')"],
+  ['Fokusklasse der Leiste fehlt', quelldateien[11], "leiste.classList.toggle('fr-menue-tastatur', aktiv)", "leiste.classList.toggle('anders', aktiv)"],
+  ['Fokusklasse des Sheet fehlt', quelldateien[11], "overlay.classList.toggle('fr-menue-tastatur', aktiv)", "overlay.classList.toggle('anders', aktiv)"],
+  ['App-Wortumbruch fehlt', quelldateien[1], 'overflow-wrap: anywhere;', 'overflow-wrap: normal;'],
+  ['App-Silbentrennung fehlt', quelldateien[1], 'hyphens: auto;', 'hyphens: none;'],
+  ['App-Außenabstand unbegrenzt', quelldateien[1], 'padding: min(1rem, 4vw)', 'padding: 1rem'],
+  ['Sheet nicht aktiviert', quelldateien[1], "menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }}", 'menue="aus"'],
+  ['Sheet nicht initialisiert', quelldateien[2], 'erzeugeMenue(root, menue, aktionen, plattform.zurueck)', 'anderesMenue()'],
+  ['Sheet ohne Dialogrolle', quelldateien[11], "sheet.setAttribute('role', 'dialog')", "sheet.setAttribute('role', 'menu')"],
+  ['Sheet ohne Zurück-Beobachter', quelldateien[11], 'zurueck.beobachten(schliessen)', 'andererBeobachter()'],
+  ['Sheet mit Web-Historie', quelldateien[11], 'overlay.hidden = true;', 'overlay.hidden = true; history.pushState({}, "");'],
+  ['Menüadapter fehlt', quelldateien[8], 'const zurueck = erzeugeMenueZurueck(zurueckPlugin)', 'const zurueck = andererAdapter()'],
+  ['Menüadapter nicht beendet', quelldateien[8], 'zurueck.dispose()', 'andereAktion()'],
+  ['Menüregistrierung geändert', quelldateien[10], "('MenueZurueck')", "('AnderesPlugin')"],
+  ['Menüereignis geändert', quelldateien[10], "plugin.addListener('zurueck', empfangen)", "plugin.addListener('anders', empfangen)"],
+  ['Menülistener nicht abgemeldet', quelldateien[10], 'await handle.remove()', 'await handle.anders()'],
+  ['Menüfeld zusätzlich', quelldateien[10], 'plugin.setzen({ aktiv, folge })', 'plugin.setzen({ aktiv, folge, pfad })'],
   ['Formularfeld fehlt', quelldateien[0], 'name="projektname"', 'name="anderes_feld"'],
   ['Ergebnistabelle fehlt', quelldateien[0], 'id="schedule-table-body"', 'id="andere_tabelle"'],
   ['App-Fehlerfalle fehlt', quelldateien[1], 'id="app-startfehler"', 'id="anderer_hinweis"'],

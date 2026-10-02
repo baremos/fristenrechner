@@ -46,14 +46,14 @@ export function argumente(argv, wurzel, repos = [wurzel]) {
   for (const a of ['--api', '--ablauf', '--ausgabe']) if (!o[a]) throw new Error(`Pflichtargument fehlt: ${a}`);
   if (!['36', '30', '24'].includes(o['--api'])) throw new Error('--api muss 36, 30 oder 24 sein.');
   const api = Number(o['--api']);
-  const moeglich = api === 24 ? ['installation'] : ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'dateien', 'sicherung', ...(api === 30 ? ['fehlerseite'] : [])];
+  const moeglich = api === 24 ? ['installation'] : ['a', 'a8', 'a10', 'b', 'netz', 'navigation', 'dateien', 'menue', 'sicherung', ...(api === 30 ? ['fehlerseite'] : [])];
   const ablauf = o['--ablauf'];
   if (ablauf !== 'alle' && !moeglich.includes(ablauf)) throw new Error(`--ablauf ${ablauf} ist für API ${api} nicht vorgesehen (${[...moeglich, 'alle'].join(', ')}).`);
   return {
     api, ablauf, ausgabe: ausgabePruefen(o['--ausgabe'], repos), wipeData: o['--wipe-data'] === true, nurArgumente: o['--nur-argumente'] === true,
     variantenOrdner: o['--varianten'] ? echterPfad(o['--varianten']) : undefined,
     // A enthält Netz und Navigation bereits; bei alle nicht doppelt ausführen.
-    phasen: ablauf === 'alle' ? (api === 24 ? ['installation'] : ['a', 'b', 'dateien', 'sicherung', ...(api === 30 ? ['fehlerseite'] : [])]) : ablauf === 'dateien' ? ['dateien', 'sicherung'] : [ablauf],
+    phasen: ablauf === 'alle' ? (api === 24 ? ['installation'] : ['a', 'b', 'dateien', 'menue', 'sicherung', ...(api === 30 ? ['fehlerseite'] : [])]) : ablauf === 'dateien' ? ['dateien', 'sicherung'] : [ablauf],
     debug: resolve(o['--apk-debug'] ?? join(wurzel, 'app/android/app/build/outputs/apk/debug/app-debug.apk')),
     release: resolve(o['--apk-release'] ?? join(wurzel, 'app/android/app/build/outputs/apk/release/app-release-unsigned.apk')),
   };

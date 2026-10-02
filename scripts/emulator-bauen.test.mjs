@@ -27,7 +27,7 @@ function schreibe(datei, text) {
 const vorlage = {
   manifest: '<manifest>\n    <application android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules">\n    </application>\n</manifest>\n',
   gradle: 'android { defaultConfig { applicationId "de.baremos.fristenrechner" } }\n',
-  activity: 'package de.baremos.fristenrechner;\nclass MainActivity { void onCreate() { registerPlugin(NavigationssperrePlugin.class); registerPlugin(DateiablaufPlugin.class); } }\n',
+  activity: 'package de.baremos.fristenrechner;\nclass MainActivity { void onCreate() { registerPlugin(NavigationssperrePlugin.class); registerPlugin(DateiablaufPlugin.class); registerPlugin(MenueZurueckPlugin.class); } }\n',
 };
 
 function probe() {
@@ -88,15 +88,16 @@ test('Vorlagenersatz verlangt genau ein belegtes Vorkommen', () => {
   assert.throws(() => ersetzeEinmal('alt alt', 'alt', 'neu'), /nicht eindeutig/);
 });
 
-test('Gegenprobe hat andere App-ID, INTERNET, Sicherung und behält nur DateiablaufPlugin', () => {
+test('Gegenprobe hat andere App-ID, INTERNET, Sicherung und behält DateiablaufPlugin und MenueZurueckPlugin', () => {
   const q = gegenprobeQuellen(vorlage);
   assert.match(q.manifest, /android:allowBackup="true"/);
   assert.match(q.manifest, /android.permission.INTERNET/);
   assert.doesNotMatch(q.manifest, /dataExtractionRules|fullBackupContent/);
   assert.match(q.gradle, /applicationId "de.baremos.fristenrechner.gegenprobe"/);
   assert.doesNotMatch(q.activity, /registerPlugin\(NavigationssperrePlugin/);
-  assert.equal([...q.activity.matchAll(/registerPlugin\s*\(/g)].length, 1);
+  assert.equal([...q.activity.matchAll(/registerPlugin\s*\(/g)].length, 2);
   assert.match(q.activity, /registerPlugin\(DateiablaufPlugin.class\)/);
+  assert.match(q.activity, /registerPlugin\(MenueZurueckPlugin.class\)/);
   assert.match(q.activity, /package de.baremos.fristenrechner;/);
   assert.match(vorlage.manifest, /allowBackup="false"/);
   assert.throws(() => gegenprobeQuellen({ ...vorlage, manifest: vorlage.manifest.replace('<application', '<application android:fullBackupContent="false"') }), /Sicherungsregeln/);
@@ -104,6 +105,8 @@ test('Gegenprobe hat andere App-ID, INTERNET, Sicherung und behält nur Dateiabl
   assert.throws(() => gegenprobeQuellen({ ...vorlage, activity: `${vorlage.activity}\nregisterPlugin /* Zusatz */ (WeiteresPlugin.class);` }), /Pluginregistrierung/);
   assert.throws(() => gegenprobeQuellen({ ...vorlage, activity: vorlage.activity.replace('registerPlugin(DateiablaufPlugin.class);', '') }), /Pluginregistrierung/);
   assert.throws(() => gegenprobeQuellen({ ...vorlage, activity: `${vorlage.activity}\nregisterPlugin(DateiablaufPlugin.class);` }), /Pluginregistrierung/);
+  assert.throws(() => gegenprobeQuellen({ ...vorlage, activity: vorlage.activity.replace('registerPlugin(MenueZurueckPlugin.class);', '') }), /Pluginregistrierung/);
+  assert.throws(() => gegenprobeQuellen({ ...vorlage, activity: `${vorlage.activity}\nregisterPlugin(MenueZurueckPlugin.class);` }), /Pluginregistrierung/);
 });
 
 test('Alle Varianten bauen ausschließlich aus Kopien und mit eigenem Offline-Cache', async () => {

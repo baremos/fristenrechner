@@ -160,6 +160,12 @@
   ],
   "adressen": [
     {
+      "datei": "index.astro_astro_type_script_index_0_lang",
+      "wortlaut": "http://www.w3.org/2000/svg",
+      "hoechstzahl": 1,
+      "grund": "Namensraum für die selbst gezeichneten Symbole der Dateiaktionen (createElementNS), kein Abruf."
+    },
+    {
       "datei": "Fristenrechner.astro_astro_type_script_index_0_lang",
       "wortlaut": "www.baremos.de/de/vergabe/fristenrechner/",
       "hoechstzahl": 1,

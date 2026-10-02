@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as kern from '@baremos/fristenrechner-kern';
 import { initFristenrechner } from '../src/fristenrechner-ui';
-import { MAX_PROJEKT_BYTES, PlattformFehler, type Auswahl, type DateiErgebnis, type Plattform } from '../src/plattform';
+import { MAX_PROJEKT_BYTES, PlattformFehler, type Auswahl, type DateiErgebnis, type Plattform, type MenueOption } from '../src/plattform';
 import { webExportInhalt, webTexte } from '../src/web-vorgaben';
 import { beispiel } from './beispiel';
 import { erstelleTestDom, TestElement, TestInput, TestSelect } from './ui-testdom';
@@ -23,17 +23,21 @@ function json(name = 'Geladen'): string {
   return JSON.stringify(kern.erstelleProjektDatei(beispiel({ projekt: { projektname: name } }), zeit.zeitpunkt));
 }
 
-function vorbereiten(gespeichert: string | null = null) {
+function vorbereiten(gespeichert: string | null = null, menue?: MenueOption) {
   const dom = erstelleTestDom();
   vi.stubGlobal('document', dom.dokument);
   vi.stubGlobal('Element', TestElement);
   vi.stubGlobal('HTMLInputElement', TestInput);
   vi.stubGlobal('HTMLSelectElement', TestSelect);
-  vi.stubGlobal('window', {
+  const fenster = Object.assign(new EventTarget(), {
     setTimeout: globalThis.setTimeout,
     clearTimeout: globalThis.clearTimeout,
     matchMedia: vi.fn(() => ({ matches: true })),
+    innerHeight: 915, scrollX: 0, scrollY: 237,
+    scrollTo: vi.fn(), getComputedStyle: () => ({ fontSize: '16px' }),
   });
+  dom.dokument.defaultView = fenster;
+  vi.stubGlobal('window', fenster);
   const schreiben = vi.fn(async (text: string) => { gespeichert = text; });
   const lesen = vi.fn(async () => gespeichert);
   const entfernen = vi.fn(async () => { gespeichert = null; });
@@ -45,7 +49,7 @@ function vorbereiten(gespeichert: string | null = null) {
     zeit: vi.fn(() => zeit), zuruecksetzenBestaetigen: bestaetigen,
   };
   const start = () => {
-    const instanz = initFristenrechner(dom.root as unknown as HTMLElement, { plattform, texte: webTexte, exportInhalt: webExportInhalt });
+    const instanz = initFristenrechner(dom.root as unknown as HTMLElement, { plattform, texte: webTexte, exportInhalt: webExportInhalt, menue });
     instanzen.push(instanz); return instanz;
   };
   const aendern = (name: string, wert: string, ereignis = 'input') => {
@@ -557,5 +561,229 @@ describe('Gemeinsame Dateiaktionen und optionale Fähigkeiten', () => {
     env.click('export-pdf'); await warten();
     expect(env.exportieren).not.toHaveBeenCalled(); expect(env.el('pdf-message').textContent).toContain('nicht geladen oder erstellt');
     expect(env.el('save-json').disabled).toBe(false); env.click('save-json'); await warten(); expect(env.exportieren).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () => {
+  const menue = { darstellung: 'bottom-sheet' } as const;
+  const wege = [
+    ['save-json', 'Projekt speichern unter'], ['export-excel', 'Excel speichern'], ['export-pdf', 'PDF speichern'],
+    ['share-json', 'Projekt teilen'], ['share-excel', 'Excel teilen'], ['share-pdf', 'PDF teilen'],
+    ['open-json', 'Projekt importieren'], ['reset-project', 'Neues Projekt'],
+  ] as const;
+  function ansicht(env: ReturnType<typeof vorbereiten>) {
+    const knopf = env.root.querySelector('.fr-menue-leiste')!.querySelector('button[aria-controls]')!;
+    const overlay = env.root.querySelector('.fr-menue-overlay')!;
+    const sheet = overlay.querySelector('[role="dialog"]')!;
+    const x = overlay.querySelector('[aria-label="Schließen"]')!;
+    const liste = overlay.querySelector('.fr-menue-liste')!;
+    const buttons = liste.querySelectorAll('button');
+    const oeffnen = () => env.senden(knopf, 'click');
+    const waehlen = (name: string) => env.senden(buttons.find(b => b.textContent === name)!, 'click');
+    const taste = (key: string, shiftKey = false) => {
+      const e = new Event('keydown', { cancelable: true }); Object.assign(e, { key, shiftKey }); env.dokument.dispatchEvent(e); return e;
+    };
+    return { knopf, overlay, sheet, x, liste, buttons, oeffnen, waehlen, taste };
+  }
+  function mitZurueck(env: ReturnType<typeof vorbereiten>) {
+    let empfangen = () => {};
+    const abmelden = vi.fn(); const setzen = vi.fn(async (_aktiv: boolean) => {});
+    env.plattform.zurueck = { setzen, beobachten: fn => { empfangen = fn; return abmelden; }, dispose: vi.fn() };
+    return { setzen, abmelden, empfangen: () => empfangen() };
+  }
+  it.each([undefined, 'aus'] as const)('erzeugt mit %s keine zusätzlichen Knoten, Attribute, Stile oder Listener', async option => {
+    const env = vorbereiten(json(), option); const zurueck = mitZurueck(env);
+    const vorher = env.root.querySelectorAll('style').length;
+    const docListener = vi.spyOn(env.dokument, 'addEventListener');
+    const winListener = vi.spyOn(window, 'addEventListener');
+    const attribute = [...env.root.attribute];
+    env.start(); await warten();
+    expect(env.root.querySelectorAll('style')).toHaveLength(vorher);
+    expect(env.root.querySelectorAll('.fr-menue-leiste,.fr-menue-overlay')).toHaveLength(0);
+    expect([...env.root.attribute]).toEqual(attribute);
+    expect(env.dokument.body.getAttribute('style')).toBeNull();
+    expect(env.dokument.documentElement.getAttribute('style')).toBeNull();
+    expect(env.dokument.querySelectorAll('.fr-menue-reserve')).toHaveLength(0);
+    expect(docListener).not.toHaveBeenCalled(); expect(winListener).not.toHaveBeenCalled();
+    expect(zurueck.setzen).not.toHaveBeenCalled();
+  });
+  it('weist eine unbekannte Darstellung vor jeder Änderung zurück', () => {
+    const env = vorbereiten(json(), { darstellung: 'anders' } as unknown as MenueOption);
+    expect(env.start).toThrow('Unbekannte Darstellung');
+    expect(env.root.querySelectorAll('.fr-menue-overlay')).toHaveLength(0);
+    expect(env.lesen).not.toHaveBeenCalled();
+  });
+  it('erfasst neue Hintergrundknoten und entfernt alle Beobachter und globalen Listener', async () => {
+    let nachMutation = () => {};
+    const disconnect = vi.fn(), observe = vi.fn();
+    const groesseBeenden = vi.fn();
+    vi.stubGlobal('MutationObserver', class {
+      constructor(fn: () => void) { nachMutation = fn; }
+      observe = observe; disconnect = disconnect;
+    });
+    vi.stubGlobal('ResizeObserver', class { observe = vi.fn(); disconnect = groesseBeenden; });
+    const env = vorbereiten(json(), menue);
+    const docAn = vi.spyOn(env.dokument, 'addEventListener'), docAb = vi.spyOn(env.dokument, 'removeEventListener');
+    const winAn = vi.spyOn(window, 'addEventListener'), winAb = vi.spyOn(window, 'removeEventListener');
+    const instanz = env.start(); await warten(); const a = ansicht(env); a.oeffnen();
+    const gast = env.dokument.createElement('aside'), button = env.dokument.createElement('button');
+    gast.append(button); env.dokument.body.append(gast); nachMutation();
+    expect(gast.getAttribute('aria-hidden')).toBe('true'); expect(button.getAttribute('tabindex')).toBe('-1');
+    expect(observe).toHaveBeenCalled(); instanz.dispose();
+    expect(gast.getAttribute('aria-hidden')).toBeNull(); expect(button.getAttribute('tabindex')).toBeNull();
+    expect(disconnect).toHaveBeenCalled(); expect(groesseBeenden).toHaveBeenCalledTimes(1);
+    expect(docAb.mock.calls).toEqual(docAn.mock.calls); expect(winAb.mock.calls).toEqual(winAn.mock.calls);
+    nachMutation(); expect(button.getAttribute('tabindex')).toBeNull();
+  });
+  it('schließt synchron auch bei einer ausstehenden oder abgelehnten Zurück-Bestätigung und bleibt nach dispose still', async () => {
+    const env = vorbereiten(json(), menue), z = mitZurueck(env), bestaetigung = offen<void>();
+    z.setzen.mockReturnValue(bestaetigung.promise);
+    const ausgabe = offen<DateiErgebnis>(); env.exportieren.mockReturnValue(ausgabe.promise);
+    const instanz = env.start(); await warten(); const a = ansicht(env);
+    a.oeffnen(); a.waehlen('Projekt speichern unter'); expect(a.overlay.hidden).toBe(true);
+    expect(env.exportieren).toHaveBeenCalledTimes(1); expect(env.dokument.activeElement).toBe(a.knopf);
+    a.oeffnen(); instanz.dispose(); const text = env.el('export-message').textContent;
+    ausgabe.resolve({ status: 'ok' }); bestaetigung.reject(new Error('Brücke')); await warten();
+    expect(env.el('export-message').textContent).toBe(text);
+    expect(env.root.querySelector('.fr-menue-overlay')).toBeNull(); z.empfangen();
+    expect(z.setzen.mock.calls.map(c => c[0])).toEqual([true, false, true, false]);
+  });
+  it('hat genau eine Leiste, ein komponenteneigenes Overlay, eindeutige IDs und acht echte Aktionen', async () => {
+    const env = vorbereiten(json(), menue); env.plattform.ausgabe.teilen = env.exportieren;
+    const kollision = env.dokument.createElement('div'); kollision.id = 'fr-menue-1'; env.dokument.body.append(kollision);
+    env.start(); await warten(); const a = ansicht(env);
+    expect(env.root.querySelectorAll('.fr-menue-leiste')).toHaveLength(1);
+    expect(env.root.querySelectorAll('.fr-menue-overlay')).toHaveLength(1);
+    expect(a.buttons.map(b => b.textContent)).toEqual(wege.map(w => w[1]));
+    const ids = env.dokument.querySelectorAll('[id]').map(el => el.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(a.knopf.getAttribute('aria-controls')).toBe(a.sheet.id);
+    expect(a.knopf.tagName).toBe('button');
+    expect(a.knopf.getAttribute('aria-label')).toBe('Dateiaktionen');
+    expect(a.knopf.getAttribute('aria-haspopup')).toBeNull();
+    expect(a.knopf.getAttribute('aria-expanded')).toBe('false');
+    expect(a.sheet.getAttribute('aria-modal')).toBe('true');
+    expect(a.overlay.hidden).toBe(true); expect(env.root.querySelectorAll('[data-project-import]')).toHaveLength(1);
+    expect(a.sheet.querySelectorAll('[role="status"]')).toHaveLength(0);
+  });
+  it('lässt ohne Teilen-Fähigkeit die drei Einträge und die Gruppe weg', async () => {
+    const env = vorbereiten(json(), menue); env.start(); await warten(); const a = ansicht(env);
+    expect(a.buttons).toHaveLength(5);
+    expect(a.liste.querySelectorAll('h3').map(h => h.textContent)).toEqual(['Speichern', 'Import']);
+  });
+  it.each(wege)('%s hat über Sheet und bisherigen Button identische Daten, Zeit, Bytes, Adapter und Statusregionen', async (id, name) => {
+    const stand = async (sheet: boolean) => {
+      exporte.excel.mockClear(); exporte.pdf.mockClear();
+      const env = vorbereiten(json(), menue); const zurueck = mitZurueck(env);
+      env.plattform.ausgabe.teilen = env.exportieren;
+      env.waehlen.mockResolvedValue({ status: 'ok', wert: { name: 'projekt.json', text: json('Importiert') } });
+      const instanz = env.start(); await warten(); const a = ansicht(env);
+      vi.mocked(env.plattform.zeit).mockClear();
+      if (sheet) {
+        a.oeffnen(); a.waehlen(name);
+        expect(a.overlay.hidden).toBe(true); expect(env.dokument.activeElement).toBe(a.knopf);
+        expect(env.el('schedule-form').getAttribute('aria-hidden')).toBeNull();
+        expect(zurueck.setzen.mock.calls.map(c => c[0])).toEqual([true, false]);
+      } else env.click(id);
+      await warten();
+      const ergebnis = {
+        ausgabe: env.exportieren.mock.calls, import: env.waehlen.mock.calls, dialog: env.bestaetigen.mock.calls,
+        excel: exporte.excel.mock.calls, pdf: exporte.pdf.mock.calls,
+        zeit: vi.mocked(env.plattform.zeit).mock.calls, gespeichert: env.gespeichert(), projekt: env.feld('projektname').value,
+        meldungen: ['export-message', 'excel-message', 'pdf-message', 'import-message', 'reset-message'].map(id => env.el(id).textContent),
+      };
+      instanz.dispose(); await warten(); return ergebnis;
+    };
+    expect(await stand(true)).toEqual(await stand(false));
+  });
+  it.each(['Button', 'Sheet'])('sperrt bei Start am %s beide Bedienorte bis zum Ende des Auftrags', async weg => {
+    const env = vorbereiten(json(), menue); env.plattform.ausgabe.teilen = env.exportieren;
+    const ausgabe = offen<DateiErgebnis>(); env.exportieren.mockReturnValue(ausgabe.promise);
+    env.start(); await warten(); const a = ansicht(env);
+    if (weg === 'Sheet') { a.oeffnen(); a.waehlen('Projekt speichern unter'); } else env.click('save-json');
+    a.oeffnen(); expect(a.buttons.every(b => b.disabled)).toBe(true);
+    expect(a.sheet.getAttribute('aria-describedby')).toBe(a.sheet.querySelector('.fr-menue-sperre')!.id);
+    for (const [id, name] of wege) { env.click(id); a.waehlen(name); }
+    await warten(); expect(env.exportieren).toHaveBeenCalledTimes(1); expect(env.waehlen).not.toHaveBeenCalled(); expect(env.bestaetigen).not.toHaveBeenCalled();
+    expect(a.overlay.hidden).toBe(false); expect(a.x.disabled).toBe(false);
+    ausgabe.resolve({ status: 'ok' }); await warten();
+    expect(a.buttons.every(b => !b.disabled)).toBe(true); expect(a.sheet.getAttribute('aria-describedby')).toBeNull();
+  });
+  it('hält alle Aktionen während des Ladens und danach nur die Ausgaben ohne Ergebnis gesperrt', async () => {
+    const env = vorbereiten(json(), menue); env.plattform.ausgabe.teilen = env.exportieren;
+    const lesen = offen<string | null>(); env.lesen.mockReturnValue(lesen.promise); env.start(); const a = ansicht(env);
+    expect(a.buttons.every(b => b.disabled)).toBe(true); lesen.resolve(null); await warten();
+    env.aendern('verfahrensart', 'nicht_offen_mit_tnw', 'change');
+    env.aendern('angebotsaufforderungTermin', '2026-01-01', 'change');
+    expect(a.buttons.slice(0, 6).every(b => b.disabled)).toBe(true);
+    expect(a.buttons.slice(6).every(b => !b.disabled)).toBe(true);
+  });
+  it.each(['X', 'Escape', 'Außentipp', 'Zurück'])('schließt über %s mit Fokus-Rückkehr und passender Zurück-Folge', async weg => {
+    const env = vorbereiten(json(), menue); const z = mitZurueck(env); env.start(); await warten(); const a = ansicht(env);
+    a.oeffnen(); expect(env.dokument.activeElement!.id).toBe(a.sheet.getAttribute('aria-labelledby'));
+    if (weg === 'X') env.senden(a.x, 'click'); else if (weg === 'Escape') a.taste('Escape');
+    else if (weg === 'Außentipp') env.senden(a.overlay, 'click'); else z.empfangen();
+    expect(a.overlay.hidden).toBe(true); expect(a.knopf.getAttribute('aria-expanded')).toBe('false'); expect(env.dokument.activeElement).toBe(a.knopf);
+    z.empfangen(); a.taste('Escape'); expect(z.setzen.mock.calls.map(c => c[0])).toEqual([true, false]);
+  });
+  it('führt Tab zyklisch, überspringt gesperrte Aktionen und fängt fremden Fokus ab', async () => {
+    const env = vorbereiten(json(), menue); env.start(); await warten(); const a = ansicht(env); a.oeffnen();
+    a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.x);
+    a.taste('Tab', true); expect(env.dokument.activeElement).toBe(a.buttons[a.buttons.length - 1]);
+    a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.x);
+    env.feld('projektname').focus(); env.dokument.dispatchEvent(new Event('focusin'));
+    expect(env.dokument.activeElement!.id).toBe(a.sheet.getAttribute('aria-labelledby'));
+    const ausgabe = offen<DateiErgebnis>(); env.exportieren.mockReturnValue(ausgabe.promise);
+    a.waehlen('Projekt speichern unter'); a.oeffnen(); a.taste('Tab'); a.taste('Tab');
+    expect(env.dokument.activeElement).toBe(a.liste); a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.x);
+    ausgabe.resolve({ status: 'abgebrochen' }); await warten();
+  });
+  it.each(['pointerdown', 'touchstart'])('wechselt zwischen Tastatur und %s für Leiste und Sheet, auch nach Fokus-Rückkehr', async eingabe => {
+    const env = vorbereiten(json(), menue); const z = mitZurueck(env);
+    const instanz = env.start(); await warten(); const a = ansicht(env);
+    const leiste = env.root.querySelector('.fr-menue-leiste')!;
+    const modus = (aktiv: boolean) => {
+      expect(leiste.classList.contains('fr-menue-tastatur')).toBe(aktiv);
+      expect(a.overlay.classList.contains('fr-menue-tastatur')).toBe(aktiv);
+    };
+    modus(false);
+    a.taste('Tab'); modus(true); // Schon bei geschlossenem Menü.
+    a.taste('Enter'); a.oeffnen(); modus(true);
+    expect(env.dokument.activeElement!.id).toBe(a.sheet.getAttribute('aria-labelledby'));
+    a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.x); modus(true);
+    a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.liste); modus(true);
+    a.taste('Tab'); expect(env.dokument.activeElement).toBe(a.buttons[0]); modus(true);
+    a.taste('Escape'); expect(env.dokument.activeElement).toBe(a.knopf); modus(true);
+    env.senden(a.knopf, eingabe); a.oeffnen(); modus(false);
+    z.empfangen(); expect(env.dokument.activeElement).toBe(a.knopf); modus(false);
+    a.oeffnen(); a.taste('Tab'); modus(true);
+    env.senden(a.x, eingabe); env.senden(a.x, 'click'); modus(false);
+    expect(env.dokument.activeElement).toBe(a.knopf);
+    instanz.dispose(); a.taste('Tab'); modus(false); // Globale Listener entfernt.
+  });
+  it.each([true, false])('stellt Hintergrundattribute und Scrollstil exakt wieder her; dispose offen=%s räumt auf', async offen => {
+    const env = vorbereiten(json(), menue); const z = mitZurueck(env);
+    const gast = env.dokument.createElement('section'); gast.setAttribute('aria-hidden', 'false');
+    const link = env.dokument.createElement('a'); link.setAttribute('href', '#ziel'); link.setAttribute('tabindex', '3'); gast.append(link); env.dokument.body.append(gast);
+    env.el('schedule-form').setAttribute('aria-hidden', 'false');
+    env.feld('projektname').setAttribute('tabindex', '0'); env.dokument.body.setAttribute('style', 'color: red;');
+    env.dokument.documentElement.setAttribute('style', 'scroll-padding-top: 7px !important;');
+    const instanz = env.start(); await warten(); const a = ansicht(env);
+    const vorBody = env.dokument.body.getAttribute('style'); const vorHtml = env.dokument.documentElement.getAttribute('style');
+    a.oeffnen(); expect(link.getAttribute('tabindex')).toBe('-1'); expect(gast.getAttribute('aria-hidden')).toBe('true');
+    expect(env.root.hasAttribute('aria-hidden')).toBe(false); expect(a.overlay.hasAttribute('aria-hidden')).toBe(false);
+    if (!offen) env.senden(a.x, 'click');
+    instanz.dispose(); instanz.dispose();
+    expect(gast.getAttribute('aria-hidden')).toBe('false'); expect(link.getAttribute('tabindex')).toBe('3');
+    expect(env.el('schedule-form').getAttribute('aria-hidden')).toBe('false'); expect(env.feld('projektname').getAttribute('tabindex')).toBe('0');
+    expect(env.el('save-json').getAttribute('tabindex')).toBeNull();
+    expect(env.dokument.body.getAttribute('style')).toBe(vorBody);
+    expect(vorHtml).not.toBeNull(); expect(env.dokument.documentElement.getAttribute('style')).toBe('scroll-padding-top: 7px !important;');
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 237);
+    expect(env.dokument.querySelectorAll('.fr-menue-overlay,.fr-menue-leiste,.fr-menue-reserve,.fr-menue-stil')).toHaveLength(0);
+    expect(a.knopf.listenerAnzahl()).toBe(0); expect(a.x.listenerAnzahl()).toBe(0); expect(a.buttons.every(b => b.listenerAnzahl() === 0)).toBe(true);
+    expect(z.abmelden).toHaveBeenCalledTimes(1);
+    expect(z.setzen.mock.calls.map(c => c[0])).toEqual(offen ? [true, false] : [true, false, false]);
+    expect(env.plattform.zurueck!.dispose).not.toHaveBeenCalled(); z.empfangen(); expect(z.setzen).toHaveBeenCalledTimes(offen ? 2 : 3);
   });
 });

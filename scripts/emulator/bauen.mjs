@@ -95,7 +95,8 @@ export function gegenprobeQuellen({ manifest, gradle, activity }) {
   gradle = ersetzeEinmal(gradle, 'applicationId "de.baremos.fristenrechner"', 'applicationId "de.baremos.fristenrechner.gegenprobe"');
   activity = ersetzeEinmal(activity, 'registerPlugin(NavigationssperrePlugin.class);', '');
   const registrierungen = [...ohneGradleKommentare(activity).matchAll(/\bregisterPlugin\s*\(([^)]*)\)/g)].map(m => m[1].replace(/\s/g, ''));
-  if (/android:(fullBackupContent|dataExtractionRules)=/.test(manifest) || registrierungen.length !== 1 || registrierungen[0] !== 'DateiablaufPlugin.class') throw new Error('Gegenprobe enthält noch Sicherungsregeln oder abweichende Pluginregistrierungen.');
+  if (/android:(fullBackupContent|dataExtractionRules)=/.test(manifest)
+    || JSON.stringify(registrierungen) !== JSON.stringify(['DateiablaufPlugin.class', 'MenueZurueckPlugin.class'])) throw new Error('Gegenprobe enthält noch Sicherungsregeln oder abweichende Pluginregistrierungen.');
   return { manifest, gradle, activity };
 }
 

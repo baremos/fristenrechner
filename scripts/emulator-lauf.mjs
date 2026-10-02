@@ -10,6 +10,7 @@ import { befund, zusammenfassen, rueckgabewert, zaehleBefunde, evaluiereActivity
 import { APP, GEGEN, SERIAL, Cdp, argumente, dateiNoetig, echterPfad, innen, mitAufraeumen, netzmelder, pause, prozess, schreiber, sha256, websocketPruefen } from './emulator/rahmen.mjs';
 import { baueVarianten, signiereRelease, TESTEMPFANGER } from './emulator/bauen.mjs';
 import { dateien } from './emulator/dateien.mjs';
+import { menue } from './emulator/menue.mjs';
 import { ablaufA, ablaufA8, ablaufA10, datumBefehl, fehlerseite } from './emulator/oberflaeche.mjs';
 import { netz, navigation, sicherung, netzGueltigkeit } from './emulator/pruefungen.mjs';
 
@@ -462,18 +463,18 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
     await mitAufraeumen(async () => {
       try {
         dateiNoetig(adbExe); dateiNoetig(emulatorExe); dateiNoetig(optionen.debug);
-        if (optionen.phasen.some(p => ['b', 'dateien'].includes(p))) dateiNoetig(optionen.release);
-        daten.apkEingang = { debug: sha256(optionen.debug), ...(optionen.phasen.some(p => ['b', 'dateien'].includes(p)) ? { release: sha256(optionen.release) } : {}) };
+        if (optionen.phasen.some(p => ['b', 'dateien', 'menue'].includes(p))) dateiNoetig(optionen.release);
+        daten.apkEingang = { debug: sha256(optionen.debug), ...(optionen.phasen.some(p => ['b', 'dateien', 'menue'].includes(p)) ? { release: sha256(optionen.release) } : {}) };
         const devices = await run(adbExe, ['devices'], { env });
         const tasks = await run('tasklist.exe', ['/FO', 'CSV', '/NH'], { env });
         save('geraete-vorher.txt', devices.out); save('prozesse-vorher.txt', tasks.out);
         if (devices.code !== 0 || tasks.code !== 0) throw new Error('Laufende Emulatoren konnten nicht sicher geprüft werden.');
         if (/emulator-\d+\s/.test(devices.out) || /qemu-system|"emulator\.exe"/i.test(tasks.out)) throw new Error('Es läuft bereits ein Emulator. Vorher beenden.');
-        if (variantePlan(optionen.phasen).length) {
+        if (variantePlan(optionen.phasen).length || optionen.phasen.includes('menue')) {
           const jdk = findeJdk(); if (!jdk.pfad) throw new Error('Das eingerichtete JDK 21 fehlt.');
           ctx.java = join(jdk.pfad, 'bin/java.exe'); ctx.debugKey = join(homedir(), '.android/debug.keystore');
           ctx.apksigner = join(sdk, 'build-tools/35.0.0/lib/apksigner.jar');
-          ctx.varianten = await baueVarianten(ctx, variantePlan(optionen.phasen));
+          if (variantePlan(optionen.phasen).length) ctx.varianten = await baueVarianten(ctx, variantePlan(optionen.phasen));
         }
         ctx.netz = await netzmelder(join(optionen.ausgabe, 'netzmelder.log'));
         emuFd = openSync(join(optionen.ausgabe, 'emulator.log'), 'w');
@@ -510,7 +511,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
         logcat.on('error', e => { logcatFehler = `Fortlaufendes logcat: ${e.message}`; });
         logcat.on('exit', (code, sig) => { if (!cleaning) logcatFehler = `Fortlaufendes logcat endete vor dem Aufräumen (Code ${code}, Signal ${sig}).`; });
         await ctx.sleep(200); if (logcatFehler || !logcat.pid) throw new Error('Fortlaufendes logcat kann nicht gestartet werden.');
-        if (optionen.phasen.some(p => ['a', 'a8', 'dateien'].includes(p))) {
+        if (optionen.phasen.some(p => ['a', 'a8', 'dateien', 'menue'].includes(p))) {
           const vorher = { epoch: Number(await ctx.shell('date +%s')), host: Date.now() };
           if (!Number.isSafeInteger(vorher.epoch) || vorher.epoch < 1) throw new Error('Gerätezeit nicht lesbar.');
           for (const [table, key] of [['global', 'auto_time'], ['global', 'auto_time_zone'], ['system', 'font_scale'], ['system', 'accelerometer_rotation'], ['system', 'user_rotation']]) {
@@ -540,6 +541,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
             }
             else if (phase === 'b') await ablaufB(ctx);
             else if (phase === 'dateien') await dateien(ctx);
+            else if (phase === 'menue') await menue(ctx);
             else if (phase === 'fehlerseite') await fehlerseite(ctx);
             else {
               await ctx.uninstall(APP); await ctx.install(optionen.debug, APP);
@@ -571,7 +573,7 @@ export async function lauf(optionen, { run = prozess, launch = spawn, sleep = pa
 export async function main(argv = process.argv.slice(2)) {
   let optionen;
   try { optionen = argumente(argv, wurzel, repositories()); }
-  catch (e) { console.error(`Argumentfehler: ${e.message}\nAufruf: node scripts/emulator-lauf.mjs --api 36|30|24 --ablauf a|a8|a10|b|netz|navigation|dateien|sicherung|fehlerseite|installation|alle --ausgabe <Ordner> [--apk-debug <Datei>] [--apk-release <Datei>] [--varianten <Ordner>] [--wipe-data] [--nur-argumente]`); return 64; }
+  catch (e) { console.error(`Argumentfehler: ${e.message}\nAufruf: node scripts/emulator-lauf.mjs --api 36|30|24 --ablauf a|a8|a10|b|netz|navigation|dateien|menue|sicherung|fehlerseite|installation|alle --ausgabe <Ordner> [--apk-debug <Datei>] [--apk-release <Datei>] [--varianten <Ordner>] [--wipe-data] [--nur-argumente]`); return 64; }
   if (optionen.nurArgumente) {
     console.log(JSON.stringify({ ...optionen, varianten: variantePlan(optionen.phasen), emulatorGestartet: false, hinweis: 'Nur Argumentprüfung; keine APK-Prüfung, kein Build, kein Emulatorstart und keine Ausgabe angelegt.' }, null, 2));
     return 0;

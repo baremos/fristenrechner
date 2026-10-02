@@ -38,6 +38,14 @@ function setze(objekt, pfad, wert) {
 
 // K1 -------------------------------------------------------------------------
 
+test('K2: eingebetteter Menüstil wird auf externe Ressourcen geprüft', () => {
+  const sauber = analysiereSkript('const css = ".fr-menue-overlay{display:flex}";', 'module');
+  assert.deepEqual(sauber.fehler, []);
+  for (const css of ['.fr-menue-overlay{background:url(https://example.org/bild.png)}', '@import "fremd.css"; .fr-menue-overlay{}']) {
+    assert.ok(analysiereSkript(`const css = ${JSON.stringify(css)};`, 'module').fehler.some(f => f.includes('Menüstil')));
+  }
+});
+
 test('K1: die eingecheckte Konfiguration besteht', () => {
   const pub = ordner({ 'startfehler.html': '<!doctype html><head></head>' });
   assert.deepEqual(pruefeKonfiguration(echteKonfiguration, { publicOrdner: pub }), []);
@@ -436,7 +444,7 @@ function schreibe(w, name, text) {
   writeFileSync(join(w, name), text);
 }
 function nativeProbe(w) {
-  for (const p of ['AndroidManifest.xml', 'res/xml/export_paths.xml', 'res/values/strings.xml', 'java/de/baremos/fristenrechner/MainActivity.java']) {
+  for (const p of ['AndroidManifest.xml', 'res/xml/export_paths.xml', 'res/values/strings.xml', 'java/de/baremos/fristenrechner/MainActivity.java', 'java/de/baremos/fristenrechner/MenueZurueckPlugin.java']) {
     const relativ = 'app/android/app/src/main/' + p;
     schreibe(w, relativ, readFileSync(join(projekt, relativ), 'utf8'));
   }
@@ -444,6 +452,20 @@ function nativeProbe(w) {
 test('K3/K4: native Quelldateien bestehen', () => {
   assert.deepEqual(pruefeNativeQuellen({ wurzel: projekt }), []);
 });
+for (const [titel, zusatz] of [
+  ['Tastaturzweig mit Ereignis', 'notifyListeners("zurueck", new JSObject(), false);'],
+  ['Tastaturzweig deaktiviert Callback', 'setEnabled(false);'],
+]) {
+  test(`K3/K4 Menü-Gegenprobe: ${titel}`, () => {
+    const w = ordner({}); nativeProbe(w);
+    const pfad = join(w, 'app/android/app/src/main/java/de/baremos/fristenrechner/MenueZurueckPlugin.java');
+    const vorher = readFileSync(pfad, 'utf8');
+    const nachher = vorher.replace('                return;', `                ${zusatz} return;`);
+    assert.notEqual(nachher, vorher);
+    writeFileSync(pfad, nachher);
+    erwartetFehler(titel, pruefeNativeQuellen({ wurzel: w }), /MenueZurueck: Quellvertrag geändert: public void handleOnBackPressed/);
+  });
+}
 for (const datei of ['AndroidManifest.xml', 'res/xml/export_paths.xml']) {
   for (const [titel, aendere] of [
     ['nachgestellte offene Klammer', xml => xml + '<'],

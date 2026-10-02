@@ -16,6 +16,30 @@ export const FEHLERCODES = ['nicht-verfuegbar', 'kein-speicher', 'zu-gross', 'le
 export type Fehlercode = typeof FEHLERCODES[number];
 export type AusgabeFormat = 'projekt' | 'excel' | 'pdf';
 export type AusgabeWeg = 'exportieren' | 'teilen';
+export type DateiAktion =
+  | { art: 'ausgabe'; format: AusgabeFormat; weg: AusgabeWeg }
+  | { art: 'import' }
+  | { art: 'neues-projekt' };
+export interface DateiAktionsZustand {
+  readonly geladen: boolean;
+  readonly beschaeftigt: boolean;
+  readonly hatErgebnis: boolean;
+  readonly kannTeilen: boolean;
+  readonly beendet: boolean;
+}
+export interface RechnerAktionen {
+  /** Nicht erlaubte Aufrufe lösen ohne Wirkung auf; Fehler erscheinen in der Aktionsregion. */
+  ausgeben(format: AusgabeFormat, weg: AusgabeWeg): Promise<void>;
+  projektImportieren(): Promise<void>;
+  neuesProjekt(): Promise<void>;
+  zustand(): Readonly<DateiAktionsZustand>;
+  istErlaubt(aktion: DateiAktion): boolean;
+  beobachten(fn: (zustand: Readonly<DateiAktionsZustand>) => void): () => void;
+}
+export interface RechnerInstanz {
+  readonly aktionen: RechnerAktionen;
+  dispose(): void;
+}
 export type ImportBedienung = 'dateifeld' | 'schaltflaeche';
 /** Platz des Hinweiskastens mit Datenschutztext und Speicherstatus: über dem Formular (Vorgabe) oder unter dem rechtlichen Hinweis. */
 export type HinweisPosition = 'oben' | 'unten';
@@ -37,7 +61,15 @@ export interface DateiAusgabe {
   /** Vollständige Datei und gestartete Teilen-Auswahl; keine Versandbestätigung. */
   teilen?: (datei: AusgabeDatei) => Promise<DateiErgebnis>;
 }
+/** Optionaler Zurück-Weg des Gastgebers, ohne Web-Historie. */
+export interface MenueZurueck {
+  /** Öffnen/Schließen wartet nicht auf die native Bestätigung; Fehler bleiben ohne Projektmeldung. */
+  setzen(aktiv: boolean): Promise<void>;
+  beobachten(fn: () => void): () => void;
+  dispose(): void;
+}
 export interface Plattform {
+  zurueck?: MenueZurueck;
   speicher: ProjektSpeicher;
   import: DateiImport;
   ausgabe: DateiAusgabe;
@@ -65,6 +97,15 @@ export interface RechnerOptionen {
   plattform: Plattform;
   texte: GastgeberTexte;
   exportInhalt: ExportInhalt;
+  menue?: MenueOption;
+}
+export type MenueOption = 'aus' | { darstellung: 'bottom-sheet'; titel?: string };
+export function pruefeMenueOption(menue: MenueOption = 'aus'): MenueOption {
+  if (menue === 'aus') return menue;
+  if (!menue || menue.darstellung !== 'bottom-sheet' || (menue.titel !== undefined && typeof menue.titel !== 'string')) {
+    throw new Error('Unbekannte Darstellung der Dateiaktionen.');
+  }
+  return menue;
 }
 export const MAX_PROJEKT_BYTES = 1024 * 1024;
 export function pruefeProjektGroesse(text: string, maxBytes = MAX_PROJEKT_BYTES): void {

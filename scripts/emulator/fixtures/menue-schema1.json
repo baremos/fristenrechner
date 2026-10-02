@@ -1,0 +1,86 @@
+{
+  "herkunft": "Konstruierte Prüfdaten für Gegenproben, kein Emulatorlauf.",
+  "schema": 1,
+  "messung": {
+    "viewport": {
+      "width": 412,
+      "height": 800,
+      "visual": null
+    },
+    "dokumentBreite": 412,
+    "abgeschnitten": [],
+    "leiste": {
+      "x": 0,
+      "y": 0,
+      "width": 412,
+      "height": 56,
+      "right": 412,
+      "bottom": 56
+    },
+    "sheet": {
+      "x": 0,
+      "y": 200,
+      "width": 412,
+      "height": 600,
+      "right": 412,
+      "bottom": 800
+    },
+    "kopf": {
+      "x": 0,
+      "y": 200,
+      "width": 412,
+      "height": 50,
+      "right": 412,
+      "bottom": 250
+    },
+    "erste": {
+      "x": 16,
+      "y": 260,
+      "width": 380,
+      "height": 48,
+      "right": 396,
+      "bottom": 308
+    },
+    "letzte": {
+      "x": 16,
+      "y": 720,
+      "width": 380,
+      "height": 48,
+      "right": 396,
+      "bottom": 768
+    },
+    "x": {
+      "x": 350,
+      "y": 200,
+      "width": 48,
+      "height": 48,
+      "right": 398,
+      "bottom": 248
+    },
+    "hidden": false,
+    "anzahl": 8,
+    "gesperrt": 0,
+    "kompakt": false,
+    "fokusAmKnopf": false,
+    "sperrhinweis": false,
+    "aktivesElement": {
+      "name": "",
+      "tag": "button"
+    }
+  },
+  "activity": "topResumedActivity=ActivityRecord{a u0 de.baremos.fristenrechner/.MainActivity t1}",
+  "launcher": "topResumedActivity=ActivityRecord{b u0 com.android.launcher3/.Launcher t2}",
+  "imeOffen": "mInputShown=true mWindowVisible=true mDecorViewVisible=true",
+  "imeZu": "mInputShown=false mWindowVisible=false mDecorViewVisible=false",
+  "projekt": "{\"input\": {\"projekt\": {\"projektname\": \"Emulatorprobe\"}}}",
+  "navigation": {
+    "modus": "2",
+    "liste": [
+      {
+        "name": "com.android.internal.systemui.navbar.gestural",
+        "aktiv": true
+      }
+    ]
+  },
+  "paket": "Package [de.baremos.fristenrechner] (a):\n  flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]\n  privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE ]\n  versionCode=1 minSdk=30 targetSdk=36\n"
+}
