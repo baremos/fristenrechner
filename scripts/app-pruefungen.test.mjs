@@ -444,6 +444,20 @@ function nativeProbe(w) {
 test('K3/K4: native Quelldateien bestehen', () => {
   assert.deepEqual(pruefeNativeQuellen({ wurzel: projekt }), []);
 });
+for (const [titel, zusatz] of [
+  ['Tastaturzweig mit Ereignis', 'notifyListeners("zurueck", new JSObject(), false);'],
+  ['Tastaturzweig deaktiviert Callback', 'setEnabled(false);'],
+]) {
+  test(`K3/K4 Menü-Gegenprobe: ${titel}`, () => {
+    const w = ordner({}); nativeProbe(w);
+    const pfad = join(w, 'app/android/app/src/main/java/de/baremos/fristenrechner/MenueZurueckPlugin.java');
+    const vorher = readFileSync(pfad, 'utf8');
+    const nachher = vorher.replace('                return;', `                ${zusatz} return;`);
+    assert.notEqual(nachher, vorher);
+    writeFileSync(pfad, nachher);
+    erwartetFehler(titel, pruefeNativeQuellen({ wurzel: w }), /MenueZurueck: Quellvertrag geändert: public void handleOnBackPressed/);
+  });
+}
 for (const datei of ['AndroidManifest.xml', 'res/xml/export_paths.xml']) {
   for (const [titel, aendere] of [
     ['nachgestellte offene Klammer', xml => xml + '<'],

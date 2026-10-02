@@ -918,7 +918,7 @@ export function pruefeMenueQuelle(java) {
   const noetig = [
     '@CapacitorPlugin(name = "MenueZurueck")', 'new OnBackPressedCallback(false)',
     'getOnBackPressedDispatcher().addCallback(getActivity(), callback)',
-    'public void handleOnBackPressed() { setEnabled(false); JSObject ereignis = new JSObject(); ereignis.put("folge", folge); notifyListeners("zurueck", ereignis, false); }',
+    'public void handleOnBackPressed() { View decor = getActivity().getWindow().getDecorView(); WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decor); if (insets != null && insets.isVisible(WindowInsetsCompat.Type.ime())) { WindowCompat.getInsetsController(getActivity().getWindow(), decor).hide(WindowInsetsCompat.Type.ime()); return; } setEnabled(false); JSObject ereignis = new JSObject(); ereignis.put("folge", folge); notifyListeners("zurueck", ereignis, false); }',
     'public void onPageStarted(WebView webView) { getActivity().runOnUiThread(() -> { callback.setEnabled(false); dokument++; folge = 0; removeAllListeners(); }); }',
     'protected void handleOnDestroy() { getActivity().runOnUiThread(() -> { beendet = true; dokument++; callback.setEnabled(false); callback.remove(); bridge.removeWebViewListener(seiten); removeAllListeners(); }); }',
     'bridge.addWebViewListener(seiten)', 'daten.length() != 2', 'aktivWert instanceof Boolean', 'folgeWert instanceof Number',
@@ -930,7 +930,7 @@ export function pruefeMenueQuelle(java) {
     || (text.match(/@PluginMethod\b/g) ?? []).length !== 1
     || !/@PluginMethod public void setzen\(PluginCall call\)/.test(text)
     || (text.match(/notifyListeners\(/g) ?? []).length !== 1) fehler.push('MenueZurueck: genau ein Callback, setzen und Ereignis erwartet.');
-  if (/\b(?:onBackPressed|KEYCODE_BACK|goBack|canGoBack|loadUrl|setWebViewClient|WindowInsetsControllerCompat|handleOnPause|handleOnStop)\b/.test(text)) fehler.push('MenueZurueck: unerlaubter Navigations- oder Lebensdauerweg.');
+  if (/\b(?:onBackPressed|KEYCODE_BACK|goBack|canGoBack|loadUrl|setWebViewClient|handleOnPause|handleOnStop)\b/.test(text)) fehler.push('MenueZurueck: unerlaubter Navigations- oder Lebensdauerweg.');
   return fehler;
 }
 

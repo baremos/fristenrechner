@@ -51,6 +51,13 @@ for (const [titel, vorher, nachher] of [
   ['anfangs aktiv', 'OnBackPressedCallback(false)', 'OnBackPressedCallback(true)'],
   ['zweiter Callback', 'private long folge', 'private OnBackPressedCallback zweiter = new OnBackPressedCallback(false) {}; private long folge'],
   ['Deaktivieren zu spät', 'setEnabled(false);', ''],
+  ['Insets ohne Nullprüfung', 'insets != null && ', ''],
+  ['falsche Sichtbarkeit', 'insets.isVisible(', '!insets.isVisible('],
+  ['anderer Insets-Typ', 'WindowInsetsCompat.Type.ime()', 'WindowInsetsCompat.Type.navigationBars()'],
+  ['Tastatur nicht ausgeblendet', '.hide(WindowInsetsCompat.Type.ime())', '.show(WindowInsetsCompat.Type.ime())'],
+  ['Tastaturzweig ohne Rückkehr', '                return;', ''],
+  ['Tastaturzweig mit Ereignis', '                return;', '                notifyListeners("zurueck", new JSObject(), false); return;'],
+  ['Tastaturzweig deaktiviert Callback', '                return;', '                setEnabled(false); return;'],
   ['Aufbewahrung', 'notifyListeners("zurueck", ereignis, false)', 'notifyListeners("zurueck", ereignis, true)'],
   ['anderes Ereignis', 'notifyListeners("zurueck"', 'notifyListeners("anders"'],
   ['Dokumentwechsel nicht abgeräumt', 'public void onPageStarted', 'public void anders'],
@@ -66,3 +73,10 @@ for (const [titel, vorher, nachher] of [
   const neu = java.replace(vorher, nachher); assert.notEqual(neu, java);
   assert.notEqual(pruefeMenueQuelle(neu).length, 0);
 });
+for (const weg of ['onBackPressed', 'KEYCODE_BACK', 'goBack', 'canGoBack', 'loadUrl', 'setWebViewClient', 'handleOnPause', 'handleOnStop']) {
+  test(`Native Menüquelle verbietet weiterhin ${weg}`, () => {
+    const neu = java.replace('call.resolve();', `${weg}(); call.resolve();`);
+    assert.notEqual(neu, java);
+    assert.ok(pruefeMenueQuelle(neu).some(f => /unerlaubter Navigations- oder Lebensdauerweg/.test(f)));
+  });
+}

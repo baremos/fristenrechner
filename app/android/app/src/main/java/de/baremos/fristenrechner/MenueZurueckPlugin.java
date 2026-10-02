@@ -1,7 +1,11 @@
 package de.baremos.fristenrechner;
 
+import android.view.View;
 import android.webkit.WebView;
 import androidx.activity.OnBackPressedCallback;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -18,6 +22,12 @@ public class MenueZurueckPlugin extends Plugin {
     private final OnBackPressedCallback callback = new OnBackPressedCallback(false) {
         @Override
         public void handleOnBackPressed() {
+            View decor = getActivity().getWindow().getDecorView();
+            WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decor);
+            if (insets != null && insets.isVisible(WindowInsetsCompat.Type.ime())) {
+                WindowCompat.getInsetsController(getActivity().getWindow(), decor).hide(WindowInsetsCompat.Type.ime());
+                return;
+            }
             setEnabled(false);
             JSObject ereignis = new JSObject();
             ereignis.put("folge", folge);
