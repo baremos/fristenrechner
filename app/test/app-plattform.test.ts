@@ -64,11 +64,12 @@ describe('App-Plattform: Fokusmeldung nach dem nativen Bestätigungsdialog', () 
   it.each(['entfernt', 'anderes-ziel', 'kein-ziel', 'abgebaut'] as const)(
     'meldet nach dem Dialog keinen Fokus bei %s', async zustand => {
       const env = fokusUmgebung();
+      const ersatzziel = { isConnected: true, blur: vi.fn(), focus: vi.fn() };
       const halt = halteAn(env.plugin, 'zuruecksetzenBestaetigen');
       const lauf = env.adapter.zuruecksetzenBestaetigen();
       await halt.erreicht;
       if (zustand === 'entfernt') env.ziel.isConnected = false;
-      if (zustand === 'anderes-ziel') env.doc.activeElement = { focus: vi.fn() };
+      if (zustand === 'anderes-ziel') env.doc.activeElement = ersatzziel;
       if (zustand === 'kein-ziel') env.doc.activeElement = null;
       if (zustand === 'abgebaut') env.adapter.dispose();
       const aktuell = env.doc.activeElement;
@@ -76,6 +77,8 @@ describe('App-Plattform: Fokusmeldung nach dem nativen Bestätigungsdialog', () 
       await expect(lauf).resolves.toBe(zustand !== 'abgebaut');
       expect(env.ziel.blur).not.toHaveBeenCalled();
       expect(env.ziel.focus).not.toHaveBeenCalled();
+      expect(ersatzziel.blur).not.toHaveBeenCalled();
+      expect(ersatzziel.focus).not.toHaveBeenCalled();
       expect(env.doc.activeElement).toBe(aktuell);
       env.adapter.dispose();
     },
@@ -84,15 +87,18 @@ describe('App-Plattform: Fokusmeldung nach dem nativen Bestätigungsdialog', () 
   it.each(['anderes-ziel', 'entfernt', 'abgebaut'] as const)(
     'überschreibt eine Änderung im blur-Handler nicht: %s', async zustand => {
       const env = fokusUmgebung();
+      const ersatzziel = { isConnected: true, blur: vi.fn(), focus: vi.fn() };
       env.ziel.blur.mockImplementation(() => {
         env.doc.activeElement = env.doc.body;
-        if (zustand === 'anderes-ziel') env.doc.activeElement = { focus: vi.fn() };
+        if (zustand === 'anderes-ziel') env.doc.activeElement = ersatzziel;
         if (zustand === 'entfernt') env.ziel.isConnected = false;
         if (zustand === 'abgebaut') env.adapter.dispose();
       });
       await expect(env.adapter.zuruecksetzenBestaetigen()).resolves.toBe(zustand !== 'abgebaut');
       expect(env.ziel.blur).toHaveBeenCalledOnce();
       expect(env.ziel.focus).not.toHaveBeenCalled();
+      expect(ersatzziel.blur).not.toHaveBeenCalled();
+      expect(ersatzziel.focus).not.toHaveBeenCalled();
       expect(env.doc.activeElement).not.toBe(env.ziel);
       env.adapter.dispose();
     },
@@ -110,6 +116,29 @@ describe('App-Plattform: Fokusmeldung nach dem nativen Bestätigungsdialog', () 
     expect(env.ziel.focus).not.toHaveBeenCalled();
     halt.weiter.erfuellen();
     if (importLauf) await importLauf;
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    env.adapter.dispose();
+  });
+
+  it.each([
+    { weg: 'importieren', methode: 'projektWaehlen' },
+    { weg: 'exportieren', methode: 'speichernUnter' },
+    { weg: 'teilen', methode: 'teilen' },
+  ] as const)('meldet während und nach $weg keinen Fokus erneut', async ({ weg, methode }) => {
+    const env = fokusUmgebung();
+    const halt = halteAn(env.plugin, methode);
+    const lauf = starten(env.adapter, weg);
+    await halt.erreicht;
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    expect(env.doc.activeElement).toBe(env.ziel);
+    halt.weiter.erfuellen();
+    await expect(lauf).resolves.toMatchObject({ status: 'ok' });
+    expect(env.plugin.aufrufe).toContain(methode);
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    expect(env.doc.activeElement).toBe(env.ziel);
     env.adapter.dispose();
   });
 

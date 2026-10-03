@@ -167,7 +167,7 @@ export function erzeugeMenue(root: HTMLElement, option: Exclude<MenueOption, 'au
     zurueckSetzen(false);
   };
   hoeren(knopf, 'click', () => {
-    if (offen || beendet) return;
+    if (offen || beendet || !overlay.isConnected) return;
     offen = true; overlay.hidden = false; knopf.setAttribute('aria-expanded', 'true');
     scrollX = win.scrollX; scrollY = win.scrollY;
     alterBodyStil = bodyStil(); alterHtmlStil = doc.documentElement.getAttribute('style');

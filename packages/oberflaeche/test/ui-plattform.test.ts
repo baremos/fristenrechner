@@ -668,6 +668,37 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
     expect(a.overlay.hidden).toBe(true); expect(env.root.querySelectorAll('[data-project-import]')).toHaveLength(1);
     expect(a.sheet.querySelectorAll('[role="status"]')).toHaveLength(0);
   });
+  it.each(['verbunden', 'Overlay entfernt', 'Komponente entfernt'])('öffnet und sperrt den Hintergrund nur mit verbundenem Overlay: %s', async fall => {
+    const env = vorbereiten(json(), menue), z = mitZurueck(env);
+    const gast = env.dokument.createElement('section'), link = env.dokument.createElement('a');
+    gast.setAttribute('aria-hidden', 'false'); link.setAttribute('href', '#ziel'); link.setAttribute('tabindex', '3');
+    gast.append(link); env.dokument.body.append(gast);
+    env.dokument.body.setAttribute('style', 'color: red;');
+    env.start(); await warten(); const a = ansicht(env);
+    const bodyStil = env.dokument.body.getAttribute('style'), htmlStil = env.dokument.documentElement.getAttribute('style');
+    if (fall === 'Overlay entfernt') a.overlay.remove();
+    if (fall === 'Komponente entfernt') env.root.remove();
+    a.knopf.focus(); a.oeffnen();
+    if (fall === 'verbunden') {
+      expect(a.overlay.hidden).toBe(false); expect(a.knopf.getAttribute('aria-expanded')).toBe('true');
+      expect(env.dokument.body.style.getPropertyValue('position')).toBe('fixed');
+      expect(env.dokument.documentElement.style.getPropertyValue('overflow')).toBe('hidden');
+      expect(gast.getAttribute('aria-hidden')).toBe('true'); expect(link.getAttribute('tabindex')).toBe('-1');
+      expect(env.dokument.activeElement).toBe(a.sheet.querySelector('h2'));
+      expect(z.setzen).toHaveBeenCalledExactlyOnceWith(true);
+      env.senden(a.x, 'click');
+    } else {
+      expect(a.overlay.isConnected).toBe(false); expect(a.knopf.isConnected).toBe(true);
+      expect(z.setzen).not.toHaveBeenCalled();
+      expect(window.scrollTo).not.toHaveBeenCalled();
+    }
+    expect(a.overlay.hidden).toBe(true); expect(a.knopf.getAttribute('aria-expanded')).toBe('false');
+    expect(a.knopf.getAttribute('tabindex')).toBeNull();
+    expect(env.dokument.body.getAttribute('style')).toBe(bodyStil);
+    expect(env.dokument.documentElement.getAttribute('style')).toBe(htmlStil);
+    expect(gast.getAttribute('aria-hidden')).toBe('false'); expect(link.getAttribute('tabindex')).toBe('3');
+    expect(env.dokument.activeElement).toBe(a.knopf);
+  });
   it('lässt ohne Teilen-Fähigkeit die drei Einträge und die Gruppe weg', async () => {
     const env = vorbereiten(json(), menue); env.start(); await warten(); const a = ansicht(env);
     expect(a.buttons).toHaveLength(5);
@@ -733,6 +764,24 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
     expect(env.el('import-message').textContent).toContain('Rechtsstand:');
     expect(env.el('project-file-meta').hidden).toBe(false);
     expect(env.el('project-file-meta').getAttribute('role')).toBeNull();
+  });
+  it.each([menue, 'aus'] as const)('zeigt beim Import aus Rechenkern 1.8.0 den Migrationshinweis und führt die Metazeile abhängig vom Menü live: %j', async option => {
+    const env = vorbereiten(json(), option); env.start(); await warten();
+    const projekt = JSON.parse(json('Älteres Projekt')); projekt.rechenkernVersion = '1.8.0';
+    env.waehlen.mockResolvedValue({ status: 'ok', wert: { name: 'projekt.json', text: JSON.stringify(projekt) } });
+    if (option === 'aus') env.click('open-json');
+    else { const a = ansicht(env); a.oeffnen(); a.waehlen('Projekt importieren'); }
+    await warten();
+    const meta = env.el('project-file-meta'), importMeldung = env.el('import-message');
+    expect(env.feld('projektname').value).toBe('Älteres Projekt');
+    expect(meta.hidden).toBe(false); expect(meta.getAttribute('aria-hidden')).toBeNull();
+    expect(meta.textContent).toContain('Projektdatei: Rechenkern 1.8.0');
+    expect(meta.textContent).toContain('Rechenkern 1.9.0 verwendet neue Standardwerte für Versand- und Anpassungszeiten; dadurch können sich Termine verschieben.');
+    expect(meta.getAttribute('role')).toBe(option === 'aus' ? 'status' : null);
+    expect(meta.getAttribute('aria-live')).toBe(option === 'aus' ? 'polite' : null);
+    expect(importMeldung.getAttribute('role')).toBe('status'); expect(importMeldung.getAttribute('aria-live')).toBe('polite');
+    expect(importMeldung.textContent).toContain('Projektdatei geöffnet (Rechenkern 1.8.0');
+    expect(importMeldung.textContent).not.toContain('dadurch können sich Termine verschieben.');
   });
   it.each(wege)('%s hat über Sheet und bisherigen Button identische Daten, Zeit, Bytes, Adapter und Statusregionen', async (id, name) => {
     const stand = async (sheet: boolean) => {
