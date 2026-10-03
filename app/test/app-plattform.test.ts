@@ -19,14 +19,163 @@ function umgebung(plugin = new PluginFake()) {
     confirm: vi.fn(() => { throw new Error('Die App darf keinen Web-Dialog öffnen.'); }),
   };
   const root = {
-    ownerDocument: { defaultView: fenster },
+    ownerDocument: { defaultView: fenster, body: {}, documentElement: {}, activeElement: null as object | null },
     querySelector: vi.fn(() => { throw new Error('Die App darf kein Dateifeld bedienen.'); }),
   };
   const adapter = erzeugeAppPlattform(root as unknown as HTMLElement, plugin);
   return { adapter, plugin, werte, localStorage, fenster, root };
 }
 
+function fokusUmgebung() {
+  const env = umgebung();
+  const doc = env.root.ownerDocument;
+  const ziel = {
+    isConnected: true,
+    blur: vi.fn(() => { doc.activeElement = doc.body; }),
+    focus: vi.fn((_optionen: FocusOptions) => { doc.activeElement = ziel; }),
+  };
+  doc.activeElement = ziel;
+  return { ...env, doc, ziel };
+}
+
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
+
+describe('App-Plattform: Fokusmeldung nach dem nativen Bestätigungsdialog', () => {
+  it.each([true, false])('meldet bei bestaetigt=%s erst nach dem Dialog dasselbe Fokusziel ohne Scrollen erneut', async bestaetigt => {
+    const env = fokusUmgebung();
+    env.plugin.bestaetigung = { bestaetigt };
+    const halt = halteAn(env.plugin, 'zuruecksetzenBestaetigen');
+    const lauf = env.adapter.zuruecksetzenBestaetigen();
+    await halt.erreicht;
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    halt.weiter.erfuellen();
+    await expect(lauf).resolves.toBe(bestaetigt);
+    expect(env.ziel.blur).toHaveBeenCalledExactlyOnceWith();
+    expect(env.ziel.focus).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
+    expect(env.ziel.blur.mock.invocationCallOrder[0]).toBeLessThan(env.ziel.focus.mock.invocationCallOrder[0]!);
+    expect(env.doc.activeElement).toBe(env.ziel);
+    expect(env.plugin.aufrufe).toEqual(['zuruecksetzenBestaetigen']);
+    expect(env.localStorage.setItem).not.toHaveBeenCalled();
+    expect(env.localStorage.removeItem).not.toHaveBeenCalled();
+    env.adapter.dispose();
+  });
+
+  it.each(['entfernt', 'anderes-ziel', 'kein-ziel', 'abgebaut'] as const)(
+    'meldet nach dem Dialog keinen Fokus bei %s', async zustand => {
+      const env = fokusUmgebung();
+      const ersatzziel = { isConnected: true, blur: vi.fn(), focus: vi.fn() };
+      const halt = halteAn(env.plugin, 'zuruecksetzenBestaetigen');
+      const lauf = env.adapter.zuruecksetzenBestaetigen();
+      await halt.erreicht;
+      if (zustand === 'entfernt') env.ziel.isConnected = false;
+      if (zustand === 'anderes-ziel') env.doc.activeElement = ersatzziel;
+      if (zustand === 'kein-ziel') env.doc.activeElement = null;
+      if (zustand === 'abgebaut') env.adapter.dispose();
+      const aktuell = env.doc.activeElement;
+      halt.weiter.erfuellen();
+      await expect(lauf).resolves.toBe(zustand !== 'abgebaut');
+      expect(env.ziel.blur).not.toHaveBeenCalled();
+      expect(env.ziel.focus).not.toHaveBeenCalled();
+      expect(ersatzziel.blur).not.toHaveBeenCalled();
+      expect(ersatzziel.focus).not.toHaveBeenCalled();
+      expect(env.doc.activeElement).toBe(aktuell);
+      env.adapter.dispose();
+    },
+  );
+
+  it.each(['anderes-ziel', 'entfernt', 'abgebaut'] as const)(
+    'überschreibt eine Änderung im blur-Handler nicht: %s', async zustand => {
+      const env = fokusUmgebung();
+      const ersatzziel = { isConnected: true, blur: vi.fn(), focus: vi.fn() };
+      env.ziel.blur.mockImplementation(() => {
+        env.doc.activeElement = env.doc.body;
+        if (zustand === 'anderes-ziel') env.doc.activeElement = ersatzziel;
+        if (zustand === 'entfernt') env.ziel.isConnected = false;
+        if (zustand === 'abgebaut') env.adapter.dispose();
+      });
+      await expect(env.adapter.zuruecksetzenBestaetigen()).resolves.toBe(zustand !== 'abgebaut');
+      expect(env.ziel.blur).toHaveBeenCalledOnce();
+      expect(env.ziel.focus).not.toHaveBeenCalled();
+      expect(ersatzziel.blur).not.toHaveBeenCalled();
+      expect(ersatzziel.focus).not.toHaveBeenCalled();
+      expect(env.doc.activeElement).not.toBe(env.ziel);
+      env.adapter.dispose();
+    },
+  );
+
+  it.each(['belegt', 'abgebaut'] as const)('meldet ohne nativen Dialog keinen Fokus: Sperre %s', async zustand => {
+    const env = fokusUmgebung();
+    const halt = halteAn(env.plugin, 'projektWaehlen');
+    const importLauf = zustand === 'belegt' ? env.adapter.import.waehlen(vorgabe) : undefined;
+    if (importLauf) await halt.erreicht;
+    else env.adapter.dispose();
+    await expect(env.adapter.zuruecksetzenBestaetigen()).resolves.toBe(false);
+    expect(env.plugin.aufrufe).not.toContain('zuruecksetzenBestaetigen');
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    halt.weiter.erfuellen();
+    if (importLauf) await importLauf;
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    env.adapter.dispose();
+  });
+
+  it.each([
+    { weg: 'importieren', methode: 'projektWaehlen' },
+    { weg: 'exportieren', methode: 'speichernUnter' },
+    { weg: 'teilen', methode: 'teilen' },
+  ] as const)('meldet während und nach $weg keinen Fokus erneut', async ({ weg, methode }) => {
+    const env = fokusUmgebung();
+    const halt = halteAn(env.plugin, methode);
+    const lauf = starten(env.adapter, weg);
+    await halt.erreicht;
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    expect(env.doc.activeElement).toBe(env.ziel);
+    halt.weiter.erfuellen();
+    await expect(lauf).resolves.toMatchObject({ status: 'ok' });
+    expect(env.plugin.aufrufe).toContain(methode);
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    expect(env.doc.activeElement).toBe(env.ziel);
+    env.adapter.dispose();
+  });
+
+  it('behält bei einem nativen Fehler die Ablehnung bei und meldet keinen Fokus', async () => {
+    const env = fokusUmgebung();
+    env.plugin.eingriff = () => { throw new Error('Der Dialog ist nicht verfügbar.'); };
+    await expect(env.adapter.zuruecksetzenBestaetigen()).resolves.toBe(false);
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    env.adapter.dispose();
+  });
+
+  it.each([true, false].flatMap(bestaetigt => ['blur', 'focus'].map(methode => ({ bestaetigt, methode }))))(
+    'behält bestaetigt=$bestaetigt bei, wenn $methode scheitert', async ({ bestaetigt, methode }) => {
+      const env = fokusUmgebung();
+      env.plugin.bestaetigung = { bestaetigt };
+      const fehler = () => { throw new Error('Die Fokusmeldung ist nicht verfügbar.'); };
+      if (methode === 'blur') env.ziel.blur.mockImplementation(fehler);
+      else env.ziel.focus.mockImplementation(fehler);
+      await expect(env.adapter.zuruecksetzenBestaetigen()).resolves.toBe(bestaetigt);
+      expect(env.ziel.blur).toHaveBeenCalledOnce();
+      if (methode === 'blur') expect(env.ziel.focus).not.toHaveBeenCalled();
+      else expect(env.ziel.focus).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
+      env.adapter.dispose();
+    },
+  );
+
+  it.each(['body', 'documentElement'] as const)('meldet ohne fokussiertes Bedienelement nicht %s erneut', async name => {
+    const env = fokusUmgebung();
+    const ziel = Object.assign(env.doc[name], env.ziel);
+    env.doc.activeElement = ziel;
+    await expect(env.adapter.zuruecksetzenBestaetigen()).resolves.toBe(true);
+    expect(env.ziel.blur).not.toHaveBeenCalled();
+    expect(env.ziel.focus).not.toHaveBeenCalled();
+    env.adapter.dispose();
+  });
+});
 
 describe('App-Plattform: WebView-Speicher und Ortszeit', () => {
   it('liest, schreibt und entfernt unter dem unveränderten Schlüssel', async () => {

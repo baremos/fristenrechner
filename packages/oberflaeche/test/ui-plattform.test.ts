@@ -572,7 +572,7 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
     ['open-json', 'Projekt importieren'], ['reset-project', 'Neues Projekt'],
   ] as const;
   function ansicht(env: ReturnType<typeof vorbereiten>) {
-    const knopf = env.root.querySelector('.fr-menue-leiste')!.querySelector('button[aria-controls]')!;
+    const knopf = env.dokument.querySelector('.fr-menue-leiste')!.querySelector('button[aria-controls]')!;
     const overlay = env.root.querySelector('.fr-menue-overlay')!;
     const sheet = overlay.querySelector('[role="dialog"]')!;
     const x = overlay.querySelector('[aria-label="Schließen"]')!;
@@ -599,13 +599,15 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
     const attribute = [...env.root.attribute];
     env.start(); await warten();
     expect(env.root.querySelectorAll('style')).toHaveLength(vorher);
-    expect(env.root.querySelectorAll('.fr-menue-leiste,.fr-menue-overlay')).toHaveLength(0);
+    expect(env.dokument.querySelectorAll('.fr-menue-leiste,.fr-menue-overlay')).toHaveLength(0);
     expect([...env.root.attribute]).toEqual(attribute);
     expect(env.dokument.body.getAttribute('style')).toBeNull();
     expect(env.dokument.documentElement.getAttribute('style')).toBeNull();
     expect(env.dokument.querySelectorAll('.fr-menue-reserve')).toHaveLength(0);
     expect(docListener).not.toHaveBeenCalled(); expect(winListener).not.toHaveBeenCalled();
     expect(zurueck.setzen).not.toHaveBeenCalled();
+    expect(env.el('project-file-meta').getAttribute('role')).toBe('status');
+    expect(env.el('project-file-meta').getAttribute('aria-live')).toBe('polite');
   });
   it('weist eine unbekannte Darstellung vor jeder Änderung zurück', () => {
     const env = vorbereiten(json(), { darstellung: 'anders' } as unknown as MenueOption);
@@ -652,7 +654,7 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
     const env = vorbereiten(json(), menue); env.plattform.ausgabe.teilen = env.exportieren;
     const kollision = env.dokument.createElement('div'); kollision.id = 'fr-menue-1'; env.dokument.body.append(kollision);
     env.start(); await warten(); const a = ansicht(env);
-    expect(env.root.querySelectorAll('.fr-menue-leiste')).toHaveLength(1);
+    expect(env.dokument.querySelectorAll('.fr-menue-leiste')).toHaveLength(1);
     expect(env.root.querySelectorAll('.fr-menue-overlay')).toHaveLength(1);
     expect(a.buttons.map(b => b.textContent)).toEqual(wege.map(w => w[1]));
     const ids = env.dokument.querySelectorAll('[id]').map(el => el.id);
@@ -666,10 +668,120 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
     expect(a.overlay.hidden).toBe(true); expect(env.root.querySelectorAll('[data-project-import]')).toHaveLength(1);
     expect(a.sheet.querySelectorAll('[role="status"]')).toHaveLength(0);
   });
+  it.each(['verbunden', 'Overlay entfernt', 'Komponente entfernt'])('öffnet und sperrt den Hintergrund nur mit verbundenem Overlay: %s', async fall => {
+    const env = vorbereiten(json(), menue), z = mitZurueck(env);
+    const gast = env.dokument.createElement('section'), link = env.dokument.createElement('a');
+    gast.setAttribute('aria-hidden', 'false'); link.setAttribute('href', '#ziel'); link.setAttribute('tabindex', '3');
+    gast.append(link); env.dokument.body.append(gast);
+    env.dokument.body.setAttribute('style', 'color: red;');
+    env.start(); await warten(); const a = ansicht(env);
+    const bodyStil = env.dokument.body.getAttribute('style'), htmlStil = env.dokument.documentElement.getAttribute('style');
+    if (fall === 'Overlay entfernt') a.overlay.remove();
+    if (fall === 'Komponente entfernt') env.root.remove();
+    a.knopf.focus(); a.oeffnen();
+    if (fall === 'verbunden') {
+      expect(a.overlay.hidden).toBe(false); expect(a.knopf.getAttribute('aria-expanded')).toBe('true');
+      expect(env.dokument.body.style.getPropertyValue('position')).toBe('fixed');
+      expect(env.dokument.documentElement.style.getPropertyValue('overflow')).toBe('hidden');
+      expect(gast.getAttribute('aria-hidden')).toBe('true'); expect(link.getAttribute('tabindex')).toBe('-1');
+      expect(env.dokument.activeElement).toBe(a.sheet.querySelector('h2'));
+      expect(z.setzen).toHaveBeenCalledExactlyOnceWith(true);
+      env.senden(a.x, 'click');
+    } else {
+      expect(a.overlay.isConnected).toBe(false); expect(a.knopf.isConnected).toBe(true);
+      expect(z.setzen).not.toHaveBeenCalled();
+      expect(window.scrollTo).not.toHaveBeenCalled();
+    }
+    expect(a.overlay.hidden).toBe(true); expect(a.knopf.getAttribute('aria-expanded')).toBe('false');
+    expect(a.knopf.getAttribute('tabindex')).toBeNull();
+    expect(env.dokument.body.getAttribute('style')).toBe(bodyStil);
+    expect(env.dokument.documentElement.getAttribute('style')).toBe(htmlStil);
+    expect(gast.getAttribute('aria-hidden')).toBe('false'); expect(link.getAttribute('tabindex')).toBe('3');
+    expect(env.dokument.activeElement).toBe(a.knopf);
+  });
   it('lässt ohne Teilen-Fähigkeit die drei Einträge und die Gruppe weg', async () => {
     const env = vorbereiten(json(), menue); env.start(); await warten(); const a = ansicht(env);
     expect(a.buttons).toHaveLength(5);
     expect(a.liste.querySelectorAll('h3').map(h => h.textContent)).toEqual(['Speichern', 'Import']);
+  });
+  it('ordnet Reserve und Leiste vor der äußeren Seitenüberschrift an und sperrt die Leiste mit dem Hintergrund', async () => {
+    const env = vorbereiten(json(), menue);
+    const seitenTitel = env.dokument.createElement('h1'); seitenTitel.textContent = 'Fristenrechner Vergabe';
+    env.dokument.body.insertBefore(seitenTitel, env.root);
+    const instanz = env.start(); await warten(); const a = ansicht(env);
+    const leiste = env.dokument.querySelector('.fr-menue-leiste')!;
+    expect(env.dokument.body.children.slice(0, 4)).toEqual([
+      env.dokument.querySelector('.fr-menue-reserve'), leiste, seitenTitel, env.root,
+    ]);
+    expect(leiste.children[0]!.textContent).toBe('Fristenrechner');
+    expect(leiste.children[1]).toBe(a.knopf);
+    expect(env.root.querySelector('.fr-menue-leiste')).toBeNull();
+    for (let durchlauf = 0; durchlauf < 2; durchlauf++) {
+      a.oeffnen();
+      expect(leiste.getAttribute('aria-hidden')).toBe('true');
+      expect(a.knopf.getAttribute('tabindex')).toBe('-1');
+      expect(seitenTitel.getAttribute('aria-hidden')).toBe('true');
+      env.senden(a.x, 'click');
+      expect(leiste.getAttribute('aria-hidden')).toBeNull();
+      expect(a.knopf.getAttribute('tabindex')).toBeNull();
+      expect(env.dokument.activeElement).toBe(a.knopf);
+    }
+    instanz.dispose();
+    expect(env.dokument.body.children).toEqual([seitenTitel, env.root]);
+  });
+  it.each(['X', 'Zurück', 'Speichern', 'Teilen'])('führt Dateimetadaten beim Schließen über %s als normalen Text und erhält neue Live-Meldungen', async weg => {
+    const env = vorbereiten(json(), menue); const z = mitZurueck(env);
+    env.plattform.ausgabe.teilen = env.exportieren;
+    const ausgabe = offen<DateiErgebnis>(); env.exportieren.mockReturnValue(ausgabe.promise);
+    const instanz = env.start(); await warten(); const a = ansicht(env);
+    const meta = env.el('project-file-meta'), text = meta.textContent;
+    const statusIds = ['storage-status', 'form-message', 'reset-message', 'export-message', 'import-message', 'excel-message', 'pdf-message'];
+    const liveRegionen = () => {
+      for (const id of statusIds) {
+        expect(env.el(id).getAttribute('role')).toBe('status');
+        expect(env.el(id).getAttribute('aria-live')).toBe('polite');
+      }
+      expect(meta.getAttribute('role')).toBeNull(); expect(meta.getAttribute('aria-live')).toBeNull();
+      expect(meta.hidden).toBe(false); expect(meta.textContent).toBe(text);
+    };
+    liveRegionen(); a.oeffnen(); liveRegionen();
+    if (weg === 'X') env.senden(a.x, 'click');
+    else if (weg === 'Zurück') z.empfangen();
+    else a.waehlen(weg === 'Speichern' ? 'Projekt speichern unter' : 'PDF teilen');
+    expect(a.overlay.hidden).toBe(true); expect(meta.getAttribute('aria-hidden')).toBeNull(); liveRegionen();
+    ausgabe.resolve({ status: 'ok' }); await warten(); liveRegionen();
+    if (weg === 'Speichern') expect(env.el('export-message').textContent).toBe(webTexte.exportErfolg);
+    if (weg === 'Teilen') expect(env.el('pdf-message').textContent).toBe('Die PDF-Datei wurde zum Teilen bereitgestellt.');
+    instanz.dispose();
+    expect(meta.getAttribute('role')).toBe('status'); expect(meta.getAttribute('aria-live')).toBe('polite');
+  });
+  it('erhält die Importansage mit Version und Rechtsstand bei nicht live geführten Dateimetadaten', async () => {
+    const env = vorbereiten(json(), menue); env.start(); await warten(); const a = ansicht(env);
+    env.waehlen.mockResolvedValue({ status: 'ok', wert: { name: 'projekt.json', text: json('Importiert') } });
+    a.oeffnen(); a.waehlen('Projekt importieren'); await warten();
+    expect(env.el('import-message').getAttribute('aria-live')).toBe('polite');
+    expect(env.el('import-message').textContent).toContain('Projektdatei geöffnet (Rechenkern');
+    expect(env.el('import-message').textContent).toContain('Rechtsstand:');
+    expect(env.el('project-file-meta').hidden).toBe(false);
+    expect(env.el('project-file-meta').getAttribute('role')).toBeNull();
+  });
+  it.each([menue, 'aus'] as const)('zeigt beim Import aus Rechenkern 1.8.0 den Migrationshinweis und führt die Metazeile abhängig vom Menü live: %j', async option => {
+    const env = vorbereiten(json(), option); env.start(); await warten();
+    const projekt = JSON.parse(json('Älteres Projekt')); projekt.rechenkernVersion = '1.8.0';
+    env.waehlen.mockResolvedValue({ status: 'ok', wert: { name: 'projekt.json', text: JSON.stringify(projekt) } });
+    if (option === 'aus') env.click('open-json');
+    else { const a = ansicht(env); a.oeffnen(); a.waehlen('Projekt importieren'); }
+    await warten();
+    const meta = env.el('project-file-meta'), importMeldung = env.el('import-message');
+    expect(env.feld('projektname').value).toBe('Älteres Projekt');
+    expect(meta.hidden).toBe(false); expect(meta.getAttribute('aria-hidden')).toBeNull();
+    expect(meta.textContent).toContain('Projektdatei: Rechenkern 1.8.0');
+    expect(meta.textContent).toContain('Rechenkern 1.9.0 verwendet neue Standardwerte für Versand- und Anpassungszeiten; dadurch können sich Termine verschieben.');
+    expect(meta.getAttribute('role')).toBe(option === 'aus' ? 'status' : null);
+    expect(meta.getAttribute('aria-live')).toBe(option === 'aus' ? 'polite' : null);
+    expect(importMeldung.getAttribute('role')).toBe('status'); expect(importMeldung.getAttribute('aria-live')).toBe('polite');
+    expect(importMeldung.textContent).toContain('Projektdatei geöffnet (Rechenkern 1.8.0');
+    expect(importMeldung.textContent).not.toContain('dadurch können sich Termine verschieben.');
   });
   it.each(wege)('%s hat über Sheet und bisherigen Button identische Daten, Zeit, Bytes, Adapter und Statusregionen', async (id, name) => {
     const stand = async (sheet: boolean) => {
@@ -741,7 +853,7 @@ describe('Dateiaktionen im Bottom Sheet (DOM-Vertrag, kein Layoutnachweis)', () 
   it.each(['pointerdown', 'touchstart'])('wechselt zwischen Tastatur und %s für Leiste und Sheet, auch nach Fokus-Rückkehr', async eingabe => {
     const env = vorbereiten(json(), menue); const z = mitZurueck(env);
     const instanz = env.start(); await warten(); const a = ansicht(env);
-    const leiste = env.root.querySelector('.fr-menue-leiste')!;
+    const leiste = env.dokument.querySelector('.fr-menue-leiste')!;
     const modus = (aktiv: boolean) => {
       expect(leiste.classList.contains('fr-menue-tastatur')).toBe(aktiv);
       expect(a.overlay.classList.contains('fr-menue-tastatur')).toBe(aktiv);

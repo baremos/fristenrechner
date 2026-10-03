@@ -84,7 +84,10 @@ export function erzeugeMenue(root: HTMLElement, option: Exclude<MenueOption, 'au
   eintrag(gruppe('Import'), 'Projekt importieren', { art: 'import' });
   const neu = element('ul', 'fr-menue-neu'); liste.append(neu); eintrag(neu, 'Neues Projekt', { art: 'neues-projekt' });
   sheet.append(kopf, liste); overlay.append(sheet);
-  root.append(stil, leiste, overlay);
+  root.append(stil, overlay);
+  // Die feste Leiste gehört auch in der Lesereihenfolge vor den Seiteninhalt,
+  // einschließlich einer Überschrift außerhalb der Rechnerkomponente.
+  doc.body.insertBefore(leiste, doc.body.firstChild);
   doc.body.insertBefore(reserve, doc.body.firstChild);
 
   let offen = false;
@@ -164,7 +167,7 @@ export function erzeugeMenue(root: HTMLElement, option: Exclude<MenueOption, 'au
     zurueckSetzen(false);
   };
   hoeren(knopf, 'click', () => {
-    if (offen || beendet) return;
+    if (offen || beendet || !overlay.isConnected) return;
     offen = true; overlay.hidden = false; knopf.setAttribute('aria-expanded', 'true');
     scrollX = win.scrollX; scrollY = win.scrollY;
     alterBodyStil = bodyStil(); alterHtmlStil = doc.documentElement.getAttribute('style');

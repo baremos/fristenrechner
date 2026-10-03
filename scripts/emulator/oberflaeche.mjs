@@ -90,10 +90,11 @@ export function quellvertrag(wurzel) {
     || !/initFristenrechner\(root,\s*\{\s*plattform,\s*texte,\s*exportInhalt\s*\}\)/.test(app)) {
     throw new Error('Ausdrückliche Initialisierung der App geändert.');
   }
-  for (const s of ['const fenster = root.ownerDocument.defaultView!', 'const sperre = erzeugeNativeAuftragsSperre()',
+  for (const s of ['const doc = root.ownerDocument', 'const fenster = doc.defaultView!', 'const sperre = erzeugeNativeAuftragsSperre()',
     'speicher: erzeugeWebSpeicher(fenster)', 'zeit: webZeit', 'ausgabe: erzeugeNativeDateiAusgabe(plugin, sperre)',
-    '...erzeugeNativeProjektEingabe(plugin, sperre)', 'const zurueck = erzeugeMenueZurueck(zurueckPlugin)',
-    '    zurueck,', 'dispose() { sperre.dispose(); zurueck.dispose(); }']) {
+    'const eingabe = erzeugeNativeProjektEingabe(plugin, sperre, () => {', '...eingabe,',
+    'const zurueck = erzeugeMenueZurueck(zurueckPlugin)',
+    '    zurueck,', 'dispose() { beendet = true; sperre.dispose(); zurueck.dispose(); }']) {
     if (!plattform.includes(s)) throw new Error(`App-Plattform geändert: ${s}.`);
   }
   if (!/import\s*\{\s*registerPlugin\s*\}\s*from\s*'@capacitor\/core';/.test(vertrag)
