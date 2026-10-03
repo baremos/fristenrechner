@@ -16,6 +16,7 @@ function hatGenauFelder(wert: unknown, felder: readonly string[]): wert is Recor
 export function erzeugeNativeProjektEingabe(
   plugin: DateiablaufPlugin = dateiablauf,
   sperre: NativeAuftragsSperre = erzeugeNativeAuftragsSperre(),
+  vorBestaetigung?: () => (() => void),
 ): Pick<Plattform, 'import' | 'zuruecksetzenBestaetigen'> {
   const dateiImport: DateiImport = {
     async waehlen(vorgabe) {
@@ -48,7 +49,10 @@ export function erzeugeNativeProjektEingabe(
     async zuruecksetzenBestaetigen() {
       try {
         return await sperre.ausfuehren(async () => {
+          // Erst beim gestarteten Auftrag erfassen, nach der nativen Antwort melden.
+          const nachBestaetigung = vorBestaetigung?.();
           const ergebnis: unknown = await plugin.zuruecksetzenBestaetigen();
+          nachBestaetigung?.();
           return hatGenauFelder(ergebnis, ['bestaetigt']) && ergebnis.bestaetigt === true;
         });
       } catch {

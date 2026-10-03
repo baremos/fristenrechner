@@ -1025,7 +1025,20 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       return () => { beobachter.delete(beobachtung); };
     },
   };
-  if (menue !== 'aus') abmelden.push(erzeugeMenue(root, menue, aktionen, plattform.zurueck));
+  if (menue !== 'aus') {
+    // Dateimetadaten bleiben lesbar, werden nach dem Einblenden des Hintergrunds
+    // aber nicht erneut als Status angeboten. Import- und Aktionsmeldungen
+    // behalten ihre eigenen Live-Regionen, auch unmittelbar nach dem Schließen.
+    const metaAttribute = ['role', 'aria-live'].map(name => [name, projectFileMeta.getAttribute(name)] as const);
+    metaAttribute.forEach(([name]) => projectFileMeta.removeAttribute(name));
+    const menueAbbauen = erzeugeMenue(root, menue, aktionen, plattform.zurueck);
+    abmelden.push(() => {
+      menueAbbauen();
+      for (const [name, wert] of metaAttribute) {
+        if (wert === null) projectFileMeta.removeAttribute(name); else projectFileMeta.setAttribute(name, wert);
+      }
+    });
+  }
   field<HTMLInputElement>(form, 'bekanntmachung').value = plattform.zeit().kalendertag;
   updateVerfahrensartOptionen();
   updateConditionalFields();
