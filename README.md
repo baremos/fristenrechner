@@ -24,7 +24,7 @@ Die Arbeitspakete stehen in [docs/arbeitspakete.md](docs/arbeitspakete.md). Die 
 
 ## Was die Software rechnen wird
 
-Dieser Abschnitt beschreibt den Umfang von Version 1. Im Repository sind der Rechenkern, die Oberfläche und das App-Projekt für Android einschließlich der Dateiabläufe umgesetzt. Prüfungen auf einem echten Gerät stehen noch aus.
+Dieser Abschnitt beschreibt den Umfang von Version 1. Im Repository sind der Rechenkern, die Oberfläche und das App-Projekt für Android einschließlich der Dateiabläufe umgesetzt. Erste Prüfungen auf einem Gerät mit Android 16 sind erfolgt; weitere stehen aus, siehe [docs/app.md](docs/app.md#prüfung-auf-einem-gerät).
 
 Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren. Version 1 rechnet dasselbe wie der [Fristenrechner auf www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). Den Umfang legt [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md) fest.
 

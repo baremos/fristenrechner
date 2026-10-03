@@ -24,7 +24,7 @@ The work packages are listed in [docs/arbeitspakete.md](docs/arbeitspakete.md). 
 
 ## What the software will calculate
 
-This section describes the scope of version 1. The repository implements the calculation core, the user interface and the app project for Android, including the file workflows. Tests on a physical device are still outstanding.
+This section describes the scope of version 1. The repository implements the calculation core, the user interface and the app project for Android, including the file workflows. Initial tests on a physical device with Android 16 have been carried out; further tests are outstanding, see [docs/app.md](docs/app.md#prüfung-auf-einem-gerät).
 
 From the data entered, the software produces a schedule of dates and deadlines for a procurement procedure. Version 1 calculates the same as the [calculator on www.baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/). The scope is defined in [docs/zuschnitt-v1.md](docs/zuschnitt-v1.md).
 
