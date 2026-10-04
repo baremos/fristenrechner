@@ -119,7 +119,7 @@ Die folgenden Versionen stehen am 2026-09-30 in `app/android/variables.gradle`. 
 | `androidxWebkitVersion` | 1.14.0 |
 | `cordovaAndroidVersion` | 14.0.1 |
 
-Die Lizenzprüfung der vollständigen Gradle-Abhängigkeiten der App steht noch aus.
+Die aufgelösten Laufzeitmodule von `releaseRuntimeClasspath` sind am 2026-10-04 für den Stand `9ae4cd9` mit POM-Lizenzangaben und APK-/SUSS-Abgleich im [Android-Laufzeitinventar](lizenzen.md#android--und-gradle-abhängigkeiten) erfasst. Vollständige Hinweise Dritter einschließlich der eingebetteten Anteile bleiben offen; Liste, Lizenzregel und Prüfsummenabsicherung der Gradle-Build-Werkzeuge folgen gesondert.
 
 ### JDK
 
