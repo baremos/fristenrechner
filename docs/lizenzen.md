@@ -320,7 +320,7 @@ Beide Workspaces gehören in **einen** Aufruf. Die unveränderte Ausgabe enthäl
 npm pack --dry-run --json --offline --ignore-scripts --workspace packages/kern --workspace packages/oberflaeche
 ```
 
-Die Messungen vom **2026-10-04** auf Stand **`main bca6d2a`** ergaben unter Windows mit Node **22.23.2** und npm **10.9.8** sowie unter Debian **13.5** mit Node **24.21.0** und npm **11.19.0** dieselben Werte. Sie stammen aus einem Checkout mit den in `.gitattributes` festgelegten Zeilenenden; die Paketdateien enthalten LF:
+Die Messungen vom **2026-10-04** ergaben unter Windows mit Node **22.23.2** und npm **10.9.8** sowie unter Debian **13.5** mit Node **24.21.0** und npm **11.19.0** dieselben Werte. Die Paketquellen sind in beiden Messungen gleich (unverändert seit `9ae4cd9`): unter Windows im Arbeitsstand auf Basis `9ae4cd9`, unter Debian in einem frischen Checkout von `bca6d2a`. Beide Messungen verwenden die Regeln aus `.gitattributes` einschließlich der LF-Festlegung für `packages/*/package.json` und `packages/*/README*.md`; die Paketdateien enthalten LF:
 
 | Paket, Version | Dateien | `size` in Bytes | `unpackedSize` in Bytes | `shasum` | `bundled` |
 |---|---:|---:|---:|---|---|
