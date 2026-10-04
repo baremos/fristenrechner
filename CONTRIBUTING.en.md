@@ -53,11 +53,13 @@ Files from other sources are checked before they are first committed. The checkp
 | Step | Command | Status |
 |---|---|---|
 | Install dependencies | `npm ci` | works |
-| Tests | `npm test` | works, tests the scripts, the calculation core and the user interface |
-| Type check | `npm run check` | works for the calculation core and the user interface |
-| Build the packages | `npm run build` | works for the calculation core |
+| Tests | `npm test` | works, tests the scripts, the calculation core, the user interface and the app |
+| Type check | `npm run check` | works for the calculation core, the user interface and the app |
+| Build the packages | `npm run build` | works for the calculation core and the web part of the app |
 | Check the licenses of the dependencies | `npm run lizenzen` | works |
-| Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the Android project in `app/android`, which follows with the app |
+| Check the tools for the Android build | `node scripts/android-build.mjs --nur-pruefen` | needs the JDK and the project SDK |
+| Build the Android app, debug | `node scripts/app-bauen.mjs --android` | web build, transfer to Android, Gradle and the checks of the build chain in one run |
+| Build the Android app, unsigned release | `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` | with `--streng` only if Node, the JDK and the SDK packages match the pinned versions; the build does not check the npm version |
 
 The commands work without private files. The versions of the tools are in [docs/toolchain.md](docs/toolchain.md).
 
