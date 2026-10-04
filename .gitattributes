@@ -31,6 +31,11 @@ app/android/app/capacitor.build.gradle text eol=lf
 app/src/** text eol=lf
 packages/oberflaeche/src/** text eol=lf
 
+# Paketmanifeste und Paketbeschreibungen gehen unverändert in die npm-Pakete.
+# Mit festen Zeilenenden sind die Archive unter Windows und Linux gleich.
+packages/*/package.json text eol=lf
+packages/*/README*.md text eol=lf
+
 # Binärdateien
 *.png binary
 *.jpg binary
