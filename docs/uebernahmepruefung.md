@@ -1,6 +1,8 @@
 # Übernahmeprüfung
 
-Stand 2026-09-28 · Arbeitspaket 2.2
+Stand 2026-10-04 · geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420` · historische Übernahmenachweise zu den Arbeitspaketen 2.2, 2.3 und 2.5
+
+Die Nachweise und Protokollzeilen vom 2026-09-28 und 2026-09-30 beschreiben jeweils den damaligen Stand. Ihre Bestandszahlen und damals offenen Prüfungen sind keine Statusangaben zum App-Endstand. Die späteren Laufnachweise mit Werkzeugversionen stehen in [app.md](app.md), [fdroid-build.md](fdroid-build.md) und [signierung.md](signierung.md); offene Restpunkte bündelt der [Bericht zur Abnahme](stufe2-nachweis.md).
 
 ## Zweck
 
@@ -127,7 +129,7 @@ Grenzen des Nachweises: Das Raster ist eine Auswahl. Es belegt die Übereinstimm
 
 ### Abhängigkeiten für Test und Build
 
-Das Paket selbst hat keine Abhängigkeiten. Für Typprüfung und Build kommt `typescript` 6.0.3 hinzu, für die Tests `vitest` 4.1.11. Das Lockfile nennt damit 70 Pakete, einschließlich der Pakete für andere Betriebssysteme.
+Zum Stand der Übernahme am 2026-09-28 hat das Paket selbst keine Abhängigkeiten. Für Typprüfung und Build kommt `typescript` 6.0.3 hinzu, für die Tests `vitest` 4.1.11. Das damalige Lockfile nennt damit 70 Pakete, einschließlich der Pakete für andere Betriebssysteme.
 
 | Lizenz | Pakete |
 |---|---|
@@ -137,12 +139,14 @@ Das Paket selbst hat keine Abhängigkeiten. Für Typprüfung und Build kommt `ty
 | ISC | 2 |
 | BSD-3-Clause | 1 |
 
-Geprüft ist das Feld zur Lizenz im Lockfile, bei den installierten Paketen zusätzlich gegen deren Manifest. Der tatsächliche Inhalt der Pakete ist damit nicht geprüft, das leistet Arbeitspaket 2.7.
+Geprüft wurde das Feld zur Lizenz im damaligen Lockfile, bei den installierten Paketen zusätzlich gegen deren Manifest. Der tatsächliche Inhalt der Pakete ist damit nicht geprüft. Der spätere Stand von Arbeitspaket 2.7 einschließlich der noch offenen Inhalts- und Lizenzprüfungen steht in [lizenzen.md](lizenzen.md).
 
-Zwei Punkte für die folgenden Arbeitspakete:
+Zwei damalige Punkte für die folgenden Arbeitspakete:
 
 - `vitest` bringt über `vite` vorgebaute Programme mit, etwa `rolldown` und `lightningcss`. Der Build des Pakets braucht sie nicht, er läuft allein mit `tsc`. Was das für den Build bei F-Droid bedeutet, klärt Arbeitspaket 2.8.
 - Die 12 Pakete unter MPL-2.0 gehören zu `lightningcss`. Sie dienen dem Test und werden nicht mit der App ausgeliefert.
+
+Die Behandlung vorgebauter Programme beim lokalen F-Droid-Build am Endstand ist inzwischen in [fdroid-build.md](fdroid-build.md) nachgewiesen. Die historische Paketanzahl oben wird damit nicht als neuer Bestand bestätigt.
 
 ## Übernahme der Android-Vorlage
 
@@ -280,11 +284,17 @@ Die App definiert kein `Theme.SplashScreen` und kein eigenes Startbild. Entfernt
 
 Diese Übernahmeprüfung betrifft den Quellstand und die lokal erzeugten Sync-Dateien vom 2026-09-30. Claude Code hat die Übernahme kreuzweise geprüft, die Vorlage dafür unabhängig entpackt und verglichen sowie die Symbole mit dem freigegebenen Entwurf abgeglichen. Debug- und Release-Build über den Gradle-Wrapper sind am 2026-09-30 unter Windows erfolgt; die entstandenen APKs wurden mit `aapt2` aus den Build-Tools 35.0.0 statisch untersucht. Ergebnisse, Werkzeugversionen und Grenzen stehen in [app.md](app.md#build-vom-2026-09-30).
 
-Ein Rauchtest vom 2026-09-30 belegt Installation, Start, Anzeige der Rechnerseite und das eigene Symbol auf API 30 und 36. Er ersetzt die ausstehenden Emulatorprüfungen nicht: Netzwerkzugriffe, Navigation, Sicherung, Gerätewechsel, Berechnung, Fehlerseite und Startbildverhalten wurden dabei nicht geprüft. Die Lizenzprüfung der von Gradle aufgelösten Abhängigkeiten steht ebenfalls aus. Der Neubau nach `clean` und der Vergleich zweier Arbeitskopien in verschiedenen Ordnern ergaben bytegleiche Debug- und Release-APKs auf einem Windows-Rechner am selben Tag. Zwei frische Klone von `c7a0cd8` unter Debian 13.5 ergaben am 2026-09-30 mit strenger Werkzeugprüfung bytegleiche Release-APKs, auch im Vergleich mit Windows. Web-Build und Sync bestanden dort zusätzlich ohne Netz; Gradle lief mit Netz. Ein Debug-Build unter Linux, die Gegenprobe mit geändertem `versionName` und ein zweiter Rechner sind nicht geprüft. Siehe [Linux-Nachweis](app.md#linux-nachweis-vom-2026-09-30).
+Ein Rauchtest vom 2026-09-30 belegt Installation, Start, Anzeige der Rechnerseite und das eigene Symbol auf API 30 und 36. Er ersetzte die damals ausstehenden Emulatorprüfungen nicht: Netzwerkzugriffe, Navigation, Sicherung, Gerätewechsel, Berechnung, Fehlerseite und Startbildverhalten wurden dabei nicht geprüft. Die Lizenzprüfung der von Gradle aufgelösten Abhängigkeiten steht weiterhin aus. Der Neubau nach `clean` und der Vergleich zweier Arbeitskopien in verschiedenen Ordnern ergaben bytegleiche Debug- und Release-APKs auf einem Windows-Rechner am selben Tag. Zwei frische Klone von `c7a0cd8` unter Debian 13.5 ergaben am 2026-09-30 mit strenger Werkzeugprüfung bytegleiche Release-APKs, auch im Vergleich mit Windows. Web-Build und Sync bestanden dort zusätzlich ohne Netz; Gradle lief mit Netz. Ein Debug-Build unter Linux, die Gegenprobe mit geändertem `versionName` und ein zweiter Rechner waren in diesem historischen Lauf nicht geprüft. Siehe [Linux-Nachweis](app.md#linux-nachweis-vom-2026-09-30).
+
+Die späteren Emulator- und Geräteprüfungen sowie der Buildvergleich vom 2026-10-03/04 sind gesondert in [app.md](app.md) dokumentiert. Am Endstand sind die unsignierten Release-APKs zwischen Windows, Linux und lokalem F-Droid-Lauf bytegleich; Debug-APKs sind zwischen Arbeitskopien nicht bytegleich und gehören nicht zum Reproduzierbarkeitsnachweis. Die Updateprobe mit der Testfassung und eigener App-ID steht in [signierung.md](signierung.md). Diese Ergebnisse ändern die Grenzen des damaligen Übernahmenachweises nicht.
+
+## Offener Übernahmenachweis der Oberfläche
+
+Für die bereits übernommene Oberfläche fehlt in diesem Dokument ein eigener Übernahmenachweis mit Protokollzeile. Quelle, Auswahl der Dateien, Prüfung und Bereinigung sowie das Kreuz-Review sind aus vorhandenen Belegen nachzutragen. Der Eintrag bleibt offen; aus der Dokumentationslücke folgt keine Aussage darüber, ob die Prüfung vor dem Einchecken stattgefunden hat. Ein nachträglich formulierter Ablauf ersetzt keinen Beleg. Siehe [Restpunkte des Berichts](stufe2-nachweis.md#restpunkte).
 
 ## Protokoll
 
-Jede Übernahme erhält eine Zeile. Ein Prüfpunkt, der nicht zutrifft, steht nicht unter „Befunde".
+Jede Übernahme erhält eine Zeile. Ein Prüfpunkt, der nicht zutrifft, steht nicht unter „Befunde". Die vorhandenen Zeilen bewahren die Befunde und offenen Punkte zum jeweiligen Datum; sie werden nicht als aktueller Abschlussstand gelesen.
 
 | Datum | Arbeitspaket | Dateien | Quelle und Stand | Befunde und Bereinigung | Geprüft von |
 |---|---|---|---|---|---|
