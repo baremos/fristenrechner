@@ -3,6 +3,7 @@ import type { ScheduleInput, ScheduleResult } from '@baremos/fristenrechner-kern
 import type { AusgabeDatei, ExportInhalt, ExportZeit } from './plattform';
 import {
   exportFileSuffix,
+  exportHaftungshinweis,
   exportHinweis,
   formatExportDate,
   phaseLabels,
@@ -65,7 +66,10 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
       { align: 'center', maxWidth: pageWidth - 24 },
     );
     pageDocument.setFontSize(8);
-    pageDocument.text(inhalt.herausgeber, 12, pageHeight - 8.5);
+    pageDocument.text(inhalt.herausgeber, 12, pageHeight - 9.5);
+    // Letzte Fußzeile auf jeder Seite, auch nach Tabellen- und Zeitschienenumbrüchen.
+    pageDocument.setTextColor(...DARK);
+    pageDocument.text(exportHaftungshinweis, pageWidth / 2, pageHeight - 5.5, { align: 'center' });
   };
 
   pdf.setFont('helvetica', 'bold');
@@ -234,7 +238,7 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(...MUTED);
-    pdf.text(`Seite ${pageNumber} von ${totalPages}`, pageWidth - 12, pageHeight - 8.5, { align: 'right' });
+    pdf.text(`Seite ${pageNumber} von ${totalPages}`, pageWidth - 12, pageHeight - 9.5, { align: 'right' });
   }
   return pdf;
 }

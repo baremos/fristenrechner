@@ -2,6 +2,7 @@ import type { ScheduleInput, ScheduleResult } from '@baremos/fristenrechner-kern
 import type { AusgabeDatei, ExportInhalt, ExportZeit } from './plattform';
 import {
   exportFileSuffix,
+  exportHaftungshinweis,
   exportHinweis,
   formatExportDate,
   phaseLabels,
@@ -133,6 +134,10 @@ export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, er
   verbinde(hinweiszeile, 1, SPALTEN, exportHinweis(inhalt), STIL.hinweis);
   if (inhalt.adresse) hyperlinks.push({ zelle: adresse(hinweiszeile, 1), ziel: inhalt.adresse.href });
 
+  const fusszeile = `${FUSS.LINKS}${fussText(inhalt.herausgeber)}${FUSS.MITTE}${fussText(inhalt.adresse?.text ?? '')}\n${fussText(exportHaftungshinweis)}${FUSS.RECHTS}Seite ${FUSS.SEITE} von ${FUSS.SEITEN}`;
+  // Einschließlich Steuerzeichen und verdoppelter &; der feste Hinweis bleibt vollständig.
+  if (fusszeile.length >= 255) throw new Error('Die Excel-Fußzeile muss unter 255 Zeichen bleiben.');
+
   return {
     eigenschaften: {
       ersteller: inhalt.herausgeber,
@@ -155,7 +160,7 @@ export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, er
         einpassen: { breite: 1, hoehe: 0 },
         raender: { links: 0.4, rechts: 0.4, oben: 0.55, unten: 0.55, kopf: 0.2, fuss: 0.2 },
       },
-      fusszeile: `${FUSS.LINKS}${fussText(inhalt.herausgeber)}${FUSS.MITTE}${fussText(inhalt.adresse?.text ?? '')}${FUSS.RECHTS}Seite ${FUSS.SEITE} von ${FUSS.SEITEN}`,
+      fusszeile,
     },
   };
 }

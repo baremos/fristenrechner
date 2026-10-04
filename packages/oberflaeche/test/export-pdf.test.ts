@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { pdfAlsDatei } from '../src/fristenrechner-export-pdf';
+import { exportHaftungshinweis, exportHinweis } from '../src/fristenrechner-export-data';
 import { webExportInhalt } from '../src/web-vorgaben';
 import { beispiel, eingabe, ergebnis, ZEITPUNKT, KALENDERTAG } from './beispiel';
 import { calculateSchedule, REGELVERSION, RECHTSSTAND_DATUM } from '@baremos/fristenrechner-kern';
@@ -20,6 +21,8 @@ it('PDF-Datei entsteht ohne Browser und zeigt Metadaten und Seitenzahlen', async
   expect(inhalt).not.toContain('©');
   const seiten = inhalt.match(/\/Type \/Page\b/g)!.length;
   expect(seiten).toBeGreaterThan(1);
+  expect(inhalt.split(exportHaftungshinweis)).toHaveLength(seiten + 1);
+  expect(inhalt).toContain(exportHinweis(webExportInhalt));
   expect(inhalt).toContain(`Seite ${seiten} von ${seiten}`);
   expect(inhalt).toContain('Zeitschiene');
 });
@@ -30,8 +33,9 @@ it('PDF ohne Bindefrist und ohne Phasen bleibt erzeugbar', async () => {
   const inhalt = pdfText((await pdfAlsDatei(input, result, zeit, webExportInhalt)).bytes);
   expect(inhalt).toContain(`Regelversion: ${REGELVERSION}`);
   expect(inhalt).not.toContain('(Zeitschiene)');
+  expect(inhalt).toContain(exportHaftungshinweis);
 });
-it('PDF bleibt bei gleichen Zeit- und Zufallswerten bytegleich zu Teil 1', async () => {
+it('PDF bleibt bei gleichen Zeit- und Zufallswerten bytegleich zur Referenz mit festem Hinweis', async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(ZEITPUNKT));
   // Verschiedene Werte erhalten jsPDFs interne Ereigniskennungen eindeutig.
@@ -45,7 +49,7 @@ it('PDF bleibt bei gleichen Zeit- und Zufallswerten bytegleich zu Teil 1', async
     const bytes = Uint8Array.from(text, zeichen => zeichen.charCodeAt(0));
     const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
     expect(Array.from(hash, byte => byte.toString(16).padStart(2, '0')).join(''))
-      .toBe('51dc7fefde40f8e17423ff52347f4509868cee6a5ebeeb4e5d1cb6fd24e6ae9d');
+      .toBe('e343da21aff4a0b57a0aea6806f7729d0e329275f2ce0e39a3969e316287b8ba');
   } finally { vi.restoreAllMocks(); vi.useRealTimers(); }
 });
 it('PDF verwendet den übergebenen Kalendertag und die Inhalte des Gastgebers', async () => {
@@ -56,6 +60,8 @@ it('PDF verwendet den übergebenen Kalendertag und die Inhalte des Gastgebers', 
   expect(text).toContain('Beispielverlag');
   expect(text).toContain('(Terminplan)');
   expect(text).toContain('30.09.2026');
+  expect(text).toContain(exportHaftungshinweis);
+  expect(text).toContain(exportHinweis(inhalt));
   expect(text).not.toContain('BAREMOS');
   expect(text).not.toContain('baremos.de');
 });

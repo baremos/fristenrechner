@@ -1,12 +1,39 @@
 import { expect, it } from 'vitest';
 import { calculateSchedule, REGELVERSION, RECHTSSTAND_DATUM } from '@baremos/fristenrechner-kern';
 import { beschreibeMappe, createScheduleExcel, excelAlsDatei } from '../src/fristenrechner-export-excel';
+import { exportHaftungshinweis, exportHinweis } from '../src/fristenrechner-export-data';
 import { webExportInhalt } from '../src/web-vorgaben';
 import { datumZuSeriennummer, schreibeXlsx } from '../src/xlsx-schreiber';
 import { beispiel, eingabe, ergebnis, ZEITPUNKT, KALENDERTAG } from './beispiel';
 import { leseArchiv, pruefeTerminplanTeile } from './struktur.mjs';
 
 const exportieren = () => createScheduleExcel(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, webExportInhalt);
+it('Fester Pakethinweis steht zusätzlich zur Herkunftszeile im Excel-Fuß', () => {
+  expect(exportHaftungshinweis).toBe('Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.');
+  const teile = leseArchiv(exportieren());
+  const blatt = teile.get('xl/worksheets/sheet1.xml')!;
+  expect(blatt).toContain(exportHinweis(webExportInhalt));
+  expect(blatt.match(/<oddFooter>([\s\S]*?)<\/oddFooter>/)![1]).toContain(`\n${exportHaftungshinweis}`);
+});
+it('Excel-Kopf und -Fuß bleiben einschließlich Steuerzeichen unter 255 Zeichen', () => {
+  const m = beschreibeMappe(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, webExportInhalt);
+  expect(m.blatt.fusszeile!.length).toBeLessThan(255);
+  const blatt = leseArchiv(exportieren()).get('xl/worksheets/sheet1.xml')!;
+  // Es wird keine Druck-Kopfzeile ausgegeben; die Metadaten stehen in Zellen.
+  expect(blatt).not.toMatch(/<(?:odd|even|first)Header>/);
+});
+it('Excel erlaubt 254 Fußzeichen und weist 255 ab, auch mit wörtlichen & im Gastgebertext', () => {
+  const inhalt = { ...webExportInhalt, herausgeber: 'A & B', adresse: undefined };
+  const m = beschreibeMappe(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, inhalt);
+  expect(m.blatt.fusszeile).toContain('A && B');
+  const passend = { ...inhalt, herausgeber: inhalt.herausgeber + 'x'.repeat(254 - m.blatt.fusszeile!.length) };
+  expect(beschreibeMappe(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, passend).blatt.fusszeile).toHaveLength(254);
+  const blatt = leseArchiv(createScheduleExcel(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, passend)).get('xl/worksheets/sheet1.xml')!;
+  expect(blatt).toContain(exportHaftungshinweis);
+  for (const zuLang of [passend.herausgeber + 'x', passend.herausgeber + '&']) {
+    expect(() => createScheduleExcel(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, { ...passend, herausgeber: zuLang })).toThrow(/unter 255 Zeichen/);
+  }
+});
 it('Export erfüllt die Struktur des Schreibers ohne fremden Leser', () => {
   const bericht = pruefeTerminplanTeile(leseArchiv(exportieren()));
   expect(bericht.zellen).toBeGreaterThan(300);
@@ -51,7 +78,9 @@ it('D7 ändert ausschließlich die Ausrichtung der beiden Kopf-Datumswerte', asy
   }
   expect(geaendert).toEqual(['B10', 'B14']);
   expect(leereVerbundeneZellen).toBe(12);
-  // Ohne genau diese Formatänderung ist das gesamte ZIP bytegleich zu Teil 1.
+  // Ohne diese Formatänderung und den später ergänzten festen Hinweis
+  // ist das gesamte ZIP weiterhin bytegleich zu Teil 1.
+  m.blatt.fusszeile = m.blatt.fusszeile!.replace(`\n${exportHaftungshinweis}`, '');
   const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', schreibeXlsx(m)));
   expect(Array.from(hash, byte => byte.toString(16).padStart(2, '0')).join(''))
     .toBe('c78524f46d747c134f2661b6d3eaca36d6efdcebc752579b1c9671a54dc6b7fb');
@@ -65,11 +94,15 @@ it('Gastgeber ersetzt Titel, Herausgeber, Adresse und Dateivorsatz', () => {
   expect(xml).toContain('Terminübersicht');
   expect(xml).toContain('Beispiel &amp; Partner');
   expect(xml).toContain('https://example.org/rechner');
+  expect(teile.get('xl/worksheets/sheet1.xml')).toContain(exportHinweis(inhalt).replace(/&/g, '&amp;'));
+  expect(teile.get('xl/worksheets/sheet1.xml')!.match(/<oddFooter>([\s\S]*?)<\/oddFooter>/)![1]).toContain(exportHaftungshinweis);
+  expect(beschreibeMappe(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, inhalt).blatt.fusszeile!.length).toBeLessThan(255);
   expect(xml).not.toContain('BAREMOS');
   expect(xml).not.toContain('baremos.de');
   const ohneAdresse = leseArchiv(excelAlsDatei(eingabe, ergebnis, { zeitpunkt: ZEITPUNKT, kalendertag: KALENDERTAG }, { ...inhalt, adresse: undefined }).bytes);
   expect(ohneAdresse.has('xl/worksheets/_rels/sheet1.xml.rels')).toBe(false);
   expect(ohneAdresse.get('xl/worksheets/sheet1.xml')).not.toContain('<hyperlink');
+  expect(ohneAdresse.get('xl/worksheets/sheet1.xml')!.match(/<oddFooter>([\s\S]*?)<\/oddFooter>/)![1]).toContain(exportHaftungshinweis);
 });
 it('Alle Meilensteine, Warnungen und Bindefrist gelangen in die Mappe', () => {
   const m = beschreibeMappe(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, webExportInhalt);

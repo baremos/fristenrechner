@@ -18,7 +18,7 @@ Version 1 der App rechnet dasselbe wie der Fristenrechner auf www.baremos.de. Si
 | Projekt speichern und laden | lokal auf dem Gerät, zusätzlich als Projektdatei |
 | Export | PDF, Excel und Projektdatei über „Speichern unter“ in der Android-Auswahl; zusätzlich getrenntes Teilen jedes Formats |
 | Rechtsstand | Regelversion und Rechtsstand sichtbar in der App und in jedem Export |
-| Hinweis | unverbindliche Rechenhilfe, keine Rechtsberatung, Angaben ohne Gewähr |
+| Hinweis | in der App sowie als fester Pakethinweis in PDF und Excel: „Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.“; in den Exporten zusätzlich zur Herkunftszeile, nicht durch den Gastgeber austauschbar oder abwählbar (entschieden am 2026-10-04) |
 
 ## Nicht enthalten
 

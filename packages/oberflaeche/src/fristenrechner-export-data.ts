@@ -8,6 +8,9 @@ import type {
 import { VERGABEORDNUNGEN } from '@baremos/fristenrechner-kern';
 import type { ExportInhalt } from './plattform';
 
+/** Fester Pakethinweis für PDF und Excel; kein austauschbarer Gastgebertext. */
+export const exportHaftungshinweis = 'Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.';
+
 /** Exportadressen sind optional und verwenden ausschließlich HTTPS. */
 export function pruefeExportInhalt(inhalt: ExportInhalt): void {
   if (inhalt.adresse && new URL(inhalt.adresse.href).protocol !== 'https:') {
