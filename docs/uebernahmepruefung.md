@@ -1,8 +1,8 @@
 # Übernahmeprüfung
 
-Stand 2026-10-04 · geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420` · historische Übernahmenachweise zu den Arbeitspaketen 2.2, 2.3 und 2.5
+Stand 2026-10-04 · geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420` · historische Übernahmenachweise zu den Arbeitspaketen 2.2 bis 2.5 · Nachtrag zur Oberfläche
 
-Die Nachweise und Protokollzeilen vom 2026-09-28 und 2026-09-30 beschreiben jeweils den damaligen Stand. Ihre Bestandszahlen und damals offenen Prüfungen sind keine Statusangaben zum App-Endstand. Die späteren Laufnachweise mit Werkzeugversionen stehen in [app.md](app.md), [fdroid-build.md](fdroid-build.md) und [signierung.md](signierung.md); offene Restpunkte bündelt der [Bericht zur Abnahme](stufe2-nachweis.md).
+Die Nachweise und Protokollzeilen vom 2026-09-28 bis 2026-09-30 beschreiben jeweils den damaligen Stand. Der Nachweis zur Oberfläche ist am 2026-10-04 aus den damaligen Belegen nachgetragen und um eine datierte Nachprüfung ergänzt. Ihre Bestandszahlen und damals offenen Prüfungen sind keine Statusangaben zum App-Endstand. Die späteren Laufnachweise mit Werkzeugversionen stehen in [app.md](app.md), [fdroid-build.md](fdroid-build.md) und [signierung.md](signierung.md); offene Restpunkte bündelt der [Bericht zur Abnahme](stufe2-nachweis.md).
 
 ## Zweck
 
@@ -278,7 +278,7 @@ Die `.gitignore` der Repositorywurzel ist unverändert. Unter Android bleiben in
 
 Der Sync mit Capacitor 8.5.2 erzeugt in `capacitor.settings.gradle` den Pfad `../../node_modules/@capacitor/android/capacitor`. Vom Android-Projekt aus aufgelöst zeigt er auf das vorhandene `node_modules` der Repositorywurzel. `app/capacitor.build.gradle` setzt Java 21 und enthält keine zusätzlichen Plugin-Abhängigkeiten. `capacitor.plugins.json` enthält `[]`.
 
-Die App definiert kein `Theme.SplashScreen` und kein eigenes Startbild. Entfernt ist die **direkte** Abhängigkeit auf `core-splashscreen`; daraus folgt keine Aussage über das Fehlen der Bibliothek im vollständigen Gradle-Abhängigkeitsbaum oder in der APK.
+Die App definiert kein `Theme.SplashScreen` und kein eigenes Startbild. Entfernt ist die **direkte** Abhängigkeit auf `core-splashscreen`; `androidx.core:core-splashscreen` 1.0.1 ist jedoch transitiv über das Cordova-Framework 14.0.1 in der APK enthalten. Belegt sind die Module und der APK-Abgleich in [lizenzen.md, Android- und Gradle-Abhängigkeiten](lizenzen.md#android--und-gradle-abhängigkeiten).
 
 ### Grenzen und noch ausstehende Prüfung
 
@@ -288,9 +288,100 @@ Ein Rauchtest vom 2026-09-30 belegt Installation, Start, Anzeige der Rechnerseit
 
 Die späteren Emulator- und Geräteprüfungen sowie der Buildvergleich vom 2026-10-03/04 sind gesondert in [app.md](app.md) dokumentiert. Am Endstand sind die unsignierten Release-APKs zwischen Windows, Linux und lokalem F-Droid-Lauf bytegleich; Debug-APKs sind zwischen Arbeitskopien nicht bytegleich und gehören nicht zum Reproduzierbarkeitsnachweis. Die Updateprobe mit der Testfassung und eigener App-ID steht in [signierung.md](signierung.md). Diese Ergebnisse ändern die Grenzen des damaligen Übernahmenachweises nicht.
 
-## Offener Übernahmenachweis der Oberfläche
+## Übernahme der Oberfläche
 
-Für die bereits übernommene Oberfläche fehlt in diesem Dokument ein eigener Übernahmenachweis mit Protokollzeile. Quelle, Auswahl der Dateien, Prüfung und Bereinigung sowie das Kreuz-Review sind aus vorhandenen Belegen nachzutragen. Der Eintrag bleibt offen; aus der Dokumentationslücke folgt keine Aussage darüber, ob die Prüfung vor dem Einchecken stattgefunden hat. Ein nachträglich formulierter Ablauf ersetzt keinen Beleg. Siehe [Restpunkte des Berichts](stufe2-nachweis.md#restpunkte).
+Stand der Übernahme 2026-09-29 (Teil 1, `c7397eb`), Anpassung 2026-09-30 (Teil 2, `8ec15e8`) · Arbeitspaket 2.4 · nachgetragen am 2026-10-04
+
+### Quelle, Auswahl und Rechte
+
+Quelle ist die Oberfläche des Fristenrechners auf www.baremos.de, Stand der Quelle 2026-08-26. Gelesen wurden die sechs Dateien der Website-Komponente: Komponente, Bedienlogik, Exportdaten, Exportaktion, PDF-Export und Excel-Export. Die ersten fünf sind als frischer Stand ohne Versionsgeschichte nach `packages/oberflaeche/src` übernommen. Den Excel-Export der Website ersetzt ein eigener Schreiber. Die Seite der Website, die die Komponente einbindet, ist nur gelesen. Spätere Änderungen der Website sind nicht übernommen.
+
+Schreiber und neuer Excel-Export entstanden aus einer nicht eingecheckten Machbarkeitsprobe vom 2026-09-29. Übernommen sind Aufbau und Reihenfolge der Dateiteile, Maskierung, Kalenderkodierung und feste ZIP-Angaben, in TypeScript neu gefasst. Vergleichsprogramme und Probeschalter sind nicht übernommen.
+
+Die übernommenen Dateien stammen aus der Website des Herausgebers. Der Herausgeber hat am 2026-09-27 entschieden, Rechenkern und Oberfläche unter Apache-2.0 zu veröffentlichen. Das Logo der Website ist nicht übernommen; an ihm bestehen Rechte, die nicht unter diese Lizenz fallen. Eine unabhängige Prüfung der Rechtekette gehört nicht zu diesem Nachweis.
+
+### Abweichungen vom Stand der Website
+
+Die Abweichungen O1 bis O9 beschreiben Teil 1 am Übernahmecommit `c7397eb`. Teil 2 ist gesondert darunter beschrieben.
+
+| Nr. | Abweichung | Grund und Wirkung |
+|---|---|---|
+| O1 | Die Importe zeigen auf `@baremos/fristenrechner-kern`. | Paketgrenze. Die Abweichungen A1 bis A7 des Rechenkerns gelten mit; die Oberfläche rechnet nicht selbst. |
+| O2 | Das Logo der Website und der Absatz mit Verweisen auf Seiten der Website entfallen. | Rechte am Logo, keine festen Verweise auf Seiten eines Gastgebers. Seit Teil 2 gibt es dafür Plätze für Inhalte des Gastgebers. |
+| O3 | Berechnung, PDF und Excel zeigen Regelversion, Rechtsstand und das Datum des Rechtsstands aus dem Ergebnis des Rechenkerns. | Pflichtangabe. Der PDF-Kopf hat eine Zeile mehr, Tabelle und Bindefrist beginnen 7 mm tiefer. Der Excel-Kopf nennt zusätzlich die Regelversion. |
+| O4 | Die Excel-Datei schreibt ein eigener Schreiber, gepackt mit fflate, statt ExcelJS. | Festgelegter Ersatz. Gleiche Eingabe ergibt gleiche Bytes. Tabelleninhalt, Stile, Filter, Verweise und Seiteneinrichtung bleiben im festgelegten Umfang, der Dateiaufbau ist schlanker. |
+| O5 | Zeitpunkt und Kalendertag des Excel-Exports übergibt der Aufrufer. | Der Kalendertag folgt der Ortszeit, nicht UTC. |
+| O6 | Der Excel-Kopf entfernt Leerraum am Rand von Kunde, Projektname und Vergabenummer. | Wie bisher im Kopf des PDF. Wirkt bei direktem Aufruf der Exportfunktionen mit ungekürzten Werten; in der Komponente kürzt schon die Formularauswertung, auch nach dem Laden einer Projektdatei. |
+| O7 | Die Fußzeilen von Excel, PDF und Druck nennen „BAREMOS IT GmbH“ ohne Urheberrechtszeichen. | Festlegung des Herausgebers vom 2026-09-29 für Excel und PDF, im Druckfuß entsprechend übernommen; Tests prüfen Excel und PDF. |
+| O8 | Kommentare sind von internen Verweisen bereinigt. Reine Hilfsfunktionen sind für Tests zugänglich, die PDF-Erzeugung ist vom Download getrennt. | Keine geänderten Eingaben oder Rechenwege. |
+| O9 | Der Hinweis nennt fflate statt ExcelJS. | Nennt die tatsächlich verwendete Bibliothek. |
+
+### Prüfung nach den zehn Prüfpunkten
+
+Die Ergebnisse zur Übernahme sind aus dem Nachweisentwurf vom 2026-09-29 nachgetragen. Spätere Anpassungen und offene Arbeiten sind ausdrücklich benannt; ein damaliges schriftliches Urteil des Kreuz-Reviews je Prüfpunkt liegt nicht vor.
+
+| Nr. | Ergebnis zur Übernahme und spätere Einordnung |
+|---|---|
+| 1 | Übernommen sind Komponente, Bedienlogik, Exportdaten, Exportaktion und PDF-Export. Der Excel-Export der Website ist durch einen eigenen Schreiber ersetzt, die einbindende Seite der Website ist nicht übernommen. Ein Attribut für die Suchfunktion der Website bleibt in der Komponente. |
+| 2 | Siehe „Quelle, Auswahl und Rechte“. Eine unabhängige Prüfung der Rechtekette ist nicht belegt. |
+| 3 | In den Quelldateien wurden keine kopierten Fremdanteile oder gesonderten Lizenzhinweise Dritter erkannt. jsPDF, jsPDF-AutoTable und fflate werden importiert, nicht kopiert. Die Hinweise zu den gebündelten Anteilen behandelt [lizenzen.md](lizenzen.md#hinweise-dritter-paketinhalt-und-verbleibende-arbeit); ihre Vervollständigung ist offen. Der Ersatz von ExcelJS ist [gesondert dokumentiert](lizenzen.md#ersatz-von-exceljs). |
+| 4 | Kommentare mit Verweisen auf interne Vorgänge, Personen, Werkzeuge und Pull Requests sind neutralisiert, ihr fachlicher Gehalt bleibt (O8). Die Nachprüfung beschreibt verbleibende kosmetische Kommentarreste. |
+| 5 | Keine Schlüssel, Kennwörter, Token oder Zugangsdaten gefunden. Der Speicherschlüssel im Browser ist kein Zugangsschlüssel. |
+| 6 | Die Quelle enthielt keine Tests. Die neuen Tests verwenden frei erfundene Daten (`test/beispiel.ts`). Das Formular hat keine vorbelegten Projektangaben. |
+| 7 | Bildaufruf und Verweise auf Seiten der Website entfallen (O2). Die Oberfläche ruft zur Laufzeit keine Adressen im Netz auf; die Exportbibliotheken bündelt der Gastgeber. Die Adresse des Fristenrechners auf www.baremos.de steht als Text und Verweis in den Exportdateien. Seit Teil 2 ist sie einstellbar; sie ist Vorgabe des Web-Gastgebers, und die App verwendet sie ebenfalls. Die Adressen der XML-Namensräume im Excel-Schreiber sind Kennungen, keine Abrufe. |
+| 8 | Die sichtbaren Texte entsprechen der Website, mit den Abweichungen O2, O3, O7 und O9. Der Hinweis auf die unverbindliche Rechenhilfe ohne Gewähr bleibt unverändert. |
+| 9 | Die Oberfläche enthält keine eigenen Fristregeln; sie rechnet über den Rechenkern. Vorschlagswerte und Eingabegrenzen des Formulars sind unverändert. Beträge der Schwellenwerte kommen nicht vor. |
+| 10 | Das Paket liefert Quellen, kein vorgebautes Bündel. Die Referenzdateien des Excel-Exports sind erzeugt und eingecheckt, weil die Tests sie brauchen. Von Astro erzeugte Typdateien sind ausgeschlossen. |
+
+### Dateien des Übernahmecommits
+
+Der Übernahmecommit `c7397eb` vom 2026-09-29 umfasst 29 Dateien unter `packages/oberflaeche/`. Die Tabelle gruppiert diese Dateien; die Anzahl ergibt sich aus der Dateiliste des Commits. Fünf Dateien stammen aus der Website, zwei aus der eigenen Machbarkeitsprobe.
+
+| Datei | Art | Grund |
+|---|---|---|
+| `src/Fristenrechner.astro` | übernommen, angepasst | O2, O3, O7, O8, O9 |
+| `src/fristenrechner-ui.ts` | übernommen, angepasst | O1, O3, O8 |
+| `src/fristenrechner-export-data.ts` | übernommen, angepasst | O1, O3, O8 |
+| `src/fristenrechner-export-pdf.ts` | übernommen, angepasst | O1, O3, O7, O8 |
+| `src/fristenrechner-export-action.ts` | übernommen, angepasst | nur Importpfad (O1) |
+| `src/fristenrechner-export-excel.ts` | neu im Paket, aus eigener Probe | ersetzt den Excel-Export der Website (O3 bis O7) |
+| `src/xlsx-schreiber.ts` | neu im Paket, aus eigener Probe | eigener Schreiber (O4) |
+| sieben Dateien direkt unter `test/`: `beispiel.ts`, `struktur.mjs`, `export-action.test.ts`, `export-data.test.ts`, `export-excel.test.ts`, `export-pdf.test.ts`, `xlsx-schreiber.test.ts` | neu | Tests mit frei erfundenen Daten, Strukturprüfung der Excel-Datei |
+| elf Dateien unter `test/referenz/` | erzeugt | Prüfsumme, Teileliste und neun XML-Teile der Beispieltabelle |
+| `README.md`, `tsconfig.json`, `vitest.config.ts` | neu | Beschreibung und Prüfeinstellungen |
+| `package.json` | geändert | Einträge für Exporte, Dateien und Skripte |
+
+### Anpassung in Teil 2
+
+Am 2026-09-30 hat Teil 2 (`8ec15e8`) die Inhalte des Gastgebers einstellbar gemacht: Herausgeber, Titel, Adresse und Vorsatz des Dateinamens der Exporte sowie die Hinweis- und Statustexte. Die bisherigen Werte der Website sind die Vorgabe des Web-Gastgebers in `web-vorgaben.ts`; bis auf den Erfolgstext der Exporte lassen sie sich auf den Ausgangsstand vom 2026-08-26 zurückführen. Den Erfolgstext „Die Datei wurde erstellt und zum Speichern bereitgestellt.“ hat Teil 2 neu eingeführt. Die bisherigen formatbezogenen Meldungen „Excel-Datei wurde erstellt.“ und „PDF-Datei wurde erstellt.“ sind damit ersetzt. Teil 2 hat weitere neue Laufzeittexte eingeführt, darunter „Die Projektdatei ist größer als 1 MiB.“ sowie Lade-, Import- und Rücksetzmeldungen. Die App verwendet die Exportvorgaben ebenfalls. Für Logo und Kontakt hat die Komponente Plätze, die der Gastgeber füllt. Die globalen Druckregeln der Website sind entfallen. Teil 2 hat keine neuen Dateien aus anderen Quellen übernommen.
+
+Die zwei Datumswerte im Excel-Kopf sind seit Teil 2 linksbündig; die Werte bleiben unverändert. Dafür wurden zwei Referenzdateien neu erzeugt: `test/referenz/terminplan.sha256` und `test/referenz/xml/xl/styles.xml`. Belegt ist die begrenzte Änderung im Commit `8ec15e8` und im Exportvergleich vom 2026-09-30. Die abschließende Sichtung der Ausgaben bleibt offen, siehe „Grenzen“.
+
+### Ablauf und Kreuz-Review
+
+Codex hat die Dateien am 2026-09-29 übernommen und jede nach den zehn Prüfpunkten geprüft. Die Quelle wurde damals aus der Arbeitskopie gelesen; die Zuordnung zum Stand vom 2026-08-26 ist durch die unten beschriebene Rekonstruktion vom 2026-10-04 belegt. Claude Code hat vor dem Commit die Abweichungen der übernommenen Dateien zur Quelle und den Schreiber vollständig gelesen, vom Excel-Export nur die Kernstellen. Außerdem hat Claude Code Tests, Typprüfung, Build und Lizenzprüfung ausgeführt: 68 Tests der Oberfläche, 134 des Rechenkerns und 423 der Skripte bestanden, die Lizenzprüfung ebenfalls. Das belegt das Prüfprotokoll vom 2026-09-29 vor `c7397eb`. Das Kreuz-Review fand vor dem Commit statt; ein schriftliches Urteil je Prüfpunkt liegt nicht vor. Codex hat die Ergänzungen von Claude Code im Übernahmecommit und die beiden folgenden Commits am selben Tag ohne Befund geprüft; dieses Urteil gilt für die Ergänzungen, nicht als zweites vollständiges Urteil über die Übernahme.
+
+Abweichend von Grundsatz 3 stand das Ergebnis nicht vor dem Commit im Protokoll; auch Schritt 5 des Ablaufs war damit nicht erfüllt. Der Übernahmecommit nannte den Nachweis als offen; Teil 2 hat ihn nicht nachgeholt. Abschnitt und Protokollzeilen sind am 2026-10-04 aus den Belegen vom 2026-09-29 und 2026-09-30 nachgetragen.
+
+Abweichend von Schritt 3 des Ablaufs liefen Build und Tests aus Kopien ohne private Dateien erst nach dem Commit und vor dem Merge. Vor dem Merge kamen zwei Korrekturen hinzu: feste Zeilenenden für die Referenzdateien (`030d356`) und der Build des Rechenkerns vor Tests und Typprüfung der Oberfläche (`908821a`). Die Festlegung der Zeilenenden entstand aus der Durchsicht vor der ersten Kopie. Den fehlenden Build zeigte die erste Kopie unter Windows. Danach bestanden die Prüfungen am Stand `908821a` in Kopien unter Windows mit Node 22.23.2 und unter Linux mit Node 24.21.0; Grundlage sind die damaligen Laufprotokolle. Im Linux-Lauf waren drei Skripttests übersprungen.
+
+Teil 2 hat Codex umgesetzt und Claude Code geprüft. Die Ergänzungen von Claude Code hat Codex am 2026-09-30 geprüft; eine dabei verbliebene Kommentarauflage wurde mit `f7f4d1e` erledigt. Ein eigener Prüfbericht von Claude Code mit einem schriftlichen Urteil je Übernahmeprüfpunkt liegt für Teil 2 nicht vor.
+
+### Nachprüfung vom 2026-10-04
+
+Claude Code hat den Nachweis am 2026-10-04 lesend nachgeprüft. Die damals verwendeten Übernahmeskripte, angewendet auf die Quelldateien im Stand vom 2026-08-26, ergeben im Vergleich mit `c7397eb` drei Dateien bytegleich: Exportdaten, Exportaktion und PDF-Export. Bei den zwei übrigen übernommenen Dateien bleiben nur Änderungen in Kommentaren, an zwei Stellen in der Komponente und an zwölf Stellen in der Bedienlogik. Schreiber und Excel-Export ergeben sich bytegleich aus der Machbarkeitsprobe. Grundlage ist das Rekonstruktions- und Vergleichsprotokoll vom 2026-10-04.
+
+Ohne Kommentare stimmen die Syntaxbäume von Bedienlogik, Exportdaten und Exportaktion nach Rücknahme der benannten Anpassungen mit der Quelle überein. Die PDF-Anpassungen O3, O7 und O8 sind in diesem Syntaxbaumvergleich nicht zurückgenommen; daraus folgt keine Syntaxbaumgleichheit für den PDF-Export. Der Vergleich der Formularvorgaben vom selben Tag zeigt: Die 64 Formularelemente mit Name, Typ, Vorgabewert und Grenzen sind in der Quelle, im Übernahmestand `c7397eb` und am App-Endstand `5e6f230` gleich.
+
+Die Suche am App-Endstand in `packages/oberflaeche` ergab keinen inhaltlichen Fund zu internen Vorgängen, Personen oder Pull Requests, zum Website-Logo oder zu Verweisen auf Seiten der Website. In Komponente und Exporten wurde kein Urheberrechtszeichen gefunden; Tests prüfen dessen Fehlen. Auch die Suche nach Beträgen und Netz-APIs blieb ohne Fund. In den Quellen verbleiben die XML-Namensräume und die Web-Vorgabe-Adresse aus Prüfpunkt 7. Suchkategorien und Treffer sind im Gegenprüfungsprotokoll vom 2026-10-04 festgehalten; sie sind kein Nachweis für beliebige andere Suchmuster oder das gesamte Laufzeitverhalten.
+
+Neun kosmetische Kommentarreste bleiben am App-Endstand: fünf in `Fristenrechner.astro`, je einer in `fristenrechner-export-data.ts` und `fristenrechner-export-pdf.ts`, zwei in `fristenrechner-ui.ts`. Das sind doppelte Leerzeichen oder Leerzeichen vor Satzzeichen aus der Bereinigung, keine verbliebenen internen Verweise. Sie sind in der erneuten Nachprüfung vom 2026-10-04 erfasst, einschließlich der zweiten Stelle in `fristenrechner-ui.ts`, und mit diesem Dokumentationsnachtrag nicht geändert.
+
+### Grenzen
+
+Der Nachweis beschreibt die Übernahme vom 2026-09-29, die Anpassung vom 2026-09-30 und die ausdrücklich benannten Nachprüfungen am App-Endstand `5e6f230`. Er ist kein vollständiges Review aller späteren Änderungen an der Oberfläche. Eine unabhängige Prüfung der Rechtekette gehört nicht dazu. Die datierte Rekonstruktion ergänzt die damaligen Belege; sie ersetzt weder den damals fehlenden Protokolleintrag noch ein schriftliches Urteil je Prüfpunkt des damaligen Kreuz-Reviews.
+
+Offen sind die vollständigen Hinweise Dritter zu den gebündelten Anteilen, einschließlich der optionalen jsPDF-Module ([lizenzen.md](lizenzen.md#hinweise-dritter-paketinhalt-und-verbleibende-arbeit)), und die abschließende Sichtung der Teil-2-Exporte in Excel und LibreOffice sowie des PDF ([testmatrix.md](testmatrix.md), B14). Die automatischen Vergleiche ersetzen diese Sichtung nicht. Die ergänzenden Rekonstruktions- und Laufprotokolle werden gesondert aufbewahrt und sind nicht Teil des Repositorys.
 
 ## Protokoll
 
@@ -303,4 +394,7 @@ Jede Übernahme erhält eine Zeile. Ein Prüfpunkt, der nicht zutrifft, steht ni
 | 2026-09-28 | 2.3 | acht Dateien des Rechenkerns unter `packages/kern/src` | Rechenkern 1.9.0 des Fristenrechners auf www.baremos.de, Stand 2026-08-26 | Prüfpunkt 1: Die Schwellenwerte gehören nicht zum Zuschnitt, entfernt (A1, A2). Prüfpunkt 4: interne Verweise in Kommentaren und in Titeln von Tests, bereinigt (A6). Prüfpunkt 8: fünf Texte neu gefasst, Anzeigetext zum Rechtsstand gekürzt (A2, A7). Die übrigen Texte in den Quelldateien sind unverändert, neu ist die Meldung aus A3. Die Texte, die der Rechenkern im Raster ausgibt, stehen in `texte-1.9.0.txt`. Die Meldungen beim Import einer Projektdatei gehören nicht dazu, sie stehen in `projekt.ts`. | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.3 | vier Referenzdateien unter `packages/kern/test/referenz` | erzeugt aus dem Rechenkern 1.9.0, siehe Abschnitt „Referenzfälle" | Prüfpunkt 10: Die Dateien sind erzeugt. Sie gehören ins Repository, weil die Tests sie brauchen. Raster und Abbild, aus denen sie entstehen, liegen daneben. | Claude Code, Kreuz-Review Codex |
 | 2026-09-28 | 2.3 | `package-lock.json` | erzeugt mit npm 11.19.0 unter Node 24.21.0, nach Aufnahme von `typescript` und `vitest` | keine, siehe Abschnitt „Abhängigkeiten für Test und Build" | Claude Code, Kreuz-Review Codex |
+| 2026-09-29 | 2.4 Teil 1 | fünf Dateien der Oberfläche unter `packages/oberflaeche/src`: Komponente, Bedienlogik, Exportdaten, Exportaktion, PDF-Export | Oberfläche des Fristenrechners auf www.baremos.de, Stand 2026-08-26 | Prüfpunkte 2 und 7: Logo der Website und Absatz mit Verweisen auf Seiten der Website entfernt (O2). Prüfpunkt 4: interne Verweise in Kommentaren neutralisiert (O8). Prüfpunkt 8: Regelversion und Datum des Rechtsstands ergänzt, Fußzeilen ohne Urheberrechtszeichen, Bibliotheksnennung angepasst (O3, O7, O9). Der Excel-Export der Website ist nicht übernommen. Siehe [Übernahme der Oberfläche](#übernahme-der-oberfläche); nachgetragen am 2026-10-04. | Codex; Kreuz-Review Claude Code vor dem Commit, ohne schriftliches Urteil je Prüfpunkt; Nachprüfung Claude Code am 2026-10-04 |
+| 2026-09-29 | 2.4 Teil 1 | `packages/oberflaeche/src/xlsx-schreiber.ts`, `src/fristenrechner-export-excel.ts` und elf Referenzdateien unter `test/referenz/` desselben Pakets | Machbarkeitsprobe eines eigenen Excel-Schreibers vom 2026-09-29, nicht eingecheckt; Referenzen mit dem eigenen Schreiber aus `test/beispiel.ts` erzeugt | Prüfpunkte 1 und 3: in TypeScript neu gefasst, nur Schreiben, einziger Fremdimport des Schreibers ist `zipSync` aus fflate 0.8.3 (MIT); Vergleichsprogramme und Probeschalter nicht übernommen (O3 bis O7). Prüfpunkte 6 und 10: Referenzen mit frei erfundenen Daten, für die Tests erforderlich; eine fehlende Referenz lässt den Test scheitern. Nachgetragen am 2026-10-04. | Codex; Kreuz-Review Claude Code vor dem Commit, ohne schriftliches Urteil je Prüfpunkt; Nachprüfung Claude Code am 2026-10-04 |
+| 2026-09-30 | 2.4 Teil 2 | Gastgeberinhalte in `packages/oberflaeche/src/web-vorgaben.ts`, Anpassungen der Komponente und Exporte; zwei geänderte Excel-Referenzdateien | bisherige Website-Werte aus dem Stand 2026-08-26 und ein in Teil 2 neu gefasster Erfolgstext der Exporte; Weiterentwicklung des Übernahmestands `c7397eb` in `8ec15e8`, keine neuen Dateien aus anderen Quellen | Prüfpunkte 7 und 8: Gastgeberinhalte einstellbar, Plätze für Logo und Kontakt, globale Druckregeln entfallen; App verwendet die Exportvorgaben ebenfalls. Prüfpunkt 8: Erfolgstext der Exporte neu gefasst, Größenmeldung „Die Projektdatei ist größer als 1 MiB.“ und weitere Laufzeittexte eingeführt. Prüfpunkt 10: Prüfsumme und Stilreferenz für die linksbündigen Datumswerte im Kopf neu erzeugt. Siehe „Anpassung in Teil 2“ und „Ablauf und Kreuz-Review“; nachgetragen am 2026-10-04. | Codex; Kreuz-Review Claude Code, kein eigener schriftlicher Prüfbericht je Übernahmeprüfpunkt; Ergänzungen von Claude Code durch Codex geprüft |
 | 2026-09-30 | 2.5 | Android-Projekt: 52 Vorlagendateien geprüft, davon 18 übernommen; sieben neue Dateien | `@capacitor/cli` 8.5.2, `assets/android-template.tar.gz`, 217.371 Bytes, SHA-256 `5edb50a67a034556da8bb5fa54eb08211eaa952aac0949c75050ebcf0be97303` | Vorlage gezielt reduziert und an die App angepasst; vollständiger Dateivergleich, Prüfpunkte und Lizenzbelege im Abschnitt „Übernahme der Android-Vorlage“. Debug- und Release-Build mit Gradle, statische APK-Prüfung und Rauchtest auf API 30 und 36 am 2026-09-30 erfolgt. Weitergehende Emulatorprüfungen und Gradle-Lizenzprüfung stehen aus. | Codex; Kreuz-Review der Übernahme durch Claude Code erfolgt |
