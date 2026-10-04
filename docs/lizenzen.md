@@ -1,8 +1,14 @@
 # Lizenzen und Abhängigkeiten
 
-Stand: **2026-09-29**, mit den Abhängigkeiten der Oberfläche und von Capacitor 8.5.2 für die App. Die Bestandsaufnahme umfasst das npm-Lockfile im Format 3 und die vorhandene Windows-Installation. Sie beschreibt die Projektregeln und gelesene Paketbelege, keine Rechtsauskunft. Werkzeuge und Android-Komponenten außerhalb dieses Lockfiles behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
+Stand: **2026-10-04**, geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420`. Die Bestandszahlen und einzeln gelesenen Paketbelege unten stammen aus der Bestandsaufnahme vom **2026-09-29** mit Capacitor 8.5.2, dem npm-Lockfile im Format 3 und der damaligen Windows-Installation. Sie sind historische Angaben, keine neu erhobene Bestandsliste. Dieses Dokument beschreibt Projektregeln und Paketbelege, keine Rechtsauskunft. Werkzeuge und Android-Komponenten außerhalb dieses Lockfiles behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
 
 Das Projekt steht unter Apache-2.0. Der Wortlaut liegt in `LICENSE`, der Herausgeberhinweis in `NOTICE` in der Wurzel des Repositorys.
+
+## Lizenzprüfung am Endstand
+
+Am 2026-10-03/04 bestand die npm-Lizenzprüfung in einer frischen Windows-Kopie mit Node 22.23.2 und npm 10.9.8 sowie unter Debian 13.5 mit Node 24.21.0 und npm 11.19.0, auch in der sauberen Kopie vor dem F-Droid-Lauf. Quelle sind die Abschlussprotokolle vom 2026-10-03/04, zusammengefasst in [app.md](app.md) und [fdroid-build.md](fdroid-build.md). Diese Ergebnisse erneuern den Nachweis der Metadatenprüfung; sie belegen weder vollständige Originalhinweise noch die Lizenzen aller eingebetteten und von Gradle geladenen Anteile.
+
+Der lokale F-Droid-Lauf am 2026-10-04 mit fdroidserver 2.4.2-1 am Nachweisstand `49dd420` bestand mit gezielter Bereinigung ohne `scandelete`, ohne Scannerfehler und ohne Beanstandung der Auswertung. Die Bereinigung und die Inventare sind in [fdroid-build.md](fdroid-build.md) belegt. Ein F-Droid-Buildserver war nicht beteiligt. Die unten beschriebenen Weitergabepflichten und offenen Prüfungen bleiben davon getrennt.
 
 ## Bereiche und Rangfolge
 
@@ -22,7 +28,7 @@ Für `bereitgestellt` gelten dieselben Lizenzregeln wie für Test und Build (`en
 - **Optionale Abhängigkeiten:** Sie bleiben Teil des jeweiligen Baums und müssen im Lockfile stehen. Ein Plattformfilter oder das Fehlen unter Windows nimmt sie nicht aus der Lizenzprüfung.
 - **Wurzel-Peers:** Die neue Regel gilt ausdrücklich für Workspaces. Peers der Wurzel bleiben vorsorglich ausgeliefert. Nicht zuordenbare Lockfile-Einträge verursachen einen Fehler, auch wenn ihre Ausgabe ersatzweise `entwicklung` nennt.
 
-Heute ist `astro` 7.3.3 zugleich Peer der Oberfläche und Entwicklungsabhängigkeit der Wurzel. Sein bereitgestellter Baum überschneidet sich mit Testwerkzeugen und ausgelieferten Paketen; die Rangfolge wird für jeden Ort einzeln angewendet.
+Im Bestand vom 2026-09-29 ist `astro` 7.3.3 zugleich Peer der Oberfläche und Entwicklungsabhängigkeit der Wurzel. Sein bereitgestellter Baum überschneidet sich mit Testwerkzeugen und ausgelieferten Paketen; die Rangfolge wird für jeden Ort einzeln angewendet.
 
 ## Zulässige Lizenzen
 
@@ -118,7 +124,7 @@ Die vollständige Liste aller npm-Abhängigkeiten samt Transitivabhängigkeiten 
 
 ### Geprüfte Angaben im verbleibenden Baum
 
-Die folgende Auswahl erläutert die Werkzeugkennungen und die verbleibende Einzelausnahme. Die Versionen und Pfade stammen aus dem aktuellen Lauf. Pfadkürzel:
+Die folgende Auswahl erläutert die Werkzeugkennungen und die verbleibende Einzelausnahme. Die Versionen und Pfade stammen aus dem Lauf vom 2026-09-29. Pfadkürzel:
 
 - **A:** Oberfläche → Peer `astro` 7.3.3; zugleich Wurzel → Entwicklungsabhängigkeit `astro` 7.3.3.
 - **J:** Oberfläche → `jspdf` 4.2.1. „Optional“ bezeichnet die betreffende Kante; die Pakete bleiben Teil der Prüfung.
@@ -160,9 +166,9 @@ Die App nennt `@capacitor/core` und `@capacitor/android` 8.5.2 unter `dependenci
 
 Ausgeliefert sind neu nur `@capacitor/core`, `@capacitor/android` (beide MIT) und `tslib` (0BSD). Die Kommandozeile ist eine Entwicklungsabhängigkeit. Orte, die ihr Baum mit anderen Bäumen teilt, behalten den vorrangigen Bereich: Von den 95 neuen Orten sind 2 ausgeliefert (`@capacitor/core`, `@capacitor/android`), 91 für Test und Build und 2 bereitgestellt (`@types/node`, `undici-types`, zusätzlich über Astro erreichbar). `tslib` stand schon im Lockfile und ist jetzt ausgeliefert. Ohne die Kennungen 0BSD für die Auslieferung und Unlicense für Werkzeuge scheitert die Prüfung genau an `tslib`, `big-integer` und `stream-buffers`.
 
-Nicht erfasst sind die Abhängigkeiten, die Gradle für `@capacitor/android` lädt, darunter AndroidX und das Cordova-Framework. Ihre Liste entsteht mit dem Android-Projekt der App.
+Nicht erfasst sind die Abhängigkeiten, die Gradle für `@capacitor/android` lädt, darunter AndroidX und das Cordova-Framework. Das Android-Projekt liegt vor; die vollständige Liste und Lizenzprüfung seiner Gradle-Abhängigkeiten sind weiterhin zu ergänzen.
 
-Damit gehört das vorgebaute Browser-Bündel von ExcelJS nicht mehr zum aktuellen npm-Bestand. Seine frühere Auswertung ist kein Nachweis für den Inhalt eines neuen Website- oder App-Builds. Der eigene Excel-Schreiber und die vollständige Oberfläche sind in diesem Lauf nicht gebaut worden. Die erzeugten Bündel und die Originalhinweise ihrer tatsächlich enthaltenen Fremdanteile bleiben vor der Auslieferung zu prüfen; das gilt auch für die übrigen Exportbibliotheken.
+Damit gehörte das vorgebaute Browser-Bündel von ExcelJS nicht mehr zum npm-Bestand vom 2026-09-29. Seine frühere Auswertung ist kein Nachweis für den Inhalt eines neuen Website- oder App-Builds. Der eigene Excel-Schreiber und die vollständige Oberfläche wurden im damaligen Metadatenlauf nicht gebaut. Die späteren vollständigen App-Builds sind in [app.md](app.md) belegt. Die erzeugten Bündel und die Originalhinweise ihrer tatsächlich enthaltenen Fremdanteile bleiben vor der Auslieferung zu prüfen; das gilt auch für die übrigen Exportbibliotheken.
 
 ## Testempfänger und Testvarianten der App
 
@@ -191,24 +197,24 @@ Dateizugriffsfehler nennen eigene Meldungen und Pfade relativ zur geprüften Wur
 
 ### Installationsskripte und vorgebaute Programme
 
-Drei Pakete tragen Installationshaken: `core-js` 3.50.0, `esbuild` 0.28.2 und das hier nicht installierte `fsevents` 2.3.3. Insgesamt melden Namensmuster und gefundene Binärdateien bei **35 Paketen** vorgebaute Programme. Diese Zahl ist eine Hilfestellung, kein vollständiger Binärnachweis. Für nur im Lockfile vorhandene Pakete stehen keine lokalen Dateien zur Suche zur Verfügung. Das bekannte eingebettete WebAssembly von `es-module-lexer` wird zusätzlich über ein Namensmuster erfasst.
+Im Lauf vom 2026-09-29 trugen drei Pakete Installationshaken: `core-js` 3.50.0, `esbuild` 0.28.2 und das damals nicht installierte `fsevents` 2.3.3. Insgesamt meldeten Namensmuster und gefundene Binärdateien bei **35 Paketen** vorgebaute Programme. Diese Zahl ist eine Hilfestellung, kein vollständiger Binärnachweis. Für nur im Lockfile vorhandene Pakete stehen keine lokalen Dateien zur Suche zur Verfügung. Das bekannte eingebettete WebAssembly von `es-module-lexer` wird zusätzlich über ein Namensmuster erfasst.
 
-Das Skript erfasst `preinstall`, `install`, `postinstall` und `binding.gyp`. `prepare` und `prepack` sind keine hier geprüften Installationshaken für Registry-Pakete; Quellinstallationen aus Git benötigen eine eigene Prüfung. Lizenzfehler unterdrücken die Suche nach Hinweis- und Binärdateien nicht. Weder die Bereichseinordnung noch das Abschalten von Installationsskripten entfernt bereits enthaltene Programme. Der tatsächliche Build-Baum bleibt für Paket 2.8 zu prüfen.
+Das Skript erfasst `preinstall`, `install`, `postinstall` und `binding.gyp`. `prepare` und `prepack` sind keine hier geprüften Installationshaken für Registry-Pakete; Quellinstallationen aus Git benötigen eine eigene Prüfung. Lizenzfehler unterdrücken die Suche nach Hinweis- und Binärdateien nicht. Weder die Bereichseinordnung noch das Abschalten von Installationsskripten entfernt bereits enthaltene Programme. Der tatsächliche Build-Baum wurde für den lokalen Endstandlauf geprüft, siehe [F-Droid-Nachweis](fdroid-build.md); bei Änderungen ist diese Prüfung zu erneuern.
 
 ## Hinweise Dritter, Paketinhalt und verbleibende Arbeit
 
 Die Prüfung liest Lizenz- und Hinweisdateien, bewertet deren Vollständigkeit jedoch nicht automatisch. Für die spätere Auslieferung der Oberfläche fehlen noch gesammelte Originalhinweise und Lizenztexte der tatsächlich enthaltenen Fremdanteile. Sie müssen in die betroffenen npm-Pakete und offline lesbar in die App aufgenommen werden. Eine Kennung in diesem Dokument ersetzt diese Texte nicht. Auch Werkzeugpakete wie Rolldown und sharp enthalten weitere, nicht als eigene Lockfile-Pakete erfasste Anteile.
 
-`LICENSE` und `NOTICE` in der Wurzel müssen lesbar und nicht leer sein. Ihre Kopien in jedem npm-Workspace unter `packages/` werden bei jedem Lauf byteweise verglichen. `.gitattributes` legt LF fest. Die Oberfläche führt bisher nur `LICENSE` und `NOTICE` unter `files`; die Auslieferungsdateien ergänzt die weitere Arbeit an Paket 2.4. Am 2026-09-28 bestand eine Packlistenprobe des damaligen Gerüsts; sie wurde mit dem jetzigen Stand nicht wiederholt.
+`LICENSE` und `NOTICE` in der Wurzel müssen lesbar und nicht leer sein. Ihre Kopien in jedem npm-Workspace unter `packages/` werden bei jedem Lauf byteweise verglichen. `.gitattributes` legt LF fest. Das [Manifest der Oberfläche](../packages/oberflaeche/package.json) führt am Nachweisstand `49dd420` bereits `src`, `README.md`, `LICENSE` und `NOTICE` unter `files`. Die frühere Angabe, die Auslieferungsdateien seien noch einzutragen, ist damit überholt. Am 2026-09-28 bestand eine Packlistenprobe des damaligen Gerüsts; eine Wiederholung mit dem Endstand ist nicht belegt.
 
 `--packliste <Datei>` prüft zusätzlich die unveränderte JSON-Ausgabe eines vorherigen `npm pack --dry-run --json --offline --ignore-scripts`: erwartete npm-Pakete und Versionen, `package.json`, vollständige Hinweisdateien und passende Größen. Die App wird nicht als npm-Paket erwartet. Leere, doppelte oder unvollständige Listen führen zu Code 1. Der Trockenlauf ersetzt keine Sichtung eines tatsächlich erzeugten Archivs. Grundlage: npm-Dokumentation zu [`files`](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#files) und [`npm pack`](https://docs.npmjs.com/cli/v11/commands/npm-pack/).
 
 Vor Stufe 3 bleiben:
 
 1. Die MIT-Ausnahme für `rgbcolor` spätestens zu ihrem Ablauf am 2027-09-29 erneut prüfen; bei Versions- oder Metadatenänderungen muss sie angepasst oder entfernt werden.
-2. Die `files`-Liste der vollständigen Oberfläche ergänzen und beide npm-Packlisten nach dem Build erneut prüfen.
+2. Die vorhandene `files`-Liste der vollständigen Oberfläche und beide npm-Packlisten nach dem Build erneut prüfen.
 3. Die erzeugten `.tgz`-Archive sowie Website- und App-Bundles sichten, eingebettete Pakete mit genauen Versionen und Originalhinweisen erfassen.
-4. Den optionalen sharp-Baum und die weiteren vorgebauten Bestandteile im tatsächlichen F-Droid-Build behandeln. Der neue Build-Baum ist Grundlage dieser Prüfung.
+4. Die im lokalen Endstandlauf belegte Behandlung des optionalen sharp-Baums und der weiteren vorgebauten Bestandteile bei Änderungen am Build-Baum erneut prüfen; Quelle und Grenzen: [F-Droid-Nachweis](fdroid-build.md).
 5. Android- und Gradle-Abhängigkeiten ergänzen; diese werden von der npm-Liste nicht erfasst.
 6. Entscheiden, ob zusätzlich zu `package-lock.json` eine erzeugte vollständige Abhängigkeitsliste mit Bereichen und Wegen eingecheckt wird, und ihren Aktualisierungsweg festlegen. Die Entscheidung ist offen; derzeit wird diese Liste mit `node scripts/check-licenses.mjs --json` erzeugt.
 

@@ -1,6 +1,8 @@
 # Build für F-Droid
 
-Stand 2026-09-30 · Arbeitspaket 2.8, vier lokale Läufe mit der Minimal-App und drei mit der App
+Stand 2026-10-04 · Arbeitspaket 2.8 · App-Endstand `5e6f230`, Nachweisstand `49dd420` · lokaler Abschlusslauf bestanden
+
+Der [Lauf am Endstand](#lauf-am-endstand-vom-2026-10-04) besteht mit fdroidserver 2.4.2-1, gezielter Bereinigung und Scanner. Die unsignierte Release-APK ist bytegleich mit den Builds ohne F-Droid unter Windows und Linux. Die folgenden Abschnitte vom September bleiben als historische Nachweise erhalten.
 
 Ergänzt am 2026-09-30: Die App wurde ohne die Werkzeuge von F-Droid in zwei frischen Debian-Klonen gebaut. Die unsignierten Release-APKs sind untereinander und mit Windows bytegleich; Web-Build und Sync bestanden zusätzlich ohne Netz. Versionen und Grenzen stehen im [Linux-Nachweis der App](app.md#linux-nachweis-vom-2026-09-30). Anschließend gelang der lokale Build mit fdroidserver 2.4.2, Scanner und gezielter Bereinigung; auch diese APK ist bytegleich zur Referenz. Die drei Vergleichsläufe stehen unten. Ein Build auf dem Buildserver von F-Droid bleibt ausstehend.
 
@@ -8,7 +10,7 @@ Ergänzt am 2026-09-30: Die App wurde ohne die Werkzeuge von F-Droid in zwei fri
 
 F-Droid baut jede App selbst aus den Quellen und prüft sie vorher mit einem Scanner. Dieses Dokument hält fest, wie der Nachweis dafür lokal geführt wird, was bisher geprüft ist und was offen bleibt.
 
-Das Arbeitspaket hat zwei Teile. Die frühe Probe mit einer Minimal-App zeigt, woran der Weg scheitern kann, bevor die App entsteht. Die drei lokalen Läufe der App belegen inzwischen den Build mit Scanner für den genannten Stand. Am Ende von Stufe 2 ist der Nachweis mit dem dann fertigen App-Stand zu wiederholen.
+Das Arbeitspaket hat zwei Teile. Die frühe Probe mit einer Minimal-App zeigt, woran der Weg scheitern kann, bevor die App entsteht. Die drei lokalen Läufe der App belegen den Build mit Scanner für den damaligen Stand. Die Wiederholung mit dem fertigen App-Stand von Stufe 2 ist am 2026-10-04 erfolgt.
 
 Alle Aussagen gelten für den genannten Tag, die genannten Versionen und die beschriebene Umgebung.
 
@@ -323,10 +325,10 @@ Die Läufe erfolgten in Debian 13.5 unter WSL 2 mit fdroidserver 2.4.2-1, Python
 
 | Lauf | Ablauf und beobachtetes Ergebnis | Rückgabewert von `fdroid build` |
 |---|---|---|
-| 1, `lauf-j3yi1ch9` | Kein Git-Repository im Laufordner. Vor dem Holen der Quelle Abbruch in `set_FDroidPopen_env`: `TypeError: str expected, not NoneType`. Scanner nicht erreicht, keine APK. | 0 |
-| 2, `lauf-zoz605j4` | Rezept im Laufordner eingecheckt. Quelle geholt, `prebuild` und `Cleaning Gradle project` mit `BUILD SUCCESSFUL`; anschließend zehn Scannerfehler unter `node_modules`, `1 build failed`, keine APK. | 0 |
-| 3, `lauf-05pd1ynl` | Als `--versuch-scandelete` gekennzeichnet. Scanner entfernt die zehn beanstandeten Dateien und `android/gradle/wrapper/gradle-wrapper.jar`. Android-Build endet erfolgreich; die unsignierte APK ist bytegleich zu den Vergleichsbuilds ohne F-Droid unter Linux und Windows. | 0 |
-| 4, `lauf-9qp3h2qf` | Rezept und Skripte auf Stand `d5fe6a7`, erneut mit `--versuch-scandelete`. Build gelungen, APK bytegleich zu Lauf 3; Gradle-Archiv unter `fdroid-cache` nachgewiesen. Auswertung mit `d5fe6a7`: eine Beanstandung zur Dauer `1.53s`; neu ausgewertet mit `eaf3939`: keine Beanstandung, neun bekannte Meldungen. | 0 |
+| 1 | Kein Git-Repository im Laufordner. Vor dem Holen der Quelle Abbruch in `set_FDroidPopen_env`: `TypeError: str expected, not NoneType`. Scanner nicht erreicht, keine APK. | 0 |
+| 2 | Rezept im Laufordner eingecheckt. Quelle geholt, `prebuild` und `Cleaning Gradle project` mit `BUILD SUCCESSFUL`; anschließend zehn Scannerfehler unter `node_modules`, `1 build failed`, keine APK. | 0 |
+| 3 | Als `--versuch-scandelete` gekennzeichnet. Scanner entfernt die zehn beanstandeten Dateien und `android/gradle/wrapper/gradle-wrapper.jar`. Android-Build endet erfolgreich; die unsignierte APK ist bytegleich zu den Vergleichsbuilds ohne F-Droid unter Linux und Windows. | 0 |
+| 4 | Rezept und Skripte auf Stand `d5fe6a7`, erneut mit `--versuch-scandelete`. Build gelungen, APK bytegleich zu Lauf 3; Gradle-Archiv unter `fdroid-cache` nachgewiesen. Auswertung mit `d5fe6a7`: eine Beanstandung zur Dauer `1.53s`; neu ausgewertet mit `eaf3939`: keine Beanstandung, neun bekannte Meldungen. | 0 |
 
 Der erfolgreiche Abschluss von Lauf 3 lautet in `build.log`:
 
@@ -436,7 +438,7 @@ Für diese fünf `.node`-Dateien enthält Lauf 3 keine Entfernungsmeldung. Umgek
 
 ### Versuch und Festlegung
 
-**Versuch freigegeben und durchgeführt am 2026-09-30.** Im `prebuild` nach Web-Build **und** `cap sync android` werden die entbehrlichen npm-Werkzeuge anhand einer geprüften Paketliste gezielt entfernt. Das umfasst auch ganze entbehrliche Pakete mit eingebettetem WASM, native `.node`-Dateien sowie CLI-Vorlagen. Die Java-Quellen und Gradle-Dateien von `@capacitor/android` bleiben erhalten. Filesystem und Share sind noch keine Abhängigkeiten der App; bei späteren Plugins muss die Liste erneut geprüft werden. Maßgeblich für die geschützten Ordner ist die Ausgabe von `node scripts/app-bauen.mjs --android-quellen`. Dass die zehn Scannerdateien nach `cap sync` für den Android-Build der Minimal-App entbehrlich sind, ist durch Lauf 3 belegt. Der entsprechende Nachweis für die gezielt bereinigte App liegt nun mit `lauf-hqj89xdz` vor.
+**Versuch freigegeben und durchgeführt am 2026-09-30.** Im `prebuild` nach Web-Build **und** `cap sync android` werden die entbehrlichen npm-Werkzeuge anhand einer geprüften Paketliste gezielt entfernt. Das umfasst auch ganze entbehrliche Pakete mit eingebettetem WASM, native `.node`-Dateien sowie CLI-Vorlagen. Die Java-Quellen und Gradle-Dateien von `@capacitor/android` bleiben erhalten. Filesystem und Share sind keine Abhängigkeiten der App; bei späteren Plugins muss die Liste erneut geprüft werden. Maßgeblich für die geschützten Ordner ist die Ausgabe von `node scripts/app-bauen.mjs --android-quellen`. Dass die zehn Scannerdateien nach `cap sync` für den Android-Build der Minimal-App entbehrlich sind, ist durch Lauf 3 belegt. Der entsprechende Nachweis für die gezielt bereinigte App liegt mit Variante (a) vom 2026-09-30 vor.
 
 Ergänzendes `scandelete` wurde mit der App erprobt. Es ist beim beobachteten bereinigten Stand nicht nur entbehrlich: Der ungenutzte Eintrag lässt fdroidserver 2.4.2 den Build abbrechen. Scanner und Inventur bleiben unterschiedliche Prüfungen; der frühere Scannerlauf der Minimal-App erfasste etwa fünf `.node`-Dateien nicht. Auch ein erfolgreicher Lauf bietet keinen Vollständigkeitsnachweis für beliebig eingebettetes WASM. Unerwartete Löschungen müssen ins Review des Rezepts; eine pauschale `scanignore`-Ausnahme wird nicht vorgeschlagen.
 
@@ -458,7 +460,7 @@ Das eigene Rezept `scripts/fdroid/de.baremos.fristenrechner.yml` gilt für `de.b
 
 App-ID, Version und Referenzwerte stehen gemeinsam in `scripts/fdroid/app-referenz.json`. Laufsteuerung und Auswertung lesen diese Datei; die Laufsteuerung setzt die Versionsplatzhalter der Rezeptvorlage vor der Verwendung ein. Eine neue App-Referenz erfordert damit eine Änderung an einer Stelle.
 
-Die Referenz ist die ohne F-Droid gebaute unsignierte APK vom 2026-09-30: 7 715 483 Bytes, SHA-256 `776bba301220d1d9b3f5e4f5d4841f37449609e72d6622b8ebdab065fcab93b3`. Ein eigener Vergleich von `a1e7821` bis `cac2c4b` zeigt ausschließlich Änderungen an Dokumentation und Emulator-Prüfskripten. Die App-Quellen, Abhängigkeiten und Build-Eingaben sind unverändert. Das ist die Grundlage für die Verwendung derselben Referenz. Der Lauf erhält die tatsächliche Referenzdatei und prüft deren Größe und Prüfsumme; eine abweichende APK darf nicht stillschweigend als neue Referenz dienen.
+Die Referenz ist die ohne F-Droid gebaute unsignierte APK vom 2026-10-03: 7 760 765 Bytes, SHA-256 `ab18ee072cf98f922ff16a139365be627ed18f5dd1d4876d54b4ef4fb3e4f1fa`. Sie entstand unter Windows nach `clean` am Stand `5e6f230`; zwei inkrementelle Builds in getrennten Arbeitskopien hatten zuvor dieselbe Datei ergeben. Gegenüber der Referenz vom 2026-09-30 (7 715 483 Bytes, SHA-256 `776bba301220d1d9b3f5e4f5d4841f37449609e72d6622b8ebdab065fcab93b3`, Stand `a1e7821`) haben sich die App-Quellen mit Paket 2.6 geändert (Dateiabläufe und Menüleiste). Lockfile, Paketmanifeste und Gradle-Dateien sind seit `a1e7821` unverändert, Rezept und Bereinigungsliste seit dem Lauf vom 2026-09-30. Der Lauf erhält die tatsächliche Referenzdatei und prüft deren Größe und Prüfsumme; eine abweichende APK darf nicht stillschweigend als neue Referenz dienen.
 
 ### Vorbereitung, Bereinigung und Nachweise
 
@@ -538,27 +540,27 @@ Die abschließende gezielte Wiederholung besteht mit 12 Node-Tests, darin 67 Pyt
 
 Gebaut wurde Stand `f272140294ee270e82e2d549cf0c6765801b602c` aus einem aus Git-Bundle angelegten Klon: App `de.baremos.fristenrechner`, Version 0.1.0 (100). Umgebung: Debian 13.5 unter WSL 2, fdroidserver 2.4.2, Python 3.13.5, Node.js 24.21.0, npm 11.19.0, OpenJDK 21.0.12.1, Gradle 8.14.5, Android-Gradle-Plugin 8.13.0 und Build-Tools 35.0.0. Jeder Lauf verwendete eigene Zwischenspeicher. Die Dauern stammen aus der Zeitmessung der vollständigen Aufrufe von `build-lokal.py`, einschließlich Auswertung.
 
-| Variante | Lauf | Gemessene Dauer | `fdroid build` | Scanner | APK |
-|---|---|---|---|---|---|
-| (c) ohne Bereinigung | `lauf-bms4awvc` | 184 s | Rückgabewert 0, `1 build failed` | 10 Fehler | keine |
-| (a) gezielte Bereinigung | `lauf-hqj89xdz` | 343 s | Rückgabewert 0, `1 build succeeded` | kein Fehler | 7 715 483 Bytes, bytegleich zur Referenz |
-| (b) gezielte Bereinigung und `scandelete` | `lauf-zhqctq16` | 238 s | Rückgabewert 0, `1 build failed` | 1 Fehler: `Unused scandelete path: node_modules` | keine |
+| Variante | Gemessene Dauer | `fdroid build` | Scanner | APK |
+|---|---|---|---|---|
+| (c) ohne Bereinigung | 184 s | Rückgabewert 0, `1 build failed` | 10 Fehler | keine |
+| (a) gezielte Bereinigung | 343 s | Rückgabewert 0, `1 build succeeded` | kein Fehler | 7 715 483 Bytes, bytegleich zur Referenz |
+| (b) gezielte Bereinigung und `scandelete` | 238 s | Rückgabewert 0, `1 build failed` | 1 Fehler: `Unused scandelete path: node_modules` | keine |
 
 Die APK aus (a) hat SHA-256 `776bba301220d1d9b3f5e4f5d4841f37449609e72d6622b8ebdab065fcab93b3`. In allen drei Läufen ist der Rückgabewert von `fdroid build` allein kein Erfolgsbeleg. Die erste Auswertung auf Stand `f272140` meldete 65, 55 und 57 Beanstandungen und ließ deshalb alle drei Aufrufe von `build-lokal.py` mit 1 enden. Überwiegend fehlten ihr noch die engen Muster für die App-Ausgaben ohne Protokollkopf. Diese Auswertungen bleiben als Erstbefund erhalten; für die Neuauswertung wurden Kopien der Laufordner verwendet.
 
 Die Neuauswertung mit den belegten App-Mustern ergibt:
 
-| Variante / Lauf | Rückgabe der Auswertung | Beanstandungen | Ergebnis |
+| Variante | Rückgabe der Auswertung | Beanstandungen | Ergebnis |
 |---|---|---|---|
-| (c) `lauf-bms4awvc` | 1 | 1 | Scannerabbruch durch 10 Binärfunde; die zehn Dateien stehen unten. Kein APK-Nachweis. |
-| (a) `lauf-hqj89xdz` | 0 | 0 | Bestanden; APK bytegleich zur Referenz. |
-| (b) `lauf-zhqctq16` | 1 | 1 | Scannerabbruch durch ungenutztes `scandelete`: `Unused scandelete path: node_modules`; kein APK-Nachweis. |
+| (c) ohne Bereinigung | 1 | 1 | Scannerabbruch durch 10 Binärfunde; die zehn Dateien stehen unten. Kein APK-Nachweis. |
+| (a) gezielte Bereinigung | 0 | 0 | Bestanden; APK bytegleich zur Referenz. |
+| (b) gezielte Bereinigung und `scandelete` | 1 | 1 | Scannerabbruch durch ungenutztes `scandelete`: `Unused scandelete path: node_modules`; kein APK-Nachweis. |
 
 `--vergleich` endet wegen der beiden belegten Scannerabbrüche mit Rückgabe 1; die Gegenüberstellung selbst meldet keinen zusätzlichen Fehler. Die Beanstandungen von (c) und (b) benennen jeweils die Ursache einschließlich des fehlenden APK-Nachweises, ohne die bekannten Folgeerscheinungen desselben Abbruchs mehrfach zu zählen. Die Prüfsummen der ursprünglichen Materialdateien blieben bei der Neuauswertung unverändert.
 
 Die zehn Scannerfehler von (c), jeweils relativ zu `node_modules`:
 
-| Datei | Fund im `build.log` von `lauf-bms4awvc` |
+| Datei | Fund im `build.log` von Variante (c) |
 |---|---|
 | `@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.6` | Zeile 116: shared library |
 | `shiki/dist/onig.wasm` | Zeile 117: WebAssembly binary file |
@@ -636,6 +638,26 @@ Bei (b) folgt nach der Wrapper-Entfernung der Scannerfehler `Unused scandelete p
 4. Die Aussage gilt für den genannten Commit, das Lockfile, die Werkzeugversionen und die belegte Bereinigungsliste. Neue Abhängigkeiten, Plugins oder Regeln des Scanners erfordern neue Inventare und Vergleichsläufe.
 5. Die Erkennung eingebetteten WASM bleibt heuristisch. Inventar, Scanner und APK-Vergleich decken unterschiedliche Eigenschaften ab; keiner dieser Schritte allein belegt die Abwesenheit beliebig transformierter Programmbestandteile.
 
+## Lauf am Endstand vom 2026-10-04
+
+Quelle sind die Protokolle der Läufe vom 2026-10-03/04; sie liegen nicht im Repository.
+
+Geprüft ist `49dd420`; dessen App-Eingaben entsprechen dem App-Endstand `5e6f230`. Umgebung: Debian 13.5 in WSL 2, fdroidserver 2.4.2-1, OpenJDK 21.0.12.1 und Node.js 24.21.0. `gradlew-fdroid` stammt aus Commit `c7227d147483979bb5c408048cee3533a8814fb0` (SHA-256 des Programms `a6e2366c…07ea`). Das im Lauf geladene Gradle-Archiv 8.14.5 `bin` hat 138 068 841 Bytes und SHA-256 `6f74b601…e854`.
+
+| Schritt | Beobachtetes Ergebnis |
+|---|---|
+| Saubere Kopie vor dem Lauf | `npm ci` in 10 s; `npm test`: 1 985 Skripttests, davon 1 906 bestanden, 79 übersprungen und 0 fehlgeschlagen; Lizenzprüfung bestanden, Arbeitsbaum sauber. Die Gründe für die übersprungenen Tests stehen im [Build-Nachweis der App](app.md). |
+| Lokaler Build | Am 2026-10-04 von 00:07 bis 00:11, Variante `gezielt` nach F5, ohne `scandelete`; `fdroid build --verbose de.baremos.fristenrechner:100`. Laufsteuerung: 198 s. |
+| Scanner | Keine Fehler; entfernt nur das erwartete `app/android/gradle/wrapper/gradle-wrapper.jar`. Gradle startet über `gradlew-fdroid`. |
+| Bereinigung | 21 Pakete mit 1 580 Dateien entfernt; 6 Pakete inaktiv, 1 Paket behalten. |
+| Inventar vorgebauter Programme | Vor und nach Web-Build je 43 Funde, nach Bereinigung und nach Scanner je 0. Die Dateimanifeste vor und nach dem Scanner enthalten je 18 312 Dateien. |
+| Web-Abgleich | 14 Dateien vor der Bereinigung und 14 in der APK, Vergleich bestanden. Am 2026-09-30 waren es 15; `dist` enthält nun 12 statt 13 Dateien. |
+| Inhaltsvergleich entfernter Dateien | 2 belegte Gleichheiten leerer Dateien: `assets/public/cordova.js` und `cordova_plugins.js` gegenüber den entfernten leeren `node-fetch-native/lib/empty.*`; 0 unbelegte Gleichheiten. |
+| Auswertung | 226 bekannte Meldungen, 0 Beanstandungen, „ERGEBNIS: keine Beanstandung“; Rückgabewerte `fdroidBuild` und `appAuswertung` jeweils 0. |
+| APK | `unsigned/de.baremos.fristenrechner_100.apk`, 7 760 765 Bytes, SHA-256 `ab18ee072cf98f922ff16a139365be627ed18f5dd1d4876d54b4ef4fb3e4f1fa`; bytegleich zur Referenz, Referenz-Pin bestanden. Der Lauf belegt 1,2 GB. |
+
+Der lokale Abschlusslauf ist bestanden. Er liefert dieselbe unsignierte Release-APK wie die getrennten Builds unter Linux und Windows; siehe [N1](signierung.md#nachweise-für-die-abnahme). Die bisherigen Grenzen bleiben gültig: ein Rechner, Debian unter WSL, lokaler Lauf mit den Werkzeugen von F-Droid, kein Build auf dem Buildserver und keine Annahme durch F-Droid. Gradle lief mit Netz. Die Gleichheit gilt für die belegten Eingaben und Werkzeugversionen; Scanner und Inventar erkennen beliebig eingebetteten Programmcode nicht vollständig.
+
 ## Prüfung der ersten Fassung der Skripte unter Windows
 
 Geprüft am 2026-09-29 mit Node.js 22.23.2 und npm 10.9.8, ohne Downloads: 107 neue Tests mit `node:test`, davon 18 für die Einrichtung, 66 für die Build-Auswertung und 23 für Vorbereitung und Inventar. Jeder Test enthält einen gültigen Fall und eine Gegenprobe, die scheitern muss. Die Tests stellen HTTPS, Git- und Buildprozesse nach; Protokolle und APK-ZIPs sind Testdaten. Sie sind kein Nachweis eines echten F-Droid-Builds. Die Syntaxprüfung beider neuen Bash-Einstiege mit dem vorhandenen Git Bash ist bestanden.
@@ -660,5 +682,5 @@ Nach Ergänzung der Prüfungen für Steuerzeichen, Leerraum und sichtbare Unicod
 4. Erledigt am 2026-09-29: Legacy-Warnung als eng begrenzte bekannte Meldung bewertet, Archivprüfung durch Lauf 4 belegt; dessen Neuauswertung mit `eaf3939` besteht ohne Beanstandung mit neun bekannten Meldungen.
 5. Erledigt am 2026-09-30: drei App-Läufe auf `f272140`; gezielte Bereinigung ohne `scandelete` baut erfolgreich und bytegleich. Ohne Bereinigung zehn Scannerfehler; mit ergänzendem `scandelete` Abbruch am ungenutzten Eintrag. F6 ist mit `Calculator` festgelegt.
 6. Erledigt am 2026-09-30: F5 ist anhand dieser Nachweise festgelegt, gezielte Bereinigung ohne `scandelete`.
-7. Die angepasste Auswertung kreuzweise prüfen und die vollständigen Tests vor dem Merge unter Windows und Linux ausführen.
-8. Release-Build der App ohne F-Droid am 2026-09-30 unter Debian erledigt, mit bytegleichem Ergebnis in zwei Klonen und gegenüber Windows. Am Ende von Stufe 2 die Läufe mit Bereinigung und Scanner für den fertigen App-Stand wiederholen; den Nachweis mit dem dann verwendeten Buildserver von F-Droid gesondert führen.
+7. Erledigt, Stand 2026-10-04: angepasste Auswertung kreuzweise geprüft; vollständige Testläufe unter Windows und Linux am Nachweisstand `49dd420` liegen vor, siehe [Abschlusslauf](#lauf-am-endstand-vom-2026-10-04) und [App-Nachweise](app.md).
+8. Erledigt am 2026-10-04: Release-Builds ohne F-Droid in zwei Linux-Klonen und unter Windows sowie Wiederholung mit Bereinigung und Scanner am fertigen App-Stand; APKs bytegleich. Der Nachweis mit dem dann verwendeten Buildserver von F-Droid bleibt gesondert offen.

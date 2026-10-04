@@ -53,11 +53,13 @@ Dateien aus anderen Quellen werden vor dem ersten Einchecken geprüft. Die Prüf
 | Schritt | Befehl | Stand |
 |---|---|---|
 | Abhängigkeiten installieren | `npm ci` | läuft |
-| Tests | `npm test` | läuft, prüft die Skripte, den Rechenkern und die Oberfläche |
-| Typprüfung | `npm run check` | läuft für den Rechenkern und die Oberfläche |
-| Build der Pakete | `npm run build` | läuft für den Rechenkern |
+| Tests | `npm test` | läuft, prüft die Skripte, den Rechenkern, die Oberfläche und die App |
+| Typprüfung | `npm run check` | läuft für den Rechenkern, die Oberfläche und die App |
+| Build der Pakete | `npm run build` | läuft für den Rechenkern und den Web-Teil der App |
 | Lizenzen der Abhängigkeiten prüfen | `npm run lizenzen` | läuft |
-| Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht das Android-Projekt unter `app/android`, es folgt mit der App |
+| Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht JDK und Projekt-SDK |
+| Android-App bauen, Debug | `node scripts/app-bauen.mjs --android` | Web-Build, Übertragung nach Android, Gradle und die Prüfungen der Build-Kette in einem Lauf |
+| Android-App bauen, Release ohne Signatur | `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` | mit `--streng` nur, wenn Node, JDK und die Pakete des SDK der Festlegung entsprechen; die Version von npm prüft der Build nicht |
 
 Die Befehle funktionieren ohne private Dateien. Die Versionen der Werkzeuge stehen in [docs/toolchain.md](docs/toolchain.md).
 

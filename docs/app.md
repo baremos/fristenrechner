@@ -1,6 +1,6 @@
 # Android-App
 
-Stand 2026-10-03, App-Version 0.1.0. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
+Stand 2026-10-04, App-Version 0.1.0, geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420`. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
 
 ## Aufbau
 
@@ -148,7 +148,37 @@ K5 erlaubt genau `de.baremos.fristenrechner.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMIS
 
 Ohne Git scheitern K3 und K4 mit einem ausdrücklichen Fehler. K4 prüft den Modus im Index, weil er das Ausführungsrecht in einem frischen Linux-Klon bestimmt; der lokale Dateimodus allein belegt das nicht. Für ein Quellarchiv wäre ein vom Herausgeber bereitgestelltes, vertrauenswürdig abgesichertes Dateimanifest mit relativen Pfaden, Dateimodi und Inhaltsprüfsummen als Referenz erforderlich; ein erst nach dem Sync aus demselben Archiv erzeugtes Manifest würde dessen Unverändertheit nicht belegen. Dieser alternative Prüfweg ist nicht eingerichtet. Bis dahin setzt der vollständige Android-Build eine Git-Arbeitskopie voraus.
 
+## Build-Nachweis am Endstand vom 2026-10-03/04
+
+Quelle sind die Protokolle der Läufe vom 2026-10-03/04; sie liegen nicht im Repository. Der Windows-Neubau nach `clean` prüfte `5e6f230`, die frische Windows-Kopie und die beiden Linux-Klone prüften `49dd420`. Dieser Nachweisstand ergänzt nur die F-Droid-Referenz und ihre Dokumentation; die App-Eingaben sind gleich und entsprechen `1fdcf8b`.
+
+| Lauf | Werkzeuge und Ablauf | Beobachtetes Ergebnis |
+|---|---|---|
+| Windows, Neubau nach `clean`, 2026-10-03, 23:44 bis 23:47 | Node 24.21.0, npm 11.19.0, JDK 21.0.8, Gradle 8.14.5 `bin`, Build-Tools 35.0.0; ohne `--streng`. Zuerst `node scripts/android-build.mjs --projekt app/android --aufgabe clean`, danach `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` und `node scripts/app-bauen.mjs --android`. | Release mit K1 bis K5 bestanden; unsigniert 7 760 765 Bytes. Debug 9 516 334 Bytes. Arbeitsbaum vor und nach dem Lauf sauber. |
+| Windows, frische Kopie aus einem Bundle außerhalb des Repositorys, 2026-10-03, 23:51 bis 2026-10-04, 00:04 | Rechnerweites Node 22.23.2, npm 10.9.8, `core.autocrlf=true`, JDK 21.0.8; ohne `--streng`. `npm ci` in 35 Sekunden; `npm test`, `npm run check`, `npm run build`, `npm run lizenzen`; anschließend `node scripts/app-bauen.mjs --android --aufgabe assembleRelease`. | Alle genannten Prüfungen bestanden, K1 bis K5 bestanden; Release 7 760 765 Bytes und bytegleich zum Windows-Neubau. Arbeitsbaum sauber. Tests siehe unten. |
+| Linux, zwei frische Klone aus einem Bundle, 2026-10-03, 23:49 bis 2026-10-04, 00:00 | Debian 13.5 in WSL 2, Node 24.21.0, npm 11.19.0, OpenJDK 21.0.12.1, Projekt-SDK nur Gruppe „Build“, Gradle 8.14.5 `bin`. Je `npm ci` in 10 Sekunden und `node scripts/app-bauen.mjs --android --aufgabe assembleRelease --streng --ohne-testgruppe`. | K1 bis K5 in beiden Klonen bestanden; Builds in 57 und 33 Sekunden. Beide Release-APKs 7 760 765 Bytes, mit `cmp` untereinander bytegleich und gleich der Windows-Referenz; beide Arbeitsbäume sauber. |
+
+| Datei aus dem Windows-Neubau | SHA-256 |
+|---|---|
+| Release, unsigniert | `ab18ee072cf98f922ff16a139365be627ed18f5dd1d4876d54b4ef4fb3e4f1fa` |
+| Debug | `d05ca6b02574bc58e113136475c2ef40d7f44e51a7780308888993a8a5fd914c` |
+
+Die Release-Prüfsumme gilt für alle vier Builds. Die APK enthält `META-INF/version-control-info.textproto` mit `NO_SUPPORTED_VCS_FOUND` (46 Bytes), `assets/dexopt/baseline.prof` mit 2 499 Bytes und `baseline.profm` mit 233 Bytes; diese Dateien sind Teil des Vergleichs.
+
+| Tests mit `npm test` | Skripte insgesamt | Bestanden | Übersprungen | Fehlgeschlagen | Kern / Oberfläche / App (Vitest, bestanden) |
+|---|---|---|---|---|---|
+| Frische Windows-Kopie mit Node 22.23.2 | 1 985 | 1 981 | 4 | 0 | 134 / 343 / 258 |
+| Erster Linux-Klon mit Node 24.21.0 | 1 985 | 1 906 | 79 | 0 | 134 / 343 / 258 |
+
+Unter Linux bestand auch die Lizenzprüfung. Die 79 übersprungenen Skripttests sind 76 Simulationen der Geräte- und Emulatorlaufskripte, die nur unter Windows laufen (`skip: process.platform !== 'win32'` in `scripts/geraet-lauf.test.mjs` und `scripts/emulator-lauf.test.mjs`), zwei Fälle mit PowerShell und ein Signierfall zum „Pfad im Namensraum von Windows“. Der historische Lauf am Stand `a1e7821` hatte 1 445 Tests mit zwölf übersprungenen. Seitdem sind Tests hinzugekommen, die nur unter Windows laufen, darunter die Tests der Geräte-Laufskripte; daher die höhere Zahl übersprungener Tests.
+
+Ohne Netzwerkzugriff unter `unshare -r -n` bestanden Web-Build und `cap sync` jeweils mit Rückgabewert 0; die Gegenprobe im selben Netzwerk-Namensraum scheiterte mit `EAI_AGAIN`. Die Gegenprobe ohne Ausführungsrecht für `gradlew` brach mit `EACCES` und Rückgabewert 1 ab; die Änderung am Ausführungsrecht wurde danach zurückgenommen. Diese Proben betreffen die vorbereitete Linux-Umgebung. Gradle lief mit Netz.
+
+N1 ist damit für die unsignierte Release-APK auf diesem Rechner belegt. Der [lokale F-Droid-Lauf am Endstand](fdroid-build.md#lauf-am-endstand-vom-2026-10-04) lieferte einen fünften Build mit derselben Prüfsumme. Grenzen bleiben: Windows und Debian unter WSL auf einem Rechner, Windows ohne `--streng` mit JDK 21.0.8 statt der für Release-Builds festgelegten 21.0.12, Gradle mit Netz. Debug-APKs sind zwischen Arbeitskopien nicht bytegleich und gehören nicht zu N1. Ein Build auf dem F-Droid-Buildserver ist nicht belegt.
+
 ## Build vom 2026-09-30
+
+Dieser historische Abschnitt beschreibt den damaligen Stand; der [Build-Nachweis am Endstand](#build-nachweis-am-endstand-vom-2026-10-0304) steht oben.
 
 Der Android-Quellstand `b8b01c6`, Version 0.1.0, wurde am 2026-09-30 unter Windows gebaut: Node 24.21.0, npm 11.19.0, JDK 21.0.8, Capacitor 8.5.2, Android-Gradle-Plugin 8.13.0, Gradle 8.14.5 als `bin`-Verteilung und Build-Tools 35.0.0.
 
@@ -198,6 +228,8 @@ Der Rauchtest belegt Start und Anzeige dieses älteren Builds. Es gab keinen Net
 
 ## Linux-Nachweis vom 2026-09-30
 
+Dieser historische Abschnitt bleibt als Nachweis der damaligen Quellstände erhalten. Den App-Endstand beschreibt der [Build-Nachweis vom 2026-10-03/04](#build-nachweis-am-endstand-vom-2026-10-0304).
+
 Der Quellstand `c7a0cd8` wurde unter Debian 13.5 in WSL 2 aus einem Git-Bundle in zwei getrennte Ordner geklont. Jeder Klon hatte sein eigenes `node_modules`. Verwendet wurden Node.js 24.21.0, npm 11.19.0, OpenJDK 21.0.12.1, Gradle 8.14.5 als `bin`-Verteilung und Build-Tools 35.0.0. Das Projekt-SDK enthielt nur die Gruppe „Build“. Die bereits vorhandene und geprüfte Gradle-Verteilung wurde in den Cache des Wrappers kopiert; der Wrapper prüfte ihre Prüfsumme erneut. Bei diesem Lauf wurde die Verteilung nicht neu geladen.
 
 | Schritt | Klon 1 | Klon 2 |
@@ -221,7 +253,7 @@ Ergänzend bestand am selben Tag eine saubere Windows-Kopie desselben Stands mit
 
 Am selben Tag wurde der Nachweis am Quellstand `a1e7821` wiederholt, mit der Oberfläche über die Plattformschnittstelle: wieder zwei Klone, derselbe Befehl mit `--streng --ohne-testgruppe`, K1 bis K5 bestanden, Arbeitskopie danach unverändert. Die beiden unsignierten Release-APKs waren bytegleich, 7.715.483 Bytes, SHA-256 `776bba301220d1d9b3f5e4f5d4841f37449609e72d6622b8ebdab065fcab93b3`, und entsprechen der Windows-APK dieses Stands. Web-Build und Sync bestanden erneut ohne Netzwerk, die Gegenprobe zum Ausführungsrecht meldete `EACCES`. `npm test` meldete 1.445 Skripttests, davon 1.433 bestanden und zwölf übersprungen (die Prüfungen mit dem Emulator laufen nur unter Windows), `npm run lizenzen` bestand.
 
-Der Vergleich gilt für zwei Klone auf demselben Rechner und für den genannten Tag. Nicht geprüft sind ein Debug-Build unter Linux, die Gegenprobe mit geändertem `versionName`, ein zweiter Rechner und ein Build dieser App mit dem Scanner oder dem Buildserver von F-Droid.
+Der Vergleich gilt für zwei Klone auf demselben Rechner und für den genannten Tag. Der damalige Lauf prüfte keinen Debug-Build unter Linux, keine Gegenprobe mit geändertem `versionName`, keinen zweiten Rechner und keinen Build mit dem Scanner oder dem Buildserver von F-Droid. Inzwischen ist der [lokale Lauf mit dem Scanner von F-Droid am Endstand](fdroid-build.md) belegt; ein Build auf dem F-Droid-Buildserver bleibt offen.
 
 ## Prüfung im Emulator
 

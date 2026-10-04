@@ -1,8 +1,10 @@
 # Werkzeuge und Versionen
 
-Stand 2026-09-28 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review der Festlegung am 2026-09-27 bestanden. Am 2026-09-28 geändert: Kommandozeilenwerkzeuge 22.0 statt 23.0, Prüfung der Pakete mit `scripts/SdkPruefung.java`, Testgeräte. Projekt-SDK eingerichtet, Beispielbuild und Probe im Emulator bestanden, siehe Abschnitt „Nachweis". Kreuz-Review dieser Änderungen am 2026-09-28 bestanden. Am 2026-09-29 ergänzt: Unter Linux wird nur die Gruppe „Build" eingerichtet.
+Stand 2026-10-04 · Arbeitspaket 2.1 · Status: Versionen und Skripte festgelegt, Kreuz-Review der Festlegung am 2026-09-27 bestanden. Am 2026-09-28 geändert: Kommandozeilenwerkzeuge 22.0 statt 23.0, Prüfung der Pakete mit `scripts/SdkPruefung.java`, Testgeräte. Projekt-SDK eingerichtet, Beispielbuild und Probe im Emulator bestanden, siehe Abschnitt „Nachweis". Kreuz-Review dieser Änderungen am 2026-09-28 bestanden. Am 2026-09-29 ergänzt: Unter Linux wird nur die Gruppe „Build" eingerichtet.
 
 Ergänzt am 2026-09-30: Die App setzt Android 11 (API 30) und WebView ab Version 83 voraus. Ihr Wrapper verwendet Gradle 8.14.5 als `bin`-Verteilung. Die AndroidX-Versionen aus `app/android/variables.gradle` sind unten aufgeführt. Debug- und Release-Build der App unter Windows sowie zwei strenge Release-Builds unter Debian sind erfolgt. Die unsignierten Release-APKs sind bytegleich. Ergebnisse und Grenzen stehen in [app.md](app.md).
+
+Ergänzt am 2026-10-04: Die [Abschlussnachweise vom 2026-10-03/04](app.md#build-nachweis-am-endstand-vom-2026-10-0304) prüfen den App-Endstand `5e6f230` und den Nachweisstand `49dd420` mit gleichen App-Eingaben. Belegt sind Windows nach `clean`, eine frische Windows-Kopie mit Node 22.23.2 und npm 10.9.8 sowie zwei frische Linux-Klone mit Node 24.21.0, npm 11.19.0 und OpenJDK 21.0.12.1. Die unsignierten Release-APKs sind bytegleich. Windows lief mit JDK 21.0.8 ohne `--streng`, Linux mit `--streng --ohne-testgruppe`; alles auf einem Rechner, Gradle mit Netz. Die Werkzeugfestlegungen ändern sich dadurch nicht.
 
 ## Zweck
 
@@ -50,7 +52,7 @@ Dieses Dokument legt fest, mit welchen Werkzeugen und in welchen Versionen der F
 
 ### Bibliotheken für die Exporte
 
-Arbeitspaket 2.4 bindet sie ein. Die Lizenzprüfung samt Transitivabhängigkeiten liegt davor.
+Arbeitspaket 2.4 hat diese Bibliotheken eingebunden. Die Lizenzprüfung und ihre offenen Ergänzungen stehen in [lizenzen.md](lizenzen.md).
 
 | Bibliothek | Version | Lizenz | Zweck |
 |---|---|---|---|
@@ -67,14 +69,19 @@ Die Excel-Datei schreibt das Paket selbst. Der Ausgangscode nutzte dafür excelj
 | @capacitor/core | 8.5.2 | MIT | fest |
 | @capacitor/cli | 8.5.2 | MIT | fest |
 | @capacitor/android | 8.5.2 | MIT | fest |
-| @capacitor/filesystem | 8.1.3 | MIT | fest: Exportdatei schreiben |
-| @capacitor/share | 8.0.2 | MIT | fest: Teilen-Dialog |
-| @capacitor/app | 8.1.1 | MIT | Kandidat, Entscheidung in 2.6 |
-| @capawesome/capacitor-file-picker | 8.1.0 | MIT | Kandidat, Entscheidung in 2.6 |
 
-Zu den Kandidaten: Die WebView von Capacitor öffnet den Dateidialog des Systems auch über ein gewöhnliches Dateifeld. Die Wiederaufnahme der App meldet der Browser über `visibilitychange`. Arbeitspaket 2.6 prüft, ob die Plugins trotzdem nötig sind. Jede Abhängigkeit weniger vereinfacht Lizenzprüfung und F-Droid-Build.
+Stand 2026-10-04: Diese drei Pakete sind die Capacitor-Abhängigkeiten der App; Quelle ist [app/package.json](../app/package.json). Die Dateiabläufe nutzen das eigene Java-Plugin, siehe [app.md](app.md#dateiabläufe-speichern-unter-teilen-import-und-dialog-nativ). `@capacitor/filesystem`, `@capacitor/share`, `@capacitor/app` und `@capawesome/capacitor-file-picker` sind keine aktuellen App-Abhängigkeiten.
 
-`@capacitor/filesystem` bindet die Bibliothek `io.ionic.libs:ionfilesystem-android` 1.1.0 (MIT, Maven Central) und das Kotlin-Gradle-Plugin 2.2.20 (Apache-2.0) ein.
+Die folgenden Angaben dokumentieren nur die historische Werkzeugprobe aus dem Abschnitt [Nachweis](#nachweis) und die damaligen Kandidaten. Sie sind keine Festlegung für die aktuelle App:
+
+| Paket | Damaliger Stand | Lizenz | Historische Verwendung |
+|---|---|---|---|
+| @capacitor/filesystem | 8.1.3 | MIT | Exportdatei in der Minimal-App schreiben |
+| @capacitor/share | 8.0.2 | MIT | Teilen in der Minimal-App |
+| @capacitor/app | 8.1.1 | MIT | damaliger Kandidat für Arbeitspaket 2.6, nicht eingebunden |
+| @capawesome/capacitor-file-picker | 8.1.0 | MIT | damaliger Kandidat für Arbeitspaket 2.6, nicht eingebunden |
+
+In dieser historischen Probe band `@capacitor/filesystem` die Bibliothek `io.ionic.libs:ionfilesystem-android` 1.1.0 (MIT, Maven Central) und das Kotlin-Gradle-Plugin 2.2.20 (Apache-2.0) ein. Das Kotlin-Gradle-Plugin ist kein Werkzeug des aktuellen App-Builds; dessen Buildscript bindet nur das Android-Gradle-Plugin ein ([app/android/build.gradle](../app/android/build.gradle)).
 
 Keines der genannten Pakete enthält Google Play Services oder Firebase. Keines trägt eine Berechtigung in das Manifest ein.
 
@@ -85,7 +92,6 @@ Keines der genannten Pakete enthält Google Play Services oder Firebase. Keines 
 | JDK | 21, eine freie OpenJDK-Distribution | GPL-2.0 mit Classpath Exception | Capacitor 8 verlangt Java 21 |
 | Gradle | 8.14.5, über den Gradle-Wrapper | Apache-2.0 | Abweichung von der Vorlage, siehe unten |
 | Android-Gradle-Plugin | 8.13.0 | Apache-2.0 | Capacitor-Vorlage 8.5.2 |
-| Kotlin-Gradle-Plugin | 2.2.20 | Apache-2.0 | `@capacitor/filesystem` 8.1.3 |
 
 Zu Gradle: Die Vorlage nennt 8.14.3. Diese Version ist von zwei Sicherheitsmeldungen betroffen, die 8.14.4 behebt (GHSA-mqwm-5m85-gmcv, GHSA-w78c-w6vf-rw82, beide zur Auflösung von Abhängigkeiten). Festgelegt ist deshalb 8.14.5 vom 2026-05-07. Das Android-Gradle-Plugin 8.13 verlangt mindestens Gradle 8.13.
 
@@ -266,7 +272,9 @@ node scripts/app-bauen.mjs --android --aufgabe assembleRelease --streng --ohne-t
 
 `--ohne-testgruppe` gilt auch für `node scripts/android-build.mjs --nur-pruefen`. Die Prüfung der Gruppe „Build" und aller übrigen Werkzeuge bleibt unverändert; `--streng` macht weiterhin aus jedem verbleibenden Hinweis einen Abbruch.
 
-Am 2026-09-30 bestand dieser Ablauf für `c7a0cd8` in zwei frischen Klonen unter Debian 13.5 in WSL 2 mit Node.js 24.21.0, npm 11.19.0 und OpenJDK 21.0.12.1. Beide Release-APKs waren untereinander und mit Windows bytegleich. Web-Build und Sync bestanden zusätzlich ohne Netzwerkzugriff; Gradle lief mit Netzwerkzugriff. Debug unter Linux und ein zweiter Rechner sind nicht geprüft. Einzelheiten stehen im [Linux-Nachweis](app.md#linux-nachweis-vom-2026-09-30).
+Historischer Nachweis: Am 2026-09-30 bestand dieser Ablauf für `c7a0cd8` in zwei frischen Klonen unter Debian 13.5 in WSL 2 mit Node.js 24.21.0, npm 11.19.0 und OpenJDK 21.0.12.1. Beide Release-APKs waren untereinander und mit Windows bytegleich. Web-Build und Sync bestanden zusätzlich ohne Netzwerkzugriff; Gradle lief mit Netzwerkzugriff. Einzelheiten stehen im [Linux-Nachweis vom 2026-09-30](app.md#linux-nachweis-vom-2026-09-30).
+
+Am 2026-10-03/04 wurde der Ablauf am Nachweisstand `49dd420` in zwei frischen Klonen unter Debian 13.5 in WSL 2 wiederholt: Node 24.21.0, npm 11.19.0, OpenJDK 21.0.12.1, Gradle 8.14.5 `bin`, Projekt-SDK nur Gruppe „Build“. Beide strengen Release-Builds bestanden K1 bis K5 und ergaben dieselbe unsignierte APK wie Windows. Web-Build und Sync bestanden ohne Netz, die Gegenprobe ohne Ausführungsrecht für `gradlew` scheiterte mit `EACCES`. Tests und Lizenzprüfung im ersten Klon bestanden; die 79 übersprungenen Skripttests und sämtliche Zahlen sind im [Build-Nachweis am Endstand](app.md#build-nachweis-am-endstand-vom-2026-10-0304) mit ihrer Quelle erläutert. Gradle lief mit Netz. Debug unter Linux und ein zweiter Rechner sind weiterhin nicht geprüft.
 
 ## Einrichtung unter Windows
 
@@ -324,7 +332,7 @@ F-Droid baut unter Debian. Die Werkzeuge von F-Droid laufen nicht unter Windows.
 | Werkzeug | Version | Hinweis |
 |---|---|---|
 | Debian | 13 (trixie) | Mindeststand für den Buildserver von F-Droid |
-| fdroidserver | 2.4.2 (AGPL-3.0), Paket `fdroidserver` 2.4.2-1 aus Debian 13 | Festgelegt am 2026-09-28 als Stand des lokalen Nachweises, Begründung in `fdroid-build.md`, Festlegung F1. Bis dahin war 2.4.5 genannt. Welchen Stand der Buildserver von F-Droid nutzt, hält der abschließende Nachweis fest. |
+| fdroidserver | 2.4.2 (AGPL-3.0), Paket `fdroidserver` 2.4.2-1 aus Debian 13 | Festgelegt am 2026-09-28 als Stand des lokalen Nachweises, Begründung in `fdroid-build.md`, Festlegung F1. Bis dahin war 2.4.5 genannt. Der [lokale Lauf am Endstand](fdroid-build.md#lauf-am-endstand-vom-2026-10-04) verwendet diesen Stand; der Stand des Buildservers von F-Droid ist nicht geprüft. |
 | gradlew-fdroid | Commit `c7227d147483979bb5c408048cee3533a8814fb0` (AGPL-3.0-only) | F2 festgelegt am 2026-09-29; Gradle 8.14.5 bleibt. Quelle, SHA-256, Benutzerablage und Laufzeitdownloads: [fdroid-build.md, F2](fdroid-build.md#f2-festgehaltenes-buildwerkzeug); Werte in `scripts/toolchain.json`. |
 | OpenJDK | 21.0.12.1+1 aus Debian 13 | Hauptversion 21 wie festgelegt |
 | Node.js | Debian 13 liefert 20.19.2 | zu alt für Astro 7, siehe unten |
@@ -346,7 +354,7 @@ Freie Lizenzen allein klären nicht, wie F-Droid vorgefertigte Binärdateien beh
 | Gradle-Distribution | services.gradle.org | Android-Build | `distributionSha256Sum` | F-Droid nutzt die eigene Gradle-Verwaltung |
 | Android SDK | Google | Android-Build | Prüfsummen der Paketliste | F-Droid stellt das SDK selbst bereit |
 
-Die frühe F-Droid-Probe mit der Minimal-App durchläuft diesen vollständigen Weg, einschließlich Web-Build. Ausnahmen für den Scanner werden einzeln begründet und so eng wie möglich gefasst.
+Die frühe F-Droid-Probe mit der Minimal-App durchlief diesen vollständigen Weg einschließlich Web-Build. Die spätere gezielte Bereinigung und der lokale Lauf mit der App am Endstand stehen in [fdroid-build.md](fdroid-build.md). Daraus folgt kein Nachweis auf dem Buildserver von F-Droid.
 
 ## Offene Festlegungen späterer Arbeitspakete
 
@@ -373,7 +381,7 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 
    Die Tabelle beschreibt die frühere Minimal-App mit Mindest-API 24. Auf dem Abbild API 24 wären Plugins nicht nutzbar. Die App setzt seit dem 2026-09-30 Mindest-API 30 voraus; API 24 dient nur noch der Installationsgegenprobe. API 30 ist das niedrigste geprüfte Abbild mit geeigneter WebView. Für API 25 bis 29 gibt es keinen Nachweis. Auf Geräten hängt die Version der WebView vom Stand ihrer Updates ab, nicht allein von der API-Stufe.
 
-   Beobachtet am 2026-09-29 in der Probe zum Update (`signierung.md`): Die WebView 83 des Abbilds API 30 bricht das gebündelte Skript der Seite mit `Uncaught SyntaxError: Unexpected token '='` ab; der Aufruf des Plugins über die Brücke findet nicht statt. Die Prüfsummen der unsignierten APK blieben trotz `vite.build.target: 'chrome60'` in `astro.config.mjs` gleich. Das gebündelte Skript wurde nicht aufbewahrt. Welcher Ausdruck den Syntaxabbruch auslöste und warum das Build-Ziel die Prüfsumme nicht änderte, ist damit nicht unabhängig nachvollziehbar. Die App setzt das JavaScript-Ziel inzwischen über `configEnvironment` für die Client-Umgebung und das CSS-Ziel über `cssTarget` auf `chrome83`. Der statische Web-Build bestand am 2026-09-30. Beim Rauchtest dieser App am selben Tag erschienen auf API 30 und 36 die Rechnerseite und ihre Eingabefelder; `logcat` enthielt keine Fehlerzeile. Berechnung, Brückenaufruf und Updateprüfung wurden dabei nicht wiederholt. Die spätere Emulatorprüfung vom selben Tag belegt Berechnung und Brückenaufruf auf beiden Abbildern, siehe [app.md](app.md#prüfung-im-emulator); die Updateprüfung mit dieser App steht aus.
+   Beobachtet am 2026-09-29 in der Probe zum Update (`signierung.md`): Die WebView 83 des Abbilds API 30 bricht das gebündelte Skript der Seite mit `Uncaught SyntaxError: Unexpected token '='` ab; der Aufruf des Plugins über die Brücke findet nicht statt. Die Prüfsummen der unsignierten APK blieben trotz `vite.build.target: 'chrome60'` in `astro.config.mjs` gleich. Das gebündelte Skript wurde nicht aufbewahrt. Welcher Ausdruck den Syntaxabbruch auslöste und warum das Build-Ziel die Prüfsumme nicht änderte, ist damit nicht unabhängig nachvollziehbar. Die App setzt das JavaScript-Ziel inzwischen über `configEnvironment` für die Client-Umgebung und das CSS-Ziel über `cssTarget` auf `chrome83`. Der statische Web-Build bestand am 2026-09-30. Beim Rauchtest dieser App am selben Tag erschienen auf API 30 und 36 die Rechnerseite und ihre Eingabefelder; `logcat` enthielt keine Fehlerzeile. Berechnung, Brückenaufruf und Updateprüfung wurden dabei nicht wiederholt. Die spätere Emulatorprüfung vom selben Tag belegt Berechnung und Brückenaufruf auf beiden Abbildern, siehe [app.md](app.md#prüfung-im-emulator). Die Updateprüfung vom 2026-10-04 ist inzwischen mit der Testfassung der App unter eigener App-ID auf API 30 und 36 belegt; Quelle und Grenzen stehen in [signierung.md](signierung.md#nachweise-für-die-abnahme).
 6. **Der Build lädt Werkzeuge und Abhängigkeiten aus dem Netz.** Das betrifft nur den Build. Die App greift im Betrieb nicht auf das Netzwerk zu.
 7. **`sdkmanager` ist abgekündigt.** Siehe Abschnitt „Android SDK". Die Festlegung auf die Kommandozeilenwerkzeuge 22.0 ist eine Übergangslösung.
 8. **Warnung des Android-Gradle-Plugins zum Format der Paketbeschreibung.** Die installierten Pakete tragen `package.xml` im Format 4. Das Android-Gradle-Plugin 8.13 versteht Format 3 und meldet das beim Build als Warnung. Der Build läuft durch.
@@ -392,13 +400,15 @@ Jede Änderung einer Version ändert dieses Dokument, `scripts/toolchain.json` u
 
 ## Nachweis
 
-Beispielprojekt: eine Astro-Seite mit einem TypeScript-Modul und einem Test, Capacitor mit den Plugins `filesystem` und `share`, Android-Projekt aus der Vorlage mit allen Abweichungen dieses Dokuments.
+Die folgende Tabelle dokumentiert die historische Werkzeugprobe vom 2026-09-27/28 und ausdrücklich datierte Ergänzungen. Das Beispielprojekt bestand aus einer Astro-Seite mit einem TypeScript-Modul und einem Test, Capacitor mit den Plugins `filesystem` und `share` sowie einem Android-Projekt aus der Vorlage mit den damals festgelegten Abweichungen. Diese Plugins und das darüber verwendete Kotlin-Gradle-Plugin gehören nicht zur aktuellen App.
 
 | Prüfung | Ergebnis |
 |---|---|
 | Auflösung des Baums mit npm 11.19.0 und `min-release-age=7`, `ignore-scripts=true` | bestanden am 2026-09-27, 393 Pakete |
 | `npm ci`, Web-Build, `astro check`, Vitest mit Node 24.21.0 und npm 11.19.0 | bestanden am 2026-09-27 |
 | `npm ci`, Web-Build, `astro check`, Vitest mit npm 10.9.8 aus dem Lockfile von npm 11.19.0 | bestanden am 2026-09-27 unter Node 22.23.1, der unter der Untergrenze liegt. Wiederholt am 2026-09-30 mit Node 22.23.2 und npm 10.9.8 in einer sauberen Windows-Kopie von `c7a0cd8`: `npm ci`, `npm test`, `npm run check`, `npm run build` und `npm run lizenzen` jeweils mit Rückgabewert 0; Arbeitskopie unverändert. |
+| Frische Windows-Kopie des App-Endstands mit Node 22.23.2 und npm 10.9.8 | bestanden am 2026-10-03/04, Nachweisstand `49dd420`, `core.autocrlf=true`: `npm ci`, `npm test`, `npm run check`, `npm run build`, `npm run lizenzen` und Android-Release mit K1 bis K5. JDK 21.0.8, ohne `--streng`; Arbeitsbaum sauber. Quelle und Einzelwerte im [Build-Nachweis am Endstand](app.md#build-nachweis-am-endstand-vom-2026-10-0304). |
+| Zwei frische Linux-Klone des App-Endstands | bestanden am 2026-10-03/04, Nachweisstand `49dd420`, mit Node 24.21.0, npm 11.19.0 und OpenJDK 21.0.12.1: `--streng --ohne-testgruppe`, K1 bis K5, beide Release-APKs bytegleich untereinander und mit Windows. Quelle und Grenzen im [Build-Nachweis am Endstand](app.md#build-nachweis-am-endstand-vom-2026-10-0304). |
 | Build-Skript gegen ein nachgestelltes SDK: fehlendes Paket, abweichende Revision, strenge Prüfung, widersprüchliche Ortsangaben, ungeeignetes JDK | bestanden am 2026-09-27 |
 | Einrichtungsskript: Syntax und Hilfsfunktionen unter Windows PowerShell 5.1 und PowerShell 7.6 | bestanden am 2026-09-27, wiederholt am 2026-09-28 |
 | Einrichtungsskript gegen ein leeres SDK, Lizenzbedingungen nicht bestätigt | bestanden am 2026-09-28: Archiv der Kommandozeilenwerkzeuge 22.0 mit passender Prüfsumme geladen, `sdkmanager` zeigt die Bedingungen von `android-sdk-license`, installiert nichts und legt keine Zustimmung ab, das Skript endet mit Code 2 |
