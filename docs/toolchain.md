@@ -119,7 +119,7 @@ Die folgenden Versionen stehen am 2026-09-30 in `app/android/variables.gradle`. 
 | `androidxWebkitVersion` | 1.14.0 |
 | `cordovaAndroidVersion` | 14.0.1 |
 
-Die Lizenzprüfung der vollständigen Gradle-Abhängigkeiten der App steht noch aus.
+Die aufgelösten Laufzeitmodule von `releaseRuntimeClasspath` sind am 2026-10-04 für den Stand `9ae4cd9` mit POM-Lizenzangaben und APK-/SUSS-Abgleich im [Android-Laufzeitinventar](lizenzen.md#android--und-gradle-abhängigkeiten) erfasst. Vollständige Hinweise Dritter einschließlich der eingebetteten Anteile bleiben offen; Liste, Lizenzregel und Prüfsummenabsicherung der Gradle-Build-Werkzeuge folgen gesondert.
 
 ### JDK
 
@@ -340,6 +340,10 @@ F-Droid baut unter Debian. Die Werkzeuge von F-Droid laufen nicht unter Windows.
 F-Droid verlangt freie Werkzeuge für den gesamten Build und bevorzugt Pakete aus Debian. Das JDK von Oracle ist ausgeschlossen.
 
 Auf einem Windows-Rechner braucht der Nachweis aus Arbeitspaket 2.8 eine Linux-Umgebung: WSL 2 mit Debian 13 oder einen Container. Eingerichtet ist seit dem 2026-09-28 WSL 2 mit Debian 13.5, siehe `fdroid-build.md`.
+
+### Prüfwerkzeug LibreOffice
+
+Festgelegt am 2026-10-04 für die Sichtung der Excel-Ausgaben (Testmatrix B14): `libreoffice-calc-nogui` 4:25.2.3-2+deb13u7 aus `trixie-security` (MPL-2.0), installiert mit `apt-get install --no-install-recommends` in derselben Debian-Umgebung unter WSL 2. Die Simulation am 2026-10-04 ergab 73 neue Pakete, keine Aktualisierung vorhandener Pakete, kein zusätzliches JDK und kein zusätzliches Python. LibreOffice ist nur Prüfwerkzeug: Es gehört weder zum Build der App noch zum Rezept für F-Droid. Umwandlungen laufen ohne Oberfläche und ohne Netz (`unshare -r -n`). Die Paketliste vor und nach der Installation wird gesichert; die zusätzlichen Pakete liegen auch in der Umgebung späterer lokaler Läufe mit den Werkzeugen von F-Droid und sind dort zu berücksichtigen. Unter Windows wird dafür nichts installiert.
 
 ### Vorgefertigte Binärdateien
 

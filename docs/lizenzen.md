@@ -1,6 +1,6 @@
 # Lizenzen und Abhängigkeiten
 
-Stand: **2026-10-04**, geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420`. Die Bestandszahlen und einzeln gelesenen Paketbelege unten stammen aus der Bestandsaufnahme vom **2026-09-29** mit Capacitor 8.5.2, dem npm-Lockfile im Format 3 und der damaligen Windows-Installation. Sie sind historische Angaben, keine neu erhobene Bestandsliste. Dieses Dokument beschreibt Projektregeln und Paketbelege, keine Rechtsauskunft. Werkzeuge und Android-Komponenten außerhalb dieses Lockfiles behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
+Stand: **2026-10-04**, geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420`; Android-Laufzeitinventar am Stand `9ae4cd9`. Die npm-Bestandszahlen und einzeln gelesenen npm-Paketbelege unten stammen aus der Bestandsaufnahme vom **2026-09-29** mit Capacitor 8.5.2, dem npm-Lockfile im Format 3 und der damaligen Windows-Installation. Sie sind historische Angaben, keine neu erhobene npm-Bestandsliste. Dieses Dokument beschreibt Projektregeln und Paketbelege, keine Rechtsauskunft. Die [Android- und Gradle-Abhängigkeiten](#android--und-gradle-abhängigkeiten) sind unten gesondert erfasst; Werkzeugfestlegungen und Build-Nachweise behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
 
 Das Projekt steht unter Apache-2.0. Der Wortlaut liegt in `LICENSE`, der Herausgeberhinweis in `NOTICE` in der Wurzel des Repositorys.
 
@@ -120,7 +120,7 @@ Verteilung der unveränderten Lizenzangaben aus demselben Lauf; zusammengesetzte
 
 Für die SEE-LICENSE-Angabe wählt die Einzelausnahme MIT; die Tabelle bewahrt den ursprünglichen Wortlaut. Ebenso bleibt bei DOMPurify die zusammengesetzte Angabe sichtbar, obwohl für die Auslieferung Apache-2.0 gewählt wird.
 
-Die vollständige Liste aller npm-Abhängigkeiten samt Transitivabhängigkeiten steht im eingecheckten [`package-lock.json`](../package-lock.json), unter `packages` mit Version, Paketort und Lizenzangabe je Paket. `node scripts/check-licenses.mjs --json` ergänzt diese Liste aus dem aktuellen Baum um die Bereiche, gewählten Lizenzen, Einzelausnahmen, Belegpfade unter `wege` und Fehler. Diese Quellen bilden die npm-Liste. Eine zusätzliche erzeugte Liste ist derzeit nicht eingecheckt. Nicht im Lockfile erfasste Bündelinhalte sowie Android- und Gradle-Abhängigkeiten bleiben gesondert zu ergänzen.
+Die vollständige Liste aller npm-Abhängigkeiten samt Transitivabhängigkeiten steht im eingecheckten [`package-lock.json`](../package-lock.json), unter `packages` mit Version, Paketort und Lizenzangabe je Paket. `node scripts/check-licenses.mjs --json` ergänzt diese Liste aus dem aktuellen Baum um die Bereiche, gewählten Lizenzen, Einzelausnahmen, Belegpfade unter `wege` und Fehler. Diese Quellen bilden die npm-Liste. Eine zusätzliche erzeugte npm-Liste ist derzeit nicht eingecheckt. Die von Gradle aufgelösten Laufzeitmodule sind im [Android-Laufzeitinventar](#android--und-gradle-abhängigkeiten) erfasst. Nicht im Lockfile erfasste Bündelinhalte, vollständige Hinweise Dritter und der Gradle-Werkzeugteil bleiben gesondert zu ergänzen.
 
 ### Geprüfte Angaben im verbleibenden Baum
 
@@ -166,9 +166,112 @@ Die App nennt `@capacitor/core` und `@capacitor/android` 8.5.2 unter `dependenci
 
 Ausgeliefert sind neu nur `@capacitor/core`, `@capacitor/android` (beide MIT) und `tslib` (0BSD). Die Kommandozeile ist eine Entwicklungsabhängigkeit. Orte, die ihr Baum mit anderen Bäumen teilt, behalten den vorrangigen Bereich: Von den 95 neuen Orten sind 2 ausgeliefert (`@capacitor/core`, `@capacitor/android`), 91 für Test und Build und 2 bereitgestellt (`@types/node`, `undici-types`, zusätzlich über Astro erreichbar). `tslib` stand schon im Lockfile und ist jetzt ausgeliefert. Ohne die Kennungen 0BSD für die Auslieferung und Unlicense für Werkzeuge scheitert die Prüfung genau an `tslib`, `big-integer` und `stream-buffers`.
 
-Nicht erfasst sind die Abhängigkeiten, die Gradle für `@capacitor/android` lädt, darunter AndroidX und das Cordova-Framework. Das Android-Projekt liegt vor; die vollständige Liste und Lizenzprüfung seiner Gradle-Abhängigkeiten sind weiterhin zu ergänzen.
+Im npm-Lauf vom 2026-09-29 waren die Abhängigkeiten, die Gradle für `@capacitor/android` lädt, darunter AndroidX und das Cordova-Framework, nicht erfasst. Der [Laufzeitteil mit POM-Lizenzangaben und APK-Abgleich](#android--und-gradle-abhängigkeiten) ist am 2026-10-04 für `9ae4cd9` ergänzt; vollständige Hinweise Dritter und der Gradle-Werkzeugteil bleiben offen.
 
 Damit gehörte das vorgebaute Browser-Bündel von ExcelJS nicht mehr zum npm-Bestand vom 2026-09-29. Seine frühere Auswertung ist kein Nachweis für den Inhalt eines neuen Website- oder App-Builds. Der eigene Excel-Schreiber und die vollständige Oberfläche wurden im damaligen Metadatenlauf nicht gebaut. Die späteren vollständigen App-Builds sind in [app.md](app.md) belegt. Die erzeugten Bündel und die Originalhinweise ihrer tatsächlich enthaltenen Fremdanteile bleiben vor der Auslieferung zu prüfen; das gilt auch für die übrigen Exportbibliotheken.
+
+## Android- und Gradle-Abhängigkeiten
+
+Erhoben am **2026-10-04**, Stand **`9ae4cd9`**. Erfasst ist ausschließlich `:app:releaseRuntimeClasspath`, einschließlich transitiver Module und der beiden Projektmodule. Grundlage sind der gespeicherte Bericht dieses Laufs, eine Auswertung der POM-Dateien im Gradle-Cache und die Prüfprotokolle zur APK. Diese Belege werden gesondert aufbewahrt und sind nicht Teil des Repositorys. Der Offline-Lauf mit Gradle 8.14.5 und JDK 21.0.8 endete mit Rückgabewert 0 und `BUILD SUCCESSFUL in 13s`.
+
+### Aufgelöste Laufzeitmodule
+
+Der Abgleich des Gradle-Berichts mit der Auswertung ergibt dieselben **50 externen Module mit identischen Versionen**: **46 mit AAR- oder JAR-Artefakt**, davon **39 AndroidX**, und **vier nur mit Metadaten**. Gezählt wird jede aufgelöste Kombination aus Gruppe, Artefakt und Version einmal; wiederholte Baumknoten, Versionsanforderungen vor `->` und zusätzliche Constraints erhöhen die Zahl nicht. Insgesamt sind es 41 AndroidX-Module: 39 mit Artefakt und zwei nur mit Metadaten.
+
+Die Lizenzspalte nennt die Lizenz laut POM, als SPDX-Kennung wiedergegeben. Bei `com.google.guava:listenablefuture` stammt die Angabe aus dem Eltern-POM `com.google.guava:guava-parent:26.0-android`. Diese Metadaten erfassen nicht automatisch die Lizenzwortlaute eingebetteter Anteile.
+
+| Gruppe:Artefakt | Version | Bestand | Lizenz laut POM |
+|---|---|---|---|
+| `androidx.activity:activity` | 1.11.0 | AAR | Apache-2.0 |
+| `androidx.annotation:annotation` | 1.8.1 | nur Metadaten | Apache-2.0 |
+| `androidx.annotation:annotation-experimental` | 1.4.1 | AAR | Apache-2.0 |
+| `androidx.annotation:annotation-jvm` | 1.8.1 | JAR | Apache-2.0 |
+| `androidx.appcompat:appcompat` | 1.7.1 | AAR | Apache-2.0 |
+| `androidx.appcompat:appcompat-resources` | 1.7.1 | AAR | Apache-2.0 |
+| `androidx.arch.core:core-common` | 2.2.0 | JAR | Apache-2.0 |
+| `androidx.arch.core:core-runtime` | 2.2.0 | AAR | Apache-2.0 |
+| `androidx.collection:collection` | 1.4.2 | nur Metadaten | Apache-2.0 |
+| `androidx.collection:collection-jvm` | 1.4.2 | JAR | Apache-2.0 |
+| `androidx.concurrent:concurrent-futures` | 1.1.0 | JAR | Apache-2.0 |
+| `androidx.coordinatorlayout:coordinatorlayout` | 1.3.0 | AAR | Apache-2.0 |
+| `androidx.core:core` | 1.17.0 | AAR | Apache-2.0 |
+| `androidx.core:core-ktx` | 1.17.0 | AAR | Apache-2.0 |
+| `androidx.core:core-splashscreen` | 1.0.1 | AAR | Apache-2.0 |
+| `androidx.core:core-viewtree` | 1.0.0 | AAR | Apache-2.0 |
+| `androidx.cursoradapter:cursoradapter` | 1.0.0 | AAR | Apache-2.0 |
+| `androidx.customview:customview` | 1.0.0 | AAR | Apache-2.0 |
+| `androidx.drawerlayout:drawerlayout` | 1.0.0 | AAR | Apache-2.0 |
+| `androidx.emoji2:emoji2` | 1.3.0 | AAR | Apache-2.0 |
+| `androidx.emoji2:emoji2-views-helper` | 1.3.0 | AAR | Apache-2.0 |
+| `androidx.fragment:fragment` | 1.8.9 | AAR | Apache-2.0 |
+| `androidx.interpolator:interpolator` | 1.0.0 | AAR | Apache-2.0 |
+| `androidx.lifecycle:lifecycle-common` | 2.6.2 | JAR | Apache-2.0 |
+| `androidx.lifecycle:lifecycle-livedata` | 2.6.2 | AAR | Apache-2.0 |
+| `androidx.lifecycle:lifecycle-livedata-core` | 2.6.2 | AAR | Apache-2.0 |
+| `androidx.lifecycle:lifecycle-process` | 2.6.2 | AAR | Apache-2.0 |
+| `androidx.lifecycle:lifecycle-runtime` | 2.6.2 | AAR | Apache-2.0 |
+| `androidx.lifecycle:lifecycle-viewmodel` | 2.6.2 | AAR | Apache-2.0 |
+| `androidx.lifecycle:lifecycle-viewmodel-savedstate` | 2.6.2 | AAR | Apache-2.0 |
+| `androidx.loader:loader` | 1.0.0 | AAR | Apache-2.0 |
+| `androidx.profileinstaller:profileinstaller` | 1.4.0 | AAR | Apache-2.0 |
+| `androidx.resourceinspection:resourceinspection-annotation` | 1.0.1 | JAR | Apache-2.0 |
+| `androidx.savedstate:savedstate` | 1.2.1 | AAR | Apache-2.0 |
+| `androidx.startup:startup-runtime` | 1.1.1 | AAR | Apache-2.0 |
+| `androidx.tracing:tracing` | 1.2.0 | AAR | Apache-2.0 |
+| `androidx.vectordrawable:vectordrawable` | 1.1.0 | AAR | Apache-2.0 |
+| `androidx.vectordrawable:vectordrawable-animated` | 1.1.0 | AAR | Apache-2.0 |
+| `androidx.versionedparcelable:versionedparcelable` | 1.1.1 | AAR | Apache-2.0 |
+| `androidx.viewpager:viewpager` | 1.0.0 | AAR | Apache-2.0 |
+| `androidx.webkit:webkit` | 1.14.0 | AAR | Apache-2.0 |
+| `com.google.guava:listenablefuture` | 1.0 | JAR | Apache-2.0 |
+| `org.apache.cordova:framework` | 14.0.1 | AAR | Apache-2.0 |
+| `org.jetbrains:annotations` | 23.0.0 | JAR | Apache-2.0 |
+| `org.jetbrains.kotlin:kotlin-stdlib` | 2.0.21 | JAR | Apache-2.0 |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-android` | 1.8.1 | JAR | Apache-2.0 |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-bom` | 1.8.1 | nur Metadaten | Apache-2.0 |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-core` | 1.8.1 | nur Metadaten | Apache-2.0 |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm` | 1.8.1 | JAR | Apache-2.0 |
+| `org.jspecify:jspecify` | 1.0.0 | JAR | Apache-2.0 |
+
+Hinzu kommen zwei Projektmodule, die nicht in den 50 externen Modulen mitgezählt sind:
+
+| Projektmodul | Herkunft und Einordnung |
+|---|---|
+| `:capacitor-android` | Quellen aus `@capacitor/android` 8.5.2 unter MIT; in der APK sind 132 Capacitor-Klassen nachgewiesen. |
+| `:capacitor-cordova-android-plugins` | Von `cap sync` erzeugtes Projekt; unter `src` im untersuchten Stand nur Manifest und Platzhalterdateien, keine eigenen Plugin-Klassen. Das Cordova-Framework ist als externes Laufzeitmodul oben aufgeführt. |
+
+### Abgleich mit der APK und Dienstprüfung
+
+Geprüft wurde die unsignierte Release-APK mit **7 760 765 Bytes**, SHA-256 `ab18ee072cf98f922ff16a139365be627ed18f5dd1d4876d54b4ef4fb3e4f1fa`, entsprechend dem [Build-Nachweis am Endstand](app.md#build-nachweis-am-endstand-vom-2026-10-0304). Die DEX-Auswertung erfasst **5 318 definierte Klassen**. Alle 4 769 Klassen aus den 46 Laufzeitartefakten sind darin enthalten. Hinzu kommen 132 Capacitor-Klassen, 49 eigene Klassen, 141 erzeugte R-Klassen und 227 von D8 erzeugte Synthetikklassen.
+
+Von 35 Dateien unter `META-INF` mit Endung `.version` enthalten **28 eine konkrete Versionsnummer**; alle 28 stimmen mit der Gradle-Auflösung überein. Die übrigen sieben enthalten Platzhalter aus den vorgelagerten Artefakten und liefern keinen Versionsnachweis.
+
+Die Prüfung mit den in fdroidserver 2.4.2 enthaltenen SUSS-Signaturen verwendete 114 Gradle- und 471 Code-Signaturen. Das Protokoll `suss-pruefen.log` meldet **keine Treffer** gegen die geprüften Cache-Koordinaten und gegen die 5 318 APK-Klassen. Die ergänzende DEX-Suche fand keine Merkmale für Google Play Services (`gms`), Firebase, Play, DataTransport oder Crashlytics. Der einzige Treffer für `measurement` war ein Fehlertext von CoordinatorLayout. Die einzige Klasse unter `com/google` ist die Guava-Schnittstelle `ListenableFuture`.
+
+Damit ergab diese SUSS-/DEX-Prüfung keinen Hinweis auf Google-Dienste, Firebase, Play Services oder proprietäre Artefakte in der untersuchten APK. Das Ergebnis gilt für die verwendeten Signaturen und Suchmuster; es ersetzt weder die vollständigen Hinweise Dritter noch einen Laufzeitnachweis.
+
+### Eingebettete Anteile und offene Hinweise Dritter
+
+Die folgenden Anteile haben keine eigene Modulkoordinate in der Auflösung. Die POM-Lizenz des umgebenden Moduls wird ihnen hier nicht als eigene Lizenz unterstellt:
+
+| Eingebetteter Anteil | Enthalten in | APK-Abgleich | Stand |
+|---|---|---|---|
+| `org.chromium.support_lib_boundary` | `androidx.webkit:webkit` 1.14.0 | 58 Klassen | **Lizenzwortlaut noch zu klären (Hinweise Dritter)** |
+| FlatBuffers | `androidx.emoji2:emoji2` 1.3.0, `libs/repackaged.jar` | 49 Ursprungsklassen und eine zusätzliche D8-Synthetikklasse | **Lizenzwortlaut noch zu klären (Hinweise Dritter)** |
+
+Die Erfassung der Module und ihrer POM-Angaben erledigt die Zusammenstellung und Mitgabe der Originalhinweise nicht. Diese bleibt offen.
+
+### Neuerzeugung und Abgrenzung der Build-Werkzeuge
+
+Der Bericht vom 2026-10-04 am Stand `9ae4cd9` wurde mit folgendem Aufruf erzeugt (`gradlew` bezeichnet den Projekt-Wrapper):
+
+```text
+gradlew -p app/android :app:dependencies --configuration releaseRuntimeClasspath --offline
+```
+
+Aus der Repository-Wurzel ist der Wrapper unter Windows als `.\app\android\gradlew.bat`, unter Linux als `./app/android/gradlew` aufzurufen. `JAVA_HOME` muss auf ein vollständiges OpenJDK 21 zeigen; im belegten Lauf war es 21.0.8. Für strenge Release-Builds gilt weiterhin der [festgelegte Patchstand](toolchain.md#jdk). `ANDROID_HOME` muss das vorbereitete Projekt-SDK nennen; ein vorhandenes `sdk.dir` in `app/android/local.properties` darf nicht auf ein anderes SDK verweisen. Gradle-Verteilung, Abhängigkeiten, npm-Installation mit `@capacitor/android` und das erzeugte Android-Projekt müssen bereits vorhanden sein. `--offline` unterbindet das Nachladen von Abhängigkeiten durch Gradle; die Wrapper-Verteilung muss vorher im Cache liegen. Der Befehl erneuert den Abhängigkeitsbaum, nicht den APK-/SUSS-Abgleich oder die Sichtung der POM-Lizenzen.
+
+Die Gradle-Werkzeuge des Buildscripts, insbesondere das Android-Gradle-Plugin und dessen Abhängigkeiten, gehen nicht als Build-Werkzeuge in die APK ein. Soweit dieselben Module auch Laufzeitabhängigkeiten sind, sind sie oben gesondert erfasst. **Ihre vollständige Werkzeugliste, die dafür geltende Lizenzregel und die Prüfsummenabsicherung folgen gesondert und sind noch offen.** Der Laufzeitbericht ist kein Inventar des Buildscripts; eine abschließende Zahl der Werkzeug-Artefakte wird hier nicht angegeben.
 
 ## Testempfänger und Testvarianten der App
 
@@ -284,7 +387,7 @@ Vor Stufe 3 bleiben:
 2. Die README-Pflicht aktivieren, sobald der Kern eine README erhält, und die Paketprüfung beim späteren Veröffentlichungsstand aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen.
 3. Die erzeugten `.tgz`-Archive sowie Website- und App-Bundles sichten, eingebettete Pakete mit genauen Versionen und Originalhinweisen erfassen.
 4. Die im lokalen Endstandlauf belegte Behandlung des optionalen sharp-Baums und der weiteren vorgebauten Bestandteile bei Änderungen am Build-Baum erneut prüfen; Quelle und Grenzen: [F-Droid-Nachweis](fdroid-build.md).
-5. Android- und Gradle-Abhängigkeiten ergänzen; diese werden von der npm-Liste nicht erfasst.
+5. Android- und Gradle-Abhängigkeiten ergänzen; **teilweise erledigt am 2026-10-04 für `9ae4cd9`**: [Laufzeitmodule mit POM-Lizenzangaben und APK-/SUSS-Abgleich](#android--und-gradle-abhängigkeiten) sind erfasst. Vollständige Hinweise Dritter einschließlich der eingebetteten Anteile sowie Werkzeugliste, Werkzeug-Lizenzregel und Prüfsummenabsicherung bleiben offen. Die npm-Liste erfasst diese Gradle-Abhängigkeiten weiterhin nicht.
 6. Entscheiden, ob zusätzlich zu `package-lock.json` eine erzeugte vollständige Abhängigkeitsliste mit Bereichen und Wegen eingecheckt wird, und ihren Aktualisierungsweg festlegen. Die Entscheidung ist offen; derzeit wird diese Liste mit `node scripts/check-licenses.mjs --json` erzeugt.
 
 Ein erfolgreicher Metadatenlauf belegt weder die Vollständigkeit fremder Lizenzangaben noch sämtliche Weitergabepflichten oder die F-Droid-Tauglichkeit. Proprietäre Dienste werden nicht anhand eines Lizenzfelds erkannt. Der tatsächliche Offline-Betrieb und das Android-Manifest gehören zur Abnahme der vollständigen App.

@@ -224,7 +224,7 @@ Am 2026-09-30 lief die oben genannte Debug-APK im Emulator aus dem Projekt-SDK, 
 
 Beim ersten Lauf auf API 36 erschien ein Systemdialog, dass die Systemoberfläche nicht antwortet. Beim zweiten Lauf mit 45 Sekunden Wartezeit nach dem Systemstart trat er nicht auf. Nach den Proben wurden die App deinstalliert und die Emulatoren beendet.
 
-Der Rauchtest belegt Start und Anzeige dieses älteren Builds. Es gab keinen Netzmelder, keine Navigationsversuche, keine Sicherungsprüfung und keine Berechnung in der Oberfläche. Den späteren Stand dieser Prüfungen beschreibt der Emulatorabschnitt unten; die Lizenzprüfung der Gradle-Abhängigkeiten gehört zum gesonderten Lizenznachweis.
+Der Rauchtest belegt Start und Anzeige dieses älteren Builds. Es gab keinen Netzmelder, keine Navigationsversuche, keine Sicherungsprüfung und keine Berechnung in der Oberfläche. Den späteren Stand dieser Prüfungen beschreibt der Emulatorabschnitt unten. Der gesonderte [Lizenznachweis der Gradle-Laufzeitmodule](lizenzen.md#android--und-gradle-abhängigkeiten) wurde am 2026-10-04 für `9ae4cd9` um POM-Lizenzangaben und APK-/SUSS-Abgleich ergänzt; vollständige Hinweise Dritter und der Gradle-Werkzeugteil bleiben offen. Das erweitert nicht den Umfang dieses historischen Rauchtests.
 
 ## Linux-Nachweis vom 2026-09-30
 
