@@ -1,12 +1,12 @@
 # Stufe 2: technischer Nachweis
 
-Stand: 2026-10-04 · Bericht zur Abnahme durch Andreas · keine Veröffentlichung.
+Stand: 2026-10-04 · abgenommen am 2026-10-04 durch Andreas Schmidt · keine Veröffentlichung.
 
 Geprüfter App-Endstand: `5e6f230`; Nachweisstand: `49dd420`. App-Version **0.1.0**, `versionCode` **100** nach [app.md, Festlegungen](app.md#festlegungen). Regelversion **1.9.0**, Rechtsstand **2026-07-17** („Juli 2026“): im Quellstand an `REGELVERSION`, `RECHTSSTAND_DATUM` und `RECHTSSTAND` in `packages/kern/src/fristen.ts` abgeglichen; Bedeutung und Übernahme sind in [pflegekonzept.md, Vier Angaben](pflegekonzept.md#vier-angaben-die-nicht-verwechselt-werden-dürfen) und [uebernahmepruefung.md, Nachweis zum Rechenkern](uebernahmepruefung.md#nachweis-zum-rechenkern) beschrieben.
 
 Der Fristenrechner ist eine unverbindliche Rechenhilfe. Er ersetzt keine Rechtsberatung. Alle Angaben erfolgen ohne Gewähr. Herausgeber ist BAREMOS IT GmbH, Berlin; siehe [README.md, einleitender Hinweis](../README.md#fristenrechner-vergabe).
 
-Die Abschlussläufe sind eingetragen. Codex hat den Bericht verfasst, Claude Code hat ihn am 2026-10-04 kreuzweise geprüft. Der Bericht liegt zur Abnahme durch Andreas vor; diese Abnahme steht aus. Die unten einzeln benannten Grenzen und Restpunkte bleiben bestehen. Die technischen Ergebnisse ersetzen weder ihre Bewertung noch die Freigabe einer späteren Stufe.
+Die Abschlussläufe sind eingetragen. Codex hat den Bericht verfasst, Claude Code hat ihn am 2026-10-04 kreuzweise geprüft. Andreas Schmidt hat den Bericht am 2026-10-04 abgenommen. Die unten einzeln benannten Grenzen gelten damit als bekannte Einschränkungen; keine wurde durch eine zusätzliche Prüfung geschlossen. Die Restpunkte bleiben bestehen und sind den Stufen 3 bis 5 und der Pflege zugeordnet. Die Abnahme ersetzt nicht die Freigabe einer späteren Stufe.
 
 ## Zweck und Umfang
 
@@ -138,7 +138,7 @@ Maßstab sind die [vier Festlegungen vor dem ersten Commit](arbeitspakete.md#vie
 
 ### Vor Stufe 3
 
-1. Bericht durch Andreas abnehmen lassen. Für jede Grenze festhalten, ob sie als Einschränkung angenommen oder durch eine zusätzliche Prüfung geschlossen wird. Ein ungültiger Fall bleibt ohne neuen Nachweis ungültig; [Arbeitspakete, Stufe 2](arbeitspakete.md#stufe-2).
+1. Erledigt am 2026-10-04: Andreas Schmidt hat den Bericht abgenommen. Alle Grenzen sind als Einschränkung angenommen, keine ist durch eine zusätzliche Prüfung geschlossen. Ein ungültiger Fall bleibt ohne neuen Nachweis ungültig; [Arbeitspakete, Stufe 2](arbeitspakete.md#stufe-2).
 2. Den offenen Übernahmenachweis der Oberfläche aus belegbaren Angaben ergänzen; [Übernahmeprotokoll](uebernahmepruefung.md#protokoll).
 3. Vollständige Drittanbietertexte und die Android-/Gradle-Abhängigkeiten erfassen und prüfen; npm-Packlisten nach dem Build sowie tatsächlich erzeugte Archive, Website- und App-Bündel sichten. Eingebettete und optionale Anteile anhand des tatsächlichen Auslieferungsbestands bewerten. Die ursprünglich Paket 2.8 zugeordnete Prüfsummenabsicherung der Gradle-Abhängigkeiten ist ebenfalls noch offen; [Toolchain, offene Festlegungen](toolchain.md#offene-festlegungen-späterer-arbeitspakete). Die Entscheidung über eine zusätzlich eingecheckte vollständige Abhängigkeitsliste bleibt nach [Lizenzen, verbleibende Arbeit](lizenzen.md#hinweise-dritter-paketinhalt-und-verbleibende-arbeit) offen.
 4. Browser- und Web-Adapterwege, ausstehende Bedienprüfungen und endgültige PDF-/Excel-Ausgaben prüfen; den vorbereiteten Browser-Vertragstest ausführen und protokollieren. Die Einbindung der Pakete in die Website erhält eine eigene Prüfung anhand der [Testmatrix](testmatrix.md).
@@ -166,7 +166,7 @@ Maßstab sind die [vier Festlegungen vor dem ersten Commit](arbeitspakete.md#vie
 
 ## Empfehlung für Stufe 3 bis 5
 
-Empfohlen wird, diesen Bericht mit den eingetragenen Abschlussnachweisen und den einzeln benannten Grenzen durch Andreas abzunehmen. Für Stufe 3 folgen die Übernahme- und Lizenznachträge, Prüfung der tatsächlich auszuliefernden Pakete sowie die Browser- und Website-Prüfungen. Erst danach sollte über die Veröffentlichung der Pakete und ihre Einbindung entschieden werden.
+Der Bericht ist mit den eingetragenen Abschlussnachweisen und den einzeln benannten Grenzen am 2026-10-04 abgenommen. Für Stufe 3 folgen die Übernahme- und Lizenznachträge, Prüfung der tatsächlich auszuliefernden Pakete sowie die Browser- und Website-Prüfungen. Erst danach sollte über die Veröffentlichung der Pakete und ihre Einbindung entschieden werden.
 
 Vor Stufe 4 folgen die noch fehlenden Bedienprüfungen am Release-Build, der echte Schlüssel mit seinen Nachweisen sowie die Prüfung des App-Bundles und der tatsächlich ausgelieferten Signaturen. Für Stufe 5 sind der endgültige F-Droid-Buildserver, das Veröffentlichungsrezept und der Signaturvergleich gesondert nachzuweisen. Änderungen an den eingefrorenen App-Eingaben erfordern zuvor erneuerte Build- und Signiernachweise.
 

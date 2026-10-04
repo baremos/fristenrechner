@@ -1,13 +1,13 @@
 # Arbeitspakete
 
-Stand 2026-10-04 · geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420` · Go von Andreas Schmidt für Stufe 1 und Stufe 2 · Bericht zur Abnahme durch Andreas liegt vor
+Stand 2026-10-04 · geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420` · Go von Andreas Schmidt für Stufe 1 und Stufe 2 · Stufe 2 am 2026-10-04 abgenommen
 
 ## Überblick
 
 | Stufe | Inhalt | Status |
 |---|---|---|
 | 1 | Fachlicher Zuschnitt und Pflegekonzept | bestätigt am 2026-09-27 |
-| 2 | Technischer Nachweis: Android, F-Droid, Signierung | Abschlussnachweise am 2026-10-03/04 ausgeführt; [Bericht mit Grenzen und Restpunkten](stufe2-nachweis.md) liegt vor, Abnahme durch Andreas offen. |
+| 2 | Technischer Nachweis: Android, F-Droid, Signierung | abgenommen am 2026-10-04 nach den Abschlussnachweisen vom 2026-10-03/04. Die Grenzen gelten als bekannte Einschränkungen, die Restpunkte stehen im [Bericht](stufe2-nachweis.md#restpunkte). |
 | 3 | Pakete veröffentlichen, Website bindet sie ein | kein Go |
 | 4 | Google Play: Konto, Store-Material auf Deutsch und Englisch, Einreichung | kein Go |
 | 5 | F-Droid: Einreichung, Metadaten auf Deutsch und Englisch | kein Go |
@@ -57,7 +57,7 @@ Ziel: nachweisen, dass die App auf diesem Weg baubar, F-Droid-tauglich und saube
 | 2.7 | npm-Lizenzprüfung am Endstand am 2026-10-03/04 bestanden | `scripts/check-licenses.mjs` mit Tests, [Lizenzen und Restarbeiten](lizenzen.md), `LICENSE` und `NOTICE` in den npm-Paketen. Die Metadatenprüfung wiederholt sich mit jeder neuen Abhängigkeit. Vollständige Fremdhinweise, Android-/Gradle-Lizenzen und die Prüfung des tatsächlichen Inhalts der npm-Pakete bleiben offen. |
 | 2.8 | lokaler Lauf am Endstand am 2026-10-04 bestanden | Vollständige App am Nachweisstand `49dd420` mit fdroidserver 2.4.2-1, gezielter Bereinigung ohne `scandelete`, Scanner ohne Fehler und Auswertung ohne Beanstandung; unsignierte Release-APK bytegleich mit den Windows- und Linux-Builds. Quelle und Kennzahlen: [F-Droid-Nachweis](fdroid-build.md). Kein Build auf dem F-Droid-Buildserver, keine Annahme durch F-Droid. |
 | 2.9 | N1, N4 und N5 am 2026-10-03/04 mit App bzw. Testfassung erbracht, mit Grenzen | N1: unsignierte Release-APK der App bytegleich. N4/N5: Testfassung mit eigener App-ID und Probeschlüssel; Projektstand im `localStorage` beim Update erhalten, Signaturübertragung geprüft. N2/N3 nur am Probeschlüssel belegt, echter Schlüssel und dessen Nachweise offen; N6 gehört zu Stufe 4. Probeschlüssel und Probesicherung am 2026-10-04 gelöscht. Quelle, Werkzeugstände und Grenzen: [Signierungsnachweise](signierung.md). |
-| 2.10 | Bericht liegt am 2026-10-04 vor, Abnahme durch Andreas offen | [Testmatrix](testmatrix.md) und [Bericht zur Abnahme](stufe2-nachweis.md) mit Ergebnissen, Grenzen, Restpunkten und Empfehlung für Stufe 3 bis 5. |
+| 2.10 | abgeschlossen am 2026-10-04, Bericht abgenommen | [Testmatrix](testmatrix.md) und [Bericht zur Abnahme](stufe2-nachweis.md) mit Ergebnissen, Grenzen, Restpunkten und Empfehlung für Stufe 3 bis 5. |
 
 Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt eine System-WebView mit, die Capacitor nicht unterstützt. Paket 2.5 hat deshalb festgelegt: Die App verlangt Android 11 (API 30) und eine WebView ab Version 83; ist die WebView älter, zeigt die App eine Fehlerseite. Einzelheiten in `docs/app.md` und in `docs/toolchain.md`, Abschnitt „Bekannte Einschränkungen".
 
