@@ -203,16 +203,85 @@ Das Skript erfasst `preinstall`, `install`, `postinstall` und `binding.gyp`. `pr
 
 ## Hinweise Dritter, Paketinhalt und verbleibende Arbeit
 
-Die Prüfung liest Lizenz- und Hinweisdateien, bewertet deren Vollständigkeit jedoch nicht automatisch. Für die spätere Auslieferung der Oberfläche fehlen noch gesammelte Originalhinweise und Lizenztexte der tatsächlich enthaltenen Fremdanteile. Sie müssen in die betroffenen npm-Pakete und offline lesbar in die App aufgenommen werden. Eine Kennung in diesem Dokument ersetzt diese Texte nicht. Auch Werkzeugpakete wie Rolldown und sharp enthalten weitere, nicht als eigene Lockfile-Pakete erfasste Anteile.
+Die Prüfung liest Lizenz- und Hinweisdateien, bewertet deren Vollständigkeit jedoch nicht automatisch. Die beiden npm-Pakete bündeln im unten geprüften Stand keinen Fremdcode. Ihre Fremdabhängigkeiten werden über die Paketmanifeste angegeben. Gesammelte Originalhinweise und Lizenztexte tatsächlich gebündelter Fremdanteile gehören zum bündelnden Gastgeber, etwa zur Website, und offline lesbar in die App. Diese Hinweise bleiben anhand der jeweiligen Bündel zu vervollständigen. Eine Kennung in diesem Dokument ersetzt die Texte nicht. Auch Werkzeugpakete wie Rolldown und sharp enthalten weitere, nicht als eigene Lockfile-Pakete erfasste Anteile.
 
-`LICENSE` und `NOTICE` in der Wurzel müssen lesbar und nicht leer sein. Ihre Kopien in jedem npm-Workspace unter `packages/` werden bei jedem Lauf byteweise verglichen. `.gitattributes` legt LF fest. Das [Manifest der Oberfläche](../packages/oberflaeche/package.json) führt am Nachweisstand `49dd420` bereits `src`, `README.md`, `LICENSE` und `NOTICE` unter `files`. Die frühere Angabe, die Auslieferungsdateien seien noch einzutragen, ist damit überholt. Am 2026-09-28 bestand eine Packlistenprobe des damaligen Gerüsts; eine Wiederholung mit dem Endstand ist nicht belegt.
+`LICENSE` und `NOTICE` in der Wurzel müssen lesbar und nicht leer sein. Ihre Kopien in jedem npm-Workspace unter `packages/` werden bei jedem Lauf byteweise verglichen. `.gitattributes` legt LF fest. Das [Manifest der Oberfläche](../packages/oberflaeche/package.json) führt am unten geprüften Stand `src`, `README.md`, `LICENSE` und `NOTICE` unter `files`. Die frühere Angabe, die Auslieferungsdateien seien noch einzutragen, ist damit überholt.
 
 `--packliste <Datei>` prüft zusätzlich die unveränderte JSON-Ausgabe eines vorherigen `npm pack --dry-run --json --offline --ignore-scripts`: erwartete npm-Pakete und Versionen, `package.json`, vollständige Hinweisdateien und passende Größen. Die App wird nicht als npm-Paket erwartet. Leere, doppelte oder unvollständige Listen führen zu Code 1. Der Trockenlauf ersetzt keine Sichtung eines tatsächlich erzeugten Archivs. Grundlage: npm-Dokumentation zu [`files`](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#files) und [`npm pack`](https://docs.npmjs.com/cli/v11/commands/npm-pack/).
+
+### Paketinhalt
+
+Beide Workspaces gehören in **einen** Aufruf. Die unveränderte Ausgabe enthält dann beide Paketbeschreibungen und kann vollständig an die Lizenzprüfung übergeben werden:
+
+```text
+npm pack --dry-run --json --offline --ignore-scripts --workspace packages/kern --workspace packages/oberflaeche
+```
+
+Die Messungen vom **2026-10-04** auf Stand **`main bca6d2a`** ergaben unter Windows mit Node **22.23.2** und npm **10.9.8** sowie unter Debian **13.5** mit Node **24.21.0** und npm **11.19.0** dieselben Werte. Sie stammen aus einem Checkout mit den in `.gitattributes` festgelegten Zeilenenden; die Paketdateien enthalten LF:
+
+| Paket, Version | Dateien | `size` in Bytes | `unpackedSize` in Bytes | `shasum` | `bundled` |
+|---|---:|---:|---:|---|---|
+| `@baremos/fristenrechner-kern`, `0.0.0` | 13 | 42 438 | 177 155 | `97fa402039df83156c721df0553fdf50e4065b70` | `[]` |
+| `@baremos/fristenrechner-ui`, `0.0.0` | 19 | 58 114 | 212 915 | `fb7850e153497b2d360b633d0465a753a5bc5ffb` | `[]` |
+
+Das sind die von npm im Trockenlauf gemeldeten Archivgrößen, entpackten Größen und SHA-1-Prüfsummen. Die Packliste enthält beim Kern zehn Dateien unter `dist` sowie `package.json`, `LICENSE` und `NOTICE`; bei der Oberfläche fünfzehn Quelldateien unter `src` sowie `package.json`, `LICENSE`, `NOTICE` und `README.md`. `bundled` ist bei beiden leer. Andere Zeilenenden verändern Größen und Prüfsummen.
+
+Am **2026-10-04** bestätigte der Offline-Gegencheck in einem frischen Linux-Checkout die Tabellenwerte, und die Offline-Verbraucherprobe nach dem README-Beispiel mit **Astro 7.3.3** bestand `astro build` und `astro check` ohne Fehler: Alle 16 Quellen im Bündel kamen aus den tatsächlich erzeugten npm-Archiven, keine aus dem Workspace.
+
+Das Prüfskript [`scripts/npm-pakete.mjs`](../scripts/npm-pakete.mjs) führt den kombinierten Trockenlauf und anschließend `node scripts/check-licenses.mjs --packliste <Datei>` selbst aus:
+
+```text
+node scripts/npm-pakete.mjs --ausgabe scratchpad/npm-pakete-lauf
+node scripts/npm-pakete.mjs --ausgabe scratchpad/npm-pakete-lauf-lf --ohne-cr
+```
+
+`--ohne-cr` verlangt zusätzlich Paketdateien ohne CR-Zeichen und ist auch unter Windows für einen Checkout mit den geltenden LF-Regeln vorgesehen. In einer älteren Windows-Arbeitskopie können trotz aktualisierter `.gitattributes` noch CRLF-Dateien liegen; ein sauberer Git-Status schließt das nicht aus. Betroffene Paketmanifeste und READMEs müssen dann unter Erhalt eigener Änderungen mit den neuen Regeln erneut ausgecheckt werden, bevor dieser Aufruf bestehen kann.
+
+Der Ausgabeordner ist Pflicht und muss neu oder leer sein. Innerhalb des eigenen oder eines anderen Git-Checkouts sind dafür nur Unterordner von dessen `scratchpad/` zulässig; außerhalb eines Checkouts ist auch ein anderer neuer oder leerer Ordner erlaubt. Die Prüfung löst vorhandene Verknüpfungen auf; Ausgaben über symbolische Links aus dem eigenen Repository sowie UNC- und Windows-Namensraumpfade werden abgelehnt. Alle erzeugten Dateien bleiben im Ausgabeordner: `ergebnis.json`, `packliste.json`, der Vergleichsbuild unter `kern-dist/`, temporäre Dateien unter `tmp/`, npm-Zwischenspeicher unter `npm-cache/` und npm-Protokolle unter `npm-logs/`. Je erreichtem Werkzeugschritt entstehen außerdem `<Schritt>.stdout.txt` und `<Schritt>.stderr.txt`; die Schritte heißen `stand`, `git-status`, `npm-version`, `git-dateien`, `tsc`, `pack` und `lizenzen`.
+
+Der Bericht nennt `HEAD` unter `stand` und erläutert die Bezugsgröße unter `standHinweis`. Vor dem Build und Packlauf prüft das Skript mit Git alle verfolgten, vorgemerkten und unverfolgten Änderungen unter `packages/`; ignorierte Build-Ausgaben wie `dist` sind davon ausgenommen. Der Bericht enthält den Zustand unter `arbeitskopie.sauber` und die Änderungen unter `arbeitskopie.aenderungen`. Ungesicherte Paketänderungen brechen den Lauf ab. Die eigentlichen Bytes des ignorierten `dist` prüft der folgende Vergleichsbuild. Werkzeugergebnisse stehen unter `werkzeuge` mit Rückgabewert, Signal und Fehlercode; `lizenzenGeprueft` und `lizenzenStatus` nennen den Zustand der Lizenzprüfung.
+
+Rückgabewerte sind 0 für bestanden, 1 für Prüf- oder Werkzeugfehler und 64 für einen fehlerhaften Aufruf. Die vollständigen Meldungskennungen sind:
+
+| Kennung | Bedeutung |
+|---|---|
+| `NPM_AUFRUF` | Argumente oder Ausgabeort unzulässig. |
+| `NPM_DIST` | Kern-Ausgabe fehlt oder weicht vom Vergleichsbuild ab. |
+| `NPM_LISTE` | Packliste, Paketmetadaten oder Angaben zu gebündelten Abhängigkeiten unzulässig. |
+| `NPM_PFAD`, `NPM_DATEI` | Paketpfad, Dateimenge, Lesbarkeit oder Dateigröße unzulässig. |
+| `NPM_CR` | Paketdatei enthält bei `--ohne-cr` ein CR-Zeichen. |
+| `NPM_IMPORT` | Relativer Import fehlt oder die Verweisform kann nicht statisch geprüft werden. |
+| `NPM_README`, `NPM_EINSTIEG` | README oder Paket-Einstieg fehlt beziehungsweise ist unzulässig. |
+| `NPM_VERSION` | Paketversionen oder Kern-Abhängigkeit stimmen nicht überein. |
+| `NPM_GIT`, `NPM_NPM` | Ungesicherte Paketänderungen, leere Git-Dateiliste oder unbrauchbare lokale npm-Kommandozeile. |
+| `NPM_STAND`, `NPM_GIT_STATUS`, `NPM_NPM_VERSION`, `NPM_GIT_DATEIEN`, `NPM_TSC`, `NPM_PACK`, `NPM_LIZENZEN` | Fehler im jeweils benannten Werkzeugschritt. |
+| `NPM_WERKZEUG`, `NPM_AUSGABE` | Sonstiger Ausführungsfehler beziehungsweise Ergebnisdatei nicht schreibbar. |
+
+Vor dem Packlauf baut das Skript den Kern mit dem vorhandenen TypeScript-Compiler in einen Vergleichsordner und vergleicht Dateiliste und Inhalt byteweise mit `packages/kern/dist`. Das lässt den Paketbaum unverändert und erkennt auch zusätzliche alte Dateien, die ein bloßer Neubau stehen lässt. Fehlt `dist` oder weicht es ab, scheitert die Prüfung; vor einem neuen Lauf muss `packages/kern/dist` entfernt und der Kern ausdrücklich neu gebaut werden.
+
+Beim Kern sind nur `dist/*.js`, `dist/*.d.ts`, `package.json`, `LICENSE`, `NOTICE` und eine vorhandene README erlaubt. Die `dist`-Dateimenge in der Packliste muss dem frischen Vergleichsbuild entsprechen; jede JavaScript-Datei benötigt ihre zugehörige `.d.ts`. Bei der Oberfläche werden genau die von Git verfolgten Dateien unter `src` sowie `package.json`, `LICENSE`, `NOTICE` und `README.md` erwartet. Tests, Referenzdaten, `scratchpad` und `node_modules` sind ausgeschlossen. Die Konstante `KERN_README_PFLICHT` ist vorerst `false`; die Pflicht wird aktiviert, sobald der Kern eine README erhält, spätestens vor der Veröffentlichung.
+
+Die Prüfung verlangt `exports` mit einem nutzbaren Haupteinstieg, Zielen mit `./` und ohne gemischte Schlüssel für Bedingungen und Unterpfade. Ziele aus `exports`, `main`, `module`, `types` und `typings` müssen konkrete Dateien der Packliste sein. Die zusätzlichen Auflösungsfelder `browser` und `typesVersions` werden derzeit abgewiesen.
+
+Statisch erkennbare relative Verweise werden gegen die Packliste geprüft. Der vorhandene TypeScript-Parser liest JavaScript- und TypeScript-Verweise; der Astro-Compiler bestimmt Vorspann, Skript- und Stilbereiche. Erfasst werden Import- und Exportanweisungen einschließlich Importtypen und `require`, relative Triple-Slash-Verweise und Moduldeklarationen, statische `new URL(..., import.meta.url)`-Ziele, Astro-Skriptquellen sowie CSS-`@import` und `url`. Berechnete Import- und URL-Ziele, dynamische Astro-Skriptquellen, `import.meta.glob` beziehungsweise `globEager` und CSS-`image-set` beziehungsweise `-webkit-image-set` scheitern ausdrücklich.
+
+Relative `.js`-Ziele in `.d.ts` müssen zur entsprechenden `.d.ts` führen. Bei endungslosen Importen der Oberfläche werden `.mjs`, `.js`, `.mts`, `.ts`, `.jsx`, `.tsx` und `.json` sowie entsprechende `index`-Dateien gesucht; `.astro` ist keine ergänzte Endung. Paketimporte werden nicht gegen Abhängigkeitsangaben oder die `exports` des Zielpakets aufgelöst. Die Prüfung ersetzt deshalb keinen Build im einbindenden Projekt. Beide Pakete müssen dieselbe Version tragen, und die Kern-Abhängigkeit der Oberfläche muss genau diese Version angeben. `bundled` in der Packliste muss leer sein; `bundleDependencies` und `bundledDependencies` im Manifest dürfen nur fehlen oder leere Listen sein.
+
+### Interner Ablauf für Stufe 3: spätere Veröffentlichung
+
+Dieser Ablauf ist vorbereitet, aber **nicht durchgeführt oder freigegeben**. `private: true` bleibt bestehen. Veröffentlichung, öffentliches Repository und npm-Organisation gehören zu Stufe 3 und benötigen eine gesonderte Freigabe.
+
+1. Aus einem sauberen Linux-Checkout mit den festgelegten Werkzeugversionen arbeiten und die Versionen von Kern und Oberfläche im Gleichschritt halten.
+2. `packages/kern/dist` entfernen und den Kern ausdrücklich mit `npm run build --workspace packages/kern --offline` neu bauen. Der Kern hat kein `prepack`- oder `prepublishOnly`-Skript; außerdem schaltet `.npmrc` mit `ignore-scripts=true` Lebenszyklusskripte ab. `npm pack` und `npm publish` bauen den Kern daher nicht.
+3. `node scripts/npm-pakete.mjs --ausgabe scratchpad/npm-pakete-freigabe --ohne-cr` ausführen und Packliste, Prüfbericht sowie anschließend die tatsächlich erzeugten Archive prüfen. Die README-Pflicht des Kerns muss bis dahin aktiviert sein.
+4. Nach gesonderter Veröffentlichungsfreigabe zuerst den Kern, danach die Oberfläche mit derselben Version veröffentlichen.
+
+### Verbleibende Arbeit
 
 Vor Stufe 3 bleiben:
 
 1. Die MIT-Ausnahme für `rgbcolor` spätestens zu ihrem Ablauf am 2027-09-29 erneut prüfen; bei Versions- oder Metadatenänderungen muss sie angepasst oder entfernt werden.
-2. Die vorhandene `files`-Liste der vollständigen Oberfläche und beide npm-Packlisten nach dem Build erneut prüfen.
+2. Die README-Pflicht aktivieren, sobald der Kern eine README erhält, und die Paketprüfung beim späteren Veröffentlichungsstand aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen.
 3. Die erzeugten `.tgz`-Archive sowie Website- und App-Bundles sichten, eingebettete Pakete mit genauen Versionen und Originalhinweisen erfassen.
 4. Die im lokalen Endstandlauf belegte Behandlung des optionalen sharp-Baums und der weiteren vorgebauten Bestandteile bei Änderungen am Build-Baum erneut prüfen; Quelle und Grenzen: [F-Droid-Nachweis](fdroid-build.md).
 5. Android- und Gradle-Abhängigkeiten ergänzen; diese werden von der npm-Liste nicht erfasst.
