@@ -32,7 +32,7 @@ const protokoll = (daten = {}) => neuesProtokoll({
 });
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const testBasis = join(wurzel, 'scratchpad/tmp-v6a-r8');
+const testBasis = join(wurzel, 'scratchpad/tmp-v6a-r9');
 mkdirSync(testBasis, { recursive: true });
 const temp = realpathSync(testBasis);
 const arbeit = mkdtempSync(join(temp, 'browser-tests-'));
@@ -369,7 +369,7 @@ test('Browserstart hält Profil, CDP, Namensauflösung und Proxy auf der vorgege
 
 test('Falscher Kommandozeilenaufruf endet ohne Browserstart mit Code 64', () => {
   const lauf = spawnSync(process.execPath, [join(wurzel, 'scripts', 'browser-lauf.mjs'), '--phase', 'tastatur'], {
-    cwd: wurzel, encoding: 'utf8', env: { ...process.env, TEMP: temp, TMP: temp }, timeout: 10000,
+    cwd: wurzel, encoding: 'utf8', env: process.env, timeout: 10000,
   });
   assert.equal(lauf.status, 64, `${lauf.stdout}${lauf.stderr}`);
   assert.match(lauf.stderr, /Aufruf: node scripts\/browser-lauf\.mjs/);

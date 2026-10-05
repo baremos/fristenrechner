@@ -7,6 +7,7 @@ import { runInNewContext } from 'node:vm';
 import { dateiauswahlAbbrechen, pruefeBox320, pruefeWebadapter } from './webadapter.mjs';
 import { pruefung } from './auswertung.mjs';
 import { Messfehler } from './fehler.mjs';
+import { Cdp } from '../emulator/rahmen.mjs';
 
 // Die wirklichen Browserausdrücke des Webadapter-Moduls werden ausgewertet;
 // nur CDP und das Prüfdokument sind nachgestellt, keine ersetzte Klickfunktion.
@@ -49,8 +50,9 @@ for (const [fall, optionen, status, art] of [
   assert.ok(!aufrufe.includes('Input.dispatchMouseEvent'), 'Fehlende/gesperrte Elemente und Messstörungen lösen keinen Klick aus');
 });
 
-async function webadapterProbe(id, { sperre, feldwert, sperreVorFokus, sperreNachFokus, keineAuswahl = false, freigabeFehlt = false, beiAktivierung = () => {} } = {}) {
-  const protokoll = { ergebnisse: [] }, aufrufe = [];
+async function webadapterProbe(id, { sperre, feldwert, sperreVorFokus, sperreNachFokus, keineAuswahl = false,
+  freigabeFehlt = false, beiAktivierung = () => {}, nachKeyUp = () => {}, messantwort, keineMessantwort = false } = {}) {
+  const protokoll = { ergebnisse: [] }, aufrufe = [], befehle = [];
   const fieldset = { disabled: sperre === 'fieldset' };
   let ariaGesperrt = sperre === 'aria', klickZiel;
   const elemente = new Map();
@@ -69,10 +71,36 @@ async function webadapterProbe(id, { sperre, feldwert, sperreVorFokus, sperreNac
     elementFromPoint: () => klickZiel, hasFocus: () => true, activeElement: null };
   const sandbox = { location: { href: 'about:blank' }, document,
     localStorage: { getItem: () => JSON.stringify({ input: { projekt: {} } }) } };
-  const cdp = { events: [], send: async (name, params) => {
-    aufrufe.push(name);
+  // Wirkliche Cdp-Instanz mit nachgestelltem Transport, ohne WebSocket/Netz.
+  const ws = new EventTarget(), cdp = new Cdp(ws);
+  ws.close = () => ws.dispatchEvent(new Event('close'));
+  const senden = cdp.send.bind(cdp);
+  cdp.send = (name, params, timeout) => {
+    aufrufe.push(name); befehle.push({ name, params, timeout });
+    return senden(name, params, timeout);
+  };
+  ws.send = text => {
+    const { id, method, params } = JSON.parse(text);
+    if (keineMessantwort && method === 'Runtime.evaluate' && params.expression === '"browser-lauf-messbereit"') return;
+    antworten(method, params).then(result => {
+      ws.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ id, result }) }));
+      // Erst nach der zugeordneten erfolgreichen Antwort verliert der Kanal
+      // die Verbindung; keyUp selbst bleibt eine bestätigte Bedienung.
+      if (method === 'Input.dispatchKeyEvent' && params.type === 'keyUp') {
+        assert.equal(cdp.pending.has(id), false);
+        nachKeyUp(cdp);
+      }
+    }, error => ws.dispatchEvent(new MessageEvent('message', {
+      data: JSON.stringify({ id, error: { code: -32000, message: error.message } }),
+    })));
+  };
+  async function antworten(name, params) {
     if (name === 'Runtime.evaluate') {
-      try { return { result: { value: runInNewContext(params.expression, sandbox) } }; }
+      if (messantwort && params.expression === '"browser-lauf-messbereit"') return messantwort();
+      try {
+        const value = runInNewContext(params.expression, sandbox);
+        return { result: { type: typeof value, value } };
+      }
       catch (e) { return { exceptionDetails: { text: e.message } }; }
     }
     if (name === 'DOM.getDocument') return { root: { nodeId: 1 } };
@@ -87,7 +115,7 @@ async function webadapterProbe(id, { sperre, feldwert, sperreVorFokus, sperreNac
       if (sperreNachFokus === 'fieldset') fieldset.disabled = true;
     }
     if ((name === 'Input.dispatchMouseEvent' && params.type === 'mouseReleased' && klickZiel === elemente.get('#open-json'))
-        || (name === 'Input.dispatchKeyEvent' && params.key === 'Enter' && params.type === 'keyDown' && document.activeElement === elemente.get('#open-json'))) {
+        || (name === 'Input.dispatchKeyEvent' && ['Enter', ' '].includes(params.key) && params.type === 'keyDown' && document.activeElement === elemente.get('#open-json'))) {
       if (!keineAuswahl) cdp.events.push({ method: 'Page.fileChooserOpened', params: { backendNodeId: 2 } });
       ariaGesperrt = true; // Das Produkt sperrt weitere Aktivierungen während der Auswahl.
       beiAktivierung();
@@ -100,12 +128,18 @@ async function webadapterProbe(id, { sperre, feldwert, sperreVorFokus, sperreNac
       ariaGesperrt = freigabeFehlt;
     }
     return { identifier: 'instrumentierung' };
-  } };
-  await pruefeWebadapter({ cdp, protokoll, basisUrl: 'http://127.0.0.1:1234', ausgabe,
-    navigieren: async () => {}, pruefung: async (kennung, beschreibung, fn) => {
-      if (kennung === id) return pruefung(protokoll, kennung, beschreibung, fn);
-    } });
-  return { r: protokoll.ergebnisse[0], aufrufe, elemente };
+  }
+  let aufraeumfehler;
+  try {
+    await pruefeWebadapter({ cdp, protokoll, basisUrl: 'http://127.0.0.1:1234', ausgabe,
+      navigieren: async () => {}, pruefung: async (kennung, beschreibung, fn) => {
+        if (kennung === id) return pruefung(protokoll, kennung, beschreibung, fn);
+      } });
+  } catch (e) {
+    if (!cdp.closed) throw e;
+    aufraeumfehler = e;
+  } finally { cdp.close(); }
+  return { r: protokoll.ergebnisse[0], aufrufe, befehle, elemente, aufraeumfehler };
 }
 
 for (const sperre of ['aria', 'fieldset']) for (const id of ['W6', 'W12-Enter']) {
@@ -145,14 +179,62 @@ for (const feldwert of [{ produktabweichung: { art: 'beliebig' } },
   });
 }
 
-test('W12-Enter wertet eine nach bestätigter Bedienung ausgebliebene Dateiauswahl als Produktabweichung', async t => {
+for (const id of ['W6', 'W12-Enter', 'W12-Leertaste']) test(`${id}: antwortender Seitenkanal ohne Dateiauswahl bleibt Produktabweichung`, async t => {
   let zeit = 0, bedient = false;
   const jetzt = Date.now;
   t.mock.method(Date, 'now', () => bedient ? (zeit += 5000) : jetzt());
   // Die Uhr läuft erst nach der Dateifeld-Aktivierung schneller; alle echten
   // Webadapter-Ausdrücke und CDP-Antwortprüfungen bleiben unverändert.
-  const { r } = await webadapterProbe('W12-Enter', { keineAuswahl: true, beiAktivierung: () => { bedient = true; } });
-  assert.equal(r.status, 'nicht bestanden'); assert.match(r.meldung, /Dateiauswahl nach Enter/);
+  const { r, befehle, aufraeumfehler } = await webadapterProbe(id, { keineAuswahl: true, beiAktivierung: () => { bedient = true; } });
+  assert.equal(r.status, 'nicht bestanden'); assert.match(r.meldung, /Dateiauswahl nach/);
+  const messung = befehle.filter(b => b.params?.expression === '"browser-lauf-messbereit"');
+  assert.deepEqual(messung, [{ name: 'Runtime.evaluate', params: {
+    expression: '"browser-lauf-messbereit"', returnByValue: true, userGesture: false,
+  }, timeout: 5000 }]);
+  assert.equal(aufraeumfehler, undefined);
+});
+
+test('N6: echter Webadapter und echte Cdp-Instanz werten Kanalverlust nach bestätigtem keyUp schon im Teilfall als ungültig', async t => {
+  let zeit = 0, bedient = false, keyUpBestaetigt = false;
+  const jetzt = Date.now;
+  t.mock.method(Date, 'now', () => bedient ? (zeit += 5000) : jetzt());
+  const { r, befehle, aufraeumfehler } = await webadapterProbe('W12-Enter', {
+    keineAuswahl: true, beiAktivierung: () => { bedient = true; },
+    nachKeyUp: cdp => { keyUpBestaetigt = true; cdp.ws.dispatchEvent(new Event('close')); },
+  });
+  assert.equal(keyUpBestaetigt, true);
+  assert.equal(r.id, 'W12-Enter'); assert.equal(r.status, 'ungültig');
+  assert.match(r.meldung, /CDP-Verbindung geschlossen/);
+  assert.ok(befehle.some(b => b.params?.expression === '"browser-lauf-messbereit"'));
+  assert.ok(aufraeumfehler instanceof Messfehler);
+  assert.match(aufraeumfehler.message, /Aufräumen unvollständig/);
+});
+
+for (const [name, antwort, meldung] of [
+  ['falscher Rückgabewert', { result: { type: 'string', value: 'falsch' } }, /Messfähigkeit.*nicht bestätigt/],
+  ['fehlender Antwortbeleg', {}, /ohne Messergebnis/],
+  ['Ausdruckstörung', { exceptionDetails: { text: 'Messung gestört' } }, /Messung gestört/],
+  ['Produktmarker statt Messantwort', { result: { value: { produktabweichung: { art: 'element-gesperrt', selector: '#open-json' } } } }, /Messfähigkeit.*nicht bestätigt/],
+]) test(`W12-Enter: ${name} nach Wartezeit ergibt ungültig`, async t => {
+  let zeit = 0, bedient = false;
+  const jetzt = Date.now;
+  t.mock.method(Date, 'now', () => bedient ? (zeit += 5000) : jetzt());
+  const { r, aufraeumfehler } = await webadapterProbe('W12-Enter', {
+    keineAuswahl: true, beiAktivierung: () => { bedient = true; }, messantwort: () => antwort,
+  });
+  assert.equal(r.status, 'ungültig'); assert.match(r.meldung, meldung);
+  assert.equal(r.befund, undefined); assert.equal(aufraeumfehler, undefined);
+});
+
+test('W12-Enter: ausbleibende Messantwort am echten CDP-Kanal ergibt ungültig', async t => {
+  let zeit = 0, bedient = false;
+  const jetzt = Date.now;
+  t.mock.method(Date, 'now', () => bedient ? (zeit += 5000) : jetzt());
+  const { r, aufraeumfehler } = await webadapterProbe('W12-Enter', {
+    keineAuswahl: true, beiAktivierung: () => { bedient = true; }, keineMessantwort: true,
+  });
+  assert.equal(r.status, 'ungültig'); assert.match(r.meldung, /CDP-Zeitüberschreitung: Runtime.evaluate/);
+  assert.ok(aufraeumfehler instanceof Messfehler);
 });
 
 function abbruchProbe(neueEreignisse, alteEreignisse = []) {
@@ -212,7 +294,7 @@ test('W8 hebt den automatischen Abbruch auch bei fehlgeschlagener Aktivierung wi
   assert.deepEqual(aufrufe.at(-1), { name: 'Page.setInterceptFileChooserDialog', parameter: { enabled: true, cancel: false } });
 });
 
-const testBasis = resolve('scratchpad/tmp-v6a-r8');
+const testBasis = resolve('scratchpad/tmp-v6a-r9');
 mkdirSync(testBasis, { recursive: true });
 const temp = realpathSync(testBasis);
 const ausgabe = mkdtempSync(join(temp, 'webadapter-tests-'));

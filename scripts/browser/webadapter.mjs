@@ -94,7 +94,7 @@ export async function pruefeBox320({ send, wert, frisch, berechnen, ausgabe, pro
 
 export async function pruefeWebadapter(kontext) {
   const { cdp, browserCdp, basisUrl, ausgabe, protokoll, pruefung, navigieren } = kontext;
-  const send = (name, parameter) => messbefehl(() => cdp.send(name, parameter));
+  const send = (name, parameter, timeout) => messbefehl(() => cdp.send(name, parameter, timeout));
   const befunde = protokoll.befunde ??= [];
   const dateien = protokoll.dateien ??= [];
   const auswahlBeobachtungen = [];
@@ -117,8 +117,21 @@ export async function pruefeWebadapter(kontext) {
       if (ergebnis) return ergebnis;
       await pause(50);
     }
-    // Nach bestätigter Steuerung kann eine ausgebliebene Produktreaktion ein
-    // Produktbefund sein. Fehlende Mess-/Dialogereignisse bleiben ungültig.
+    if (produkt) {
+      // Auch reine Ereigniswarteschleifen müssen vor dem Produktbefund die
+      // Messfähigkeit über denselben Seitenkanal und dieselbe Sitzung belegen.
+      const antwort = await send('Runtime.evaluate', {
+        expression: '"browser-lauf-messbereit"', returnByValue: true, userGesture: false,
+      }, 5000);
+      if (browserErgebnis(antwort) !== 'browser-lauf-messbereit') throw new Messfehler(`Messfähigkeit nach Zeitüberschreitung nicht bestätigt: ${beschreibung}`);
+      // Grenze: Die Antwort belegt die aktive Seitensitzung. Das weiterhin
+      // eingeschaltete Page.setInterceptFileChooserDialog und der Empfang
+      // künftiger Page-Ereignisse sind damit nicht unabhängig geprüft; belegt
+      // bleibt die zuvor bestätigte Einrichtung. Erneutes Einschalten würde
+      // die Ereignisquelle während der abgelaufenen Wartezeit nicht belegen.
+    }
+    // Erst mit fortbestehender Messfähigkeit ist die ausbleibende Reaktion
+    // ein Produktbefund. Fehlende Mess-/Dialogereignisse bleiben ungültig.
     throw new (produkt ? Error : Messfehler)(`Zeitüberschreitung: ${beschreibung}`);
   }
 

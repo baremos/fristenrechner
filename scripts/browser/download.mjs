@@ -49,6 +49,8 @@ export async function browserDownload({ browserCdp, ausgabe, browserContextId, f
     while (true) {
       const r = lesen(); if (r) return r;
       const rest = fristMs - (jetzt() - start);
+      // Fehlender Beginn/Abschluss ist stets ein Messfehler, auch bei
+      // antwortendem Kanal. Hier entsteht kein Produktbefund aus der Wartezeit.
       if (rest <= 0) throw new Messfehler(`Zeitüberschreitung: ${beschreibung}`);
       await warten(Math.min(50, rest));
     }

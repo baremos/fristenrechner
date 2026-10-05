@@ -44,7 +44,7 @@ function probe({ ereignisse = [beginn(), fortschritt()], vorher = [], steuerungs
     if (method === 'Target.getBrowserContexts') return { browserContextIds: kontexte };
     if (steuerungsfehler) throw new Error('Richtlinie nicht bestätigt');
   } };
-  const kontext = { browserCdp, ausgabe: resolve('scratchpad/tmp-v6a-r8'), browserContextId: 'eigener-kontext', frameId: 'frame', endung: 'xlsx', nachweis,
+  const kontext = { browserCdp, ausgabe: resolve('scratchpad/tmp-v6a-r9'), browserContextId: 'eigener-kontext', frameId: 'frame', endung: 'xlsx', nachweis,
     aktivieren: async () => { aufrufe.push({ method: 'echte Aktivierung' }); browserCdp.events.push(...ereignisse); return { fokus: true }; } };
   return { kontext, nachweis, aufrufe, optionen: { jetzt: () => zeit, warten: async ms => { zeit += ms; }, fristMs: 100 } };
 }
@@ -172,6 +172,24 @@ test('Downloadrichtlinie und Messfrist werden ungültig; falscher Dateityp bleib
     assert.equal((await pruefung({ ergebnisse: [] }, 'W5-xlsx', 'Download', () => browserDownload(p.kontext, p.optionen))).status, status);
   }
 });
+
+for (const [name, ereignisse] of [['Beginn', []], ['Abschluss', [beginn()]]]) {
+  for (const kanalverlust of [false, true]) test(`Fehlender Download-${name} bleibt bei ${kanalverlust ? 'verlorenem' : 'antwortendem'} Kanal ungültig`, async () => {
+    const p = probe({ ereignisse });
+    const senden = p.kontext.browserCdp.send, aktivieren = p.kontext.aktivieren;
+    let geschlossen = false;
+    p.kontext.browserCdp.send = (...args) => {
+      if (geschlossen) throw new Error('CDP-Verbindung geschlossen');
+      return senden(...args);
+    };
+    p.kontext.aktivieren = async () => {
+      const klick = await aktivieren(); geschlossen = kanalverlust; return klick;
+    };
+    const r = await pruefung({ ergebnisse: [] }, 'W5-xlsx', 'Download', () => browserDownload(p.kontext, p.optionen));
+    assert.equal(r.status, 'ungültig'); assert.match(r.meldung, new RegExp(`${name} des xlsx-Downloads`));
+    assert.equal(p.aufrufe.filter(a => a.method === 'echte Aktivierung').length, 1);
+  });
+}
 
 test('Fehlende Kontextantwort ist Messfehler und löst keinen Download aus', async () => {
   const p = probe(); p.kontext.browserCdp.send = async () => undefined;
