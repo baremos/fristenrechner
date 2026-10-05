@@ -142,7 +142,7 @@ const bundeslaender = [
         <label class="check-card">
           <input type="checkbox" name="dringlichkeit" />
           {/* Hilfetext je Verfahrensart: nicht jede Ordnung kennt
-              Dringlichkeitsfristen  */}
+              Dringlichkeitsfristen */}
           <span><strong>Begründete Dringlichkeit</strong><small data-dringlichkeit-hinweis>Verkürzte Mindestfristen prüfen</small></span>
         </label>
         <label class="check-card">
@@ -163,7 +163,7 @@ const bundeslaender = [
         </label>
       </div>
 
-      {/* Einzeilig: Beschreibung links, Auswahl rechts  */}
+      {/* Einzeilig: Beschreibung links, Auswahl rechts */}
       {/* Nur bei Wartepflicht (§ 134 GWB, Oberschwelle) — im
           Unterschwellenbereich blendet die UI die Zeile aus (Kern 1.6.0) */}
       <div class="option-fields" data-bieterinfo-field>
@@ -239,7 +239,7 @@ const bundeslaender = [
         AT = Arbeitstage (Montag bis Freitag ohne Feiertage des gewählten Bundeslands), KT = Kalendertage.
       </p>
       {/* Zeilenliste: Beschreibung links, Eingabe rechts, Reihenfolge =
-          Verfahrensablauf : TNA-Bewertung → Bewertung vor Präsentation/Verhandlung →
+          Verfahrensablauf: TNA-Bewertung → Bewertung vor Präsentation/Verhandlung →
           Angebotsbewertung → Aufklärung → interner Zuschlag → Versand der
           Bieterinformation. Sichtbar sind nur die Zeiten, die sich aus der
           gewählten Vergabeart und den Optionen ergeben. */}
@@ -472,6 +472,28 @@ const bundeslaender = [
 </div>
 
 <style is:global>
+  /* Nur eigene Teilbäume: Logo und Kontaktinhalte aus den Slots behalten
+     die Größenberechnung des Gastgebers. */
+  .fristenrechner,
+  .fristenrechner > .privacy-note:first-child,
+  .fristenrechner > .privacy-note:first-child *,
+  .fristenrechner > #project-file-meta:first-child ~ #schedule-results + .legal-note + .privacy-note,
+  .fristenrechner > #project-file-meta:first-child ~ #schedule-results + .legal-note + .privacy-note *,
+  .fristenrechner > #project-file-meta,
+  .fristenrechner > #project-file-meta + noscript,
+  .fristenrechner > #project-file-meta + noscript *,
+  .fristenrechner > #schedule-form,
+  .fristenrechner > #schedule-form *,
+  .fristenrechner > #schedule-results,
+  .fristenrechner > #schedule-results > :not(.print-footer),
+  .fristenrechner > #schedule-results > :not(.print-footer) *,
+  .fristenrechner > #schedule-results > .print-footer,
+  .fristenrechner > #schedule-results > .print-footer > p:last-child,
+  .fristenrechner > #schedule-results + .legal-note,
+  .fristenrechner > #schedule-results + .legal-note * {
+    box-sizing: border-box;
+  }
+
   .fristenrechner {
     --phase-einholung: #a7303c;
     --phase-teilnahme: #76528f;
@@ -633,7 +655,7 @@ const bundeslaender = [
   }
 
   /* Interne Bearbeitungszeiten als Zeilenliste: Beschreibung links,
-     Eingabe rechts  */
+     Eingabe rechts */
   .fristenrechner .zeiten-liste {
     display: flex;
     flex-direction: column;
@@ -748,7 +770,7 @@ const bundeslaender = [
   }
 
   /* Options-Panels: einheitliche Label-Höhe, damit Dauer- und Termin-Kästen
-     auf gleicher Höhe sitzen  */
+     auf gleicher Höhe sitzen */
   .fristenrechner .option-panel-grid {
     --field-label-height: 1.6rem;
   }

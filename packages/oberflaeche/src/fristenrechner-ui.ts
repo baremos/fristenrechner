@@ -502,7 +502,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
     field<HTMLInputElement>(form, 'wartefristKT').disabled = !voProfil.wartepflicht;
 
     // Verhandlungsrunden gibt es nur im Verhandlungsverfahren — im offenen
-    // und nicht offenen Verfahren wird nicht verhandelt . Die Sperre steht VOR den Panel-Updates, damit ein beim
+    // und nicht offenen Verfahren wird nicht verhandelt. Die Sperre steht VOR den Panel-Updates, damit ein beim
     // Verfahrenswechsel entfernter Haken im selben Lauf auch Panels und
     // Zwischenbewertung nachzieht.
     const runde1Checkbox = field<HTMLInputElement>(form, 'verhandlungRunde1Aktiv');
@@ -601,7 +601,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
     // undefined ⇒ keine Wartepflicht (Unterschwelle) — Feld ist ausgeblendet
     field<HTMLInputElement>(form, 'wartefristKT').value = defaults.wartefristKT?.toString() ?? '';
     // Standard 10 KT für optimierte/finale Angebotsrunde im
-    // Verhandlungsverfahren ; außerhalb bleibt
+    // Verhandlungsverfahren; außerhalb bleibt
     // das Feld leer und ausgeblendet
     const negotiated = input.verfahrensart === 'verhandlung_ohne_tnw' || input.verfahrensart === 'verhandlung_mit_tnw';
     field<HTMLInputElement>(form, 'optimiertesAngebotKT').value = defaults.optimiertesAngebotKT?.toString() ?? (negotiated ? '10' : '');

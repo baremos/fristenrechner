@@ -377,6 +377,10 @@ Die Suche am App-Endstand in `packages/oberflaeche` ergab keinen inhaltlichen Fu
 
 Neun kosmetische Kommentarreste bleiben am App-Endstand: fünf in `Fristenrechner.astro`, je einer in `fristenrechner-export-data.ts` und `fristenrechner-export-pdf.ts`, zwei in `fristenrechner-ui.ts`. Das sind doppelte Leerzeichen oder Leerzeichen vor Satzzeichen aus der Bereinigung, keine verbliebenen internen Verweise. Sie sind in der erneuten Nachprüfung vom 2026-10-04 erfasst, einschließlich der zweiten Stelle in `fristenrechner-ui.ts`, und mit diesem Dokumentationsnachtrag nicht geändert.
 
+### Nachtrag vom 2026-10-05
+
+Die neun in der Nachprüfung vom 2026-10-04 genannten kosmetischen Kommentarreste wurden am 2026-10-05 bereinigt; ausführbarer Code und sichtbare Texte blieben dabei unverändert.
+
 ### Grenzen
 
 Der Nachweis beschreibt die Übernahme vom 2026-09-29, die Anpassung vom 2026-09-30 und die ausdrücklich benannten Nachprüfungen am App-Endstand `5e6f230`. Er ist kein vollständiges Review aller späteren Änderungen an der Oberfläche. Eine unabhängige Prüfung der Rechtekette gehört nicht dazu. Die datierte Rekonstruktion ergänzt die damaligen Belege; sie ersetzt weder den damals fehlenden Protokolleintrag noch ein schriftliches Urteil je Prüfpunkt des damaligen Kreuz-Reviews.
