@@ -11,7 +11,7 @@ import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Cdp, ausgabePruefen, echterPfad, innen, pause, prozess } from './emulator/rahmen.mjs';
 import { argumente, anfrageBewerten, auswerten, gesamtAuswerten, neuesProtokoll, pruefung } from './browser/auswertung.mjs';
-import { Messfehler, messbefehl } from './browser/fehler.mjs';
+import { browserErgebnis, Messfehler, messbefehl } from './browser/fehler.mjs';
 import { bauen } from './browser/bauen.mjs';
 import { pruefeWebadapter } from './browser/webadapter.mjs';
 import { beendeBrowserProzess, beobachteBrowserProzess, browserProzessIdentitaet } from './browser/prozessende.mjs';
@@ -213,7 +213,7 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
       if (navigation.errorText) throw new Messfehler(`Navigation fehlgeschlagen: ${navigation.errorText}`);
       await warten(() => cdp.events.slice(start).some(e => e.method === 'Page.loadEventFired'), 'Seite laden');
       const vorhanden = await messbefehl(() => cdp.send('Runtime.evaluate', { expression: 'Boolean(document.querySelector("[data-fristenrechner]"))', returnByValue: true, userGesture: false }));
-      if (!vorhanden.result.value) throw new Error('Komponente fehlt in der gebauten Probeseite.');
+      if (!browserErgebnis(vorhanden)) throw new Error('Komponente fehlt in der gebauten Probeseite.');
       await pause(100);
     };
     // Neue Phasen ergänzen diese Zuordnung, den Ergebniskatalog und ihre Module.
@@ -299,10 +299,12 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
     try {
       const netlog = netlogLesen(readFileSync(netlogDatei, 'utf8'));
       protokoll.netlogAbschluss = netlog.netlogAbschluss;
-      const nachweis = netzNachweis(netlog, protokoll.netzanfragen, protokoll.browserTargetAnfragen);
+      const nachweis = netzNachweis(netlog, protokoll.netzanfragen, { messende: protokoll.netzMessende,
+        prozessende: protokoll.ergebnisse.find(e => e.id === 'ENDE') });
       protokoll.hintergrundanfragen = nachweis.hintergrundanfragen;
       protokoll.netzVerbindungen = nachweis.verbindungen;
       protokoll.netzUnklar = nachweis.unklar;
+      protokoll.netzBrowserendeAbbrueche = nachweis.beimBrowserendeAbgebrochen;
       protokoll.netzanfragen.push(...nachweis.seitenverdacht);
       protokoll.grenzen.push(...nachweis.grenzen);
       if (nachweis.hintergrundanfragen.some(a => a.status === 'blockiert')) protokoll.grenzen.push(
@@ -315,6 +317,7 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
       await pruefe('NETZ-VERBINDUNGEN', 'Keine tatsächliche externe Browserverbindung in den auswertbaren NetLog-Ereignissen', () => {
         if (nachweis.verbindungen.length) throw new Error(`${nachweis.verbindungen.length} externe Verbindungen; siehe netzVerbindungen.`);
         return { externeVerbindungen: 0, netlogVollstaendig: netlog.netlogAbschluss.vollstaendig,
+          beimBrowserendeAbgebrocheneHintergrundanfragen: nachweis.beimBrowserendeAbgebrochen.length,
           blockierteHintergrundversuche: nachweis.hintergrundanfragen.filter(a => a.status === 'blockiert').length, proxyVerbindungen: protokoll.proxyVerbindungen.length };
       });
       if (nachweis.unklar.length) throw new Error(`${nachweis.unklar.length} ungeklärte Netzereignisse; siehe netzUnklar.`);

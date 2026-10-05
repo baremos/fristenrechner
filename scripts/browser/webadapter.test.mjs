@@ -3,9 +3,51 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import test from 'node:test';
-import { dateiauswahlAbbrechen, pruefeBox320 } from './webadapter.mjs';
+import { runInNewContext } from 'node:vm';
+import { dateiauswahlAbbrechen, pruefeBox320, pruefeWebadapter } from './webadapter.mjs';
 import { pruefung } from './auswertung.mjs';
 import { Messfehler } from './fehler.mjs';
+
+// Die wirklichen Browserausdrücke des Webadapter-Moduls werden ausgewertet;
+// nur CDP und das Prüfdokument sind nachgestellt, keine ersetzte Klickfunktion.
+for (const [fall, optionen, status, art] of [
+  ['gesperrter Berechnen-Button', { gesperrt: true }, 'nicht bestanden', 'element-gesperrt'],
+  ['fehlender Berechnen-Button', { fehlt: true }, 'nicht bestanden', 'element-fehlt'],
+  ['gesperrter Speichern-Button', { speichernGesperrt: true }, 'nicht bestanden', 'element-gesperrt'],
+  ['fehlende Statusanzeige', { statusFehlt: true }, 'nicht bestanden', 'element-fehlt'],
+  ['CDP-Störung', { cdpFehler: true }, 'ungültig', null],
+  ['Ausdruckstörung', { ausdruckFehler: true }, 'ungültig', null],
+  ['fehlende Ausdruckbestätigung', { antwortFehlt: true }, 'ungültig', null],
+  ['fehlender Fokus', { fokus: false }, 'ungültig', null],
+]) test(`Echtes Webadapter-Modul: W4 bei ${fall} ergibt ${status}`, async () => {
+  const protokoll = { ergebnisse: [] }, aufrufe = [];
+  const element = { disabled: optionen.gesperrt, scrollIntoView() {}, getBoundingClientRect: () => ({ x: 0, y: 0, width: 80, height: 40 }), contains: () => true };
+  const sandbox = { location: { href: 'about:blank' }, document: {
+    querySelector: selector => selector === '#schedule-form button[type="submit"]' ? optionen.fehlt ? null : element
+      : selector === '#storage-status' ? optionen.statusFehlt ? null : { textContent: 'Lokales Projekt geladen.' }
+        : selector === '#save-json' ? { disabled: optionen.speichernGesperrt } : {},
+    elementFromPoint: () => element, hasFocus: () => optionen.fokus !== false,
+  } };
+  const cdp = { events: [], send: async (name, params) => {
+    aufrufe.push(name);
+    if (name === 'Runtime.evaluate') {
+      if (optionen.cdpFehler) throw new Error('CDP unterbrochen');
+      if (optionen.antwortFehlt) return {};
+      if (optionen.ausdruckFehler) return { exceptionDetails: { text: 'Ausdruck nicht auswertbar' } };
+      try { return { result: { value: runInNewContext(params.expression, sandbox) } }; }
+      catch (e) { return { exceptionDetails: { text: e.message } }; }
+    }
+    return { identifier: 'instrumentierung' };
+  } };
+  await pruefeWebadapter({ cdp, protokoll, basisUrl: 'http://127.0.0.1:1234', ausgabe,
+    navigieren: async () => {}, pruefung: async (id, beschreibung, fn) => {
+      if (id === 'W4') return pruefung(protokoll, id, beschreibung, fn);
+    } });
+  const r = protokoll.ergebnisse[0];
+  assert.equal(r.id, 'W4'); assert.equal(r.status, status);
+  if (art) assert.equal(r.befund.art, art);
+  assert.ok(!aufrufe.includes('Input.dispatchMouseEvent'), 'Fehlende/gesperrte Elemente und Messstörungen lösen keinen Klick aus');
+});
 
 function abbruchProbe(neueEreignisse, alteEreignisse = []) {
   const aufrufe = [];
@@ -64,7 +106,7 @@ test('W8 hebt den automatischen Abbruch auch bei fehlgeschlagener Aktivierung wi
   assert.deepEqual(aufrufe.at(-1), { name: 'Page.setInterceptFileChooserDialog', parameter: { enabled: true, cancel: false } });
 });
 
-const testBasis = resolve('scratchpad/tmp-v6a-r6');
+const testBasis = resolve('scratchpad/tmp-v6a-r7');
 mkdirSync(testBasis, { recursive: true });
 const temp = realpathSync(testBasis);
 const ausgabe = mkdtempSync(join(temp, 'webadapter-tests-'));

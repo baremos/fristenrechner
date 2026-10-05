@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { isAbsolute } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { anfrageBewerten } from './auswertung.mjs';
-import { Messfehler, messbefehl } from './fehler.mjs';
+import { Messfehler, messbefehl, produktbefundPruefen } from './fehler.mjs';
 
 // Instrumentierung ausschließlich im Prüfdokument, Originalaufrufe unverändert.
 // Der Webadapter widerruft Blob-URLs nach 1 s; diese Zeit muss bei einem fehlenden
@@ -92,7 +92,7 @@ export async function browserDownload({ browserCdp, ausgabe, browserContextId, f
 export async function echterMausklick({ send, wert, selector }) {
   const steuern = (name, parameter) => messbefehl(() => send(name, parameter));
   await steuern('Page.bringToFront');
-  const punkt = await wert(`(() => {const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw new Error('Bedienelement fehlt');if(e.disabled)throw new Error('Bedienelement ist gesperrt');e.scrollIntoView({block:'center',inline:'center',behavior:'instant'});const r=e.getBoundingClientRect();const x=r.x+r.width/2,y=r.y+r.height/2;const hit=document.elementFromPoint(x,y);return {x,y,breite:r.width,hoehe:r.height,fokus:document.hasFocus(),treffer:hit===e || e.contains(hit)};})()`);
+  const punkt = produktbefundPruefen(await wert(`(() => {const selector=${JSON.stringify(selector)};const e=document.querySelector(selector);if(!e)return {produktabweichung:{art:'element-fehlt',selector}};if(e.disabled)return {produktabweichung:{art:'element-gesperrt',selector}};e.scrollIntoView({block:'center',inline:'center',behavior:'instant'});const r=e.getBoundingClientRect();const x=r.x+r.width/2,y=r.y+r.height/2;const hit=document.elementFromPoint(x,y);return {x,y,breite:r.width,hoehe:r.height,fokus:document.hasFocus(),treffer:hit===e || e.contains(hit)};})()`));
   if (!punkt || typeof punkt !== 'object') throw new Messfehler('Klickpunkt nicht bestätigt.');
   if (!punkt.fokus) throw new Messfehler('Prüfseite hat nach Page.bringToFront keinen bestätigten Fokus.');
   assert.ok(punkt.breite > 0 && punkt.hoehe > 0 && Number.isFinite(punkt.x) && Number.isFinite(punkt.y), 'Sichtbares Bedienelement');

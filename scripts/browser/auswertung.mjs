@@ -84,7 +84,8 @@ export async function pruefung(protokoll, id, beschreibung, fn) {
   const beginn = Date.now();
   let ergebnis;
   try { ergebnis = { id, beschreibung, status: 'bestanden', details: await fn() ?? null }; }
-  catch (error) { ergebnis = { id, beschreibung, status: error instanceof Messfehler ? 'ungültig' : 'nicht bestanden', meldung: error.message }; }
+  catch (error) { ergebnis = { id, beschreibung, status: error instanceof Messfehler ? 'ungültig' : 'nicht bestanden', meldung: error.message,
+    ...(error.befund ? { befund: error.befund } : {}) }; }
   ergebnis.dauerMs = Date.now() - beginn;
   protokoll.ergebnisse.push(ergebnis);
   return ergebnis;

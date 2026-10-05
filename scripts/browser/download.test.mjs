@@ -5,6 +5,15 @@ import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 import { browserDownload, echterMausklick, exportInstrumentationQuelle } from './download.mjs';
 import { pruefung } from './auswertung.mjs';
+import { browserErgebnis, messbefehl } from './fehler.mjs';
+
+test('Messbefehl erhält einen strukturierten Produktbefund; fehlende oder ungültige Ausdruckbelege bleiben Messfehler', async () => {
+  const berichten = antwort => pruefung({ ergebnisse: [] }, 'W4', 'Ausdruck', () => messbefehl(() => browserErgebnis(antwort)));
+  const produkt = await berichten({ result: { value: { produktabweichung: { art: 'element-gesperrt', selector: '#berechnen' } } } });
+  assert.equal(produkt.status, 'nicht bestanden'); assert.equal(produkt.befund.art, 'element-gesperrt');
+  for (const antwort of [null, {}, { result: {} }, { result: { value: { produktabweichung: { art: 'unbekannt' } } } },
+    { exceptionDetails: { text: 'Ausdruck gestört' } }]) assert.equal((await berichten(antwort)).status, 'ungültig');
+});
 
 const beginn = (params = {}) => ({ method: 'Browser.downloadWillBegin', params: {
   guid: 'download-1', frameId: 'frame', url: 'blob:http://127.0.0.1:1234/datei', suggestedFilename: 'probe.xlsx', ...params,
@@ -95,16 +104,26 @@ test('Schnelle Ereignisse während der Klickantwort gehen nicht verloren; inProg
   assert.equal(p.nachweis.abschlussNachMs, 50);
 });
 
-function klickProbe({ fokus = true, ueberdeckt = false, breite = 80 } = {}) {
+function klickProbe({ fokus = true, ueberdeckt = false, breite = 80, fehlt = false, gesperrt = false } = {}) {
   const aufrufe = [];
-  const element = { disabled: false, scrollIntoView: () => aufrufe.push('scroll'), getBoundingClientRect: () => ({ x: 10, y: 20, width: breite, height: 40 }), contains: hit => hit === element };
+  const element = { disabled: gesperrt, scrollIntoView: () => aufrufe.push('scroll'), getBoundingClientRect: () => ({ x: 10, y: 20, width: breite, height: 40 }), contains: hit => hit === element };
   let aktiv = false;
-  const document = { querySelector: selector => selector === '#export-excel' ? element : null,
+  const document = { querySelector: selector => selector === '#export-excel' && !fehlt ? element : null,
     elementFromPoint: () => ueberdeckt ? {} : element, hasFocus: () => aktiv };
   return { aufrufe, kontext: { selector: '#export-excel',
     send: async (method, params) => { aufrufe.push({ method, params }); if (method === 'Page.bringToFront') aktiv = fokus; },
     wert: async expression => runInNewContext(expression, { document }),
   } };
+}
+
+for (const [optionen, art] of [[{ fehlt: true }, 'element-fehlt'], [{ gesperrt: true }, 'element-gesperrt']]) {
+  test(`Strukturierter Klickbefund ${art} ist Produktabweichung ohne Input`, async () => {
+    const p = klickProbe(optionen);
+    const r = await pruefung({ ergebnisse: [] }, 'W5-xlsx', 'Bedienelement', () => echterMausklick(p.kontext));
+    assert.equal(r.status, 'nicht bestanden');
+    assert.equal(r.befund.art, art); assert.equal(r.befund.selector, '#export-excel');
+    assert.ok(p.aufrufe.every(a => typeof a === 'string' || !a.method.startsWith('Input.')));
+  });
 }
 
 test('Nach einem Download-Hub wird zuerst die Prüfseite aktiviert, danach Treffpunkt belegt und exakt einmal echte Eingabe gesendet', async () => {

@@ -8,7 +8,7 @@ import { auswerten, gesamtAuswerten } from './auswertung.mjs';
 import { bauen } from './bauen.mjs';
 import { ERGEBNISKATALOG } from './ergebniskatalog.mjs';
 
-const basis = resolve('scratchpad/tmp-v6a-r6');
+const basis = resolve('scratchpad/tmp-v6a-r7');
 mkdirSync(basis, { recursive: true });
 const arbeit = mkdtempSync(join(basis, 'rahmen-tests-'));
 test.after(() => {

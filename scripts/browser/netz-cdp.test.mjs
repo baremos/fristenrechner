@@ -88,14 +88,52 @@ for (const [zerstoert, abgeschlossen] of [[true, true], [false, true], [true, fa
     cdp.ws.empfangen({ method: 'Network.requestWillBeSent', sessionId: 'worker', params: {
       requestId: 'a', request: { url: 'http://127.0.0.1/a' } } });
     if (abgeschlossen) cdp.ws.empfangen({ method: 'Network.loadingFinished', sessionId: 'worker', params: { requestId: 'a' } });
-    cdp.ws.empfangen({ method: 'Target.detachedFromTarget', params: { sessionId: 'worker' } });
     if (zerstoert) cdp.ws.empfangen({ method: 'Target.targetDestroyed', params: { targetId: 'worker' } });
+    cdp.ws.empfangen({ method: 'Target.detachedFromTarget', params: { sessionId: 'worker' } });
     if (zerstoert && abgeschlossen) {
       await monitor.bereit(); assert.equal(protokoll.netzSitzungsabgaenge[0].erwartet, true);
     } else await assert.rejects(monitor.bereit(), /Unerwarteter Verlust/);
     monitor.close();
   });
 }
+
+for (const [ereignis, grund] of [['Inspector.detached', 'replaced_with_devtools'],
+  ['Inspector.detached', 'target_closed'], ['Target.detachedFromTarget', null]]) {
+  test(`Worker-Sitzungsverlust ${ereignis}/${grund} wird durch spätere Zerstörung nicht regulär`, async () => {
+    const { cdp, protokoll } = mock();
+    const monitor = await seitenNetzStarten(cdp, protokoll, 'pruefseite');
+    cdp.ws.empfangen({ method: 'Target.attachedToTarget', sessionId: 'seite', params: {
+      sessionId: 'worker', targetInfo: { targetId: 'worker', type: 'worker', url: 'blob:http://127.0.0.1/a' } } });
+    await monitor.bereit();
+    cdp.ws.empfangen({ method: ereignis, sessionId: 'worker', params: { sessionId: 'worker', reason: grund } });
+    const abgang = structuredClone(protokoll.netzSitzungsabgaenge[0]);
+    await Promise.resolve();
+    cdp.ws.empfangen({ method: 'Target.targetDestroyed', params: { targetId: 'worker' } });
+    await assert.rejects(monitor.bereit(), /Unerwarteter Verlust/);
+    assert.deepEqual(protokoll.netzSitzungsabgaenge[0], abgang, 'Spätere Ereignisse ändern die Abgangsbewertung nicht');
+    assert.equal(abgang.erwartet, false); assert.equal(abgang.ereignis, ereignis); assert.equal(abgang.grund, grund);
+    const target = protokoll.netzTargets.find(t => t.targetId === 'worker');
+    assert.equal(target.beendet, true); assert.ok(target.zerstoerung.reihenfolge > abgang.reihenfolge);
+    monitor.close();
+  });
+}
+
+test('Worker-Zerstörung während eines unbestätigten Überwachungsbefehls bleibt ungültig', async () => {
+  const { cdp, protokoll } = mock();
+  const monitor = await seitenNetzStarten(cdp, protokoll, 'pruefseite');
+  const senden = cdp.send;
+  let freigeben;
+  cdp.send = (...args) => args[0] === 'Network.enable' && args[3] === 'worker'
+    ? new Promise(resolve => { freigeben = resolve; }) : senden(...args);
+  cdp.ws.empfangen({ method: 'Target.attachedToTarget', sessionId: 'seite', params: {
+    sessionId: 'worker', targetInfo: { targetId: 'worker', type: 'worker', url: 'blob:http://127.0.0.1/a' } } });
+  cdp.ws.empfangen({ method: 'Target.targetDestroyed', params: { targetId: 'worker' } });
+  freigeben({});
+  await assert.rejects(monitor.bereit(), /Unerwarteter Verlust/);
+  const a = protokoll.netzSitzungsabgaenge[0];
+  assert.equal(a.messbereit, false); assert.equal(a.offeneBefehle, 1); assert.equal(a.erwartet, false);
+  monitor.close();
+});
 
 test('Worker mit offenem WebSocket bleibt nach HTTP-Abschluss derselben Kennung unvollständig', async () => {
   const { cdp, protokoll } = mock(); const monitor = await seitenNetzStarten(cdp, protokoll, 'pruefseite');

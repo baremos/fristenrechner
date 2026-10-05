@@ -64,7 +64,7 @@ export class BrowserCdp {
 export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl) {
   const targets = new Map(), historie = new Map(), offen = new Set(), fehler = [];
   const entdeckt = new Map(), aktiv = new Map(), geloest = [];
-  let geplantesEnde = false;
+  let geplantesEnde = false, reihenfolge = 0;
   const leer = url => url === '' || url === 'about:blank';
   const webTypen = ['page', 'iframe', 'worker', 'shared_worker', 'service_worker'];
   const autoAttach = { autoAttach: true, waitForDebuggerOnStart: true, flatten: true,
@@ -72,6 +72,24 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
   protokoll.netzTargets = [];
   protokoll.netzEntdeckteTargets = [];
   protokoll.netzSitzungsabgaenge = [];
+  const abgangMerken = (target, m) => {
+    if (target.abgang) return;
+    const a = { sessionId: target.sessionId, targetId: target.targetId, ereignis: m.method,
+      grund: m.params?.reason ?? null, reihenfolge, geplantesEnde,
+      messbereit: Boolean(target.messbereit), offeneAnfragen: [...(aktiv.get(target.sessionId) ?? [])],
+      offeneBefehle: target.offeneBefehle ?? 0 };
+    // Nur die Ursache und der Zustand beim ersten Abgang zählen. Ein späteres
+    // targetDestroyed belegt keine Überwachung nach einem Sitzungsverlust.
+    const workerEnde = ['worker', 'shared_worker', 'service_worker'].includes(target.type)
+      && a.ereignis === 'Target.targetDestroyed' && a.messbereit
+      && !a.offeneAnfragen.length && a.offeneBefehle === 0;
+    a.erwartet = a.geplantesEnde || workerEnde;
+    a.beleg = a.geplantesEnde ? 'Geplantes Browserende nach abgeschlossener Messung'
+      : workerEnde ? 'Target-Zerstörung als erste Abgangsursache; Workerüberwachung bestätigt, keine offenen Anfragen oder Befehle'
+        : 'Kein belegter regulärer Messabschluss';
+    target.abgang = a;
+    geloest.push(target); protokoll.netzSitzungsabgaenge.push(a);
+  };
   const senden = async (method, params, sessionId) => {
     const target = targets.get(sessionId);
     if (target) target.offeneBefehle = (target.offeneBefehle ?? 0) + 1;
@@ -147,16 +165,14 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
   };
   const nachricht = ev => {
     let m; try { m = JSON.parse(ev.data); } catch { fehler.push('Ungültige CDP-Nachricht bei der Netzüberwachung.'); return; }
+    reihenfolge++;
     const p = m.params;
     if (['Target.targetCreated', 'Target.targetInfoChanged'].includes(m.method)) adresseMerken(p.targetInfo);
     if (m.method === 'Target.targetDestroyed') {
       for (const target of targets.values()) if (target.targetId === p.targetId) {
         target.beendet = true;
-        if (!target.abgang) {
-          target.abgang = { sessionId: target.sessionId, targetId: target.targetId, ereignis: m.method, geplantesEnde,
-            messbereit: Boolean(target.messbereit), offeneAnfragen: [...(aktiv.get(target.sessionId) ?? [])], offeneBefehle: target.offeneBefehle ?? 0 };
-          geloest.push(target); protokoll.netzSitzungsabgaenge.push(target.abgang);
-        }
+        target.zerstoerung = { ereignis: m.method, reihenfolge };
+        abgangMerken(target, m);
       }
     }
     const bekannt = targets.get(m.sessionId);
@@ -164,11 +180,7 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
     if (verloreneSitzung) {
       const target = targets.get(verloreneSitzung);
       if (!target) { if (!geplantesEnde) fehler.push(`Unbekannte Messsitzung gelöst: ${verloreneSitzung}`); }
-      else if (!target.abgang) {
-        target.abgang = { sessionId: verloreneSitzung, targetId: target.targetId, ereignis: m.method, geplantesEnde,
-          messbereit: Boolean(target.messbereit), offeneAnfragen: [...(aktiv.get(verloreneSitzung) ?? [])], offeneBefehle: target.offeneBefehle ?? 0 };
-        geloest.push(target); protokoll.netzSitzungsabgaenge.push(target.abgang);
-      }
+      else abgangMerken(target, m);
     }
     if (m.method === 'Inspector.targetCrashed' || m.method === 'Target.targetCrashed') {
       fehler.push(`Target abgestürzt: ${p.targetId ?? bekannt?.targetId ?? 'unbekannt'}`);
@@ -282,11 +294,6 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
     for (const t of entdeckt.values()) if (t.entdecktVorMessende && !t.angehaengt) fehler.push(`Entdecktes Web-Target ohne Messsitzung: ${t.type} ${t.targetId}`);
     for (const target of geloest) {
       const a = target.abgang;
-      const workerEnde = ['worker', 'shared_worker', 'service_worker'].includes(target.type) && target.beendet
-        && a.messbereit && !a.offeneAnfragen.length && a.offeneBefehle === 0;
-      a.erwartet = a.geplantesEnde || workerEnde;
-      a.beleg = a.geplantesEnde ? 'Geplantes Browserende nach abgeschlossener Messung'
-        : workerEnde ? 'Target zerstört; Workerüberwachung bestätigt, keine offenen Anfragen oder Befehle bei Abgang' : 'Kein belegter regulärer Messabschluss';
       if (!a.erwartet) fehler.push(`Unerwarteter Verlust der Messsitzung: ${target.type} ${target.targetId} (${a.sessionId})`);
     }
     if (fehler.length) throw new Messfehler(`Seiten-Netzüberwachung unvollständig: ${[...new Set(fehler)].join('; ')}`);

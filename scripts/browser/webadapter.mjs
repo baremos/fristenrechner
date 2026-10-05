@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { strFromU8, unzipSync } from 'fflate';
 import { browserDownload, echterMausklick, exportInstrumentationQuelle } from './download.mjs';
-import { Messfehler, messbefehl } from './fehler.mjs';
+import { browserErgebnis, Messfehler, messbefehl, Produktabweichung } from './fehler.mjs';
 
 const SCHLUESSEL = 'baremos-fristenrechner-projekt-v1';
 const IMPORT_PROJEKT = {
@@ -103,9 +103,7 @@ export async function pruefeWebadapter(kontext) {
   // Nutzeraktivierung entstehen; allein Input.dispatch* löst die Bedienung aus.
   async function wert(expression) {
     const antwort = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: false });
-    if (antwort.exceptionDetails) throw new Messfehler(`Browserausdruck fehlgeschlagen: ${antwort.exceptionDetails.exception?.description ?? antwort.exceptionDetails.text}`);
-    if (!antwort.result) throw new Messfehler('Browserausdruck ohne Messergebnis.');
-    return antwort.result.value;
+    return browserErgebnis(antwort);
   }
 
   async function bis(fn, beschreibung, timeout = 8000, produkt = false) {
@@ -126,7 +124,7 @@ export async function pruefeWebadapter(kontext) {
   const dateiaktionenFrei = () => wert(`['save-json','export-excel','export-pdf','open-json','reset-project'].every(id => {const e=document.getElementById(id);return e && !e.disabled;})`);
 
   async function bereit() {
-    await bis(async () => await wert(`!!document.querySelector('[data-fristenrechner]') && !!document.querySelector('#save-json') && !document.querySelector('#save-json').disabled && !document.querySelector('#storage-status').textContent.includes('wird geladen')`), 'Initialisierung der Probeseite');
+    await bis(() => wert(`(() => {for(const selector of ['[data-fristenrechner]','#save-json','#storage-status']){if(!document.querySelector(selector))return {produktabweichung:{art:'element-fehlt',selector}};}if(document.querySelector('#storage-status').textContent.includes('wird geladen'))return false;if(document.querySelector('#save-json').disabled)return {produktabweichung:{art:'element-gesperrt',selector:'#save-json'}};return true;})()`), 'Initialisierung der Probeseite', 8000, true);
   }
 
   async function frisch(vorab) {
@@ -196,9 +194,16 @@ export async function pruefeWebadapter(kontext) {
       if (aktivierung === 'Maus') await klick('#open-json');
       else {
         // Fokus über CDP; der Tastaturrundgang selbst gehört zur späteren Phase tastatur.
-        const { root } = await send('DOM.getDocument');
-        const { nodeId } = await send('DOM.querySelector', { nodeId: root.nodeId, selector: '#open-json' });
+        await wert(`(() => {const selector='#open-json';const e=document.querySelector(selector);if(!e)return {produktabweichung:{art:'element-fehlt',selector}};if(e.disabled)return {produktabweichung:{art:'element-gesperrt',selector}};return true;})()`);
+        const dokument = await send('DOM.getDocument');
+        if (!dokument?.root?.nodeId) throw new Messfehler('CDP-Dokument für den Tastaturfokus nicht bestätigt.');
+        const auswahl = await send('DOM.querySelector', { nodeId: dokument.root.nodeId, selector: '#open-json' });
+        if (!Number.isInteger(auswahl?.nodeId) || auswahl.nodeId < 0) throw new Messfehler('CDP-Auswahl des Dateifelds nicht bestätigt.');
+        const { nodeId } = auswahl;
+        if (nodeId === 0) throw new Produktabweichung({ art: 'element-fehlt', selector: '#open-json' });
+        await send('Page.bringToFront');
         await send('DOM.focus', { nodeId });
+        if (!await wert(`document.hasFocus() && document.activeElement === document.querySelector('#open-json')`)) throw new Messfehler('Fokus am Dateifeld nicht bestätigt.');
         if (aktivierung === 'Enter') await taste('Enter', 'Enter', 13, { text: '\r' });
         else await taste(' ', 'Space', 32, { text: ' ' });
       }
@@ -262,11 +267,16 @@ export async function pruefeWebadapter(kontext) {
   async function bestaetigen(accept) {
     const anfang = cdp.events.length;
     // Ein synchroner confirm-Dialog kann die Eingabeantwort bis zur Antwort aufhalten.
-    const eingabeVersprechen = klick('#reset-project');
+    let aktivierungsfehler;
+    const eingabeVersprechen = klick('#reset-project').catch(e => { aktivierungsfehler = e; });
     try {
-      const dialog = await bis(() => cdp.events.slice(anfang).find(e => methode(e) === 'Page.javascriptDialogOpening'), 'Bestätigungsdialog');
+      const dialog = await bis(() => {
+        if (aktivierungsfehler) throw aktivierungsfehler;
+        return cdp.events.slice(anfang).find(e => methode(e) === 'Page.javascriptDialogOpening');
+      }, 'Bestätigungsdialog');
       await send('Page.handleJavaScriptDialog', { accept });
       await eingabeVersprechen;
+      if (aktivierungsfehler) throw aktivierungsfehler;
       assert.equal(dialog.params.type, 'confirm', 'Nativer Bestätigungsdialog');
       assert.equal(dialog.params.message, 'Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?', 'Wortlaut des Bestätigungsdialogs');
       return { text: dialog.params.message, antwort: accept };
