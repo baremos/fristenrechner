@@ -434,9 +434,13 @@ ihre genaue Zuordnung zu Quellmodulen liefert Vite/Rolldown hier nicht zuverläs
 Deshalb scheitern **im Modulgraphen sichtbare** Stil- und Asset-Module aus
 `node_modules` im gesamten Client-
 **und Server-Modulgraphen** ausdrücklich, auch mit null gerenderten JS-Bytes.
-Erlaubt sind dort nur JS-/TS- und JSON-Modulformen sowie mit
-`astro&type=script` gekennzeichnete Skript-Teilmodule einer `.astro`-Datei ohne
-Asset-Abfrage; `type=style` bleibt gesperrt.
+Die Prüfung bildet die Abfrageleser von Vite und Astro nicht nach, sondern
+verlangt eine geschlossene Form: Ein Modul aus `node_modules` wird nur
+akzeptiert, wenn seine ganze Kennung ein einfacher Pfad mit der Endung `.js`,
+`.mjs`, `.cjs` oder `.json` ist, ohne jeden Abfrageanhang. Jede andere Form
+scheitert, auch übliche wie Teilmodule einer `.astro`-Datei aus einem Paket;
+im App-Build kommt keine solche Form vor. Virtuelle Kennungen scheitern bei
+Stil-Endungen und bei Abfragen für Ressourcen (`url`, `raw`, `inline`).
 **Grenze:** CSS-`@import` und CSS-`url(...)` in eigenen CSS-Dateien oder
 Style-Blöcken sowie `new URL(..., import.meta.url)` können Fremdinhalte
 übernehmen, ohne deren Herkunft als Fremdmodul im Graphen auszuweisen. Diese

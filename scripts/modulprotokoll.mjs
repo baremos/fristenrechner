@@ -34,20 +34,20 @@ export function paketort(id) {
   return fund ? pfad.slice(0, fund.index + fund[0].length) : null;
 }
 
+// Geschlossene Form statt Nachbildung der Abfrageleser von Vite und Astro:
+// Ein Modul aus node_modules gilt nur als Code, wenn seine ganze Kennung aus
+// einem einfachen Pfad mit Code- oder JSON-Endung besteht, ohne jeden
+// Abfrageanhang. Jede andere Form scheitert, auch übliche wie Teilmodule
+// einer .astro-Datei; kommt eine solche hinzu, ist die Prüfung bewusst zu
+// erweitern. Virtuelle Kennungen scheitern bei Stil- und Asset-Formen.
+const CODE_AUS_PAKET = /^[A-Za-z0-9@._/+-]+\.(?:[cm]?js|json)$/;
+const STILFORM = /\.(?:css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|[?#&])/i;
+const ASSET_ABFRAGE = /[?&](?:url|raw|inline|worker|sharedworker)(?:[=&#?]|$)/i;
+
 export function pruefeStilOderAsset(id) {
-  const { pfad, anhang } = zerlegeKennung(id);
-  // Parameter dekodiert lesen, wie Vite und Astro es tun: Kodierte oder
-  // doppelte Angaben dürfen den Typ nicht verdecken. Im Zweifel scheitern.
-  const parameter = new URLSearchParams(anhang);
-  const schluessel = [...parameter.keys()];
-  const typen = parameter.getAll('type');
-  const sprachen = schluessel.filter(k => k.startsWith('lang.'));
-  const stilOderAsset = typen.some(t => t !== 'script')
-    || schluessel.some(k => ['raw', 'url', 'inline'].includes(k))
-    || sprachen.some(k => !/^lang\.[cm]?[jt]sx?$/.test(k));
-  const astroSkript = pfad.endsWith('.astro') && schluessel.filter(k => k === 'astro').length === 1
-    && typen.length === 1 && typen[0] === 'script' && sprachen.length <= 1;
-  if (paketort(id) && ((!/\.(?:[cm]?[jt]sx?|json)$/.test(pfad) && !astroSkript) || stilOderAsset)) {
+  const { virtuell } = zerlegeKennung(id);
+  if ((!virtuell && paketort(id) && !CODE_AUS_PAKET.test(id))
+      || (virtuell && (STILFORM.test(id) || ASSET_ABFRAGE.test(id)))) {
     throw new Error('Modulprotokoll: Stil- oder Asset-Modul aus node_modules; Herkunftsabdeckung fehlt.');
   }
 }

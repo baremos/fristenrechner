@@ -309,7 +309,7 @@ const k2Gegenproben = [
   ['new Function', { '_astro/haupt.AbCdEfGh.js': 'new Function("return 1");' }, /1 × Function ohne Eintrag in dynamischerCode/],
   ['setTimeout mit Text', { '_astro/haupt.AbCdEfGh.js': 'setTimeout("f()", 1);' }, /1 × setTimeout mit Text ohne Eintrag/],
   ['Function ohne frühere core-js-Ausnahme', { '_astro/probe.AbCdEfGh.js': 'Function("return this")(); Function("x")();' }, /2 × Function ohne Eintrag in dynamischerCode/],
-  // Befunde aus Runde 2: Kommentarzeichen in Skript und Stil, Endtag mit Attribut,
+  // Weitere Gegenproben: Kommentarzeichen in Skript und Stil, Endtag mit Attribut,
   // kodierte Werte, Leerraum außerhalb von HTML, indirektes eval
   ['<!-- in einer Zeichenkette im Skript', { 'index.html': seite('<script>const x="<!--";a.replaceChildren();const y="-->";</script>') }, /index\.html: 1 × replaceChildren/],
   ['Skript im Kommentar-Mantel', { 'index.html': seite('<script><!--\nlet a; a ||= 1;\n//--></script>') }, /index\.html: 1 × logische Zuweisung/],
@@ -323,7 +323,7 @@ const k2Gegenproben = [
   ['eval mit ?.()', { '_astro/haupt.AbCdEfGh.js': 'eval?.("1");' }, /1 × eval ohne Eintrag/],
   ['Function im Kommaausdruck', { '_astro/haupt.AbCdEfGh.js': '(0, Function)("x");' }, /1 × Function ohne Eintrag/],
   ['Stil-Element mit Ereignis-Attribut', { 'index.html': '<!doctype html><html><head><style onload="x()">a{}</style></head><body></body></html>' }, /Ereignis-Attribut onload/],
-  // Befunde aus Runde 3: Textinhalt, fremde Namensräume, eingebettete Dokumente, eval
+  // Weitere Gegenproben: Textinhalt, fremde Namensräume, eingebettete Dokumente, eval
   ['<!-- im Titel', { 'index.html': '<!doctype html><html><head><title><!--</title></head><body><script>eval("1")</script></body></html>' }, /1 × eval ohne Eintrag/],
   ['<!-- in noscript', { 'index.html': seite('<noscript><!--</noscript><script>eval("1")</script>') }, /1 × eval ohne Eintrag/],
   ['<!-- in textarea', { 'index.html': seite('<textarea><!--</textarea><script>eval("1")</script>') }, /1 × eval ohne Eintrag/],

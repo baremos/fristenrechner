@@ -353,9 +353,9 @@ for (const id of ['node_modules/fremd/stil.css', 'node_modules/fremd/bild.svg', 
     assert.throws(() => buendel(p), /Stil- oder Asset-Modul/);
   });
 }
-test('Paketzuordnung: Paketzuordnung verwendet nur den Pfad, verschachtelter Abfrageinhalt bleibt ohne Wirkung', () => {
+test('Paketzuordnung: Abfrageanhang an einem Modul aus node_modules scheitert geschlossen, auch mit relativem Inhalt', () => {
   const p = probe(); p.protokoll.chunks[0].module[0].id += '?source=relative/node_modules/extra/index.js';
-  assert.deepEqual(buendel(p), []);
+  assert.throws(() => buendel(p), /Stil- oder Asset-Modul/);
 });
 for (const anhang of ['/node_modules/extra/index.js', '//server/freigabe/modul.js', 'C:/privat/modul.js', 'C:modul.js', '\\\\?\\C:\\privat\\modul.js', '%2Fprivat%2Fmodul.js']) {
   test(`Abfragepfad: absoluter Abfrageinhalt scheitert im Abgleich: ${anhang}`, () => {

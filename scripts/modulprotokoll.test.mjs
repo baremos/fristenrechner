@@ -153,7 +153,10 @@ for (const anhang of [
 });
 
 for (const [anhang, erlaubt] of [
-  ['astro&type=script&index=0&lang.ts', true],
+  ['astro&type=script&index=0&lang.ts', false],
+  ['astro&type=script&index=0&lang.ts&extra=.css', false],
+  ['astro&type=script&index=0&LANG.css', false],
+  ['astro&type=script&index=0&lang.ts&extra=.css?z&inline-css', false],
   ['astro&type=style&index=0&lang.css', false],
   ['astro&type=script&type=style', false],
   ['astro&type=script&%74ype=style&index=0&lang.css', false],
@@ -166,7 +169,7 @@ for (const [anhang, erlaubt] of [
   ['astro&type=script&inline', false],
   ['type=script&index=0&lang.ts', false],
   ['astro&index=0&lang.ts', false],
-]) test(`Astro-Teilmodul: ${anhang}, ${erlaubt ? 'Code erlaubt' : 'Stil oder unbekannte Form gesperrt'}`, () => {
+]) test(`Astro-Teilmodul aus einem Paket: ${anhang}, ${erlaubt ? 'Code erlaubt' : 'gesperrt (geschlossene Form)'}`, () => {
   const id = 'node_modules/probe/Komponente.astro?' + anhang;
   const pruefen = () => pruefeStilOderAsset(id);
   if (erlaubt) assert.doesNotThrow(pruefen);
@@ -177,6 +180,26 @@ for (const [anhang, erlaubt] of [
     graph();
     assert.deepEqual(JSON.parse(readFileSync(join(ort, 'app/.astro/module-client.json.tmp'))).modulgraph, [id]);
   } else assert.throws(graph, /Stil- oder Asset-Modul/);
+});
+
+test('Module aus node_modules: nur einfache Pfade mit Code- oder JSON-Endung ohne Abfrageanhang', () => {
+  for (const id of ['node_modules/pako/dist/pako.esm.mjs', 'node_modules/@babel/runtime/helpers/esm/typeof.js',
+    'node_modules/astro/package.json', 'app/node_modules/a/node_modules/@b/c/index.cjs']) {
+    assert.doesNotThrow(() => pruefeStilOderAsset(id), id);
+  }
+  for (const id of ['node_modules/astro/package.json?x=?url', 'node_modules/astro/package.json?x=#?url',
+    'node_modules/astro/package.json?x=?raw', 'node_modules/probe/index.js?v=1', 'node_modules/probe/index.js?',
+    'node_modules/probe/stil.css', 'node_modules/probe/Komponente.astro', 'node_modules/probe/C.astro??astro&type=script',
+    'node_modules/probe/modul.ts', 'node_modules/probe/bild.svg', 'node_modules/probe/index.js#teil']) {
+    assert.throws(() => pruefeStilOderAsset(id), /Stil- oder Asset-Modul|Abfrageanhang|ungültig/, id);
+  }
+  // Eigene Quellen bleiben frei; ihre Stil- und Rohimporte gehören zum Projekt.
+  for (const id of ['app/src/pages/index.astro?astro&type=style&index=0&lang.css', 'LICENSE?raw', 'packages/oberflaeche/src/a.ts']) {
+    assert.doesNotThrow(() => pruefeStilOderAsset(id), id);
+  }
+  for (const id of ['virtuell:fremd/stil.css', 'virtuell:fremd/modul.js?url', 'virtuell:x.scss?direct']) {
+    assert.throws(() => pruefeStilOderAsset(id), /Stil- oder Asset-Modul|Abfrageanhang|ungültig/, id);
+  }
 });
 
 test('Virtueller CommonJS-Proxy: absolute Pfade innerhalb der Wurzel zuerst relativieren', () => {
