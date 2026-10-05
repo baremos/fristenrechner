@@ -87,7 +87,7 @@ export function formatExportDate(value: string): string {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
-/** Erstellungsdatum im Export-Kopf — zweistellig wie alle Termindaten . */
+/** Erstellungsdatum im Export-Kopf — zweistellig wie alle Termindaten. */
 export function formatCreatedDate(value: Date): string {
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',

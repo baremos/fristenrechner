@@ -39,13 +39,28 @@ export function erzeugeWebPlattform(root: HTMLElement): Plattform & { dispose():
   const feld = root.querySelector<HTMLInputElement>('#open-json');
   if (!feld) throw new Error('Das Dateifeld für den Projektimport fehlt.');
   const fenster = root.ownerDocument.defaultView!;
-  let aktiviert = false;
+  let feldKlick: Event | undefined;
+  const nutzerEreignisse = new Map<string, Event>();
+  const aktivierungsEreignisse = ['click', 'keydown', 'mousedown', 'pointerdown', 'pointerup', 'touchend'];
+  const nutztAktivierungsRueckfall = fenster.navigator?.userActivation === undefined;
   let geschlossen = false;
   let abbrechen: (() => void) | undefined;
-  const aktiviertDurchKlick = (): void => {
-    aktiviert = true;
-    Promise.resolve().then(() => { aktiviert = false; });
+  // eventPhase bleibt auch bei Mikrotasks zwischen Listenern gesetzt und
+  // endet mit dem Ereignis. Pro Typ bleibt höchstens ein Ereignis gespeichert.
+  const laeuft = (event: Event | undefined): boolean => !!event && event.eventPhase !== 0;
+  const nutzerAktiviert = (event: Event): void => {
+    if (!event.isTrusted) return;
+    if (event.type === 'keydown') {
+      if ((event as KeyboardEvent).key === 'Escape') return;
+    }
+    if (event.type === 'pointerdown' && (event as PointerEvent).pointerType !== 'mouse') return;
+    if (event.type === 'pointerup' && (event as PointerEvent).pointerType === 'mouse') return;
+    nutzerEreignisse.set(event.type, event);
   };
+  const aktiviertDurchKlick = (event: Event): void => { feldKlick = event; };
+  if (nutztAktivierungsRueckfall) {
+    for (const typ of aktivierungsEreignisse) fenster.addEventListener(typ, nutzerAktiviert, true);
+  }
   feld.addEventListener('click', aktiviertDurchKlick, true);
   return {
     speicher: erzeugeWebSpeicher(fenster),
@@ -53,6 +68,13 @@ export function erzeugeWebPlattform(root: HTMLElement): Plattform & { dispose():
       waehlen(vorgabe) {
         if (geschlossen) return Promise.resolve({ status: 'abgebrochen' });
         if (abbrechen) return Promise.reject(new PlattformFehler('lesen', 'Eine Dateiauswahl ist bereits geöffnet.'));
+        // Nur während einer Nutzergeste beginnen. Ein synthetischer Feldklick
+        // allein ist keine Aktivierung; Gastgeber können synchron ihre API nutzen.
+        const aktivierung = fenster.navigator?.userActivation;
+        const hatNutzeraktivierung = aktivierung !== undefined ? aktivierung.isActive
+          : Array.from(nutzerEreignisse.values()).some(event => event.isTrusted && laeuft(event));
+        if (!(laeuft(feldKlick) && feldKlick!.isTrusted)
+          && !hatNutzeraktivierung) return Promise.resolve({ status: 'abgebrochen' });
         return new Promise<Auswahl<{ name: string; text: string }>>((resolve, reject) => {
           let fertig = false;
           let liest = false;
@@ -102,7 +124,7 @@ export function erzeugeWebPlattform(root: HTMLElement): Plattform & { dispose():
           feld.addEventListener('change', ausgewaehlt);
           feld.addEventListener('cancel', abbruch);
           fenster.addEventListener('focus', fokus);
-          if (!aktiviert) feld.click();
+          if (!laeuft(feldKlick)) feld.click();
         });
       },
     },
@@ -127,6 +149,11 @@ export function erzeugeWebPlattform(root: HTMLElement): Plattform & { dispose():
     async zuruecksetzenBestaetigen() { return fenster.confirm('Alle Eingaben dieses lokal gespeicherten Projekts zurücksetzen?'); },
     dispose() {
       geschlossen = true;
+      if (nutztAktivierungsRueckfall) {
+        for (const typ of aktivierungsEreignisse) fenster.removeEventListener(typ, nutzerAktiviert, true);
+      }
+      nutzerEreignisse.clear();
+      feldKlick = undefined;
       feld.removeEventListener('click', aktiviertDurchKlick, true);
       abbrechen?.();
     },

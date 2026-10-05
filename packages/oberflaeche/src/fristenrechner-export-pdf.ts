@@ -170,7 +170,7 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
   }
 
   // Zeitschiene mit den Phasenblöcken auf eigener Seite nach der
-  // Tabellenübersicht  — Darstellung wie die
+  // Tabellenübersicht — Darstellung wie die
   // Web-Zeitschiene: farbiger Phasenkopf, Zeitraum, Meilensteinliste.
   if (result.phasen.length > 0) {
     const milestonesById = new Map(result.meilensteine.map((milestone) => [milestone.id, milestone]));
