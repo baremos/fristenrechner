@@ -136,28 +136,19 @@
       "name": "at",
       "hoechstzahl": 4,
       "grund": "fast-png in jsPDF, nur beim Dekodieren von PNG-Bildern; die Oberfläche fügt keine Bilder in das PDF ein."
-    },
-    {
-      "datei": "index.es",
-      "name": "hasOwn",
-      "hoechstzahl": 1,
-      "grund": "core-js über canvg, mit Rückfall auf eine eigene Funktion, wenn Object.hasOwn fehlt."
-    },
-    {
-      "datei": "html2canvas",
-      "name": "at",
-      "hoechstzahl": 1,
-      "grund": "Zeichenkette \"at\" als Fall im Parser für radial-gradient(… at …), ein Vergleich mit einem Wort der CSS-Grammatik, kein Aufruf von Array.prototype.at."
     }
   ],
-  "dynamischerCode": [
-    {
-      "datei": "index.es",
-      "name": "Function",
-      "hoechstzahl": 1,
-      "grund": "core-js über canvg: Function(\"return this\")() als Rückfall, wenn globalThis fehlt. Die WebView ab 83 kennt globalThis."
-    }
-  ],
+  "dynamischerCode": [],
+  "jspdfZusatzmodule": {
+    "dateistaemme": ["html2canvas", "purify.es", "index.es"],
+    "kennzeichen": [
+      "afterSanitize",
+      "IN_PLACE",
+      "Unable to find element in cloned iframe",
+      "zloirock",
+      "__core-js_shared__"
+    ]
+  },
   "adressen": [
     {
       "datei": "index.astro_astro_type_script_index_0_lang",
@@ -238,24 +229,6 @@
       "grund": "Vorsatz vor EXPORT_URL für den Hyperlink in der Excel-Datei (fristenrechner-export-excel.ts). Den Link öffnet die Tabellen-App, nicht die App."
     },
     {
-      "datei": "html2canvas",
-      "wortlaut": "http://www.w3.org/2000/svg",
-      "hoechstzahl": 2,
-      "grund": "Namensraum des W3C in html2canvas (createElementNS), kein Abruf."
-    },
-    {
-      "datei": "index.es",
-      "wortlaut": "https://github.com/zloirock/core-js",
-      "hoechstzahl": 1,
-      "grund": "Herkunftsangabe von core-js im gemeinsamen Speicher der Bibliothek, kein Abruf."
-    },
-    {
-      "datei": "index.es",
-      "wortlaut": "https://github.com/zloirock/core-js/blob/v3.50.0/LICENSE",
-      "hoechstzahl": 1,
-      "grund": "Lizenzangabe von core-js im gemeinsamen Speicher der Bibliothek, kein Abruf."
-    },
-    {
       "datei": "jspdf.es.min",
       "wortlaut": "https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js",
       "hoechstzahl": 1,
@@ -272,24 +245,6 @@
       "wortlaut": "http://jspdf.default.namespaceuri/",
       "hoechstzahl": 1,
       "grund": "Interner Namensraum von jsPDF für Metadaten, kein Abruf."
-    },
-    {
-      "datei": "purify.es",
-      "wortlaut": "http://www.w3.org/1998/Math/MathML",
-      "hoechstzahl": 1,
-      "grund": "Namensraum des W3C in DOMPurify, kein Abruf."
-    },
-    {
-      "datei": "purify.es",
-      "wortlaut": "http://www.w3.org/2000/svg",
-      "hoechstzahl": 1,
-      "grund": "Namensraum des W3C in DOMPurify, kein Abruf."
-    },
-    {
-      "datei": "purify.es",
-      "wortlaut": "http://www.w3.org/1999/xhtml",
-      "hoechstzahl": 2,
-      "grund": "Namensraum des W3C in DOMPurify, kein Abruf."
     }
   ],
   "sync": {
