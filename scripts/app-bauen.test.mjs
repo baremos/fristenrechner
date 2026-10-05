@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { androidQuellen, argumente, baue, findeNpm } from './app-bauen.mjs';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const basis = join(wurzel, 'scratchpad', 'paket-2.5-c3');
+const basis = join(wurzel, 'scratchpad', 'tmp-v8');
 mkdirSync(basis, { recursive: true });
 const arbeit = mkdtempSync(join(basis, 'app-bauen-test-'));
 test.after(() => {
@@ -45,6 +45,7 @@ function probe({ fehlerBei, prozessFehler, ausnahmeBei, ohneApk = false } = {}) 
     node: process.execPath,
     ausgabe: (text) => meldungen.push(text),
     fehlerausgabe: (text) => fehler.push(text),
+    hinweisePruefung: () => [],
     pruefungen: {
       pruefeKonfiguration: (...args) => pruefung('K1', args),
       pruefeDist: (...args) => ({ fehler: pruefung('K2', args), bericht: { dateien: 2, besonderheit: 'Bericht der Gegenprobe' } }),
@@ -154,6 +155,40 @@ test('Android ohne --streng gibt den Schalter nicht an android-build weiter', ()
   assert.ok(!p.prozesse.at(-1).args.includes('--streng'));
   assert.ok(!p.prozesse.at(-1).args.includes('--ohne-testgruppe'));
   assert.equal(p.pruefaufrufe.find(({ name }) => name === 'K3').args[0].vorher, p.vorher);
+});
+
+test('Hinweise: Bündel nach K2, Gradle-Modell nach Release-Build, Erfolg ohne neue Protokollzeile', () => {
+  const p = probe();
+  const aufrufe = [];
+  p.optionen.hinweisePruefung = (wurzel, optionen) => {
+    aufrufe.push({ wurzel, optionen, letzter: p.schritte.at(-1) });
+    return [];
+  };
+  assert.equal(baue(['--android', '--aufgabe', ':app:assembleRelease'], p.optionen), 0);
+  assert.deepEqual(aufrufe, [
+    { wurzel: p.ort, optionen: { buendel: join(p.ort, 'app/.astro/module-client.json') }, letzter: 'K2' },
+    { wurzel: p.ort, optionen: { gradleModell: join(p.ort, 'app/android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml') }, letzter: 'Gradle' },
+  ]);
+  assert.ok(!p.meldungen.some(s => /Hinweise|Bündel|Gradle-Abgleich/.test(s)));
+  assert.deepEqual(p.fehler, []);
+});
+for (const modus of ['--web', '--android']) {
+  test(`Hinweise: ${modus} bricht beim Bündelfehler nach K2 ab`, () => {
+    const p = probe(); p.optionen.hinweisePruefung = () => ['Bündelabgleich: Gegenprobe'];
+    assert.equal(baue([modus], p.optionen), 1);
+    assert.deepEqual(p.schritte, ['Kern', 'Astro', 'K1', 'K2']);
+    assert.deepEqual(p.fehler, ['Fehler: Bündelabgleich: Gegenprobe']);
+  });
+}
+test('Hinweise: Gradle-Abgleich scheitert vor K5; Debug braucht kein Release-Modell', () => {
+  const p = probe();
+  p.optionen.hinweisePruefung = (_wurzel, o) => o.gradleModell ? ['Gradle-Abgleich: Gegenprobe'] : [];
+  assert.equal(baue(['--android', '--aufgabe', 'assembleRelease'], p.optionen), 1);
+  assert.equal(p.schritte.at(-1), 'Gradle');
+  assert.deepEqual(p.fehler, ['Fehler: Gradle-Abgleich: Gegenprobe']);
+  const d = probe();
+  d.optionen.hinweisePruefung = (_wurzel, o) => { assert.ok(!o.gradleModell); return []; };
+  assert.equal(baue(['--android'], d.optionen), 0);
 });
 
 for (const streng of [false, true]) {

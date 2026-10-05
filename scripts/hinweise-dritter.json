@@ -1,0 +1,893 @@
+{
+  "formatVersion": 1,
+  "beschreibung": "Platzhalterbestand nach Ersatz der optionalen jsPDF-Module. Vollständige Wortlaute, abschließender Bestand und Übernahmeprüfung folgen vor der Einbindung.",
+  "apache": {
+    "datei": "LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "npm": [
+    {
+      "paket": "@babel/runtime",
+      "version": "7.29.7",
+      "lizenz": "MIT",
+      "ort": "node_modules/@babel/runtime",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+      },
+      "status": "platzhalter"
+    },
+    {
+      "paket": "@capacitor/core",
+      "version": "8.5.2",
+      "lizenz": "MIT",
+      "ort": "node_modules/@capacitor/core",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd"
+      },
+      "status": "platzhalter"
+    },
+    {
+      "paket": "fast-png",
+      "version": "6.4.0",
+      "lizenz": "MIT",
+      "ort": "node_modules/fast-png",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "47ec9747cf2c470a505fcb20f3ec2ff2e60ea4febaf2e1e7041a24fc369fac3c"
+      },
+      "status": "platzhalter"
+    },
+    {
+      "paket": "fflate",
+      "version": "0.8.3",
+      "lizenz": "MIT",
+      "ort": "node_modules/fflate",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551"
+      },
+      "status": "platzhalter"
+    },
+    {
+      "paket": "iobuffer",
+      "version": "5.4.0",
+      "lizenz": "MIT",
+      "ort": "node_modules/iobuffer",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "1c22118fd112e8c394a5ec0598d2e2dfcdc19b3e1055ac3eaccdb2522b777335"
+      },
+      "status": "platzhalter"
+    },
+    {
+      "paket": "jspdf",
+      "version": "4.2.1",
+      "lizenz": "MIT",
+      "ort": "node_modules/jspdf",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "dc388ec35ff463288cdde3588a36fd4ed12a45deff053243b37309acc9ef583b"
+      },
+      "status": "platzhalter"
+    },
+    {
+      "paket": "jspdf-autotable",
+      "version": "5.0.8",
+      "lizenz": "MIT",
+      "ort": "node_modules/jspdf-autotable",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE.txt",
+        "sha256": "99a374e0385cf714d2faae5f6e02ec79217c6bcecec39bdb9e102091471b960a"
+      },
+      "status": "platzhalter"
+    },
+    {
+      "paket": "pako",
+      "version": "2.2.0",
+      "lizenz": "MIT AND Zlib",
+      "ort": "node_modules/pako",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539"
+      },
+      "status": "platzhalter"
+    }
+  ],
+  "eingebettet": [
+    {
+      "name": "src/libs/FileSaver.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/FileSaver.js",
+      "lizenz": "MIT (nur Verweis auf github.com/eligrey/FileSaver.js/blob/master/LICENSE.md)",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/rgbcolor.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/rgbcolor.js",
+      "lizenz": "@license Use it if you like it",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/md5.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/md5.js",
+      "lizenz": "Joseph Myers does not specify a particular license for his work.",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/rc4.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/rc4.js",
+      "lizenz": "FPDF is released under a permissive license: there is no usage restriction.",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/pdfsecurity.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/pdfsecurity.js",
+      "lizenz": "MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/omggif.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/omggif.js",
+      "lizenz": "MIT-Text im Kommentar",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/JPEGEncoder.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/JPEGEncoder.js",
+      "lizenz": "BSD-3-Clause-Text im Kommentar",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/WebPDecoder.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/WebPDecoder.js",
+      "lizenz": "WebM Software License Agreement + Additional IP Rights Grant (nur Haftungsausschluss und URLs im Kommentar); Port MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/modules/standard_fonts_metrics.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/modules/standard_fonts_metrics.js",
+      "lizenz": "MIT + Adobe-AFM-Bedingungen (Wortlaut wie SPDX APAFML, Abgleich offen)",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/bidiEngine.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/bidiEngine.js",
+      "lizenz": "MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/BMPDecoder.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/BMPDecoder.js",
+      "lizenz": "keine Lizenzangabe in der Quelle",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/libs/ttffont.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/ttffont.js",
+      "lizenz": "keine Lizenzangabe in der Quelle",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "src/modules/*.js (acroform, addimage, annotations, arabic, autoprint, canvas, cell, split_text_to_size, png_support, xmp_metadata, context2d, filters, fileloading, html, javascript, outline, gif/bmp/webp_support, rgba_support, svg, total_pages, viewerpreferences, vfs, setlanguage, ttfsupport, jpeg_support)",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/modules/*.js (acroform, addimage, annotations, arabic, autoprint, canvas, cell, split_text_to_size, png_support, xmp_metadata, context2d, filters, fileloading, html, javascript, outline, gif/bmp/webp_support, rgba_support, svg, total_pages, viewerpreferences, vfs, setlanguage, ttfsupport, jpeg_support)",
+      "lizenz": "MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "tslib in jsPDF-AutoTable",
+      "paket": "jspdf-autotable",
+      "ort": "node_modules/jspdf-autotable",
+      "quelle": "dist/jspdf.plugin.autotable.mjs",
+      "lizenz": "0BSD",
+      "behaelter": {
+        "datei": "dist/jspdf.plugin.autotable.mjs",
+        "sha256": "e75527c67984e642201d41fa2b11aa64e502cd3a38b5dc17461f4c204fabf144"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    },
+    {
+      "name": "Zlib-Hinweis in pako",
+      "paket": "pako",
+      "ort": "node_modules/pako",
+      "quelle": "lib/zlib/deflate.js:3-20",
+      "lizenz": "Zlib",
+      "behaelter": {
+        "datei": "lib/zlib/deflate.js",
+        "sha256": "54a36e5377a62ce36f4b5a2307f7e55962cc036d7dbc4a355f702f9de069e012"
+      },
+      "wortlaut": null,
+      "status": "platzhalter"
+    }
+  ],
+  "buildHilfscode": [
+    {
+      "paket": "vite",
+      "version": "8.3.0",
+      "ort": "node_modules/vite",
+      "lizenz": "MIT",
+      "module": [
+        "virtuell:vite/preload-helper.js"
+      ],
+      "lizenzdatei": {
+        "datei": "LICENSE.md",
+        "sha256": "387dd7baa307083401a27c58c362c30832f5ba1dba84f10cc22c33401523f45c"
+      },
+      "wortlaut": null,
+      "imBuendel": true,
+      "status": "platzhalter"
+    },
+    {
+      "paket": "rolldown",
+      "version": "1.2.9",
+      "ort": "node_modules/rolldown",
+      "lizenz": "MIT",
+      "module": [
+        "virtuell:rolldown/runtime.js"
+      ],
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734"
+      },
+      "wortlaut": null,
+      "imBuendel": false,
+      "status": "platzhalter",
+      "anmerkung": "Im Vorbestand geführt; im aktuellen Client-Modulprotokoll nicht enthalten. In der Inhaltsprüfung erneut abzugleichen."
+    },
+    {
+      "paket": "@oxc-project/runtime",
+      "version": "0.150.0",
+      "ort": null,
+      "lizenz": "noch zu belegen",
+      "module": [
+        "virtuell:@oxc-project+runtime@0.150.0/helpers/esm/defineProperty.js",
+        "virtuell:@oxc-project+runtime@0.150.0/helpers/esm/toPrimitive.js",
+        "virtuell:@oxc-project+runtime@0.150.0/helpers/esm/toPropertyKey.js",
+        "virtuell:@oxc-project+runtime@0.150.0/helpers/esm/typeof.js"
+      ],
+      "wortlaut": null,
+      "imBuendel": true,
+      "status": "platzhalter"
+    }
+  ],
+  "android": {
+    "projektmodule": [
+      {
+        "name": "capacitor-android",
+        "paket": "@capacitor/android",
+        "ort": "node_modules/@capacitor/android",
+        "version": "8.5.2",
+        "lizenz": "MIT",
+        "lizenzdatei": {
+          "datei": "LICENSE",
+          "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd"
+        },
+        "status": "platzhalter"
+      },
+      {
+        "name": "capacitor-cordova-android-plugins",
+        "version": "erzeugtes Geruest",
+        "ort": null,
+        "lizenz": "noch zu belegen",
+        "wortlaut": null,
+        "status": "platzhalter"
+      }
+    ],
+    "maven": [
+      {
+        "gruppe": "org.apache.cordova",
+        "name": "framework",
+        "version": "14.0.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.activity",
+        "name": "activity",
+        "version": "1.11.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.annotation",
+        "name": "annotation-experimental",
+        "version": "1.4.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.annotation",
+        "name": "annotation-jvm",
+        "version": "1.8.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.appcompat",
+        "name": "appcompat-resources",
+        "version": "1.7.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.appcompat",
+        "name": "appcompat",
+        "version": "1.7.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.arch.core",
+        "name": "core-common",
+        "version": "2.2.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.arch.core",
+        "name": "core-runtime",
+        "version": "2.2.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.collection",
+        "name": "collection-jvm",
+        "version": "1.4.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.concurrent",
+        "name": "concurrent-futures",
+        "version": "1.1.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.coordinatorlayout",
+        "name": "coordinatorlayout",
+        "version": "1.3.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.core",
+        "name": "core-ktx",
+        "version": "1.17.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.core",
+        "name": "core-splashscreen",
+        "version": "1.0.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.core",
+        "name": "core-viewtree",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.core",
+        "name": "core",
+        "version": "1.17.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.cursoradapter",
+        "name": "cursoradapter",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.customview",
+        "name": "customview",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.drawerlayout",
+        "name": "drawerlayout",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.emoji2",
+        "name": "emoji2-views-helper",
+        "version": "1.3.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.emoji2",
+        "name": "emoji2",
+        "version": "1.3.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.fragment",
+        "name": "fragment",
+        "version": "1.8.9",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.interpolator",
+        "name": "interpolator",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-common",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-livedata-core",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-livedata",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-process",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-runtime",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-viewmodel-savedstate",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-viewmodel",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.loader",
+        "name": "loader",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.profileinstaller",
+        "name": "profileinstaller",
+        "version": "1.4.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.resourceinspection",
+        "name": "resourceinspection-annotation",
+        "version": "1.0.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.savedstate",
+        "name": "savedstate",
+        "version": "1.2.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.startup",
+        "name": "startup-runtime",
+        "version": "1.1.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.tracing",
+        "name": "tracing",
+        "version": "1.2.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.vectordrawable",
+        "name": "vectordrawable-animated",
+        "version": "1.1.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.vectordrawable",
+        "name": "vectordrawable",
+        "version": "1.1.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.versionedparcelable",
+        "name": "versionedparcelable",
+        "version": "1.1.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.viewpager",
+        "name": "viewpager",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "androidx.webkit",
+        "name": "webkit",
+        "version": "1.14.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "com.google.guava",
+        "name": "listenablefuture",
+        "version": "1.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "org.jetbrains.kotlin",
+        "name": "kotlin-stdlib",
+        "version": "2.0.21",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "org.jetbrains.kotlinx",
+        "name": "kotlinx-coroutines-android",
+        "version": "1.8.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "org.jetbrains.kotlinx",
+        "name": "kotlinx-coroutines-core-jvm",
+        "version": "1.8.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "org.jetbrains",
+        "name": "annotations",
+        "version": "23.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      },
+      {
+        "gruppe": "org.jspecify",
+        "name": "jspecify",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "platzhalter"
+      }
+    ]
+  },
+  "ausnahmen": [
+    {
+      "ort": "node_modules/@types/pako",
+      "paket": "@types/pako",
+      "version": "2.0.4",
+      "lizenz": "MIT",
+      "grund": "nur Typdeklarationen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/@types/raf",
+      "paket": "@types/raf",
+      "version": "3.4.3",
+      "lizenz": "MIT",
+      "grund": "nur Typdeklarationen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/@types/trusted-types",
+      "paket": "@types/trusted-types",
+      "version": "2.0.7",
+      "lizenz": "MIT",
+      "grund": "nur Typdeklarationen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/base64-arraybuffer",
+      "paket": "base64-arraybuffer",
+      "version": "1.0.2",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/canvg",
+      "paket": "canvg",
+      "version": "3.0.11",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/core-js",
+      "paket": "core-js",
+      "version": "3.50.0",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/css-line-break",
+      "paket": "css-line-break",
+      "version": "2.1.0",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/dompurify",
+      "paket": "dompurify",
+      "version": "3.4.15",
+      "lizenz": "Apache-2.0",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/html2canvas",
+      "paket": "html2canvas",
+      "version": "1.4.1",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/performance-now",
+      "paket": "performance-now",
+      "version": "2.1.0",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/raf",
+      "paket": "raf",
+      "version": "3.4.1",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/regenerator-runtime",
+      "paket": "regenerator-runtime",
+      "version": "0.13.11",
+      "lizenz": "MIT",
+      "grund": "nicht im Modulprotokoll",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/rgbcolor",
+      "paket": "rgbcolor",
+      "version": "1.0.1",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/stackblur-canvas",
+      "paket": "stackblur-canvas",
+      "version": "2.7.0",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/svg-pathdata",
+      "paket": "svg-pathdata",
+      "version": "6.0.3",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/text-segmentation",
+      "paket": "text-segmentation",
+      "version": "1.0.3",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/tslib",
+      "paket": "tslib",
+      "version": "2.8.1",
+      "lizenz": "0BSD",
+      "grund": "kein eigenes Modul; Hilfen in jsPDF-AutoTable eingebettet",
+      "status": "platzhalter"
+    },
+    {
+      "ort": "node_modules/utrie",
+      "paket": "utrie",
+      "version": "1.0.2",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "platzhalter"
+    }
+  ]
+}

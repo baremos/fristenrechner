@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// Prüft npm-Lizenzen offline. Führt weder npm noch Code aus Abhängigkeiten aus.
+// Prüft npm-Lizenzen offline. Führt weder npm noch Installationsskripte aus.
 // Aufruf: node scripts/check-licenses.mjs [--json] [--wurzel <Ordner>]
 //                                      [--packliste <npm-pack-JSON>]
+//                                      [--buendel <Modulprotokoll>]
+//                                      [--gradle-modell <Release-Lint-Modell>] [--streng]
 // Regeln und Grenzen: docs/lizenzen.md, Daten: check-licenses.json.
 
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, posix, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pruefeInventar } from './hinweise-pruefung.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
 export let vorgabe;
@@ -59,7 +62,7 @@ function pruefePfad(pfad) {
 // Ein kleiner Parser für SPDX-AND/OR und Klammern; AND bindet stärker als OR.
 // Zuerst den ganzen Ausdruck prüfen, danach auswerten: Unbekanntes darf auch
 // in einem nicht gewählten OR-Zweig nicht unbemerkt bleiben.
-export function pruefeAusdruck(text, bereich) {
+export function pruefeAusdruck(text, bereich, wahl) {
   if (vorgabeFehler) throw vorgabeFehler;
   if (typeof text !== 'string' || !text.trim()) throw new Error('Lizenzangabe fehlt oder ist kein SPDX-Text.');
   const teile = text.match(/[A-Za-z0-9][A-Za-z0-9.+:-]*|[()]|[^\s]/g) ?? [];
@@ -96,7 +99,19 @@ export function pruefeAusdruck(text, bereich) {
     if (knoten.operator === 'OR') return kinder.find((k) => k !== null) ?? null;
     return kinder.every((k) => k !== null) ? [...new Set(kinder.flat())] : null;
   }
-  const auswahl = auswerten(baum);
+  let auswahl = auswerten(baum);
+  if (wahl !== undefined) {
+    const gewaehlt = pruefeAusdruck(wahl, bereich);
+    if (gewaehlt.normalisiert.includes(' OR ') || !gewaehlt.zulaessig) throw new Error('Ungültige Lizenzwahl.');
+    const soll = [...gewaehlt.auswahl].sort();
+    function moeglich(knoten, erlaubt) {
+      if (knoten.id) return erlaubt.includes(knoten.id) ? [new Set([knoten.id])] : [];
+      const kinder = knoten.kinder.map(k => moeglich(k, erlaubt));
+      if (knoten.operator === 'OR') return kinder.flat();
+      return kinder.reduce((a, b) => a.flatMap(x => b.map(y => new Set([...x, ...y]))), [new Set()]);
+    }
+    auswahl = moeglich(baum, soll).some(s => gleich([...s].sort(), soll)) ? gewaehlt.auswahl : null;
+  }
   return { normalisiert: normalisiere(baum), zulaessig: auswahl !== null, auswahl: auswahl ?? [] };
 }
 
@@ -270,7 +285,8 @@ export function pruefePackliste(liste, workspaces, wurzel) {
 }
 
 export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelausnahmen,
-  stichtag = new Date().toISOString().slice(0, 10) } = {}) {
+  stichtag = new Date().toISOString().slice(0, 10), buendel, gradleModell, streng = false,
+  inventarPruefung = pruefeInventar } = {}) {
   if (vorgabeFehler) throw vorgabeFehler;
   pruefeAusnahmen(ausnahmen, stichtag);
   const lock = leseJson(join(wurzel, 'package-lock.json'), wurzel);
@@ -414,6 +430,9 @@ export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelau
   else hinweise.push('npm-Packlisten wurden nicht geprüft; dafür --packliste verwenden.');
   hinweise.push('Installationsskripte und vorgebaute Programme sind Hinweise für Paket 2.8, keine automatische F-Droid-Freigabe.');
   hinweise.push('Proprietäre Dienste, eingebettete Fremdanteile und vollständige Lizenztexte werden nicht automatisch bewertet.');
+  const inventar = inventarPruefung(wurzel, liste, { buendel, gradleModell, streng, pruefeAusdruck });
+  fehler.push(...inventar.fehler);
+  hinweise.push(`Hinweise Dritter: ${inventar.platzhalter} Platzhalter; ${streng ? 'strenger Modus' : 'Normalmodus'}.`);
   const lizenzen = {};
   for (const p of liste) lizenzen[String(p.lizenz)] = (lizenzen[String(p.lizenz)] ?? 0) + 1;
   return { formatVersion: 2, stichtag, ok: fehler.length === 0,
@@ -422,7 +441,7 @@ export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelau
       einzelausnahmen: liste.filter((p) => p.ausnahme !== null).length,
       entwicklung: liste.filter((p) => p.bereich === 'entwicklung').length, installiert: liste.filter((p) => p.installiert).length,
       nurLockfile: liste.filter((p) => !p.installiert).length, installationsskripte: liste.filter((p) => p.installationsskripte.length).length,
-      vorgebaut: liste.filter((p) => p.vorgebaut.length).length, lizenzen },
+      vorgebaut: liste.filter((p) => p.vorgebaut.length).length, platzhalter: inventar.platzhalter, lizenzen },
     workspaces, packlisteGeprueft: packliste !== undefined, pakete: liste, hinweise, fehler };
 }
 
@@ -448,18 +467,22 @@ export function menschenlesbar(bericht) {
 function haupt(argv) {
   let wurzel = resolve(hier, '..');
   let packliste;
+  let buendel, gradleModell, streng = false;
   let bericht;
   try {
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i];
       if (a === '--json') continue;
-      if (['--wurzel', '--packliste'].includes(a) && argv[i + 1] && !argv[i + 1].startsWith('--')) {
+      if (a === '--streng') { streng = true; continue; }
+      if (['--wurzel', '--packliste', '--buendel', '--gradle-modell'].includes(a) && argv[i + 1] && !argv[i + 1].startsWith('--')) {
         const wert = resolve(argv[++i]);
         if (a === '--wurzel') wurzel = wert;
-        else packliste = wert;
+        else if (a === '--packliste') packliste = wert;
+        else if (a === '--buendel') buendel = wert;
+        else gradleModell = wert;
       } else throw new Error('Unbekanntes oder unvollständiges Argument.');
     }
-    bericht = pruefeProjekt(wurzel, { packliste });
+    bericht = pruefeProjekt(wurzel, { packliste, buendel, gradleModell, streng });
   } catch (e) { bericht = { formatVersion: 2, ok: false, hinweise: [], fehler: [e.message] }; }
   console.log(argv.includes('--json') ? JSON.stringify(bericht, null, 2) : menschenlesbar(bericht));
   process.exitCode = bericht.ok ? 0 : 1;

@@ -283,7 +283,7 @@ Der Emulatorrahmen baut den Testempfänger sowie die Gegenprobe und die Variante
 
 ## Lauf und Befund
 
-Die Prüfung läuft offline, ohne npm-Aufruf und ohne Ausführung von Code oder Installationsskripten aus Abhängigkeiten:
+Die Prüfung läuft offline, ohne npm-Aufruf und ohne Ausführung von Installationsskripten aus Abhängigkeiten:
 
 ```text
 node scripts/check-licenses.mjs
@@ -307,6 +307,95 @@ Im Lauf vom 2026-09-29 trugen drei Pakete Installationshaken: `core-js` 3.50.0, 
 Das Skript erfasst `preinstall`, `install`, `postinstall` und `binding.gyp`. `prepare` und `prepack` sind keine hier geprüften Installationshaken für Registry-Pakete; Quellinstallationen aus Git benötigen eine eigene Prüfung. Lizenzfehler unterdrücken die Suche nach Hinweis- und Binärdateien nicht. Weder die Bereichseinordnung noch das Abschalten von Installationsskripten entfernt bereits enthaltene Programme. Der tatsächliche Build-Baum wurde für den lokalen Endstandlauf geprüft, siehe [F-Droid-Nachweis](fdroid-build.md); bei Änderungen ist diese Prüfung zu erneuern.
 
 ## Hinweise Dritter, Paketinhalt und verbleibende Arbeit
+
+### Werkzeuge für die Hinweise der App
+
+Stand: **Werkzeuge vorhanden, Inhalte mit Platzhaltern, Einbindung in die App folgt.**
+[`scripts/hinweise-dritter.json`](../scripts/hinweise-dritter.json) führt den vorläufigen
+Bestand nach dem Ersatz der optionalen jsPDF-Module. Die erzeugte Datei
+[`app/src/hinweise-dritter.txt`](../app/src/hinweise-dritter.txt) wird noch nicht in die
+App-Seite eingebunden. Sie ist keine abschließend geprüfte Sammlung der Hinweise.
+
+Das Inventar verwendet `formatVersion: 1`. Seine Felder:
+
+| Gruppe oder Feld | Bedeutung |
+|---|---|
+| `apache` | Repositorydatei `LICENSE` mit SHA-256 für den einmaligen Apache-2.0-Text. |
+| `npm` | Paketname `paket`, `version`, gewählte `lizenz`, Lockfile-`ort`, `imBuendel` und `lizenzdatei` mit paketrelativer `datei` und `sha256`. Bei OR-Angaben steht hier die gewählte Alternative. |
+| `eingebettet` | Fremdanteil mit `name`, enthaltendem `paket`, Paket-`ort`, `quelle`, Lizenzangabe, vollständigem `wortlaut` und `behaelter` mit paketrelativer Datei und SHA-256. `quelle` beschreibt die Herkunft; gelesen wird ausschließlich die Behälterdatei. |
+| `buildHilfscode` | Werkzeugpaket, Version, Lizenz, Paketort oder `null`, genaue normalisierte `module`, `imBuendel`, Quellbeleg und eigener `wortlaut`. Virtuelle Hilfen sind keine eigenen Lockfile-Orte. |
+| `android.projektmodule` | Modulname, Version beziehungsweise Kennzeichnung eines erzeugten Gerüsts, Lizenz, Paketort oder `null` und Lizenzdatei beziehungsweise Wortlaut. |
+| `android.maven` | Je Artefakt `gruppe`, `name`, `version`, `lizenz` und gegebenenfalls zusätzliche Hinweise als `wortlaut`. |
+| `ausnahmen` | Ausgelieferter Lockfile-Ort ohne eigenes Web-Modul: Paket, Version, Lizenzwahl und nichtleerer `grund`. Ein Eintrag ohne passenden ausgelieferten Lockfile-Ort ist ein Fehler. |
+| `status` | Pflichtfeld jedes Gruppeneintrags: `platzhalter` oder `vollstaendig`. `wortlaut: null` ist nur bei einem Platzhalter zulässig, wenn das Format einen Wortlaut verlangt. |
+
+Der vorläufige Bestand umfasst acht npm-Pakete, 15 eingebettete Anteile, drei
+Hilfscodeeinträge, zwei Android-Projektmodule, 46 Maven-Artefakte und 18 Ausnahmen.
+Alle **92 Einträge** tragen `status: "platzhalter"`. Der Rolldown-Hilfscode aus dem
+Vorbestand erscheint im aktuellen Client-Modulprotokoll nicht und trägt
+`imBuendel: false`; die Inhaltsprüfung muss diesen Stand erneut abgleichen.
+Die ersetzten optionalen jsPDF-Module und ihr entfallener Unterbaum tragen die
+Ausnahmebegründung „im Bündel ersetzt, K2 prüft das Fehlen“. Die Lockfile-Kategorie
+„ausgeliefert“ bleibt eine Einordnung des Abhängigkeitsgraphen und ist keine
+Aussage darüber, welche Pakete tatsächlich gerenderten Code im Web-Bündel haben.
+`@capacitor/android` wird über das Android-Projektmodul erfasst.
+
+Die Befehle laufen offline aus der Repositorywurzel:
+
+```text
+node scripts/hinweise-dritter.mjs --schreiben
+node scripts/hinweise-dritter.mjs --pruefen
+npm run lizenzen
+node scripts/check-licenses.mjs --streng
+node scripts/check-licenses.mjs --buendel app/.astro/module-client.json
+node scripts/check-licenses.mjs --gradle-modell app/android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml
+```
+
+Der Generator liest ausschließlich Dateien innerhalb der Repositorywurzel,
+einschließlich installierter Pakete unter `node_modules`. Er prüft die SHA-256 der
+unveränderten Quellbytes **vor** der Übernahme. Die einzige Textnormalisierung ist
+CRLF beziehungsweise CR zu LF; Einrückungen, Zeilenumbrüche und übriger Wortlaut
+bleiben erhalten. Das Ergebnis hat feste Gruppen- und Eintragsreihenfolge,
+UTF-8 ohne BOM und LF. Die bestehende Regel `app/src/** text eol=lf` in
+`.gitattributes` gilt auch für die erzeugte Datei. Apache-2.0 steht einmal vor den
+Paketen; die betreffenden Einträge verweisen darauf. Zusatzhinweise bleiben eigene
+Wortlaute. Der vollständige Apache-Text muss von ihnen getrennt vorliegen.
+`--pruefen` vergleicht die Datei bytegenau; Erfolg bleibt ohne Konsolenausgabe.
+
+Die Lizenzprüfung verlangt für jeden ausgelieferten Lockfile-Ort einen
+Inventareintrag oder eine begründete Ausnahme. Sie vergleicht Namen, Versionen und
+die Lizenzwahl mit Lockfile und installiertem Manifest, prüft Lizenz- und
+Behälterhashes und ruft die Aktualitätsprüfung des Generators auf. Die vorhandene
+belegte Metadatenausnahme für `rgbcolor` bleibt dabei maßgeblich. Auch Platzhalter
+müssen vorhandene Versions-, Lizenz- und Hashbelege erfüllen. Im Normalmodus nennt
+der Bericht ihre Anzahl (`zusammenfassung.platzhalter` in JSON); `--streng` macht
+jeden verbliebenen Platzhalter zum Fehler. Der strenge Lauf kann diesen Bestand
+daher noch nicht bestehen.
+
+`--buendel` liest das Client-Modulprotokoll aus `app/.astro/`. Jeder Paketort mit
+`renderedLength > 0` muss erfasst sein, und jeder mit `imBuendel: true` markierte
+Eintrag muss vorkommen. Verschachtelte Paketorte werden unterschieden. Virtuelle
+Hilfen werden in beiden Richtungen anhand ihrer genauen Kennungen abgeglichen;
+Module mit null gerenderten Bytes zählen nicht als enthalten. Das Vite-Plugin in
+`app/astro.config.mjs` schreibt sortiertes JSON mit LF ausschließlich nach
+`app/.astro/module-client.json`, ohne Konsolenausgabe. Kennungen sind relativ zur
+Repositorywurzel mit Schrägstrichen; der virtuelle Präfix `\0` wird `virtuell:`.
+`.astro/` ist bereits von Git ausgeschlossen. Vites `build.license` wird nicht
+verwendet, und das Plugin verändert keine Dateien in `dist`.
+
+`--gradle-modell` liest den `package`-Abschnitt des Release-Lint-Modells über
+`leseQuellXml` und `scripts/XmlQuelle.java` mit dem Parser des JDK. Maven-Koordinaten
+und Projektmodule werden in beiden Richtungen verglichen; DTD und externe
+Entitäten sind ausgeschlossen. Ein `compile`-Abschnitt ersetzt den
+`package`-Abschnitt nicht. Dieses Modell belegt weder vollständige Lizenzhinweise
+noch die Herkunft jedes eingebetteten Bestandteils eines AAR oder JAR.
+
+Vor der Einbindung sind insbesondere die Originalwortlaute, die endgültige
+Paketliste, die Hilfscode-Lizenzen und die Android-Zusatzhinweise zu
+vervollständigen. Eingebettete Teile ohne oder mit besonderen Lizenzangaben
+benötigen weiterhin eine inhaltliche Prüfung. Vor dem ersten Einchecken neuer
+Fremdtexte ist die Übernahmeprüfung mit Quelle, Datum, Größe und SHA-256
+festzuhalten. Hashabgleich und Generator ersetzen diese Prüfung nicht.
 
 Die Prüfung liest Lizenz- und Hinweisdateien, bewertet deren Vollständigkeit jedoch nicht automatisch. Die beiden npm-Pakete bündeln im unten geprüften Stand keinen Fremdcode. Ihre Fremdabhängigkeiten werden über die Paketmanifeste angegeben. Gesammelte Originalhinweise und Lizenztexte tatsächlich gebündelter Fremdanteile gehören zum bündelnden Gastgeber, etwa zur Website, und offline lesbar in die App. Diese Hinweise bleiben anhand der jeweiligen Bündel zu vervollständigen. Eine Kennung in diesem Dokument ersetzt die Texte nicht. Auch Werkzeugpakete wie Rolldown und sharp enthalten weitere, nicht als eigene Lockfile-Pakete erfasste Anteile.
 

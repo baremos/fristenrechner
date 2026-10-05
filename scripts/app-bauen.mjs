@@ -7,6 +7,7 @@ import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as appPruefungen from './app-pruefungen.mjs';
+import { pruefeProjekt } from './check-licenses.mjs';
 
 const wurzelVorgabe = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const aufruf = 'Aufruf: node scripts/app-bauen.mjs --web | --check | --pruefen | --android [--aufgabe assembleDebug|assembleRelease] [--streng] [--ohne-testgruppe] | --android-quellen [--bericht]';
@@ -98,6 +99,7 @@ export function findeNpm(umgebung, node = process.execPath) {
 export function baue(argv, {
   wurzel = wurzelVorgabe, umgebung = process.env, node = process.execPath,
   spawn = spawnSync, pruefungen = appPruefungen, ausgabe = console.log, fehlerausgabe = console.error,
+  hinweisePruefung = (wurzel, optionen) => pruefeProjekt(wurzel, optionen).fehler,
 } = {}) {
   let werte;
   try {
@@ -139,11 +141,18 @@ export function baue(argv, {
       return 0;
     }
     if (werte.modus === 'check') return lauf('Typprüfung der App', [join(wurzel, 'scripts', 'astro.mjs'), 'check'], app) ? 0 : 1;
-    if (werte.modus === 'pruefen') return pruefeWeb() ? 0 : 1;
+    // Keine neue Erfolgszeile im F-Droid-prebuild-Protokoll. Nur Fehler ausgeben.
+    function hinweise(optionen) {
+      const fehler = hinweisePruefung(wurzel, optionen);
+      for (const f of fehler) fehlerausgabe(`Fehler: ${f}`);
+      return fehler.length === 0;
+    }
+    const buendel = join(app, '.astro/module-client.json');
+    if (werte.modus === 'pruefen') return pruefeWeb() && hinweise({ buendel }) ? 0 : 1;
     const npm = findeNpm(umgebung, node);
     if (!lauf('Rechenkern bauen', [npm, 'run', 'build', '--workspace', 'packages/kern'], wurzel)
       || !lauf('Seite der App bauen', [join(wurzel, 'scripts', 'astro.mjs'), 'build'], app)
-      || !pruefeWeb()) return 1;
+      || !pruefeWeb() || !hinweise({ buendel })) return 1;
     if (werte.modus === 'web') return 0;
     const vorher = pruefungen.leseAndroidZustand({ wurzel, umgebung: env });
     if (vorher.status.length) {
@@ -161,6 +170,7 @@ export function baue(argv, {
     if (werte.ohneTestgruppe) args.push('--ohne-testgruppe');
     if (!lauf('Android bauen', args, wurzel)) return 1;
     const debug = werte.aufgabe.endsWith('Debug');
+    if (!debug && !hinweise({ gradleModell: join(app, 'android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml') })) return 1;
     const apk = join(app, 'android', 'app', 'build', 'outputs', 'apk', debug ? 'debug' : 'release', debug ? 'app-debug.apk' : 'app-release-unsigned.apk');
     if (!existsSync(apk) || !statSync(apk).isFile()) throw new Error(`Erzeugte APK fehlt: ${relative(wurzel, apk)}`);
     ausgabe(`APK: ${relative(wurzel, apk).split(sep).join('/')}`);

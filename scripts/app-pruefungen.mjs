@@ -853,7 +853,7 @@ export function pruefeGradle({ wurzel, vorgabe = VORGABE, umgebung = process.env
 }
 
 // Wie SdkPruefung.java direkt aus der Quelle starten, ohne Compile-Schritt.
-function leseQuellXml(datei, java, umgebung) {
+export function leseQuellXml(datei, java, umgebung) {
   const lauf = spawnSync(java, [fileURLToPath(new URL('XmlQuelle.java', HIER)), datei], {
     encoding: 'utf8', env: umgebung, timeout: 30_000,
   });
