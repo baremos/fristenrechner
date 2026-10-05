@@ -30,6 +30,16 @@ export function zerlegeKennung(id) {
 export function paketort(id) {
   const { pfad, virtuell } = zerlegeKennung(id);
   if (virtuell) return null;
+  // Dateisysteme ohne Unterscheidung der Schreibweise und Windows-Pfadregeln
+  // lassen denselben Ordner auch als „NODE_MODULES“, „node_modules.“ oder in
+  // Kurzform (…~1) ansprechen. Solche Segmente scheitern, statt der Prüfung
+  // zu entgehen.
+  for (const s of pfad.split('/')) {
+    const gefaltet = s.replace(/[. ]+$/, '').toLowerCase();
+    if ((gefaltet === 'node_modules' && s !== 'node_modules') || /~\d/.test(s) || /[. ]$/.test(s)) {
+      throw new Error('Modulprotokoll: Pfadsegment mit abweichender Schreibweise oder Windows-Kurzform.');
+    }
+  }
   const fund = [...pfad.matchAll(/(?:^|\/)node_modules\/((?:@[^/]+\/)?[^/]+)/g)].at(-1);
   return fund ? pfad.slice(0, fund.index + fund[0].length) : null;
 }

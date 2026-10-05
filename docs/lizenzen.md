@@ -439,8 +439,12 @@ verlangt eine geschlossene Form: Ein Modul aus `node_modules` wird nur
 akzeptiert, wenn seine ganze Kennung ein einfacher Pfad mit der Endung `.js`,
 `.mjs`, `.cjs` oder `.json` ist, ohne jeden Abfrageanhang. Jede andere Form
 scheitert, auch übliche wie Teilmodule einer `.astro`-Datei aus einem Paket;
-im App-Build kommt keine solche Form vor. Virtuelle Kennungen scheitern bei
-Stil-Endungen und bei Abfragen für Ressourcen (`url`, `raw`, `inline`).
+im App-Build kommt keine solche Form vor. Pfadsegmente, die ein Dateisystem
+ohne Unterscheidung der Schreibweise oder Windows demselben Ordner zuordnet
+(andere Groß-/Kleinschreibung von `node_modules`, Segmente mit Punkt oder
+Leerzeichen am Ende, Kurzformen mit `~` und Ziffer), scheitern ebenfalls.
+Virtuelle Kennungen scheitern bei Stil-Endungen und bei Abfragen für
+Ressourcen (`url`, `raw`, `inline`, `worker`, `sharedworker`).
 **Grenze:** CSS-`@import` und CSS-`url(...)` in eigenen CSS-Dateien oder
 Style-Blöcken sowie `new URL(..., import.meta.url)` können Fremdinhalte
 übernehmen, ohne deren Herkunft als Fremdmodul im Graphen auszuweisen. Diese

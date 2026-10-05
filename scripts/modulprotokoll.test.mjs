@@ -193,6 +193,12 @@ test('Module aus node_modules: nur einfache Pfade mit Code- oder JSON-Endung ohn
     'node_modules/probe/modul.ts', 'node_modules/probe/bild.svg', 'node_modules/probe/index.js#teil']) {
     assert.throws(() => pruefeStilOderAsset(id), /Stil- oder Asset-Modul|Abfrageanhang|ungültig/, id);
   }
+  // Schreibweisen, die Windows demselben Ordner zuordnet, entgehen der Prüfung nicht.
+  for (const id of ['NODE_MODULES/astro/package.json?url', 'NODE_MODULES/astro/package.json?raw', 'Node_Modules/astro/package.json',
+    'app/Node_modules/a/index.js', 'node_modules./astro/package.json?url', 'node_modules /astro/package.json',
+    'NODE_M~1/astro/package.json?raw', 'node_modules/astro./package.json']) {
+    assert.throws(() => pruefeStilOderAsset(id), /abweichender Schreibweise|Stil- oder Asset-Modul|ungültig/, id);
+  }
   // Eigene Quellen bleiben frei; ihre Stil- und Rohimporte gehören zum Projekt.
   for (const id of ['app/src/pages/index.astro?astro&type=style&index=0&lang.css', 'LICENSE?raw', 'packages/oberflaeche/src/a.ts']) {
     assert.doesNotThrow(() => pruefeStilOderAsset(id), id);
