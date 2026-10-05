@@ -285,7 +285,7 @@ export function pruefePackliste(liste, workspaces, wurzel) {
 }
 
 export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelausnahmen,
-  stichtag = new Date().toISOString().slice(0, 10), buendel, gradleModell, streng = false,
+  stichtag = new Date().toISOString().slice(0, 10), buendel, gradleModell, gradleApk, streng = false,
   inventarPruefung = pruefeInventar } = {}) {
   if (vorgabeFehler) throw vorgabeFehler;
   pruefeAusnahmen(ausnahmen, stichtag);
@@ -430,9 +430,10 @@ export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelau
   else hinweise.push('npm-Packlisten wurden nicht geprüft; dafür --packliste verwenden.');
   hinweise.push('Installationsskripte und vorgebaute Programme sind Hinweise für Paket 2.8, keine automatische F-Droid-Freigabe.');
   hinweise.push('Proprietäre Dienste, eingebettete Fremdanteile und vollständige Lizenztexte werden nicht automatisch bewertet.');
-  const inventar = inventarPruefung(wurzel, liste, { buendel, gradleModell, streng, pruefeAusdruck });
+  const inventar = inventarPruefung(wurzel, liste, { buendel, gradleModell, gradleApk, streng, pruefeAusdruck });
   fehler.push(...inventar.fehler);
   hinweise.push(`Hinweise Dritter: ${inventar.platzhalter} Platzhalter; ${streng ? 'strenger Modus' : 'Normalmodus'}.`);
+  for (const e of inventar.offeneLizenzen ?? []) hinweise.push(`Offene Lizenzentscheidung für ausgeliefert: ${e.paket} | ${e.angabe} | ${e.gruppe}.`);
   const lizenzen = {};
   for (const p of liste) lizenzen[String(p.lizenz)] = (lizenzen[String(p.lizenz)] ?? 0) + 1;
   return { formatVersion: 2, stichtag, ok: fehler.length === 0,
@@ -441,8 +442,9 @@ export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelau
       einzelausnahmen: liste.filter((p) => p.ausnahme !== null).length,
       entwicklung: liste.filter((p) => p.bereich === 'entwicklung').length, installiert: liste.filter((p) => p.installiert).length,
       nurLockfile: liste.filter((p) => !p.installiert).length, installationsskripte: liste.filter((p) => p.installationsskripte.length).length,
-      vorgebaut: liste.filter((p) => p.vorgebaut.length).length, platzhalter: inventar.platzhalter, lizenzen },
-    workspaces, packlisteGeprueft: packliste !== undefined, pakete: liste, hinweise, fehler };
+      vorgebaut: liste.filter((p) => p.vorgebaut.length).length, platzhalter: inventar.platzhalter,
+      offeneLizenzen: inventar.offeneLizenzen?.length ?? 0, lizenzen },
+    workspaces, packlisteGeprueft: packliste !== undefined, pakete: liste, offeneLizenzen: inventar.offeneLizenzen ?? [], hinweise, fehler };
 }
 
 export function menschenlesbar(bericht) {

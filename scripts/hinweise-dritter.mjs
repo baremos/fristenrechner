@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Offline-Generator. Quellen ausschließlich innerhalb der angegebenen Repositorywurzel.
 import { createHash } from 'node:crypto';
-import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,9 +54,21 @@ export function leseInventar(wurzel) {
   catch { throw new Error('Hinweise Dritter: Inventar fehlt oder ist ungültig.'); }
 }
 
+export function schreibeHinweise(wurzel) {
+  const bytes = erzeugeHinweise(wurzel);
+  const datei = join(wurzel, 'app/src/hinweise-dritter.txt');
+  try {
+    const basis = realpathSync(wurzel);
+    const eltern = realpathSync(dirname(datei));
+    const ziel = lstatSync(datei, { throwIfNoEntry: false }) ? realpathSync(datei) : join(eltern, 'hinweise-dritter.txt');
+    if (!innerhalb(basis, eltern) || !innerhalb(basis, ziel)) throw new Error();
+    writeFileSync(ziel, bytes);
+  } catch { throw new Error('Hinweise Dritter: Ausgabeort nicht schreibbar oder außerhalb der Wurzel.'); }
+}
+
 export function pruefeFormat(i) {
-  if (i?.formatVersion !== 1 || !i.android || !gruppen(i).every(Array.isArray)) {
-    throw new Error('Hinweise Dritter: Inventarformat 1 mit allen Gruppen erwartet.');
+  if (i?.formatVersion !== 2 || !i.android || !gruppen(i).every(Array.isArray)) {
+    throw new Error('Hinweise Dritter: Inventarformat 2 mit allen Gruppen erwartet.');
   }
   if (!i.apache || i.apache.datei !== 'LICENSE' || !hash(i.apache.sha256)) {
     throw new Error('Hinweise Dritter: Apache-Quelle LICENSE mit SHA-256 erwartet.');
@@ -65,6 +77,10 @@ export function pruefeFormat(i) {
     for (const e of liste) {
       if (!['platzhalter', 'vollstaendig'].includes(e?.status)) throw new Error('Hinweise Dritter: Status fehlt oder ist ungültig.');
       if (!text(e.lizenz)) throw new Error('Hinweise Dritter: Lizenzwahl fehlt.');
+      if (e.lizenzentscheidung && (e.status !== 'platzhalter' || e.lizenzentscheidung.angabe !== e.lizenz
+          || !text(e.lizenzentscheidung.grund) || !e.lizenzentscheidung.beleg)) {
+        throw new Error('Hinweise Dritter: offene Lizenzentscheidung benötigt unveränderte Angabe, Platzhalterstatus, Grund und Beleg.');
+      }
       if (e.lizenzdatei) { relativerPfad(e.lizenzdatei.datei); if (!hash(e.lizenzdatei.sha256)) throw new Error('Hinweise Dritter: Lizenzhash ungültig.'); }
       if (e.behaelter) { relativerPfad(e.behaelter.datei); if (!hash(e.behaelter.sha256)) throw new Error('Hinweise Dritter: Behälterhash ungültig.'); }
       if (e.wortlaut !== undefined && e.wortlaut !== null && (!text(e.wortlaut) || e.wortlaut.includes('\r') || e.wortlaut.startsWith('\uFEFF'))) {
@@ -81,6 +97,7 @@ export function pruefeFormat(i) {
     if (e.lizenzdatei && !e.ort) throw new Error('Hinweise Dritter: Lizenzdatei ohne Paketort.');
     if (i.buildHilfscode.includes(e) && (!Array.isArray(e.module) || !e.module.length || !e.module.every(text))) throw new Error('Hinweise Dritter: Hilfsmodulkennungen fehlen.');
     if (i.buildHilfscode.includes(e) && e.status !== 'platzhalter' && !text(e.wortlaut)) throw new Error('Hinweise Dritter: Hilfscodewortlaut fehlt.');
+    if (e.ort === null && !e.versionsbeleg) throw new Error('Hinweise Dritter: Null-Ort-Eintrag ohne Versionsbeleg.');
   }
   for (const e of i.eingebettet) {
     if (!text(e.name) || !text(e.paket) || !text(e.quelle)) throw new Error('Hinweise Dritter: eingebetteter Anteil unvollständig.');
@@ -92,6 +109,7 @@ export function pruefeFormat(i) {
     if (e.ort !== null) relativerPfad(e.ort);
     if (e.lizenzdatei && !e.ort) throw new Error('Hinweise Dritter: Projektlizenz ohne Ort.');
     if (e.status !== 'platzhalter' && !e.lizenzdatei && !text(e.wortlaut)) throw new Error('Hinweise Dritter: Projektmodultext fehlt.');
+    if (e.ort === null && !e.versionsbeleg) throw new Error('Hinweise Dritter: Null-Ort-Eintrag ohne Versionsbeleg.');
   }
   for (const e of i.android.maven) {
     if (![e.gruppe, e.name, e.version].every(text) || (e.status !== 'platzhalter' && e.lizenz !== 'Apache-2.0' && !text(e.wortlaut))) throw new Error('Hinweise Dritter: Maven-Artefakt unvollständig.');
@@ -124,8 +142,10 @@ export function erzeugeHinweise(wurzel, inventar = leseInventar(wurzel)) {
       if (e.status === 'platzhalter') zeilen.push('PLATZHALTER: Inhalt noch zu vervollständigen und zu prüfen.');
       const bytes = e.lizenzdatei ? leseQuelle(wurzel, e.lizenzdatei, e.ort) : null;
       if (e.behaelter) leseQuelle(wurzel, e.behaelter, e.ort);
-      if (e.lizenz === 'Apache-2.0') zeilen.push('Lizenztext: siehe Apache-2.0 oben.');
-      else if (bytes && !i.buildHilfscode.includes(e)) zeilen.push(originaltext(bytes));
+      const quelltext = bytes ? originaltext(bytes) : null;
+      if (quelltext?.includes(apache) && quelltext !== apache) throw new Error('Hinweise Dritter: Apache-Text in Lizenzdatei muss getrennt von Zusatzhinweisen stehen.');
+      if (e.lizenz === 'Apache-2.0' || quelltext === apache) zeilen.push('Lizenztext: siehe Apache-2.0 oben.');
+      else if (quelltext && !i.buildHilfscode.includes(e)) zeilen.push(quelltext);
       if (text(e.wortlaut)) {
         // Derselbe vollständige Apache-Text erhält ebenfalls nur den Verweis.
         if (e.lizenz === 'Apache-2.0' && e.wortlaut === apache) continue;
@@ -139,11 +159,6 @@ export function erzeugeHinweise(wurzel, inventar = leseInventar(wurzel)) {
   abschnitt('Vom Build eingefügter Hilfscode', i.buildHilfscode, 'paket', e => `${e.paket}@${e.version}`);
   abschnitt('Android-Projektmodule', i.android.projektmodule, 'name', e => `${e.name}@${e.version}`);
   abschnitt('Android-Maven-Artefakte', i.android.maven.map(e => ({ ...e, kennung: `${e.gruppe}:${e.name}:${e.version}` })), 'kennung', e => e.kennung);
-  zeilen.push('Begründete Lockfile-Ausnahmen');
-  for (const e of sortiere(i.ausnahmen, 'ort')) {
-    zeilen.push(`${e.ort} | ${e.paket}@${e.version} | ${e.lizenz} | ${e.grund}`);
-    if (e.status === 'platzhalter') zeilen.push('PLATZHALTER: Ausnahme noch abschließend zu prüfen.');
-  }
   return Buffer.from(zeilen.join('\n\n') + '\n', 'utf8');
 }
 
@@ -158,7 +173,7 @@ export function pruefeHinweisdatei(wurzel, inventar) {
 function haupt(argv) {
   try {
     if (argv.length !== 1 || !['--schreiben', '--pruefen'].includes(argv[0])) throw new Error('Aufruf: node scripts/hinweise-dritter.mjs --schreiben | --pruefen');
-    if (argv[0] === '--schreiben') writeFileSync(join(wurzelVorgabe, 'app/src/hinweise-dritter.txt'), erzeugeHinweise(wurzelVorgabe));
+    if (argv[0] === '--schreiben') schreibeHinweise(wurzelVorgabe);
     else pruefeHinweisdatei(wurzelVorgabe);
   } catch (e) { console.error(e.message); process.exitCode = 1; }
 }

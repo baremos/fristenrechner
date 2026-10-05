@@ -14,7 +14,7 @@ import { erzeugeHinweise } from './hinweise-dritter.mjs';
 import { menschenlesbar, pruefeAusdruck, pruefePackliste, pruefeProjekt as pruefeProjektMitVorgaben, vorgabe } from './check-licenses.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
-const scratchpad = resolve(hier, '../scratchpad/tmp-v8');
+const scratchpad = resolve(hier, '../scratchpad/tmp-v8-r2');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'lizenzen-test-'));
 test.after(() => rmSync(arbeit, { recursive: true, force: true }));
@@ -814,7 +814,7 @@ function cli(f, args) {
   schreiben(skript, readFileSync(join(hier, 'check-licenses.mjs'), 'utf8'));
   schreiben(join(f.wurzel, 'scripts/hinweise-pruefung.mjs'),
     `export { pruefeInventar } from '${new URL('hinweise-pruefung.mjs', import.meta.url).href}';\n`);
-  const i = { formatVersion: 1, apache: { datei: 'LICENSE', sha256: createHash('sha256').update(readFileSync(join(f.wurzel, 'LICENSE'))).digest('hex') },
+  const i = { formatVersion: 2, apache: { datei: 'LICENSE', sha256: createHash('sha256').update(readFileSync(join(f.wurzel, 'LICENSE'))).digest('hex') },
     npm: [], eingebettet: [], buildHilfscode: [], android: { projektmodule: [], maven: [] }, ausnahmen: [] };
   schreiben(join(f.wurzel, 'scripts/hinweise-dritter.json'), i);
   schreiben(join(f.wurzel, 'app/src/hinweise-dritter.txt'), erzeugeHinweise(f.wurzel, i).toString('utf8'));

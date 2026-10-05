@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "beschreibung": "Platzhalterbestand nach Ersatz der optionalen jsPDF-Module. Vollständige Wortlaute, abschließender Bestand und Übernahmeprüfung folgen vor der Einbindung.",
   "apache": {
     "datei": "LICENSE",
@@ -115,7 +115,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "MIT (nur Verweis auf github.com/eligrey/FileSaver.js/blob/master/LICENSE.md)",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/libs/rgbcolor.js",
@@ -128,7 +136,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "@license Use it if you like it",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/libs/md5.js",
@@ -141,7 +157,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "Joseph Myers does not specify a particular license for his work.",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/libs/rc4.js",
@@ -154,7 +178,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "FPDF is released under a permissive license: there is no usage restriction.",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/libs/pdfsecurity.js",
@@ -180,7 +212,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "MIT-Text im Kommentar",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/libs/JPEGEncoder.js",
@@ -193,7 +233,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "BSD-3-Clause-Text im Kommentar",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/libs/WebPDecoder.js",
@@ -206,7 +254,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "WebM Software License Agreement + Additional IP Rights Grant (nur Haftungsausschluss und URLs im Kommentar); Port MIT",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/modules/standard_fonts_metrics.js",
@@ -219,7 +275,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "MIT + Adobe-AFM-Bedingungen (Wortlaut wie SPDX APAFML, Abgleich offen)",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/libs/bidiEngine.js",
@@ -245,7 +309,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "keine Lizenzangabe in der Quelle",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/libs/ttffont.js",
@@ -258,7 +330,15 @@
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
       "wortlaut": null,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "lizenzentscheidung": {
+        "angabe": "keine Lizenzangabe in der Quelle",
+        "grund": "Angabe des Vorbestands ist kein freigegebener SPDX-Ausdruck. Originalhinweis und Lizenzwahl vor der Einbindung inhaltlich entscheiden.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        }
+      }
     },
     {
       "name": "src/modules/*.js (acroform, addimage, annotations, arabic, autoprint, canvas, cell, split_text_to_size, png_support, xmp_metadata, context2d, filters, fileloading, html, javascript, outline, gif/bmp/webp_support, rgba_support, svg, total_pages, viewerpreferences, vfs, setlanguage, ttfsupport, jpeg_support)",
@@ -347,7 +427,20 @@
       ],
       "wortlaut": null,
       "imBuendel": true,
-      "status": "platzhalter"
+      "status": "platzhalter",
+      "versionsbeleg": {
+        "art": "oxc-modulkennung",
+        "datei": "node_modules/rolldown/dist/shared/bindingify-input-options-D4l624og.mjs",
+        "sha256": "c37e1b58aa8b7d0528d9a83de39b8109f0281756d88ca84efa160af248ab8d66"
+      },
+      "lizenzentscheidung": {
+        "angabe": "noch zu belegen",
+        "grund": "Die Quellkennung belegt Identität und Version, aber noch keinen gesonderten vollständigen Lizenztext des eingefügten Hilfscodes.",
+        "beleg": {
+          "datei": "node_modules/rolldown/dist/shared/bindingify-input-options-D4l624og.mjs",
+          "sha256": "c37e1b58aa8b7d0528d9a83de39b8109f0281756d88ca84efa160af248ab8d66"
+        }
+      }
     }
   ],
   "android": {
@@ -366,11 +459,28 @@
       },
       {
         "name": "capacitor-cordova-android-plugins",
-        "version": "erzeugtes Geruest",
+        "version": "1.0",
         "ort": null,
         "lizenz": "noch zu belegen",
         "wortlaut": null,
-        "status": "platzhalter"
+        "status": "platzhalter",
+        "versionsbeleg": {
+          "art": "gradle-projekt",
+          "datei": "app/android/capacitor-cordova-android-plugins/build.gradle",
+          "sha256": "28e3fa281f4d1e388bf98abc7f5bb31e672516e385c165c719d201ed54b8236e",
+          "settings": {
+            "datei": "app/android/settings.gradle",
+            "sha256": "6ce098d15ebd69b44c4ecd786bca1bdc366340d2459b2af4d7bb0ab317aa9669"
+          }
+        },
+        "lizenzentscheidung": {
+          "angabe": "noch zu belegen",
+          "grund": "Das erzeugte Projekt belegt Identität und Version; seine gesonderten Originalhinweise sind vor der Einbindung zu klären.",
+          "beleg": {
+            "datei": "app/android/capacitor-cordova-android-plugins/build.gradle",
+            "sha256": "28e3fa281f4d1e388bf98abc7f5bb31e672516e385c165c719d201ed54b8236e"
+          }
+        }
       }
     ],
     "maven": [
