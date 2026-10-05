@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { androidQuellen, argumente, baue, findeNpm } from './app-bauen.mjs';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const basis = join(wurzel, 'scratchpad', 'tmp-v8-r3');
+const basis = join(wurzel, 'scratchpad', 'test-app-bauen');
 mkdirSync(basis, { recursive: true });
 const arbeit = mkdtempSync(join(basis, 'app-bauen-test-'));
 test.after(() => {

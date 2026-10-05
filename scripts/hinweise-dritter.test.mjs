@@ -13,7 +13,7 @@ import { findeJdk } from './werkzeuge.mjs';
 import { uebergangsangaben } from './hinweise-uebergang.mjs';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const basis = join(wurzel, 'scratchpad/tmp-v8-r3');
+const basis = join(wurzel, 'scratchpad/test-hinweise-dritter');
 mkdirSync(basis, { recursive: true });
 const arbeit = mkdtempSync(join(basis, 'hinweise-test-'));
 test.after(() => rmSync(arbeit, { recursive: true, force: true }));

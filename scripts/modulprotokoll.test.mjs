@@ -9,7 +9,7 @@ import { modulprotokoll } from '../app/astro.config.mjs';
 import { pruefeStilOderAsset, zerlegeKennung } from './modulprotokoll.mjs';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const basis = join(wurzel, 'scratchpad/tmp-v8-r3');
+const basis = join(wurzel, 'scratchpad/test-modulprotokoll');
 mkdirSync(basis, { recursive: true });
 const ort = mkdtempSync(join(basis, 'modul-test-'));
 test.after(() => rmSync(ort, { recursive: true, force: true }));
@@ -156,6 +156,11 @@ for (const [anhang, erlaubt] of [
   ['astro&type=script&index=0&lang.ts', true],
   ['astro&type=style&index=0&lang.css', false],
   ['astro&type=script&type=style', false],
+  ['astro&type=script&%74ype=style&index=0&lang.css', false],
+  ['astro&type=script&type=%73tyle', false],
+  ['astro&type=script&index=0&lang.css', false],
+  ['astro&astro&type=script&index=0&lang.ts', false],
+  ['astro&type=script&type=script&index=0&lang.ts', false],
   ['astro&type=script&url', false],
   ['astro&type=script&raw', false],
   ['astro&type=script&inline', false],

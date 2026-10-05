@@ -11,7 +11,7 @@ import { standardSdk, windows } from './werkzeuge.mjs';
 
 const echteKonfiguration = JSON.parse(readFileSync(new URL('../app/capacitor.config.json', import.meta.url), 'utf8'));
 const projekt = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const scratchpad = join(projekt, 'scratchpad/tmp-v8-r3');
+const scratchpad = join(projekt, 'scratchpad/test-app-pruefungen');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'app-pruefungen-'));
 after(() => rmSync(arbeit, { recursive: true, force: true }));

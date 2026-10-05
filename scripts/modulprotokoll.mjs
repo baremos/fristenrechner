@@ -36,10 +36,18 @@ export function paketort(id) {
 
 export function pruefeStilOderAsset(id) {
   const { pfad, anhang } = zerlegeKennung(id);
-  const astroSkript = pfad.endsWith('.astro') && anhang.split('&').includes('astro')
-    && anhang.split('&').includes('type=script');
-  if (paketort(id) && ((!/\.(?:[cm]?[jt]sx?|json)$/.test(pfad) && !astroSkript)
-      || /(?:^|&)(?:raw|url|inline|type=style)(?:[=&]|$)/.test(anhang))) {
+  // Parameter dekodiert lesen, wie Vite und Astro es tun: Kodierte oder
+  // doppelte Angaben dürfen den Typ nicht verdecken. Im Zweifel scheitern.
+  const parameter = new URLSearchParams(anhang);
+  const schluessel = [...parameter.keys()];
+  const typen = parameter.getAll('type');
+  const sprachen = schluessel.filter(k => k.startsWith('lang.'));
+  const stilOderAsset = typen.some(t => t !== 'script')
+    || schluessel.some(k => ['raw', 'url', 'inline'].includes(k))
+    || sprachen.some(k => !/^lang\.[cm]?[jt]sx?$/.test(k));
+  const astroSkript = pfad.endsWith('.astro') && schluessel.filter(k => k === 'astro').length === 1
+    && typen.length === 1 && typen[0] === 'script' && sprachen.length <= 1;
+  if (paketort(id) && ((!/\.(?:[cm]?[jt]sx?|json)$/.test(pfad) && !astroSkript) || stilOderAsset)) {
     throw new Error('Modulprotokoll: Stil- oder Asset-Modul aus node_modules; Herkunftsabdeckung fehlt.');
   }
 }

@@ -14,7 +14,7 @@ import { erzeugeHinweise } from './hinweise-dritter.mjs';
 import { menschenlesbar, pruefeAusdruck, pruefePackliste, pruefeProjekt as pruefeProjektMitVorgaben, vorgabe } from './check-licenses.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
-const scratchpad = resolve(hier, '../scratchpad/tmp-v8-r3');
+const scratchpad = resolve(hier, '../scratchpad/test-check-licenses');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'lizenzen-test-'));
 test.after(() => rmSync(arbeit, { recursive: true, force: true }));
