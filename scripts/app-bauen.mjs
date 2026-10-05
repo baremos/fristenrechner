@@ -173,7 +173,7 @@ export function baue(argv, {
     if (!lauf('Android bauen', args, wurzel)) return 1;
     const debug = werte.aufgabe.endsWith('Debug');
     const apk = join(app, 'android', 'app', 'build', 'outputs', 'apk', debug ? 'debug' : 'release', debug ? 'app-debug.apk' : 'app-release-unsigned.apk');
-    if (!debug && !hinweise({ gradleModell: join(app, 'android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml'), gradleApk: apk })) return 1;
+    if (!debug && !hinweise({ gradleModell: join(app, 'android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml') })) return 1;
     if (!existsSync(apk) || !statSync(apk).isFile()) throw new Error(`Erzeugte APK fehlt: ${relative(wurzel, apk)}`);
     ausgabe(`APK: ${relative(wurzel, apk).split(sep).join('/')}`);
     return pruefung('K5 APK', pruefungen.pruefeApk(apk, { wurzel, debug, umgebung: env })) ? 0 : 1;

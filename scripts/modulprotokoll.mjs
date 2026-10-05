@@ -20,7 +20,8 @@ export function zerlegeKennung(id) {
   let dekodiert;
   try { dekodiert = decodeURIComponent(anhang); }
   catch { throw new Error('Modulprotokoll: ungültiger Abfrageanhang.'); }
-  if (/[\\\x00-\x1f]/.test(dekodiert) || /(?:^|[\s:=?&#(])(?:\/|[A-Za-z]:)/.test(dekodiert)) {
+  if (/[\\\x00-\x1f]/.test(dekodiert) || /\/\/|[A-Za-z]:/.test(dekodiert)
+      || /(?:^|[\s:=?&#("'{}\[\],;<>])\//.test(dekodiert)) {
     throw new Error('Modulprotokoll: absoluter Pfad im Abfrageanhang.');
   }
   return { pfad, anhang, virtuell };
@@ -35,7 +36,9 @@ export function paketort(id) {
 
 export function pruefeStilOderAsset(id) {
   const { pfad, anhang } = zerlegeKennung(id);
-  if (paketort(id) && (!/\.(?:[cm]?[jt]sx?|json)$/.test(pfad)
+  const astroSkript = pfad.endsWith('.astro') && anhang.split('&').includes('astro')
+    && anhang.split('&').includes('type=script');
+  if (paketort(id) && ((!/\.(?:[cm]?[jt]sx?|json)$/.test(pfad) && !astroSkript)
       || /(?:^|&)(?:raw|url|inline|type=style)(?:[=&]|$)/.test(anhang))) {
     throw new Error('Modulprotokoll: Stil- oder Asset-Modul aus node_modules; Herkunftsabdeckung fehlt.');
   }
@@ -55,10 +58,12 @@ export function modulprotokoll(wurzel, { astro = false } = {}) {
     begonnen = true; gescheitert = false;
   }
   function kennung(id) {
-    let wert = id.startsWith('\0') ? 'virtuell:' + id.slice(1) : id;
+    const virtuell = id.startsWith('\0');
+    let wert = virtuell ? id.slice(1) : id;
     const trennung = wert.indexOf('?');
     const pfad = (trennung < 0 ? wert : wert.slice(0, trennung)).replaceAll('\\', '/');
-    wert = (pfad.startsWith(basis + '/') ? pfad.slice(basis.length + 1) : pfad)
+    wert = (virtuell ? 'virtuell:' : '')
+      + (pfad.startsWith(basis + '/') ? pfad.slice(basis.length + 1) : pfad)
       + (trennung < 0 ? '' : wert.slice(trennung));
     try { zerlegeKennung(wert); }
     catch { throw new Error('Modulprotokoll: Kennung außerhalb der Repositorywurzel.'); }

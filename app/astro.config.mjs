@@ -20,7 +20,7 @@ export default defineConfig({
   integrations: [modulprotokollIntegration(protokoll)],
   build: { format: 'file' },
   vite: {
-    // D6: jsPDF 4.2.1 lädt diese Module nur für html() und addSvgAsImage().
+    // jsPDF 4.2.1 lädt diese optionalen Module nur für html() und addSvgAsImage().
     // node_modules/jspdf/dist/jspdf.es.js:13485 (html2canvas), :13497 (dompurify),
     // :21294 (canvg); die App nutzt diese Funktionen nicht. Der Browser-Eintrag
     // dist/jspdf.es.min.js enthält dieselben Importe. K2 prüft den Ausschluss.

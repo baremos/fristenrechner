@@ -11,7 +11,7 @@ import { standardSdk, windows } from './werkzeuge.mjs';
 
 const echteKonfiguration = JSON.parse(readFileSync(new URL('../app/capacitor.config.json', import.meta.url), 'utf8'));
 const projekt = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const scratchpad = process.env.TMP ?? join(projekt, 'scratchpad/paket-2.6/tmp');
+const scratchpad = join(projekt, 'scratchpad/tmp-v8-r3');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'app-pruefungen-'));
 after(() => rmSync(arbeit, { recursive: true, force: true }));
@@ -188,7 +188,7 @@ const SAUBER = {
   '_astro/a.AbCdEfGh.css': '.a{background:url(data:image/png;base64,AA==)}',
 };
 
-// Unabhängig vom echten Bündel: Die App braucht seit D6 keine Code-Ausnahme.
+// Unabhängig vom echten Bündel: Die App braucht mit dem Ausschluss der optionalen jsPDF-Module keine Code-Ausnahme.
 const DYNAMISCHER_EINTRAG = {
   datei: 'probe', name: 'Function', hoechstzahl: 1,
   grund: 'Konstruierter Eintrag zur Prüfung der begrenzten Ausnahme.',
@@ -395,7 +395,7 @@ test('K2: konstruierte Function-Ausnahme besteht bis zur Höchstzahl', () => {
 
 for (const stamm of ['html2canvas', 'purify.es', 'index.es']) {
   for (const endung of ['.AbCdEfGh.js', '.js', '.AbCdEfGh.mjs']) {
-    test(`K2 D6 Gegenprobe: nicht referenzierter ${stamm}${endung}-Chunk scheitert`, () => {
+    test(`K2 jsPDF-Zusatzmodule Gegenprobe: nicht referenzierter ${stamm}${endung}-Chunk scheitert`, () => {
       const { fehler } = pruefeDist(ordner({ ...SAUBER, [`_astro/${stamm}${endung}`]: 'export const x = 1;' }));
       assert.ok(fehler.some(f => f.includes('optionaler jsPDF-Chunk')), fehler.join('\n'));
     });
@@ -408,7 +408,7 @@ for (const kennzeichen of ['afterSanitize', 'IN_PLACE', 'Unable to find element 
     ['index.html', seite(`<p>${kennzeichen}</p>`)],
     ['_astro/a.AbCdEfGh.css', `/* ${kennzeichen} */`],
   ]) {
-    test(`K2 D6 Gegenprobe: ${kennzeichen} in ${datei} scheitert`, () => {
+    test(`K2 jsPDF-Zusatzmodule Gegenprobe: ${kennzeichen} in ${datei} scheitert`, () => {
       const { fehler } = pruefeDist(ordner({ ...SAUBER, [datei]: inhalt }));
       assert.ok(fehler.some(f => f.includes('Kennzeichen eines optionalen jsPDF-Moduls') && f.includes(kennzeichen)), fehler.join('\n'));
     });
@@ -417,7 +417,7 @@ for (const kennzeichen of ['afterSanitize', 'IN_PLACE', 'Unable to find element 
 
 for (const modul of ['html2canvas', 'dompurify', 'canvg', 'core-js/modules/es.promise.js', '@anbieter/modul']) {
   for (const pfad of [JSON.stringify(modul), `'${modul}'`, `\`${modul}\``]) {
-    test(`K2 D6 Gegenprobe: nackter import(${pfad}) scheitert`, () => {
+    test(`K2 jsPDF-Zusatzmodule Gegenprobe: nackter import(${pfad}) scheitert`, () => {
       const code = `import(${pfad});`;
       const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/haupt.AbCdEfGh.js': code }));
       assert.ok(fehler.some(f => f.includes('nackte Modulnamen')), fehler.join('\n'));
@@ -425,12 +425,12 @@ for (const modul of ['html2canvas', 'dompurify', 'canvg', 'core-js/modules/es.pr
   }
 }
 
-test('K2 D6: import() liest Escapes und prüft auch Inline-Module', () => {
+test('K2 jsPDF-Zusatzmodule: import() liest Escapes und prüft auch Inline-Module', () => {
   const { fehler } = pruefeDist(ordner({ ...SAUBER, 'index.html': seite('<script type="module">import("dompu\\u0072ify")</script>') }));
   assert.ok(fehler.some(f => f.includes('import("dompurify")') && f.includes('nackte Modulnamen')), fehler.join('\n'));
 });
 
-test('K2 D6: lokale import()-Pfade und jsPDF-Lademeldungen bleiben erlaubt', () => {
+test('K2 jsPDF-Zusatzmodule: lokale import()-Pfade und jsPDF-Lademeldungen bleiben erlaubt', () => {
   const code = 'import("./jspdf-zusatzmodule-leer.AbCdEfGh.js"); import(`../x.js`); import("/_astro/x.js"); const a = "Could not load html2canvas", b = "DOMPurify", c = "canvg";';
   const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/haupt.AbCdEfGh.js': code }));
   assert.deepEqual(fehler, []);

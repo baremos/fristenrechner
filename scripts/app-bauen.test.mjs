@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { androidQuellen, argumente, baue, findeNpm } from './app-bauen.mjs';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const basis = join(wurzel, 'scratchpad', 'tmp-v8-r2');
+const basis = join(wurzel, 'scratchpad', 'tmp-v8-r3');
 mkdirSync(basis, { recursive: true });
 const arbeit = mkdtempSync(join(basis, 'app-bauen-test-'));
 test.after(() => {
@@ -167,7 +167,7 @@ test('Hinweise: Bündel nach K2, Gradle-Modell nach Release-Build, Erfolg ohne n
   assert.equal(baue(['--android', '--aufgabe', ':app:assembleRelease'], p.optionen), 0);
   assert.deepEqual(aufrufe, [
     { wurzel: p.ort, optionen: { buendel: join(p.ort, 'app/.astro/module-client.json') }, letzter: 'K2' },
-    { wurzel: p.ort, optionen: { gradleModell: join(p.ort, 'app/android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml'), gradleApk: join(p.ort, 'app/android/app/build/outputs/apk/release/app-release-unsigned.apk') }, letzter: 'Gradle' },
+    { wurzel: p.ort, optionen: { gradleModell: join(p.ort, 'app/android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml') }, letzter: 'Gradle' },
   ]);
   assert.ok(!p.meldungen.some(s => /Hinweise|Bündel|Gradle-Abgleich/.test(s)));
   assert.deepEqual(p.fehler, []);
@@ -191,7 +191,22 @@ test('Hinweise: Gradle-Abgleich scheitert vor K5; Debug braucht kein Release-Mod
   assert.equal(baue(['--android'], d.optionen), 0);
 });
 
-test('B6: schon vor dem Kern-Build werden altes Protokoll und Zwischendatei entwertet', () => {
+test('Hinweise: fehlendes Release-Modell wird nach assembleRelease im selben Lauf gelesen und beendet die Kette', () => {
+  const p = probe();
+  p.optionen.hinweisePruefung = (_wurzel, o) => {
+    if (o.gradleModell) {
+      assert.equal(p.schritte.at(-1), 'Gradle');
+      readFileSync(o.gradleModell);
+    }
+    return [];
+  };
+  assert.equal(baue(['--android', '--aufgabe', 'assembleRelease'], p.optionen), 1);
+  assert.equal(p.schritte.at(-1), 'Gradle');
+  assert.match(p.fehler.join('\n'), /ENOENT/);
+  assert.ok(!p.schritte.includes('K5'));
+});
+
+test('Protokollentwertung: schon vor dem Kern-Build werden altes Protokoll und Zwischendatei entwertet', () => {
   const p = probe({ fehlerBei: 'Kern' });
   const datei = join(p.ort, 'app/.astro/module-client.json');
   schreibe(datei, '{"abgeschlossen":true}'); schreibe(datei + '.tmp', 'alt');

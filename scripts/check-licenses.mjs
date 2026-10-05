@@ -285,7 +285,7 @@ export function pruefePackliste(liste, workspaces, wurzel) {
 }
 
 export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelausnahmen,
-  stichtag = new Date().toISOString().slice(0, 10), buendel, gradleModell, gradleApk, streng = false,
+  stichtag = new Date().toISOString().slice(0, 10), buendel, gradleModell, streng = false,
   inventarPruefung = pruefeInventar } = {}) {
   if (vorgabeFehler) throw vorgabeFehler;
   pruefeAusnahmen(ausnahmen, stichtag);
@@ -430,7 +430,7 @@ export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelau
   else hinweise.push('npm-Packlisten wurden nicht geprüft; dafür --packliste verwenden.');
   hinweise.push('Installationsskripte und vorgebaute Programme sind Hinweise für Paket 2.8, keine automatische F-Droid-Freigabe.');
   hinweise.push('Proprietäre Dienste, eingebettete Fremdanteile und vollständige Lizenztexte werden nicht automatisch bewertet.');
-  const inventar = inventarPruefung(wurzel, liste, { buendel, gradleModell, gradleApk, streng, pruefeAusdruck });
+  const inventar = inventarPruefung(wurzel, liste, { buendel, gradleModell, streng, pruefeAusdruck });
   fehler.push(...inventar.fehler);
   hinweise.push(`Hinweise Dritter: ${inventar.platzhalter} Platzhalter; ${streng ? 'strenger Modus' : 'Normalmodus'}.`);
   for (const e of inventar.offeneLizenzen ?? []) hinweise.push(`Offene Lizenzentscheidung für ausgeliefert: ${e.paket} | ${e.angabe} | ${e.gruppe}.`);

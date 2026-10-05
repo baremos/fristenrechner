@@ -116,7 +116,12 @@ für einen neuen Stand ist vorher zu bauen. Der Build liest
 `app/.astro/module-client.json`; nach `assembleRelease`, auch mit `:app:`-Präfix,
 liest er zusätzlich
 `app/android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml`.
-Ein fehlendes Modell beendet die Kette. Der Android-Build im Debug-Modus benötigt
+Das Modell wird im selben Lauf nach erfolgreichem `assembleRelease` gelesen.
+Ein fehlendes Modell beendet die Kette. Eine Zeitregel zwischen Modell und APK
+wird nicht geprüft. **Grenze: kein kausaler Herkunftsnachweis zwischen Modell
+und APK.** Die Prüfung belegt weder die Erzeugung des Modells im aktuellen Lauf
+noch zugehörige Artefakthashes; Gradle kann Ausgaben wiederverwenden.
+Der Android-Build im Debug-Modus benötigt
 kein Release-Modell. Beide Abgleiche verwenden den Normalmodus des Inventars:
 Platzhalter sind hier noch zugelassen. `app-bauen.mjs --streng` behält seine
 bisherige Bedeutung für Werkzeuge und Android-Arbeitskopie; für ein Inventar ohne

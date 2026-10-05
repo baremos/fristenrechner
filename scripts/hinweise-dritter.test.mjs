@@ -6,13 +6,14 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, 
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { erzeugeHinweise, pruefeHinweisdatei, schreibeHinweise } from './hinweise-dritter.mjs';
+import { erzeugeHinweise, gruppen, pruefeHinweisdatei, schreibeHinweise } from './hinweise-dritter.mjs';
 import { pruefeProjekt } from './check-licenses.mjs';
 import { pruefeBuendel, pruefeGradleModell } from './hinweise-pruefung.mjs';
 import { findeJdk } from './werkzeuge.mjs';
+import { uebergangsangaben } from './hinweise-uebergang.mjs';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const basis = join(wurzel, 'scratchpad/tmp-v8-r2');
+const basis = join(wurzel, 'scratchpad/tmp-v8-r3');
 mkdirSync(basis, { recursive: true });
 const arbeit = mkdtempSync(join(basis, 'hinweise-test-'));
 test.after(() => rmSync(arbeit, { recursive: true, force: true }));
@@ -233,7 +234,7 @@ function hilfe(p, lizenz = 'MIT') {
 }
 
 for (const gruppe of ['npm', 'eingebettet', 'buildHilfscode', 'projektmodule', 'maven']) {
-  for (const status of ['vollstaendig', 'platzhalter']) test(`B1: GPL in ${gruppe}, ${status}, scheitert auch mit Bündel`, () => {
+  for (const status of ['vollstaendig', 'platzhalter']) test(`Auslieferungslizenz: GPL in ${gruppe}, ${status}, scheitert auch mit Bündel`, () => {
     const p = probe();
     const e = gruppe === 'buildHilfscode' ? hilfe(p) : (p.i[gruppe] ?? p.i.android[gruppe])[0];
     e.lizenz = 'GPL-3.0-or-later'; e.status = status; e.wortlaut = 'Probetext';
@@ -242,7 +243,7 @@ for (const gruppe of ['npm', 'eingebettet', 'buildHilfscode', 'projektmodule', '
     scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/, { buendel: join(p.ort, 'module.json') });
   });
 }
-test('B1: gerenderter Hilfscode mit Werkzeugort verwendet ausgeliefert statt entwicklung', () => {
+test('Auslieferungslizenz: gerenderter Hilfscode mit Werkzeugort verwendet ausgeliefert statt entwicklung', () => {
   const p = probe();
   const manifest = { name: 'werkzeug', version: '1.0.0', license: 'MPL-2.0' };
   const root = JSON.parse(readFileSync(join(p.ort, 'package.json'))); root.devDependencies = { werkzeug: '1.0.0' };
@@ -257,26 +258,76 @@ test('B1: gerenderter Hilfscode mit Werkzeugort verwendet ausgeliefert statt ent
   scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen.*werkzeug/, { streng: true, buendel: join(p.ort, 'module.json') });
 });
 
-test('B1: ausdrücklich belegte offene Angabe ist gezählt; keine Freigabe bei Platzhaltern', () => {
-  const p = probe(), e = p.i.android.maven[0];
-  e.lizenz = 'noch zu belegen'; e.status = 'platzhalter';
-  e.lizenzentscheidung = { angabe: e.lizenz, grund: 'Offen im Probestand', beleg: { ...p.i.apache } };
-  p.speichern();
-  const b = bericht(p);
-  assert.equal(b.ok, true, b.fehler.join('\n'));
-  assert.equal(b.zusammenfassung.offeneLizenzen, 1);
-  assert.deepEqual(b.offeneLizenzen, [{ paket: 'org.probe:runtime', angabe: 'noch zu belegen', gruppe: 'android.maven' }]);
-  scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen.*org.probe:runtime/, { streng: true });
-  e.lizenzentscheidung.beleg.sha256 = '0'.repeat(64); p.speichern();
-  scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/);
+for (const gruppe of ['maven', 'eingebettet', 'buildHilfscode']) {
+  for (const lizenz of ['GPL-3.0-only', 'MIT AND GPL-3.0-only', 'noch zu belegen']) {
+    test(`Lizenzübergang: neuer ${gruppe}-Platzhalter mit ${lizenz} scheitert in beiden Modi`, () => {
+      const p = probe();
+      const e = gruppe === 'buildHilfscode' ? hilfe(p) : (p.i[gruppe] ?? p.i.android[gruppe])[0];
+      e.lizenz = lizenz; e.status = 'platzhalter';
+      e.lizenzentscheidung = { angabe: lizenz, grund: 'Offene Probe', beleg: { ...p.i.apache } };
+      p.speichern();
+      for (const streng of [false, true]) scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/, { streng });
+    });
+  }
+}
+
+test('Lizenzübergang: feste Länge und vollständiger Inhalt unabhängig vom Inventar', () => {
+  assert.equal(uebergangsangaben.length, 12);
+  // Bindet Gruppen, Identitäten, wörtliche Angaben, Belegdateien und SHA-256.
+  assert.equal(sha(JSON.stringify(uebergangsangaben)), 'c9f14bd7b056e8c5b1224bdfee3704bd8430f8042977ba9a910444e1f134a07c');
 });
-test('B1: unbekannte Angabe ohne Entscheidungsbeleg scheitert auch als Platzhalter', () => {
+
+const bestand = JSON.parse(readFileSync(join(wurzel, 'scripts/hinweise-dritter.json')));
+const bestehendeUebergaenge = [
+  ...bestand.eingebettet.filter(e => e.lizenzentscheidung).map(e => ['eingebettet', e]),
+  ...bestand.buildHilfscode.filter(e => e.lizenzentscheidung).map(e => ['buildHilfscode', e]),
+  ...bestand.android.projektmodule.filter(e => e.lizenzentscheidung).map(e => ['projektmodule', e]),
+];
+function uebergangsProbe(gruppe, original) {
+  const p = probe(), e = structuredClone(original);
+  if (gruppe === 'projektmodule') p.i.android.projektmodule = [];
+  (p.i[gruppe] ?? p.i.android[gruppe]).push(e);
+  for (const q of [e.behaelter, e.lizenzdatei].filter(Boolean)) {
+    schreibe(p.ort, e.ort + '/' + q.datei, readFileSync(join(wurzel, e.ort, q.datei)));
+  }
+  for (const q of [e.versionsbeleg, e.versionsbeleg?.settings, e.lizenzentscheidung.beleg].filter(Boolean)) {
+    schreibe(p.ort, q.datei, readFileSync(join(wurzel, q.datei)));
+  }
+  return { p, e };
+}
+test('Lizenzübergang: die zwölf bestehenden Angaben werden normal einzeln gezählt', () => {
+  assert.equal(bestehendeUebergaenge.length, 12);
+  assert.equal(gruppen(bestand).flat().filter(e => e.lizenzentscheidung).length, 12);
+});
+for (const [gruppe, original] of bestehendeUebergaenge) {
+  const name = original.name ?? original.paket;
+  test(`Lizenzübergang: ${name} besteht normal und scheitert streng`, () => {
+    const { p } = uebergangsProbe(gruppe, original); p.speichern();
+    const b = bericht(p);
+    assert.equal(b.ok, true, b.fehler.join('\n'));
+    assert.equal(b.zusammenfassung.offeneLizenzen, 1);
+    assert.equal(b.offeneLizenzen[0].angabe, original.lizenz);
+    scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/, { streng: true });
+  });
+  for (const fall of ['Angabe unbekannt', 'Angabe zugelassen', 'Identität', 'Belegdatei', 'Beleghash']) {
+    test(`Lizenzübergang: ${name}, geänderte ${fall} scheitert`, () => {
+      const { p, e } = uebergangsProbe(gruppe, original);
+      if (fall.startsWith('Angabe')) e.lizenzentscheidung.angabe = e.lizenz = fall === 'Angabe zugelassen' ? 'MIT' : 'andere offene Angabe';
+      if (fall === 'Identität') { if (e.name) e.name += '-anders'; else e.paket += '-anders'; }
+      if (fall === 'Belegdatei') e.lizenzentscheidung.beleg = { ...p.i.apache };
+      if (fall === 'Beleghash') e.lizenzentscheidung.beleg.sha256 = '0'.repeat(64);
+      p.speichern();
+      scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/);
+    });
+  }
+}
+test('Auslieferungslizenz: unbekannte Angabe ohne Entscheidungsbeleg scheitert auch als Platzhalter', () => {
   const p = probe(); p.i.android.maven[0].lizenz = 'Unbekannt'; p.i.android.maven[0].status = 'platzhalter'; p.speichern();
   scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/);
 });
 
 for (const gruppe of ['Hilfscode', 'Projektmodul']) for (const fall of ['Version', 'Identität', 'Beleg fehlt', 'Beleg verändert']) {
-  test(`B2: Null-Ort-${gruppe}, ${fall}`, () => {
+  test(`Versionsbeleg: Null-Ort-${gruppe}, ${fall}`, () => {
     const p = probe(); const e = gruppe === 'Hilfscode' ? hilfe(p) : p.i.android.projektmodule[0];
     if (fall === 'Version') e.version = '999.0.0';
     if (fall === 'Identität') { if (gruppe === 'Hilfscode') e.paket = 'fremd'; else e.name = 'fremd'; }
@@ -286,35 +337,35 @@ for (const gruppe of ['Hilfscode', 'Projektmodul']) for (const fall of ['Version
     else { p.speichern(); scheitert(p, /Identität oder Version|abweichenden SHA-256/); }
   });
 }
-test('B2: eine abweichende Version im unabhängigen Client-Protokoll scheitert', () => {
+test('Versionsbeleg: eine abweichende Version im unabhängigen Client-Protokoll scheitert', () => {
   const p = probe(); const e = hilfe(p); p.speichern();
   p.protokoll.chunks[0].module.at(-1).id = e.module[0].replace('@1.0.0/', '@999.0.0/'); speichereProtokoll(p);
   scheitert(p, /Version weicht von Modulkennungen ab/, { buendel: join(p.ort, 'module.json') });
 });
 
 for (const id of ['node_modules/fremd/stil.css', 'node_modules/fremd/bild.svg', 'node_modules/fremd/index.js?raw']) {
-  test(`B3: fremde Stil-/Asset-Kennung trotz null JS-Bytes: ${id}`, () => {
+  test(`Stil-/Asset-Schutz: fremde Stil-/Asset-Kennung trotz null JS-Bytes: ${id}`, () => {
     const p = probe(); p.protokoll.chunks[0].module.push({ id, renderedLength: 0 });
     assert.throws(() => buendel(p), /Stil- oder Asset-Modul/);
   });
-  test(`B3: fremde Stil-/Asset-Kennung nur im Graphen: ${id}`, () => {
+  test(`Stil-/Asset-Schutz: fremde Stil-/Asset-Kennung nur im Graphen: ${id}`, () => {
     const p = probe(); p.protokoll.modulgraph.push(id);
     assert.throws(() => buendel(p), /Stil- oder Asset-Modul/);
   });
 }
-test('B4: Paketzuordnung verwendet nur den Pfad, verschachtelter Abfrageinhalt bleibt ohne Wirkung', () => {
+test('Paketzuordnung: Paketzuordnung verwendet nur den Pfad, verschachtelter Abfrageinhalt bleibt ohne Wirkung', () => {
   const p = probe(); p.protokoll.chunks[0].module[0].id += '?source=relative/node_modules/extra/index.js';
   assert.deepEqual(buendel(p), []);
 });
 for (const anhang of ['/node_modules/extra/index.js', '//server/freigabe/modul.js', 'C:/privat/modul.js', 'C:modul.js', '\\\\?\\C:\\privat\\modul.js', '%2Fprivat%2Fmodul.js']) {
-  test(`B4/B9: absoluter Abfrageinhalt scheitert im Abgleich: ${anhang}`, () => {
+  test(`Abfragepfad: absoluter Abfrageinhalt scheitert im Abgleich: ${anhang}`, () => {
     const p = probe(); p.protokoll.chunks[0].module[0].id += '?source=' + anhang;
     assert.throws(() => buendel(p), /Abfrageanhang/);
   });
 }
 
 for (const fall of ['erfundene Datei', 'erfundener Import', 'falscher Hash', 'falsche Größe', 'nicht abgeschlossen', 'zusätzliches JS', 'fehlendes CSS']) {
-  test(`B6: Artefaktbindung ${fall}`, () => {
+  test(`Artefaktbindung: Artefaktbindung ${fall}`, () => {
     const p = probe(), c = p.protokoll.chunks[0];
     if (fall === 'erfundene Datei') c.datei = 'erfunden.js';
     if (fall === 'erfundener Import') c.imports.push('erfunden.js');
@@ -329,7 +380,7 @@ for (const fall of ['erfundene Datei', 'erfundener Import', 'falscher Hash', 'fa
 }
 
 for (const fall of ['Wurzelkind', 'Wurzelattribut', 'Packageattribut', 'Dependencyattribut', 'Compileattribut', 'Compilekind']) {
-  test(`B5: unbekannte XML-Erweiterung ${fall}`, { skip: !jdk.pfad }, () => {
+  test(`Gradle-Modell: unbekannte XML-Erweiterung ${fall}`, { skip: !jdk.pfad }, () => {
     const p = probe(); let xml = readFileSync(join(wurzel, 'scripts/pruefdaten/gradle-release-ausschnitt.xml'), 'utf8');
     if (fall === 'Wurzelkind') xml = xml.replace('</dependencies>', '<unbekannt/></dependencies>');
     if (fall === 'Wurzelattribut') xml = xml.replace('<dependencies>', '<dependencies extra="x">');
@@ -341,24 +392,28 @@ for (const fall of ['Wurzelkind', 'Wurzelattribut', 'Packageattribut', 'Dependen
     assert.throws(() => pruefeGradleModell(p.i, join(p.ort, 'modell.xml')), /unbekannt/);
   });
 }
-test('B5/B6: konstruierter echter Modelltyp; alter oder späterer Modellstand scheitert gegen APK', { skip: !jdk.pfad }, () => {
+test('Gradle-Abgleich: wiederverwendete APK und beliebige Modellzeiten beeinflussen den Inhaltsabgleich nicht', { skip: !jdk.pfad }, () => {
   const p = probe(); schreibe(p.ort, 'modell.xml', readFileSync(join(wurzel, 'scripts/pruefdaten/gradle-release-ausschnitt.xml')));
   const datei = join(p.ort, 'modell.xml'), apk = join(p.ort, 'app/android/app/build/outputs/apk/release/app-release-unsigned.apk');
   const jetzt = new Date(); utimesSync(datei, jetzt, jetzt); utimesSync(apk, jetzt, jetzt);
-  assert.deepEqual(pruefeGradleModell(p.i, datei, { apk }), []);
-  for (const offset of [-3600_000, 1000]) {
+  assert.deepEqual(pruefeGradleModell(p.i, datei), []);
+  for (const offset of [-3600_000, 1, 1000]) {
     utimesSync(datei, jetzt, new Date(jetzt.getTime() + offset));
-    assert.throws(() => pruefeGradleModell(p.i, datei, { apk }), /Zeitbezug/);
+    assert.deepEqual(pruefeGradleModell(p.i, datei), []);
   }
 });
+test('Gradle-Abgleich: fehlendes Modell scheitert', { skip: !jdk.pfad }, () => {
+  const p = probe();
+  scheitert(p, /XML-Quellprüfung/, { gradleModell: join(p.ort, 'fehlt.xml') });
+});
 
-test('B7: übernommene zusammengesetzte Lizenzdatei mit Apache wird klar abgelehnt', () => {
+test('Apache-Text: übernommene zusammengesetzte Lizenzdatei mit Apache wird klar abgelehnt', () => {
   const p = probe(), e = p.i.npm[0]; const bytes = Buffer.concat([Buffer.from('MIT-Probetext\n'), readFileSync(join(p.ort, 'LICENSE'))]);
   e.lizenz = 'MIT AND Apache-2.0'; e.lizenzdatei.sha256 = sha(bytes); schreibe(p.ort, e.ort + '/LICENSE', bytes);
   assert.throws(() => erzeugeHinweise(p.ort, p.i), /Apache-Text in Lizenzdatei.*getrennt/);
 });
 for (const fall of ['Ausgabedatei', 'Elternordner', 'hängender Link']) {
-  test(`B8: ${fall} verweist aus der synthetischen Repositorywurzel hinaus`, t => {
+  test(`Ausgabeort: ${fall} verweist aus der synthetischen Repositorywurzel hinaus`, t => {
     const p = probe(), extern = join(arbeit, 'ausserhalb-' + fall.replaceAll(' ', '-'));
     mkdirSync(extern, { recursive: true }); const ziel = join(extern, 'hinweise-dritter.txt');
     if (fall !== 'hängender Link') writeFileSync(ziel, 'unverändert');
@@ -372,7 +427,7 @@ for (const fall of ['Ausgabedatei', 'Elternordner', 'hängender Link']) {
     if (fall !== 'hängender Link') assert.equal(readFileSync(ziel, 'utf8'), 'unverändert');
   });
 }
-test('H2: Lockfile-Ausnahmen bleiben geprüft, erscheinen aber nicht im Nutzerhinweis', () => {
+test('Nutzerhinweis: Lockfile-Ausnahmen bleiben geprüft, erscheinen aber nicht im Nutzerhinweis', () => {
   const p = probe(), e = p.i.npm.shift();
   p.i.ausnahmen.push({ ort: e.ort, paket: e.paket, version: e.version, lizenz: e.lizenz, grund: 'Kontrollbegründung', status: 'platzhalter' });
   p.i.npm[0].status = 'platzhalter';

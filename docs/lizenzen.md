@@ -371,8 +371,9 @@ Lizenzwahl ausgelieferter npm-Pakete, eingebetteter Anteile, gerenderten
 Build-Hilfscodes, Android-Projektmodule und Maven-Artefakte zentral gegen den
 Bereich `ausgeliefert` in `scripts/check-licenses.json` geprüft. Der
 Werkzeugbereich darf gerenderten Hilfscode nicht freigeben. Auch Platzhalter
-werden geprüft. Gesperrte und unbekannte Angaben ohne Entscheidungsbeleg sind
-Fehler im Normalmodus und im strengen Modus.
+werden geprüft. Gesperrte und unbekannte Angaben sind in jedem Modus Fehler,
+ausgenommen ausschließlich die unten festgelegten zwölf Übergangsangaben im
+Normalmodus. Ein Entscheidungsbeleg allein erlaubt keine weitere Ausnahme.
 
 Das Inventar verwendet Format 2. Null-Ort-Einträge benötigen einen
 `versionsbeleg`: Beim OXC-Hilfscode sind Identität und Version an die
@@ -385,14 +386,18 @@ Inventarprüfung vorhanden sein. Die Modulkennungen im Client-Protokoll werden
 zusätzlich gegen die belegte OXC-Version geprüft.
 
 Die zwölf folgenden Angaben des vorläufigen Bestands sind **offene
-Lizenzentscheidungen**, keine Freigaben. Jede trägt eine `lizenzentscheidung`
+Lizenzentscheidungen**, keine Freigaben. Die feste Liste in
+`scripts/hinweise-uebergang.mjs` bindet Gruppe, Identität, wörtliche Angabe,
+Belegdatei und SHA-256 unabhängig vom Inventar. Ein Test hält ihre Länge und
+ihren vollständigen Inhalt fest. Jede trägt eine `lizenzentscheidung`
 mit unveränderter Angabe, Grund und gehashtem Quellenbeleg. Im Normalmodus werden
 sie gezählt und einzeln benannt (`zusammenfassung.offeneLizenzen` und
 `offeneLizenzen` in JSON). Im strengen Modus ist jede ein benannter Fehler,
 zusätzlich zum Fehler für die 92 Platzhalter. Dieser Übergang erlaubt die Prüfung
 der vorbereiteten Werkzeuge, ohne ungeprüfte Angaben stillschweigend in die
-Freigabeliste aufzunehmen. Eine andere Angabe, ein fehlender Beleg oder der
-Status `vollstaendig` darf diese Übergangsregel nicht nutzen. Die Regeln in
+Freigabeliste aufzunehmen. Eine andere Identität oder Angabe, ein fehlender oder
+geänderter Beleg oder der Status `vollstaendig` darf diese Übergangsregel nicht
+nutzen. Die Regeln in
 `check-licenses.json` bleiben unverändert.
 
 | Paket / Anteil | Angabe | Gruppe |
@@ -426,10 +431,19 @@ geschriebenen Ausgabe. Der Abgleich prüft diese Bytes gegen `app/dist`, die
 Importziele sowie die vollständige Menge der JS- und CSS-Ausgaben. Fehlende und
 zusätzliche Dateien scheitern. CSS-Ausgaben haben ebenfalls Größe und SHA-256;
 ihre genaue Zuordnung zu Quellmodulen liefert Vite/Rolldown hier nicht zuverlässig.
-Deshalb scheitern Stil- und Asset-Module aus `node_modules` im gesamten Client-
+Deshalb scheitern **im Modulgraphen sichtbare** Stil- und Asset-Module aus
+`node_modules` im gesamten Client-
 **und Server-Modulgraphen** ausdrücklich, auch mit null gerenderten JS-Bytes.
-Erlaubt sind dort nur JS-/TS- und JSON-Modulformen ohne Asset-Abfrage. Ein Paket
-mit Fremd-CSS kann erst nach einer Erweiterung der Herkunftsprüfung gebaut werden.
+Erlaubt sind dort nur JS-/TS- und JSON-Modulformen sowie mit
+`astro&type=script` gekennzeichnete Skript-Teilmodule einer `.astro`-Datei ohne
+Asset-Abfrage; `type=style` bleibt gesperrt.
+**Grenze:** CSS-`@import` und CSS-`url(...)` in eigenen CSS-Dateien oder
+Style-Blöcken sowie `new URL(..., import.meta.url)` können Fremdinhalte
+übernehmen, ohne deren Herkunft als Fremdmodul im Graphen auszuweisen. Diese
+Wege werden nicht durch eine statische Prüfung der eigenen Quellen gesperrt.
+Der Abgleich bestätigt dafür keine Herkunftsabdeckung; sie benötigen eine
+gesonderte Inhaltsprüfung. Eine Mustersuche wäre kein belastbarer Ersatz für
+die Auswertung der CSS-, Astro- und Skriptsyntax.
 Serverseitig erzeugtes HTML, eingebettete Assets, Inhalte aus öffentlichen
 Dateien und von Erweiterungen direkt erzeugte Assets brauchen weiterhin eine
 Inhaltsprüfung; das Modulprotokoll beweist ihre vollständige Herkunft nicht.
@@ -437,8 +451,13 @@ Inhaltsprüfung; das Modulprotokoll beweist ihre vollständige Herkunft nicht.
 Jeder Paketort mit `renderedLength > 0` muss erfasst sein, und jeder mit
 `imBuendel: true` markierte Eintrag muss vorkommen. Verschachtelte Paketorte
 werden unterschieden. Nur der bereinigte Dateipfad entscheidet über den Paketort;
-Abfrageanhänge werden getrennt geprüft. Absolute Pfade, Laufwerkskennungen,
-UNC- und Windows-Namensraumpfade sind in beiden Teilen verboten. Virtuelle
+Abfrageanhänge werden getrennt geprüft. Repositoryinterne absolute Modulpfade
+werden vor der Prüfung relativiert, auch in virtuellen Kennungen. Absolute Pfade,
+Laufwerkskennungen, UNC- und Windows-Namensraumpfade sind im gespeicherten
+Dateipfad verboten. Im einmal URL-dekodierten Abfrageanhang sind `//`, jeder
+Backslash und jedes Laufwerksmuster wie `C:` an jeder Stelle verboten;
+ein `/` am Anfang oder nach den geprüften Trennzeichen (auch Anführungszeichen)
+scheitert ebenfalls. Virtuelle
 Hilfen werden in beiden Richtungen anhand ihrer genauen Kennungen abgeglichen.
 Reine JS-Re-Exporte ohne gerenderte Bytes gelten nicht als eigener ausgelieferter
 Code; der Stil-/Asset-Schutz gilt trotzdem.
@@ -463,14 +482,12 @@ steht unter `scripts/pruefdaten/gradle-release-ausschnitt.xml`. Maven-Koordinate
 und Projektmodule werden in beiden Richtungen verglichen; DTD und externe
 Entitäten sind ausgeschlossen. Ein Compile-Abschnitt ersetzt Package nicht.
 
-Zusätzlich muss das Modell vor oder gleichzeitig mit der Release-APK geschrieben
-worden sein, höchstens 30 Minuten zuvor. Der Android-Build reicht die geprüfte
-APK an den Abgleich weiter; der direkte Lizenzlauf verwendet die reguläre
-Release-APK im Worktree. Fehlende Ausgaben oder ein unpassender Zeitabstand
-scheitern. **Grenze:** Änderungszeiten belegen keinen kausalen Zusammenhang und
-keine Artefakthashes. Gradle kann beide Dateien wiederverwenden; eine Kopie mit
-passenden Zeiten kann diese Näherungsprüfung bestehen. Bei längeren Builds oder
-veraltetem Modell ist eine erneute Erzeugung und Prüfung erforderlich. Das Modell
+`app-bauen.mjs` liest das Modell im selben Lauf nach erfolgreichem
+`assembleRelease` (auch mit `:app:`-Präfix); fehlt es, scheitert der Lauf. Der
+direkte Lizenzlauf mit `--gradle-modell` liest die angegebene Datei. Es gibt keine
+Zeitregel zwischen Modell und APK. **Grenze: kein kausaler Herkunftsnachweis
+zwischen Modell und APK.** Weder Erzeugung im aktuellen Lauf noch zugehörige
+Artefakthashes werden belegt; Gradle kann Ausgaben wiederverwenden. Das Modell
 belegt weder vollständige Lizenzhinweise noch jeden eingebetteten AAR-/JAR-Anteil.
 
 Vor der Einbindung sind insbesondere die Originalwortlaute, die endgültige

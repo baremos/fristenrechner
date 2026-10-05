@@ -6,9 +6,10 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { build } from 'vite';
 import { modulprotokoll } from '../app/astro.config.mjs';
+import { pruefeStilOderAsset, zerlegeKennung } from './modulprotokoll.mjs';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const basis = join(wurzel, 'scratchpad/tmp-v8-r2');
+const basis = join(wurzel, 'scratchpad/tmp-v8-r3');
 mkdirSync(basis, { recursive: true });
 const ort = mkdtempSync(join(basis, 'modul-test-'));
 test.after(() => rmSync(ort, { recursive: true, force: true }));
@@ -76,7 +77,7 @@ for (const id of [
   'node_modules/probe/index.js?quelle=\\\\?\\C:\\privat\\modul.js',
   '\0//server/freigabe/modul.js', '\0\\\\?\\C:\\privat\\modul.js',
   '//server/freigabe/modul.js', 'C:modul.js',
-]) test(`B4/B9 Plugin-Gegenprobe: ${JSON.stringify(id)}`, () => {
+]) test(`Abfragepfad Plugin-Gegenprobe: ${JSON.stringify(id)}`, () => {
   const p = modulprotokoll(ort); p.entwerte();
   assert.throws(() => p.generateBundle.call({ environment: { name: 'client' } }, {}, { a: chunk('a.js', [id]) }), /Kennung außerhalb/);
   assert.ok(!existsSync(join(ort, 'app/.astro/module-client.json')));
@@ -84,7 +85,7 @@ for (const id of [
 });
 
 for (const id of ['node_modules/fremd/stil.css', 'node_modules/fremd/bild.svg', 'node_modules/fremd/index.js?url']) {
-  for (const umgebung of ['client', 'ssr']) test(`B3 Plugin-Gegenprobe: Graph ${umgebung}, ${id}, null JS-Bytes`, () => {
+  for (const umgebung of ['client', 'ssr']) test(`Stil-/Asset-Schutz Plugin-Gegenprobe: Graph ${umgebung}, ${id}, null JS-Bytes`, () => {
     const p = modulprotokoll(ort); p.entwerte();
     const b = { a: chunk('a.js', []) }; b.a.modules[id] = { renderedLength: 0 };
     assert.throws(() => p.generateBundle.call({ environment: { name: umgebung }, getModuleIds: () => [id] }, {}, b), /Stil- oder Asset-Modul/);
@@ -92,7 +93,7 @@ for (const id of ['node_modules/fremd/stil.css', 'node_modules/fremd/bild.svg', 
   });
 }
 
-test('B6: nur Abschluss veröffentlicht; Abbruch entwertet den alten Stand', () => {
+test('Build-Abschluss: nur Abschluss veröffentlicht; Abbruch entwertet den alten Stand', () => {
   const p = modulprotokoll(ort, { astro: true });
   const datei = join(ort, 'app/.astro/module-client.json');
   writeFileSync(datei, 'alt'); p.entwerte();
@@ -105,7 +106,7 @@ test('B6: nur Abschluss veröffentlicht; Abbruch entwertet den alten Stand', () 
   assert.ok(!existsSync(datei));
 });
 
-test('B6: mehrere Client-Ausgaben werden gesammelt; gleiche Dateinamen scheitern', () => {
+test('Build-Abschluss: mehrere Client-Ausgaben werden gesammelt; gleiche Dateinamen scheitern', () => {
   const p = modulprotokoll(ort); p.entwerte();
   for (const datei of ['erster.js', 'zweiter.js']) {
     const c = chunk(datei, []); c.imports = [];
@@ -123,7 +124,7 @@ test('B6: mehrere Client-Ausgaben werden gesammelt; gleiche Dateinamen scheitern
   assert.ok(!existsSync(join(ort, 'app/.astro/module-client.json')));
 });
 
-test('B3: echter Vite-Build mit Fremd-CSS scheitert ohne gültiges Protokoll', async () => {
+test('Stil-/Asset-Schutz: echter Vite-Build mit Fremd-CSS scheitert ohne gültiges Protokoll', async () => {
   const projekt = join(ort, 'css-probe');
   mkdirSync(join(projekt, 'app'), { recursive: true });
   mkdirSync(join(projekt, 'node_modules/fremd'), { recursive: true });
@@ -133,4 +134,52 @@ test('B3: echter Vite-Build mit Fremd-CSS scheitert ohne gültiges Protokoll', a
   await assert.rejects(build({ root: projekt, configFile: false, logLevel: 'silent',
     build: { outDir: 'app/dist' }, plugins: [modulprotokoll(projekt)] }), /Stil- oder Asset-Modul/);
   assert.ok(!existsSync(join(projekt, 'app/.astro/module-client.json')));
+});
+
+for (const anhang of [
+  '"//server/freigabe/modul.js"', '%22%2F%2Fserver%2Ffreigabe%2Fmodul.js%22',
+  "'//server/freigabe/modul.js'", '%27%2F%2Fserver%2Ffreigabe%2Fmodul.js%27',
+  '"/privat/modul.js"', '%22%2Fprivat%2Fmodul.js%22',
+  '"C:/privat/modul.js"', '%22C%3A%2Fprivat%2Fmodul.js%22',
+  '[//server/freigabe]', '{/privat/modul.js}', 'relative//server', 'relativeC:modul.js',
+  'relative\\modul.js', 'relative%5Cmodul.js',
+]) test(`Abfragepfad: zitierter, kodierter oder eingebetteter absoluter Inhalt ${anhang}`, () => {
+  const id = 'node_modules/probe/index.js?quelle=' + anhang;
+  assert.throws(() => zerlegeKennung(id), /Abfrageanhang/);
+  const p = modulprotokoll(ort); p.entwerte();
+  assert.throws(() => p.generateBundle.call({ environment: { name: 'client' } }, {}, { a: chunk('a.js', [id]) }), /Kennung außerhalb/);
+  assert.ok(!existsSync(join(ort, 'app/.astro/module-client.json')));
+  assert.ok(!existsSync(join(ort, 'app/.astro/module-client.json.tmp')));
+});
+
+for (const [anhang, erlaubt] of [
+  ['astro&type=script&index=0&lang.ts', true],
+  ['astro&type=style&index=0&lang.css', false],
+  ['astro&type=script&type=style', false],
+  ['astro&type=script&url', false],
+  ['astro&type=script&raw', false],
+  ['astro&type=script&inline', false],
+  ['type=script&index=0&lang.ts', false],
+  ['astro&index=0&lang.ts', false],
+]) test(`Astro-Teilmodul: ${anhang}, ${erlaubt ? 'Code erlaubt' : 'Stil oder unbekannte Form gesperrt'}`, () => {
+  const id = 'node_modules/probe/Komponente.astro?' + anhang;
+  const pruefen = () => pruefeStilOderAsset(id);
+  if (erlaubt) assert.doesNotThrow(pruefen);
+  else assert.throws(pruefen, /Stil- oder Asset-Modul/);
+  const p = modulprotokoll(ort); p.entwerte();
+  const graph = () => p.generateBundle.call({ environment: { name: 'client' }, getModuleIds: () => [id] }, {}, { a: chunk('a.js', [id]) });
+  if (erlaubt) {
+    graph();
+    assert.deepEqual(JSON.parse(readFileSync(join(ort, 'app/.astro/module-client.json.tmp'))).modulgraph, [id]);
+  } else assert.throws(graph, /Stil- oder Asset-Modul/);
+});
+
+test('Virtueller CommonJS-Proxy: absolute Pfade innerhalb der Wurzel zuerst relativieren', () => {
+  const p = modulprotokoll(ort); p.entwerte();
+  const intern = join(ort, 'app/src/modul.js');
+  const ids = [...new Set([intern, intern.replaceAll('\\', '/')])].map(p => '\0' + p + '?commonjs-proxy');
+  p.generateBundle.call({ environment: { name: 'client' }, getModuleIds: () => ids }, {}, { a: chunk('a.js', ids) });
+  const bericht = JSON.parse(readFileSync(join(ort, 'app/.astro/module-client.json.tmp')));
+  assert.deepEqual(bericht.modulgraph, ['virtuell:app/src/modul.js?commonjs-proxy']);
+  assert.ok(bericht.chunks[0].module.every(m => m.id === 'virtuell:app/src/modul.js?commonjs-proxy'));
 });

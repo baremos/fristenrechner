@@ -1,11 +1,12 @@
 // Inventarprüfung und optionale Abgleiche; Erfolg bleibt ohne Konsolenausgabe.
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { gruppen, leseInventar, leseQuelle, leseRepositorydatei, pruefeFormat, pruefeHinweisdatei, relativerPfad } from './hinweise-dritter.mjs';
 import { leseQuellXml } from './app-pruefungen.mjs';
 import { findeJdk, windows } from './werkzeuge.mjs';
 import { paketort, pruefeStilOderAsset, zerlegeKennung } from './modulprotokoll.mjs';
+import { istUebergangsangabe } from './hinweise-uebergang.mjs';
 
 function eindeutig(liste, kennung, art) {
   const gesehen = new Set();
@@ -92,18 +93,7 @@ export function pruefeBuendel(i, protokoll, dist) {
   return [...dateifehler, ...gegenseitig(orte, erwartet, 'Bündelabgleich'), ...gegenseitig(virtuelle, hilfen, 'Hilfscodeabgleich')];
 }
 
-export function pruefeGradleModell(i, datei, { umgebung = process.env, lesen = leseQuellXml, apk } = {}) {
-  if (apk) {
-    let modell, ausgabe;
-    try { modell = statSync(datei); ausgabe = statSync(apk); }
-    catch { throw new Error('Gradle-Abgleich: Modell oder Release-APK fehlt.'); }
-    // Näherungsbeleg, kein kryptographischer Herkunftsnachweis. Gradle kann
-    // beide Ausgaben wiederverwenden; lange Builds benötigen eine neue Prüfung.
-    const abstand = ausgabe.mtimeMs - modell.mtimeMs;
-    if (!modell.isFile() || !ausgabe.isFile() || !ausgabe.size || abstand < 0 || abstand > 30 * 60 * 1000) {
-      throw new Error('Gradle-Abgleich: Modell und Release-APK ohne passenden Zeitbezug (höchstens 30 Minuten, Modell zuerst).');
-    }
-  }
+export function pruefeGradleModell(i, datei, { umgebung = process.env, lesen = leseQuellXml } = {}) {
   const jdk = findeJdk(umgebung);
   if (!jdk.pfad) throw new Error('Gradle-Abgleich: kein JDK für den XML-Parser gefunden.');
   const baum = lesen(datei, join(jdk.pfad, 'bin', windows ? 'java.exe' : 'java'), umgebung);
@@ -167,7 +157,7 @@ function pruefeVersionsbeleg(wurzel, e, protokoll) {
   } else throw new Error('Hinweise Dritter: unbekannte Versionsbelegform.');
 }
 
-export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, gradleApk, streng = false, pruefeAusdruck, umgebung = process.env } = {}) {
+export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, streng = false, pruefeAusdruck, umgebung = process.env } = {}) {
   const fehler = [];
   const offeneLizenzen = [];
   let platzhalter = 0;
@@ -195,11 +185,13 @@ export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, gradleAp
         let entscheidung;
         try { entscheidung = pruefeAusdruck(e.lizenz, 'ausgeliefert'); }
         catch { unbekannt = true; }
-        if (unbekannt && e.lizenzentscheidung) {
+        if (e.lizenzentscheidung) {
+          if (!istUebergangsangabe(gruppe, e)) throw new Error();
           // Sichtbarer Entscheidungsbedarf, keine Freigabe und kein neuer SPDX-Wert.
           leseQuelle(wurzel, e.lizenzentscheidung.beleg);
           offeneLizenzen.push({ paket, angabe: e.lizenz, gruppe });
           if (!streng) continue;
+          throw new Error();
         }
         if (unbekannt || !entscheidung?.zulaessig) throw new Error();
       } catch { fehler.push(`Hinweise Dritter: Lizenz für ausgeliefert unbekannt oder nicht zugelassen: ${paket} | ${e.lizenz} | ${gruppe}.`); }
@@ -237,8 +229,7 @@ export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, gradleAp
     }
     try { pruefeHinweisdatei(wurzel, i); } catch (e) { fehler.push(e.message); }
     if (buendel) fehler.push(...pruefeBuendel(i, protokoll, join(wurzel, 'app/dist')));
-    if (gradleModell) fehler.push(...pruefeGradleModell(i, gradleModell, { umgebung,
-      apk: gradleApk ?? join(wurzel, 'app/android/app/build/outputs/apk/release/app-release-unsigned.apk') }));
+    if (gradleModell) fehler.push(...pruefeGradleModell(i, gradleModell, { umgebung }));
   } catch (e) { fehler.push(e.message); }
   return { fehler: [...new Set(fehler)], platzhalter, offeneLizenzen };
 }
