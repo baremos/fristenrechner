@@ -82,6 +82,8 @@ export interface GastgeberTexte {
   speicherNichtVerfuegbar: string;
   exportErfolg: string;
   importBeschriftung: string;
+  /** Optionaler Satz zu den Exportbibliotheken; ohne Angabe bleibt die Vorgabe. */
+  bibliothekenHinweis?: string;
   /** Optional je Weg/Format. exportErfolg bleibt der Rückfall für exportieren. */
   ausgabeErfolg?: AusgabeTexte;
   ausgabeFehler?: AusgabeTexte;

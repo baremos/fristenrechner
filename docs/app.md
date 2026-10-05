@@ -7,6 +7,7 @@ Stand 2026-10-04, App-Version 0.1.0, geprüfter App-Endstand `5e6f230`, Nachweis
 | Bereich | Aufgabe |
 |---|---|
 | `app/src/pages/index.astro` | Eine Seite mit dem Rechner und Angaben zur App; Einbindung der gemeinsamen Oberfläche über ihren Paketnamen. |
+| `app/src/hinweise-dritter.txt` | Offline lesbare Originalhinweise zum Web- und Android-Laufzeitbestand, aus dem gehashten Inventar erzeugt. |
 | `app/public/startfehler.html` | Lokale Fehlerseite ohne Skript für eine zu alte WebView. |
 | `app/astro.config.mjs` | Statischer Web-Build nach `app/dist`, JavaScript und CSS für Chromium 83. |
 | `app/capacitor.config.json` | App-ID, lokale Herkunft `https://localhost`, WebView-Untergrenze, Fehlerseite und Darstellung. |
@@ -15,6 +16,12 @@ Stand 2026-10-04, App-Version 0.1.0, geprüfter App-Endstand `5e6f230`, Nachweis
 | `scripts/app-pruefungen.mjs` und `.json` | Prüfungen K1 bis K5 und ihre Daten. |
 
 `cap sync android` überträgt `app/dist` in die Assets des Android-Projekts und erzeugt die Capacitor-Konfiguration für Android. Gradle erzeugt daraus die APK. Kern und Oberfläche bleiben plattformfrei; Android-spezifischer Code liegt in der App.
+
+## Hinweise zu Komponenten Dritter
+
+Nach „Lizenzen“ steht der eigene aufklappbare Abschnitt „Hinweise zu Komponenten Dritter“. Die App liest `app/src/hinweise-dritter.txt` beim Web-Build mit `?raw` und zeigt den Originaltext in einem `<pre>` mit Zeilenumbruch an; Web- und Android-Komponenten stehen gemeinsam darin. Adressen in den Fremdtexten bleiben Textknoten ohne Links. Die Quelle, der Generator, die gehashten Originalbelege und die bekannten Einschränkungen stehen in [lizenzen.md](lizenzen.md#hinweise-dritter-paketinhalt-und-verbleibende-arbeit).
+
+Der optionale Gastgebertext `bibliothekenHinweis` setzt in der App den freigegebenen Verweis auf diesen Abschnitt. Die Vorgabe der gemeinsamen Komponente bleibt bytegleich. Der Emulator-Quellvertrag prüft Titel, Einleitung, Quelle, Position und Satz. Die Menüphase öffnet den neuen Abschnitt zusammen mit allen `details.app-abschnitt` bei Schriftfaktor 1,0 und 2,0 und verlangt dessen geöffnetes `<pre>`. Ein erneuter Android-Build und Emulatorlauf stehen aus; dieser Quellvertrag ist kein Sichtnachweis.
 
 ## Festlegungen
 

@@ -1,3 +1,5 @@
+import { rolldown } from 'rolldown';
+import { oxcRuntimePlugin } from 'rolldown/experimental';
 // Synthetische Offline-Projekte; keine privaten Eingaben und keine Installation.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -10,7 +12,7 @@ import { erzeugeHinweise, gruppen, pruefeHinweisdatei, schreibeHinweise } from '
 import { pruefeProjekt } from './check-licenses.mjs';
 import { pruefeBuendel, pruefeGradleModell } from './hinweise-pruefung.mjs';
 import { findeJdk } from './werkzeuge.mjs';
-import { uebergangsangaben } from './hinweise-uebergang.mjs';
+import { entschiedeneAusnahmen } from './hinweise-ausnahmen.mjs';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const basis = join(wurzel, 'scratchpad/test-hinweise-dritter');
@@ -271,56 +273,68 @@ for (const gruppe of ['maven', 'eingebettet', 'buildHilfscode']) {
   }
 }
 
-test('Lizenzübergang: feste Länge und vollständiger Inhalt unabhängig vom Inventar', () => {
-  assert.equal(uebergangsangaben.length, 12);
-  // Bindet Gruppen, Identitäten, wörtliche Angaben, Belegdateien und SHA-256.
-  assert.equal(sha(JSON.stringify(uebergangsangaben)), 'c9f14bd7b056e8c5b1224bdfee3704bd8430f8042977ba9a910444e1f134a07c');
-});
-
 const bestand = JSON.parse(readFileSync(join(wurzel, 'scripts/hinweise-dritter.json')));
-const bestehendeUebergaenge = [
-  ...bestand.eingebettet.filter(e => e.lizenzentscheidung).map(e => ['eingebettet', e]),
-  ...bestand.buildHilfscode.filter(e => e.lizenzentscheidung).map(e => ['buildHilfscode', e]),
-  ...bestand.android.projektmodule.filter(e => e.lizenzentscheidung).map(e => ['projektmodule', e]),
-];
-function uebergangsProbe(gruppe, original) {
+test('Entschiedene Ausnahmen: geschlossene Liste mit Identität, Angabe, Beleg, Datum, Entscheidung und Wortlauthash', () => {
+  assert.equal(entschiedeneAusnahmen.length, 7);
+  assert.equal(sha(JSON.stringify(entschiedeneAusnahmen)), '911812c39c3dc5308b4850737f9d992bb64b04ab4b4c2011dd897ad1999d5522');
+  assert.ok(Object.isFrozen(entschiedeneAusnahmen));
+  assert.ok(entschiedeneAusnahmen.every(a => Object.isFrozen(a) && Object.isFrozen(a.identitaet) && Object.isFrozen(a.beleg)));
+});
+function ausnahmenProbe(original) {
   const p = probe(), e = structuredClone(original);
-  if (gruppe === 'projektmodule') p.i.android.projektmodule = [];
-  (p.i[gruppe] ?? p.i.android[gruppe]).push(e);
+  p.i.eingebettet.push(e);
   for (const q of [e.behaelter, e.lizenzdatei].filter(Boolean)) {
     schreibe(p.ort, e.ort + '/' + q.datei, readFileSync(join(wurzel, e.ort, q.datei)));
   }
-  for (const q of [e.versionsbeleg, e.versionsbeleg?.settings, e.lizenzentscheidung.beleg].filter(Boolean)) {
+  for (const q of [...(e.originale ?? []), ...(e.belege ?? []), e.entschiedeneAusnahme.beleg]) {
     schreibe(p.ort, q.datei, readFileSync(join(wurzel, q.datei)));
   }
   return { p, e };
 }
-test('Lizenzübergang: die zwölf bestehenden Angaben werden normal einzeln gezählt', () => {
-  assert.equal(bestehendeUebergaenge.length, 12);
-  assert.equal(gruppen(bestand).flat().filter(e => e.lizenzentscheidung).length, 12);
+const bestehendeAusnahmen = bestand.eingebettet.filter(e => e.entschiedeneAusnahme);
+test('Inventar: 92 vollständige Einträge, keine Übergangsentscheidung, sieben entschiedene Einschränkungen', () => {
+  assert.equal(gruppen(bestand).flat().length, 92);
+  assert.ok(gruppen(bestand).flat().every(e => e.status === 'vollstaendig' && !e.lizenzentscheidung));
+  assert.equal(bestehendeAusnahmen.length, 7);
+  const b = pruefeProjekt(wurzel, { streng: true });
+  assert.equal(b.ok, true, b.fehler.join('\n'));
+  assert.equal(b.zusammenfassung.platzhalter, 0);
+  assert.equal(b.zusammenfassung.entschiedeneLizenzen, 7);
+  assert.equal(b.zusammenfassung.offeneLizenzen, 0);
+  assert.ok(b.hinweise.includes('Entschiedene Einschränkungen der Hinweise Dritter: 7.'));
 });
-for (const [gruppe, original] of bestehendeUebergaenge) {
-  const name = original.name ?? original.paket;
-  test(`Lizenzübergang: ${name} besteht normal und scheitert streng`, () => {
-    const { p } = uebergangsProbe(gruppe, original); p.speichern();
-    const b = bericht(p);
-    assert.equal(b.ok, true, b.fehler.join('\n'));
-    assert.equal(b.zusammenfassung.offeneLizenzen, 1);
-    assert.equal(b.offeneLizenzen[0].angabe, original.lizenz);
-    scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/, { streng: true });
+for (const original of bestehendeAusnahmen) {
+  test(`Entschiedene Ausnahme: ${original.name} besteht normal und streng`, () => {
+    const { p } = ausnahmenProbe(original); p.speichern();
+    for (const streng of [false, true]) {
+      const b = bericht(p, { streng });
+      assert.equal(b.ok, true, b.fehler.join('\n'));
+      assert.equal(b.zusammenfassung.entschiedeneLizenzen, 1);
+      assert.equal(b.entschiedeneLizenzen[0].angabe, original.lizenz);
+    }
   });
-  for (const fall of ['Angabe unbekannt', 'Angabe zugelassen', 'Identität', 'Belegdatei', 'Beleghash']) {
-    test(`Lizenzübergang: ${name}, geänderte ${fall} scheitert`, () => {
-      const { p, e } = uebergangsProbe(gruppe, original);
-      if (fall.startsWith('Angabe')) e.lizenzentscheidung.angabe = e.lizenz = fall === 'Angabe zugelassen' ? 'MIT' : 'andere offene Angabe';
-      if (fall === 'Identität') { if (e.name) e.name += '-anders'; else e.paket += '-anders'; }
-      if (fall === 'Belegdatei') e.lizenzentscheidung.beleg = { ...p.i.apache };
-      if (fall === 'Beleghash') e.lizenzentscheidung.beleg.sha256 = '0'.repeat(64);
+  for (const fall of ['Angabe unbekannt', 'Angabe zugelassen', 'Identität', 'Version', 'Belegdatei', 'Beleghash', 'Datum', 'Entscheidung', 'Wortlaut', 'Marker entfernt']) {
+    test(`Entschiedene Ausnahme: ${original.name}, geänderte ${fall} scheitert in beiden Modi`, () => {
+      const { p, e } = ausnahmenProbe(original);
+      if (fall.startsWith('Angabe')) e.entschiedeneAusnahme.angabe = e.lizenz = fall === 'Angabe zugelassen' ? 'MIT' : 'andere Angabe';
+      if (fall === 'Identität') e.name += '-anders';
+      if (fall === 'Version') e.version = '999.0.0';
+      if (fall === 'Belegdatei') e.entschiedeneAusnahme.beleg = { ...p.i.apache };
+      if (fall === 'Beleghash') e.entschiedeneAusnahme.beleg.sha256 = '0'.repeat(64);
+      if (fall === 'Datum') e.entschiedeneAusnahme.datum = '2026-10-05';
+      if (fall === 'Entscheidung') e.entschiedeneAusnahme.entscheidung += ' anders';
+      if (fall === 'Wortlaut') { e.wortlaut += ' anders'; delete e.originale; }
+      if (fall === 'Marker entfernt') { delete e.entschiedeneAusnahme; e.lizenz = 'MIT'; }
       p.speichern();
-      scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/);
+      for (const streng of [false, true]) scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/, { streng });
     });
   }
 }
+for (const gruppe of ['maven', 'eingebettet', 'buildHilfscode']) test(`Entschiedene Ausnahme: Inventar kann die Liste für ${gruppe} nicht erweitern`, () => {
+  const p = probe(), e = gruppe === 'buildHilfscode' ? hilfe(p) : (p.i[gruppe] ?? p.i.android[gruppe])[0];
+  e.lizenz = 'GPL-3.0-only'; e.wortlaut = 'Probetext'; e.entschiedeneAusnahme = structuredClone(bestehendeAusnahmen[0].entschiedeneAusnahme);
+  p.speichern(); for (const streng of [false, true]) scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/, { streng });
+});
 test('Auslieferungslizenz: unbekannte Angabe ohne Entscheidungsbeleg scheitert auch als Platzhalter', () => {
   const p = probe(); p.i.android.maven[0].lizenz = 'Unbekannt'; p.i.android.maven[0].status = 'platzhalter'; p.speichern();
   scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/);
@@ -434,5 +448,62 @@ test('Nutzerhinweis: Lockfile-Ausnahmen bleiben geprüft, erscheinen aber nicht 
   p.speichern(); assert.equal(bericht(p).ok, true);
   const text = erzeugeHinweise(p.ort, p.i).toString('utf8');
   assert.ok(!text.includes('Begründete Lockfile-Ausnahmen')); assert.ok(!text.includes('Kontrollbegründung'));
-  assert.ok(text.includes('Stand: Werkzeuge vorhanden')); assert.ok(text.includes('PLATZHALTER'));
+  assert.ok(!text.includes('Stand: Werkzeuge vorhanden')); assert.ok(!text.includes('PLATZHALTER'));
+});
+
+test('Oxc-Herkunft: die vier ausgelieferten virtuellen Originalquellen sind bytegleich zu MIT-lizenzierten Babel-Hilfen', async () => {
+  const e = bestand.buildHilfscode.find(e => e.paket === '@oxc-project/runtime');
+  const gesehen = new Set();
+  const b = await rolldown({ input: 'hinweisprobe', logLevel: 'silent', plugins: [{
+    name: 'hinweisprobe',
+    resolveId(id) { if (id === 'hinweisprobe') return '\0hinweisprobe'; },
+    load(id) { if (id === '\0hinweisprobe') return e.belege.map((q, k) => `import h${k} from '@oxc-project/runtime/helpers/esm/${q.datei.split('/').pop()}'; export {h${k}};`).join('\n'); },
+    moduleParsed(info) {
+      if (!info.id.includes('@oxc-project')) return;
+      const id = 'virtuell:' + info.id.slice(1);
+      assert.ok(e.module.includes(id));
+      const q = e.belege.find(q => q.datei.endsWith('/' + info.id.split('/').pop()));
+      const bytes = readFileSync(join(wurzel, q.datei));
+      assert.equal(sha(bytes), q.sha256);
+      assert.equal(info.code, bytes.toString('utf8'));
+      gesehen.add(id);
+    },
+  }, oxcRuntimePlugin()] });
+  try { await b.generate({ minify: false }); } finally { await b.close(); }
+  assert.deepEqual([...gesehen].sort(), [...e.module].sort());
+});
+
+const hinweisUeberschriften = ['Im Web-Teil der App enthalten', 'In jsPDF eingebettete Bestandteile', 'In jsPDF-AutoTable eingebettete Bestandteile', 'Vom Build-Werkzeug eingefügter Hilfscode', 'Android-Bestandteile', 'Lizenztexte'];
+test('Nutzerhinweis: freigegebene Überschriften in Reihenfolge, ohne doppelte Einleitung oder Kontrolltexte', () => {
+  const text = erzeugeHinweise(wurzel, bestand).toString('utf8');
+  let vorher = -1;
+  for (const titel of hinweisUeberschriften) {
+    assert.equal(text.split('\n').filter(z => z === titel).length, 1);
+    assert.ok(text.indexOf(titel) > vorher); vorher = text.indexOf(titel);
+  }
+  for (const s of ['Hinweise zu Komponenten Dritter', 'Diese App enthält Komponenten Dritter.', 'PLATZHALTER', 'Stand: Werkzeuge vorhanden', 'noch zu belegen', 'nicht im aktuellen Bündel', 'node_modules/', 'Entscheidung der Maintainer']) assert.ok(!text.includes(s), s);
+  assert.equal(text.split('Die Quelle nennt für diesen Bestandteil keine Lizenz. Wiedergegeben ist der Hinweis aus jsPDF.').length - 1, 3);
+  assert.equal(text.split('Apache License\n').length - 1, 1);
+});
+test('Originalbeleg: Wortlaut und Auszughash werden unabhängig vom Behälter geprüft', () => {
+  const p = probe(), e = p.i.eingebettet[0];
+  const bytes = Buffer.from('Vorher\r\nCopyright Original\r\nNachher\r\n');
+  schreibe(p.ort, 'scripts/original.txt', bytes);
+  const von = Buffer.byteLength('Vorher\r\n'), bis = von + Buffer.byteLength('Copyright Original\r\n');
+  e.originale = [{ datei: 'scripts/original.txt', sha256: sha(bytes), von, bis, auszugSha256: sha(bytes.subarray(von, bis)) }];
+  e.wortlaut = 'Copyright Original\n';
+  p.speichern(); assert.equal(bericht(p, { streng: true }).ok, true);
+  e.wortlaut += 'anders'; assert.throws(() => erzeugeHinweise(p.ort, p.i), /Wortlaut weicht vom Original/);
+  e.wortlaut = 'Copyright Original\n'; e.originale[0].auszugSha256 = '0'.repeat(64);
+  assert.throws(() => erzeugeHinweise(p.ort, p.i), /Originalauszug hat abweichenden SHA-256/);
+});
+test('Android-Zusatzbestandteil: unzulässige Lizenz scheitert zentral in beiden Modi', () => {
+  const p = probe(); p.i.android.maven[0].bestandteile = [{name:'Probe', lizenz:'GPL-3.0-only'}];
+  p.speichern(); for (const streng of [false, true]) scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/, { streng });
+});
+
+test('Entschiedene Ausnahme: zusätzlicher unzulässiger Bestandteil bleibt gesperrt', () => {
+  const { p, e } = ausnahmenProbe(bestehendeAusnahmen[0]);
+  e.bestandteile = [{ name: 'Probe', lizenz: 'GPL-3.0-only' }];
+  p.speichern(); for (const streng of [false, true]) scheitert(p, /Lizenz für ausgeliefert unbekannt oder nicht zugelassen/, { streng });
 });

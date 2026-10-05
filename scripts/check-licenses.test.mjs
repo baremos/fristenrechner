@@ -937,7 +937,7 @@ test('Ungültiger absoluter CLI-Parameter wird nicht in der Meldung wiederholt',
   ohneAbsolutenPfad(b, f.wurzel);
 });
 
-test('CLI liefert sauberes JSON sowie deutsche Ausgabe und passende Exit-Codes', () => {
+test('CLI liefert sauberes JSON, stummen Erfolg und passende Exit-Codes', () => {
   const f = probe();
   const json = cli(f, ['--json']);
   assert.equal(json.status, 0, json.stderr);
@@ -945,8 +945,8 @@ test('CLI liefert sauberes JSON sowie deutsche Ausgabe und passende Exit-Codes',
   assert.equal(json.stderr, '');
   const text = cli(f, []);
   assert.equal(text.status, 0);
-  assert.match(text.stdout, /Lizenzprüfung: 1 Fremdpakete/);
-  assert.match(text.stdout, /ERGEBNIS: bestanden/);
+  assert.equal(text.stdout, '');
+  assert.equal(text.stderr, '');
   f.lock.packages['node_modules/werkzeug'].license = 'UNLICENSED';
   schreiben(join(f.wurzel, 'package-lock.json'), f.lock);
   const nein = cli(f, ['--json']);

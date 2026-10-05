@@ -6,7 +6,7 @@ import { gruppen, leseInventar, leseQuelle, leseRepositorydatei, pruefeFormat, p
 import { leseQuellXml } from './app-pruefungen.mjs';
 import { findeJdk, windows } from './werkzeuge.mjs';
 import { paketort, pruefeStilOderAsset, zerlegeKennung } from './modulprotokoll.mjs';
-import { istUebergangsangabe } from './hinweise-uebergang.mjs';
+import { festeAusnahme, istEntschiedeneAusnahme } from './hinweise-ausnahmen.mjs';
 
 function eindeutig(liste, kennung, art) {
   const gesehen = new Set();
@@ -160,6 +160,7 @@ function pruefeVersionsbeleg(wurzel, e, protokoll) {
 export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, streng = false, pruefeAusdruck, umgebung = process.env } = {}) {
   const fehler = [];
   const offeneLizenzen = [];
+  const entschiedeneLizenzen = [];
   let platzhalter = 0;
   try {
     const i = pruefeFormat(leseInventar(wurzel));
@@ -185,14 +186,15 @@ export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, streng =
         let entscheidung;
         try { entscheidung = pruefeAusdruck(e.lizenz, 'ausgeliefert'); }
         catch { unbekannt = true; }
-        if (e.lizenzentscheidung) {
-          if (!istUebergangsangabe(gruppe, e)) throw new Error();
-          // Sichtbarer Entscheidungsbedarf, keine Freigabe und kein neuer SPDX-Wert.
-          leseQuelle(wurzel, e.lizenzentscheidung.beleg);
-          offeneLizenzen.push({ paket, angabe: e.lizenz, gruppe });
-          if (!streng) continue;
-          throw new Error();
+        for (const b of e.bestandteile ?? []) if (!pruefeAusdruck(b.lizenz, 'ausgeliefert').zulaessig) throw new Error();
+        if (e.entschiedeneAusnahme || festeAusnahme(gruppe, e)) {
+          if (!istEntschiedeneAusnahme(gruppe, e)) throw new Error();
+          const a = festeAusnahme(gruppe, e);
+          leseQuelle(wurzel, a.beleg);
+          entschiedeneLizenzen.push({ paket, angabe: a.angabe, gruppe, datum: a.datum, entscheidung: a.entscheidung });
+          continue;
         }
+        if (e.lizenzentscheidung) throw new Error();
         if (unbekannt || !entscheidung?.zulaessig) throw new Error();
       } catch { fehler.push(`Hinweise Dritter: Lizenz für ausgeliefert unbekannt oder nicht zugelassen: ${paket} | ${e.lizenz} | ${gruppe}.`); }
     }
@@ -231,5 +233,5 @@ export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, streng =
     if (buendel) fehler.push(...pruefeBuendel(i, protokoll, join(wurzel, 'app/dist')));
     if (gradleModell) fehler.push(...pruefeGradleModell(i, gradleModell, { umgebung }));
   } catch (e) { fehler.push(e.message); }
-  return { fehler: [...new Set(fehler)], platzhalter, offeneLizenzen };
+  return { fehler: [...new Set(fehler)], platzhalter, offeneLizenzen, entschiedeneLizenzen };
 }

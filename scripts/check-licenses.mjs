@@ -433,6 +433,7 @@ export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelau
   const inventar = inventarPruefung(wurzel, liste, { buendel, gradleModell, streng, pruefeAusdruck });
   fehler.push(...inventar.fehler);
   hinweise.push(`Hinweise Dritter: ${inventar.platzhalter} Platzhalter; ${streng ? 'strenger Modus' : 'Normalmodus'}.`);
+  hinweise.push(`Entschiedene Einschränkungen der Hinweise Dritter: ${inventar.entschiedeneLizenzen?.length ?? 0}.`);
   for (const e of inventar.offeneLizenzen ?? []) hinweise.push(`Offene Lizenzentscheidung für ausgeliefert: ${e.paket} | ${e.angabe} | ${e.gruppe}.`);
   const lizenzen = {};
   for (const p of liste) lizenzen[String(p.lizenz)] = (lizenzen[String(p.lizenz)] ?? 0) + 1;
@@ -443,8 +444,8 @@ export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelau
       entwicklung: liste.filter((p) => p.bereich === 'entwicklung').length, installiert: liste.filter((p) => p.installiert).length,
       nurLockfile: liste.filter((p) => !p.installiert).length, installationsskripte: liste.filter((p) => p.installationsskripte.length).length,
       vorgebaut: liste.filter((p) => p.vorgebaut.length).length, platzhalter: inventar.platzhalter,
-      offeneLizenzen: inventar.offeneLizenzen?.length ?? 0, lizenzen },
-    workspaces, packlisteGeprueft: packliste !== undefined, pakete: liste, offeneLizenzen: inventar.offeneLizenzen ?? [], hinweise, fehler };
+      offeneLizenzen: inventar.offeneLizenzen?.length ?? 0, entschiedeneLizenzen: inventar.entschiedeneLizenzen?.length ?? 0, lizenzen },
+    workspaces, packlisteGeprueft: packliste !== undefined, pakete: liste, offeneLizenzen: inventar.offeneLizenzen ?? [], entschiedeneLizenzen: inventar.entschiedeneLizenzen ?? [], hinweise, fehler };
 }
 
 export function menschenlesbar(bericht) {
@@ -486,7 +487,8 @@ function haupt(argv) {
     }
     bericht = pruefeProjekt(wurzel, { packliste, buendel, gradleModell, streng });
   } catch (e) { bericht = { formatVersion: 2, ok: false, hinweise: [], fehler: [e.message] }; }
-  console.log(argv.includes('--json') ? JSON.stringify(bericht, null, 2) : menschenlesbar(bericht));
+  if (argv.includes('--json')) console.log(JSON.stringify(bericht, null, 2));
+  else if (!bericht.ok) console.log(menschenlesbar(bericht));
   process.exitCode = bericht.ok ? 0 : 1;
 }
 

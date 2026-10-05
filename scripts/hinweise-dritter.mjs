@@ -83,6 +83,14 @@ export function pruefeFormat(i) {
       }
       if (e.lizenzdatei) { relativerPfad(e.lizenzdatei.datei); if (!hash(e.lizenzdatei.sha256)) throw new Error('Hinweise Dritter: Lizenzhash ungültig.'); }
       if (e.behaelter) { relativerPfad(e.behaelter.datei); if (!hash(e.behaelter.sha256)) throw new Error('Hinweise Dritter: Behälterhash ungültig.'); }
+      for (const quelle of [...(e.originale ?? []), ...(e.belege ?? [])]) {
+        relativerPfad(quelle.datei);
+        if (!hash(quelle.sha256)) throw new Error('Hinweise Dritter: Originalbeleg ohne SHA-256.');
+      }
+      if (e.originale && (!Array.isArray(e.originale) || !e.originale.length)) throw new Error('Hinweise Dritter: Originalbelege fehlen.');
+      for (const b of e.bestandteile ?? []) {
+        if (!text(b.name) || !text(b.lizenz)) throw new Error('Hinweise Dritter: eingebetteter Android-Bestandteil unvollständig.');
+      }
       if (e.wortlaut !== undefined && e.wortlaut !== null && (!text(e.wortlaut) || e.wortlaut.includes('\r') || e.wortlaut.startsWith('\uFEFF'))) {
         throw new Error('Hinweise Dritter: Wortlaut muss nichtleeres UTF-8 mit LF ohne BOM sein.');
       }
@@ -128,24 +136,47 @@ function originaltext(bytes) {
   catch { throw new Error('Hinweise Dritter: Lizenzquelle ist kein UTF-8.'); }
 }
 
+export function pruefeOriginale(wurzel, e) {
+  for (const q of e.belege ?? []) leseQuelle(wurzel, q);
+  if (!e.originale) return;
+  const texte = e.originale.map(q => {
+    let bytes = leseQuelle(wurzel, q);
+    if (q.quellkarteQuelle !== undefined) {
+      const karte = JSON.parse(originaltext(bytes));
+      const index = karte.sources?.indexOf(q.quellkarteQuelle);
+      if (index < 0 || typeof karte.sourcesContent?.[index] !== 'string') throw new Error('Hinweise Dritter: Originalquelle fehlt in der Quellkarte.');
+      bytes = Buffer.from(karte.sourcesContent[index], 'utf8');
+    }
+    if (q.von !== undefined || q.bis !== undefined) {
+      if (!Number.isSafeInteger(q.von) || !Number.isSafeInteger(q.bis) || q.von < 0 || q.bis <= q.von || q.bis > bytes.length) throw new Error('Hinweise Dritter: ungültiger Originalauszug.');
+      bytes = bytes.subarray(q.von, q.bis);
+    }
+    if (!hash(q.auszugSha256) || createHash('sha256').update(bytes).digest('hex') !== q.auszugSha256) throw new Error('Hinweise Dritter: Originalauszug hat abweichenden SHA-256.');
+    return originaltext(bytes);
+  });
+  if (e.wortlaut !== texte.join('\n\n')) throw new Error('Hinweise Dritter: Wortlaut weicht vom Original ab.');
+}
+
 export function erzeugeHinweise(wurzel, inventar = leseInventar(wurzel)) {
   const i = pruefeFormat(inventar);
   const apache = originaltext(leseQuelle(wurzel, i.apache));
-  const zeilen = ['Hinweise zu Komponenten Dritter',
-    ...(gruppen(i).flat().some(e => e.status === 'platzhalter')
-      ? ['Stand: Werkzeuge vorhanden, Inhalte mit Platzhaltern, Einbindung in die App folgt.'] : []),
-    'Apache-2.0 (gemeinsamer Lizenztext)', apache];
+  const zeilen = [];
+  // Nicht ausgelieferte Einträge bleiben geprüft, aber ohne Nutzertext.
+  for (const e of gruppen(i).flat()) {
+    if (e.lizenzdatei) leseQuelle(wurzel, e.lizenzdatei, e.ort);
+    if (e.behaelter) leseQuelle(wurzel, e.behaelter, e.ort);
+    pruefeOriginale(wurzel, e);
+  }
   function abschnitt(titel, liste, feld, beschreibung) {
     zeilen.push(titel);
     for (const e of sortiere(liste, feld)) {
-      zeilen.push(beschreibung(e) + ` | Lizenz: ${e.lizenz}` + (e.imBuendel === false ? ' | nicht im aktuellen Bündel' : ''));
-      if (e.status === 'platzhalter') zeilen.push('PLATZHALTER: Inhalt noch zu vervollständigen und zu prüfen.');
+      zeilen.push(beschreibung(e) + (e.ohneLizenzangabe ? '' : ` · ${e.lizenz}`));
+      if (e.ohneLizenzangabe) zeilen.push('Die Quelle nennt für diesen Bestandteil keine Lizenz. Wiedergegeben ist der Hinweis aus jsPDF.');
       const bytes = e.lizenzdatei ? leseQuelle(wurzel, e.lizenzdatei, e.ort) : null;
       if (e.behaelter) leseQuelle(wurzel, e.behaelter, e.ort);
       const quelltext = bytes ? originaltext(bytes) : null;
       if (quelltext?.includes(apache) && quelltext !== apache) throw new Error('Hinweise Dritter: Apache-Text in Lizenzdatei muss getrennt von Zusatzhinweisen stehen.');
-      if (e.lizenz === 'Apache-2.0' || quelltext === apache) zeilen.push('Lizenztext: siehe Apache-2.0 oben.');
-      else if (quelltext && !i.buildHilfscode.includes(e)) zeilen.push(quelltext);
+      if (e.lizenz !== 'Apache-2.0' && quelltext !== apache && quelltext && !i.buildHilfscode.includes(e)) zeilen.push(quelltext);
       if (text(e.wortlaut)) {
         // Derselbe vollständige Apache-Text erhält ebenfalls nur den Verweis.
         if (e.lizenz === 'Apache-2.0' && e.wortlaut === apache) continue;
@@ -154,12 +185,19 @@ export function erzeugeHinweise(wurzel, inventar = leseInventar(wurzel)) {
       }
     }
   }
-  abschnitt('npm-Pakete im Web-Teil', i.npm, 'ort', e => `${e.paket}@${e.version}`);
-  abschnitt('Eingebettete Anteile', i.eingebettet, 'name', e => `${e.name} in ${e.paket}: ${e.quelle}`);
-  abschnitt('Vom Build eingefügter Hilfscode', i.buildHilfscode, 'paket', e => `${e.paket}@${e.version}`);
-  abschnitt('Android-Projektmodule', i.android.projektmodule, 'name', e => `${e.name}@${e.version}`);
-  abschnitt('Android-Maven-Artefakte', i.android.maven.map(e => ({ ...e, kennung: `${e.gruppe}:${e.name}:${e.version}` })), 'kennung', e => e.kennung);
-  return Buffer.from(zeilen.join('\n\n') + '\n', 'utf8');
+  const eingebettet = paket => i.eingebettet.filter(e => e.paket === paket);
+  const identitaet = e => `${e.name} · ${e.paket}${e.version ? '@' + e.version : ''}`;
+  abschnitt('Im Web-Teil der App enthalten', [...i.npm, ...i.eingebettet.filter(e => !['jspdf', 'jspdf-autotable'].includes(e.paket))], 'ort', e => e.name ? identitaet(e) : `${e.paket}@${e.version}`);
+  abschnitt('In jsPDF eingebettete Bestandteile', eingebettet('jspdf'), 'name', identitaet);
+  abschnitt('In jsPDF-AutoTable eingebettete Bestandteile', eingebettet('jspdf-autotable'), 'name', identitaet);
+  abschnitt('Vom Build-Werkzeug eingefügter Hilfscode', i.buildHilfscode.filter(e => e.imBuendel), 'paket', e => `${e.paket}@${e.version}`);
+  abschnitt('Android-Bestandteile', [
+    ...i.android.projektmodule.map(e => ({ ...e, kennung: `${e.name}@${e.version}` })),
+    ...i.android.maven.map(e => ({ ...e, kennung: `${e.gruppe}:${e.name}:${e.version}` })),
+  ], 'kennung', e => e.kennung + (e.bestandteile?.length ? '\n' + e.bestandteile.map(b => `${b.name} · ${b.lizenz}`).join('\n') : ''));
+  zeilen.push('Lizenztexte', 'Apache-2.0', apache);
+  const ausgabe = zeilen.join('\n\n');
+  return Buffer.from(ausgabe + (ausgabe.endsWith('\n') ? '' : '\n'), 'utf8');
 }
 
 export function pruefeHinweisdatei(wurzel, inventar) {

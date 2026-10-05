@@ -461,8 +461,7 @@ const bundeslaender = [
     <p>
       Der Fristenrechner Vergabe &amp; Terminplanung ist eine unverbindliche Rechenhilfe und ersetzt keine Rechtsberatung. Alle Angaben erfolgen
       ohne Gewähr. Maßgeblich sind die anwendbaren Rechtsvorschriften und die konkreten Vergabeunterlagen.
-      Der PDF- und Excel-Export nutzt die Open-Source-Bibliotheken jsPDF, jsPDF-AutoTable und fflate (MIT-Lizenz).
-    </p>
+      {'      ' + (texte.bibliothekenHinweis ?? 'Der PDF- und Excel-Export nutzt die Open-Source-Bibliotheken jsPDF, jsPDF-AutoTable und fflate (MIT-Lizenz).') + '\n'}</p>
   </section>{hinweisPosition === 'unten' && <div class="privacy-note privacy-note-unten">
     <strong>{texte.datenschutzTitel}</strong>
     {texte.datenschutzText}
