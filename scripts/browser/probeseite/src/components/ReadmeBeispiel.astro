@@ -1,0 +1,28 @@
+---
+import Fristenrechner from '@baremos/fristenrechner-ui';
+import { webTexte, webExportInhalt } from '@baremos/fristenrechner-ui/ui';
+---
+
+<Fristenrechner texte={webTexte} exportInhalt={webExportInhalt}>
+  <span slot="nach-hinweis">Kontaktinformationen des Gastgebers</span>
+</Fristenrechner>
+
+<script>
+  import { erzeugeWebPlattform, initFristenrechner } from '@baremos/fristenrechner-ui/ui';
+  import type { ExportInhalt, GastgeberTexte } from '@baremos/fristenrechner-ui/ui';
+
+  const root = document.querySelector<HTMLElement>('[data-fristenrechner]')!;
+  const plattform = erzeugeWebPlattform(root);
+  const rechner = initFristenrechner(root, {
+    plattform,
+    texte: JSON.parse(root.dataset.gastgeberTexte!) as GastgeberTexte,
+    exportInhalt: JSON.parse(root.dataset.exportInhalt!) as ExportInhalt,
+  });
+
+  // Beim Entfernen der Seite oder Komponente in dieser Reihenfolge aufräumen:
+  const aufraeumen = () => {
+    rechner.dispose();
+    plattform.dispose();
+  };
+  // Der Gastgeber ruft aufraeumen in seinem eigenen Seiten-Lebenszyklus auf.
+</script>

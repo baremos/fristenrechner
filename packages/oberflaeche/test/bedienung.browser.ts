@@ -2,6 +2,7 @@
  * Komponentenseite ausführen; der Aufrufer stellt eine isolierte Seite bereit. */
 import { initFristenrechner } from '../src/fristenrechner-ui';
 import { erstelleProjektDatei } from '@baremos/fristenrechner-kern';
+import { strFromU8, unzipSync } from 'fflate';
 import { beispiel } from './beispiel';
 import { webTexte, webExportInhalt } from '../src/web-vorgaben';
 import { type Plattform, type AusgabeDatei, type Auswahl, MAX_PROJEKT_BYTES } from '../src/plattform';
@@ -109,7 +110,8 @@ export async function pruefeBedienung(vorlage: HTMLElement): Promise<string[]> {
     click('export-excel');
     feld('projektname').value = 'Während Export geändert'; feld('projektname').dispatchEvent(new Event('change', { bubbles: true }));
     pruefe(el<HTMLButtonElement>('export-excel').disabled, 'Laufender Export bleibt gesperrt');
-    pruefe(dateien[dateien.length - 1].name.includes('importiert'), 'Export behält Eingabestand');
+    const arbeitsblatt = strFromU8(unzipSync(dateien[dateien.length - 1].bytes)['xl/worksheets/sheet1.xml']);
+    pruefe(arbeitsblatt.includes('Importiert') && !arbeitsblatt.includes('Während Export geändert'), 'Export behält Eingabestand');
     ausgabe.resolve({ status: 'ok' }); await pause();
     pruefe(dateien.length === vorher + 1 && !el<HTMLButtonElement>('export-excel').disabled, 'Kein doppelter Export');
     erfolge.push('Festgehaltener Exportstand, wiederholter Klick und Freigabe');
