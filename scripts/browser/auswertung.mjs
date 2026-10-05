@@ -1,5 +1,7 @@
 // Reine Auswertung: keine Browser-, Datei- oder Prozesszugriffe beim Import.
-export const PHASEN = ['vertrag', 'webadapter'];
+import { ERGEBNISKATALOG, RAHMENFEHLER } from './ergebniskatalog.mjs';
+import { Messfehler } from './fehler.mjs';
+export const PHASEN = Object.keys(ERGEBNISKATALOG);
 // Die benannte Gruppe bleibt auch nach Ergänzung späterer Phasen auf V6a begrenzt.
 export const PHASENGRUPPEN = { 'alle-v6a': ['vertrag', 'webadapter'] };
 export const HTML_HASH = 'e6465ae87407c4e1e53036ecae4f9f2ac7e1f90b90fb5362483436fab41e8898';
@@ -46,20 +48,43 @@ export function neuesProtokoll({ commit, arbeitsstand, phase, browser, version =
 // vollständig ausgeführter Lauf erscheinen. Rückgabewerte wie die übrigen Läufer.
 export function auswerten(protokoll) {
   const ergebnisse = protokoll.ergebnisse ?? [];
-  const ungueltig = !ergebnisse.length || ergebnisse.some(e => !['bestanden', 'nicht bestanden'].includes(e.status));
+  const pflicht = ERGEBNISKATALOG[protokoll.phase];
+  const ids = ergebnisse.map(e => e.id);
+  const katalogfehler = [
+    ...(!pflicht ? ['Unbekannte oder fehlende Phase.'] : pflicht.filter(id => !ids.includes(id)).map(id => `Pflichtkennung fehlt: ${id}`)),
+    ...ergebnisse.filter(e => !pflicht?.includes(e.id) && !(RAHMENFEHLER.includes(e.id) && e.status === 'ungültig'))
+      .map(e => `Unbekannte Prüfkennung oder unzulässiger Rahmenstatus: ${e.id}`),
+    ...ids.filter((id, i) => ids.indexOf(id) !== i).map(id => `Prüfkennung doppelt: ${id}`),
+  ];
+  const ungueltig = katalogfehler.length > 0 || ergebnisse.some(e => !['bestanden', 'nicht bestanden'].includes(e.status));
   const fehler = ergebnisse.filter(e => e.status === 'nicht bestanden').length;
   const netzfehler = (protokoll.netzanfragen ?? []).filter(e => !anfrageBewerten(e.url).erlaubt).length;
   const code = ungueltig ? 2 : fehler || netzfehler ? 1 : 0;
   return { status: code === 2 ? 'ungültig' : code === 1 ? 'nicht bestanden' : 'bestanden', code,
-    bestanden: ergebnisse.filter(e => e.status === 'bestanden').length, fehler, netzfehler };
+    bestanden: ergebnisse.filter(e => e.status === 'bestanden').length, fehler, netzfehler, katalogfehler };
+}
+
+export function gesamtAuswerten({ optionen, laeufe = [], nichtInstalliert = [], fehler, aufraeumfehler }) {
+  const browser = optionen.browser === 'beide' ? ['edge', 'chrome'] : [optionen.browser];
+  const erwartet = browser.flatMap(b => optionen.phasen.map(p => `${b}/${p}`));
+  const vorhanden = laeufe.map(l => `${l.browser}/${l.phase}`);
+  const kombinationsfehler = [
+    ...nichtInstalliert.map(b => `Angeforderter Browser nicht installiert: ${b}`),
+    ...erwartet.filter(k => !vorhanden.includes(k)).map(k => `Browser/Phase fehlt: ${k}`),
+    ...vorhanden.filter((k, i) => !erwartet.includes(k) || vorhanden.indexOf(k) !== i).map(k => `Unbekannte oder doppelte Browser/Phase: ${k}`),
+  ];
+  const rahmenfehler = [fehler, aufraeumfehler].filter(Boolean);
+  const code = rahmenfehler.length || kombinationsfehler.length || laeufe.some(l => ![0, 1].includes(l.code)) ? 2
+    : laeufe.some(l => l.code === 1) ? 1 : 0;
+  return { code, status: code === 2 ? 'ungültig' : code === 1 ? 'nicht bestanden' : 'bestanden', kombinationsfehler, rahmenfehler };
 }
 
 export async function pruefung(protokoll, id, beschreibung, fn) {
-  if (protokoll.ergebnisse.some(e => e.id === id)) throw new Error(`Prüfkennung doppelt: ${id}`);
+  if (protokoll.ergebnisse.some(e => e.id === id)) throw new Messfehler(`Prüfkennung doppelt: ${id}`);
   const beginn = Date.now();
   let ergebnis;
   try { ergebnis = { id, beschreibung, status: 'bestanden', details: await fn() ?? null }; }
-  catch (error) { ergebnis = { id, beschreibung, status: 'nicht bestanden', meldung: error.message }; }
+  catch (error) { ergebnis = { id, beschreibung, status: error instanceof Messfehler ? 'ungültig' : 'nicht bestanden', meldung: error.message }; }
   ergebnis.dauerMs = Date.now() - beginn;
   protokoll.ergebnisse.push(ergebnis);
   return ergebnis;

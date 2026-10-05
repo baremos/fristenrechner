@@ -1,6 +1,7 @@
 // CDP-Zuordnung erfolgt über Targets/Sitzungen, niemals über Domain-Whitelists.
 import { anfrageBewerten, netzErlaubt } from './auswertung.mjs';
 import { browserOberflaecheBeleg } from './browser-oberflaeche.mjs';
+import { Messfehler } from './fehler.mjs';
 
 // Flache Target-Sitzungen benutzen dieselbe Verbindung und denselben ID-Raum.
 // Der Emulator-CDP bleibt unverändert; dessen send() kennt keine sessionId.
@@ -12,14 +13,14 @@ export class BrowserCdp {
       if (m.id && this.pending.has(m.id)) {
         const p = this.pending.get(m.id);
         this.pending.delete(m.id); clearTimeout(p.timer);
-        if (m.error) p.no(new Error(`CDP ${m.error.code}: ${m.error.message}`)); else p.ok(m.result);
+        if (m.error) p.no(new Messfehler(`CDP ${m.error.code}: ${m.error.message}`)); else p.ok(m.result);
       } else if (m.method) {
         this.events.push({ zeit: new Date().toISOString(), ...m });
         const geloest = m.method === 'Target.detachedFromTarget' ? m.params.sessionId
           : m.method === 'Inspector.detached' ? m.sessionId : null;
         if (geloest) {
           for (const [id, p] of this.pending) if (p.sessionId === geloest) {
-            clearTimeout(p.timer); this.pending.delete(id); p.no(new Error('CDP-Target wurde während eines Befehls beendet.'));
+            clearTimeout(p.timer); this.pending.delete(id); p.no(new Messfehler('CDP-Target wurde während eines Befehls beendet.'));
           }
         } else if (m.method === 'Inspector.detached') this.close();
       }
@@ -36,22 +37,22 @@ export class BrowserCdp {
     });
   }
   send(method, params = {}, timeoutMs = 30000, sessionId) {
-    if (this.closed) return Promise.reject(new Error('CDP-Verbindung geschlossen'));
+    if (this.closed) return Promise.reject(new Messfehler('CDP-Verbindung geschlossen'));
     return new Promise((ok, no) => {
       const id = ++this.next;
       const timer = setTimeout(() => {
         // Ein stummes Edge-Target darf andere Sitzungen und Browser.close nicht
         // mitreißen. Späte Antworten haben keine wartende Befehlskennung mehr.
-        this.pending.delete(id); no(new Error(`CDP-Zeitüberschreitung: ${method}`));
+        this.pending.delete(id); no(new Messfehler(`CDP-Zeitüberschreitung: ${method}`));
       }, timeoutMs);
       this.pending.set(id, { ok, no, timer, sessionId });
       try { this.ws.send(JSON.stringify({ id, method, params, sessionId })); }
-      catch (e) { clearTimeout(timer); this.pending.delete(id); no(e); }
+      catch (e) { clearTimeout(timer); this.pending.delete(id); no(new Messfehler(e.message, { cause: e })); }
     });
   }
   verwerfen() {
     this.closed = true;
-    for (const p of this.pending.values()) { clearTimeout(p.timer); p.no(new Error('CDP-Verbindung geschlossen')); }
+    for (const p of this.pending.values()) { clearTimeout(p.timer); p.no(new Messfehler('CDP-Verbindung geschlossen')); }
     this.pending.clear();
   }
   close() { this.verwerfen(); this.ws.close(); }
@@ -62,12 +63,21 @@ export class BrowserCdp {
 // Web-Targets streng behandelt; Erweiterungs-/Browser-Hintergrundtargets nicht.
 export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl) {
   const targets = new Map(), historie = new Map(), offen = new Set(), fehler = [];
+  const entdeckt = new Map(), aktiv = new Map(), geloest = [];
+  let geplantesEnde = false;
   const leer = url => url === '' || url === 'about:blank';
   const webTypen = ['page', 'iframe', 'worker', 'shared_worker', 'service_worker'];
   const autoAttach = { autoAttach: true, waitForDebuggerOnStart: true, flatten: true,
     filter: [...webTypen.map(type => ({ type, exclude: false })), { exclude: true }] };
   protokoll.netzTargets = [];
-  const senden = (method, params, sessionId) => cdp.send(method, params, 10000, sessionId);
+  protokoll.netzEntdeckteTargets = [];
+  protokoll.netzSitzungsabgaenge = [];
+  const senden = async (method, params, sessionId) => {
+    const target = targets.get(sessionId);
+    if (target) target.offeneBefehle = (target.offeneBefehle ?? 0) + 1;
+    try { return await cdp.send(method, params, 10000, sessionId); }
+    finally { if (target) target.offeneBefehle--; }
+  };
   const verfolgen = promise => {
     const auftrag = promise.catch(e => fehler.push(e.message)).finally(() => offen.delete(auftrag));
     offen.add(auftrag);
@@ -87,6 +97,10 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
     target.browserOberflaechenBeleg = beleg;
   };
   const adresseMerken = info => {
+    if (webTypen.includes(info.type) && !entdeckt.has(info.targetId)) {
+      const beleg = { targetId: info.targetId, type: info.type, entdecktVorMessende: !geplantesEnde, angehaengt: false };
+      entdeckt.set(info.targetId, beleg); protokoll.netzEntdeckteTargets.push(beleg);
+    }
     const beleg = browserOberflaecheBeleg(info.url);
     const adresse = beleg?.url ?? info.url;
     const h = historie.get(info.targetId) ?? { adressen: [], navigiert: false };
@@ -136,9 +150,39 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
     const p = m.params;
     if (['Target.targetCreated', 'Target.targetInfoChanged'].includes(m.method)) adresseMerken(p.targetInfo);
     if (m.method === 'Target.targetDestroyed') {
-      for (const target of targets.values()) if (target.targetId === p.targetId) target.beendet = true;
+      for (const target of targets.values()) if (target.targetId === p.targetId) {
+        target.beendet = true;
+        if (!target.abgang) {
+          target.abgang = { sessionId: target.sessionId, targetId: target.targetId, ereignis: m.method, geplantesEnde,
+            messbereit: Boolean(target.messbereit), offeneAnfragen: [...(aktiv.get(target.sessionId) ?? [])], offeneBefehle: target.offeneBefehle ?? 0 };
+          geloest.push(target); protokoll.netzSitzungsabgaenge.push(target.abgang);
+        }
+      }
     }
     const bekannt = targets.get(m.sessionId);
+    const verloreneSitzung = m.method === 'Target.detachedFromTarget' ? p.sessionId : m.method === 'Inspector.detached' ? m.sessionId : null;
+    if (verloreneSitzung) {
+      const target = targets.get(verloreneSitzung);
+      if (!target) { if (!geplantesEnde) fehler.push(`Unbekannte Messsitzung gelöst: ${verloreneSitzung}`); }
+      else if (!target.abgang) {
+        target.abgang = { sessionId: verloreneSitzung, targetId: target.targetId, ereignis: m.method, geplantesEnde,
+          messbereit: Boolean(target.messbereit), offeneAnfragen: [...(aktiv.get(verloreneSitzung) ?? [])], offeneBefehle: target.offeneBefehle ?? 0 };
+        geloest.push(target); protokoll.netzSitzungsabgaenge.push(target.abgang);
+      }
+    }
+    if (m.method === 'Inspector.targetCrashed' || m.method === 'Target.targetCrashed') {
+      fehler.push(`Target abgestürzt: ${p.targetId ?? bekannt?.targetId ?? 'unbekannt'}`);
+    }
+    if (bekannt && m.method === 'Network.requestWillBeSent') (aktiv.get(m.sessionId) ?? aktiv.set(m.sessionId, new Set()).get(m.sessionId)).add(`anfrage:${p.requestId}`);
+    if (bekannt && ['Network.loadingFinished', 'Network.loadingFailed'].includes(m.method)) aktiv.get(m.sessionId)?.delete(`anfrage:${p.requestId}`);
+    if (bekannt && ['Network.webSocketCreated', 'Network.webTransportCreated'].includes(m.method)) {
+      const art = m.method === 'Network.webSocketCreated' ? 'webSocket' : 'webTransport';
+      (aktiv.get(m.sessionId) ?? aktiv.set(m.sessionId, new Set()).get(m.sessionId)).add(`${art}:${p.requestId ?? p.transportId}`);
+    }
+    if (bekannt && ['Network.webSocketClosed', 'Network.webTransportClosed'].includes(m.method)) {
+      const art = m.method === 'Network.webSocketClosed' ? 'webSocket' : 'webTransport';
+      aktiv.get(m.sessionId)?.delete(`${art}:${p.requestId ?? p.transportId}`);
+    }
     if (bekannt?.browserLeerseite && (m.method?.startsWith('Network.') || m.method === 'Fetch.requestPaused')) {
       bekannt.leerseitenBeleg.netzereignisse++;
       leerseiteVerwerfen(bekannt, `Browser-Leerseite mit Netzereignis: ${m.method}`);
@@ -177,6 +221,7 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
         grund: 'Unabhängiges leeres page-Target im frischen Browserprofil; fortlaufende Target-Discovery, CDP und vollständiges NetLog erforderlich.',
         befehle: [] };
       targets.set(p.sessionId, target);
+      entdeckt.get(p.targetInfo.targetId).angehaengt = true;
       protokoll.netzTargets.push(target);
       if (!seite && !hintergrund && !browserLeerseite) fehler.push(`Web-Target ohne belegte Seitenzuordnung: ${p.targetInfo.type} ${p.targetInfo.targetId}`);
       verfolgen((async () => {
@@ -205,6 +250,7 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
               // wieder alle bestätigten CDP-Sperrbefehle.
             }
           }
+          target.messbereit = true;
           return;
         }
         await senden('Network.enable', {}, p.sessionId);
@@ -213,6 +259,7 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
         // Rekursion ist nötig: Auto-Attach am Browser allein erfasst keine Enkel.
         await senden('Target.setAutoAttach', autoAttach, p.sessionId);
         await senden('Runtime.runIfWaitingForDebugger', {}, p.sessionId);
+        target.messbereit = true;
       })());
     }
     if (m.method === 'Network.requestWillBeSent') erfassen(m, p.request.url,
@@ -232,14 +279,29 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
   };
   const bereit = async () => {
     while (offen.size) await Promise.all([...offen]);
-    if (fehler.length) throw new Error(`Seiten-Netzüberwachung unvollständig: ${[...new Set(fehler)].join('; ')}`);
+    for (const t of entdeckt.values()) if (t.entdecktVorMessende && !t.angehaengt) fehler.push(`Entdecktes Web-Target ohne Messsitzung: ${t.type} ${t.targetId}`);
+    for (const target of geloest) {
+      const a = target.abgang;
+      const workerEnde = ['worker', 'shared_worker', 'service_worker'].includes(target.type) && target.beendet
+        && a.messbereit && !a.offeneAnfragen.length && a.offeneBefehle === 0;
+      a.erwartet = a.geplantesEnde || workerEnde;
+      a.beleg = a.geplantesEnde ? 'Geplantes Browserende nach abgeschlossener Messung'
+        : workerEnde ? 'Target zerstört; Workerüberwachung bestätigt, keine offenen Anfragen oder Befehle bei Abgang' : 'Kein belegter regulärer Messabschluss';
+      if (!a.erwartet) fehler.push(`Unerwarteter Verlust der Messsitzung: ${target.type} ${target.targetId} (${a.sessionId})`);
+    }
+    if (fehler.length) throw new Messfehler(`Seiten-Netzüberwachung unvollständig: ${[...new Set(fehler)].join('; ')}`);
   };
+  const verbindungEnde = () => { if (!geplantesEnde) fehler.push('Browser-CDP-Verbindung vor geplantem Messende verloren.'); };
   cdp.ws.addEventListener('message', nachricht);
+  cdp.ws.addEventListener('close', verbindungEnde);
   try {
     await cdp.send('Target.setDiscoverTargets', { discover: true });
     await cdp.send('Target.setAutoAttach', autoAttach);
     await bereit();
     if (![...targets.values()].some(t => t.targetId === seitenTargetId)) throw new Error('Seiten-Target wurde nicht vor Navigation an die Netzüberwachung gebunden.');
-  } catch (e) { cdp.ws.removeEventListener('message', nachricht); throw e; }
-  return { bereit, close: () => cdp.ws.removeEventListener('message', nachricht) };
+  } catch (e) { cdp.ws.removeEventListener('message', nachricht); cdp.ws.removeEventListener('close', verbindungEnde); throw e; }
+  return { bereit, endePlanen: async () => {
+    // Auch bei schon ungültiger Messung muss das eigene Browserende möglich sein.
+    try { await bereit(); } finally { geplantesEnde = true; protokoll.netzMessende = new Date().toISOString(); }
+  }, close: () => { cdp.ws.removeEventListener('message', nachricht); cdp.ws.removeEventListener('close', verbindungEnde); } };
 }

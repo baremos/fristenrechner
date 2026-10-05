@@ -1,10 +1,11 @@
 // Nachgestellte CDP-Antworten; kein Browser und kein Netzwerkzugriff.
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { isAbsolute, join, relative, sep } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { dateiauswahlAbbrechen, pruefeBox320 } from './webadapter.mjs';
+import { pruefung } from './auswertung.mjs';
+import { Messfehler } from './fehler.mjs';
 
 function abbruchProbe(neueEreignisse, alteEreignisse = []) {
   const aufrufe = [];
@@ -63,7 +64,9 @@ test('W8 hebt den automatischen Abbruch auch bei fehlgeschlagener Aktivierung wi
   assert.deepEqual(aufrufe.at(-1), { name: 'Page.setInterceptFileChooserDialog', parameter: { enabled: true, cancel: false } });
 });
 
-const temp = realpathSync(tmpdir());
+const testBasis = resolve('scratchpad/tmp-v6a-r6');
+mkdirSync(testBasis, { recursive: true });
+const temp = realpathSync(testBasis);
 const ausgabe = mkdtempSync(join(temp, 'webadapter-tests-'));
 test.after(() => {
   const rest = relative(temp, realpathSync(ausgabe));
@@ -140,6 +143,19 @@ test('BOX-320 sichert Überlauf und wirksame Gegenprobe vor dem Produktbefund', 
   assert.match(protokoll.befunde[0].gegenprobe, /innerhalb des Viewports/);
   assert.equal(protokoll.messungen[0].mitGlobalerRegel.timeline.boxSizing, 'border-box');
   assert.deepEqual(protokoll.befunde[0].bilder, ['box-320-ohne.png', 'box-320-mit.png']);
+});
+
+test('W8-Messstörung wird ungültig; BOX-320-Produktüberlauf bleibt nicht bestanden', async () => {
+  const bericht = { ergebnisse: [] };
+  const abbruch = abbruchProbe([]);
+  const w8 = await pruefung(bericht, 'W8', 'Abbruchnachweis', () => dateiauswahlAbbrechen(abbruch.kontext));
+  assert.equal(w8.status, 'ungültig');
+  const box = boxProbe(layout(329));
+  const ergebnis = await pruefung(bericht, 'BOX-320', 'Überlauf', () => pruefeBox320(box.kontext));
+  assert.equal(ergebnis.status, 'nicht bestanden');
+  const steuerung = abbruchProbe([]);
+  steuerung.kontext.send = async () => { throw new Error('CDP-Störung'); };
+  await assert.rejects(dateiauswahlAbbrechen(steuerung.kontext), Messfehler);
 });
 
 test('BOX-320 behauptet bei unwirksamer Gegenprobe keine bestätigte box-sizing-Ursache', async () => {

@@ -6,7 +6,8 @@ export function browserProzessIdentitaet(pid, daten) {
   const browser = Array.isArray(daten?.processInfo) ? daten.processInfo.filter(p => p?.type === 'browser') : [];
   const browserPid = browser.length === 1 ? browser[0].id : null;
   return { methode: 'SystemInfo.getProcessInfo', spawnPid: pid, browserPid,
-    bestaetigt: Number.isSafeInteger(pid) && pid > 0 && browserPid === pid };
+    bestaetigt: Number.isSafeInteger(pid) && pid > 0 && browserPid === pid,
+    bekannteBrowserProzesse: browserPid === pid ? daten.processInfo.filter(p => p.id !== pid).map(p => ({ pid: p.id, type: p.type })) : [] };
 }
 
 // Beide Pipes sofort und auch während Browser.close lesen. end (Pipe) und exit
@@ -57,13 +58,16 @@ export function prozessPidPruefen(pid, kill = process.kill.bind(process)) {
 // Die CDP-Antwort ist kein Prozessnachweis: Chromium darf die Verbindung beim
 // Schließen lösen. Auch ein fehlendes Node-exit-Ereignis beweist kein Weiterleben.
 // Keine tasklist-Ersatzprüfung: Sie ist langsam und belegt keine PID-Identität.
-export async function beendeBrowserProzess({ browserCdp, child, beendet },
+export async function beendeBrowserProzess({ browserCdp, child, beendet, bekannteBrowserProzesse = [] },
   { kill = process.kill.bind(process), jetzt = () => performance.now(), warten = ms => new Promise(r => setTimeout(r, ms)),
     fristMs = 8000, intervallMs = 50, zwangFristMs = 1000, diagnose = false, zustand } = {}) {
   const beginn = jetzt();
   const ergebnis = { id: 'ENDE', beschreibung: 'Ende des eigenen Browserprozesses bestätigt',
     status: 'ungültig', prozessId: child?.pid ?? null,
     prozessPruefung: { methode: 'process.kill(pid, 0)', fristMs, intervallMs, proben: [] },
+    nachkommen: { status: 'nicht geprüft',
+      grund: 'Kein vollständiger Prozessbaum mit Betriebssystem-Startzeiten und Elternbeziehungen erhoben. Nur durch SystemInfo.getProcessInfo bekannte Browserprozesse werden mit Signal 0 geprüft; keine fremde PID wird beendet.',
+      bekannteProzesse: [] },
     identitaetsGrenze: 'Signal 0 unterscheidet keine PID-Wiederverwendung; keine Betriebssystem-Startzeit oder Elternbeziehung erhoben. Eine weiterhin belegte PID nach eigenem exit bleibt ungültig und wird nicht beendet. Zwang nur über das eigene ChildProcess-Objekt, niemals taskkill oder process.kill(pid, SIGKILL).' };
   if (!Number.isSafeInteger(child?.pid) || child.pid <= 0 || child.pid > 2147483647) {
     return { ...ergebnis, meldung: 'Keine gültige eigene Browser-Prozesskennung vorhanden.' };
@@ -77,7 +81,26 @@ export async function beendeBrowserProzess({ browserCdp, child, beendet },
   };
   const wsEnde = () => { zeiten.websocketEndeNachMs = jetzt() - beginn; merken('websocket.close'); };
   browserCdp?.ws?.addEventListener('close', wsEnde, { once: true });
-  const abschliessen = (status, meldung) => {
+  const abschliessen = async (status, meldung) => {
+    const start = jetzt();
+    const pids = [...new Set(bekannteBrowserProzesse.map(p => p.pid).filter(pid => pid !== child.pid))];
+    while (pids.length) {
+      ergebnis.nachkommen.bekannteProzesse = pids.map(pid => ({ pid, ...prozessPidPruefen(pid, kill) }));
+      if (ergebnis.nachkommen.bekannteProzesse.every(p => p.vorhanden === false)) break;
+      const rest = fristMs - (jetzt() - start);
+      if (rest <= 0) break;
+      await warten(Math.min(intervallMs, rest));
+    }
+    ergebnis.nachkommen.bekannteStatus = pids.length ? ergebnis.nachkommen.bekannteProzesse.every(p => p.vorhanden === false)
+      ? 'abwesend bestätigt' : 'Ende nicht bestätigt' : 'nicht geprüft';
+    ergebnis.exit = { code: child.exitCode ?? null, signal: child.signalCode ?? null,
+      status: child.exitCode == null && child.signalCode == null ? 'nicht beobachtet'
+        : child.exitCode === 0 && child.signalCode == null ? 'regulär' : 'abnormal' };
+    if (ergebnis.exit.status === 'abnormal' || ergebnis.nachkommen.bekannteStatus === 'Ende nicht bestätigt') {
+      status = 'ungültig';
+      meldung += ergebnis.exit.status === 'abnormal' ? ` Bekannter abnormaler Prozessabschluss: Code ${ergebnis.exit.code}, Signal ${ergebnis.exit.signal}.` : '';
+      if (ergebnis.nachkommen.bekannteStatus === 'Ende nicht bestätigt') meldung += ' Mindestens ein bekannter Browser-Nachprozess ist vorhanden oder nicht prüfbar; kein Zwang gegen diese PID.';
+    }
     browserCdp?.ws?.removeEventListener('close', wsEnde);
     zeiten.gesamtMs = jetzt() - beginn;
     if (browserCdp?.ws) zeiten.websocketZustandAmEnde = browserCdp.ws.readyState;

@@ -7,7 +7,9 @@ import { pathToFileURL } from 'node:url';
 import { prozess } from '../emulator/rahmen.mjs';
 import { HTML_HASH } from './auswertung.mjs';
 
-export async function bauen(wurzel, ausgabe) {
+export async function bauen(wurzel, ausgabe, { signal, prozess: ausfuehren = prozess } = {}) {
+  const abbruchPruefen = () => { if (signal?.aborted) throw new Error('Bau unterbrochen.'); };
+  abbruchPruefen();
   process.env.ASTRO_TELEMETRY_DISABLED = '1';
   const laden = createRequire(join(wurzel, 'package.json'));
   const astroLaden = createRequire(laden.resolve('astro/package.json'));
@@ -19,9 +21,11 @@ export async function bauen(wurzel, ausgabe) {
   const env = { ...process.env, ASTRO_TELEMETRY_DISABLED: '1', BROWSER_AUSGABE: ausgabe };
   const befehle = [];
   const befehl = async (name, args) => {
-    const ergebnis = await prozess(process.execPath, args, { cwd: wurzel, env, timeoutMs: 180000 });
+    abbruchPruefen();
+    const ergebnis = await ausfuehren(process.execPath, args, { cwd: wurzel, env, timeoutMs: 180000, signal });
     writeFileSync(join(ausgabe, `${name}.log`), ergebnis.out + ergebnis.err);
     befehle.push({ name, code: ergebnis.code });
+    abbruchPruefen();
     if (ergebnis.code !== 0) throw new Error(`${name} fehlgeschlagen; siehe ${name}.log.`);
   };
   await befehl('kern-build', [laden.resolve('typescript/bin/tsc'), '-p', 'packages/kern/tsconfig.build.json']);
@@ -60,6 +64,7 @@ export async function bauen(wurzel, ausgabe) {
   const html = await container.renderToString(modul.exports.default, { props: { texte: vorgaben.webTexte, exportInhalt: vorgaben.webExportInhalt } });
   writeFileSync(join(ausgabe, 'vorgabe.html'), html);
   const hash = createHash('sha256').update(html).digest('hex');
+  abbruchPruefen();
   if (hash !== HTML_HASH) throw Object.assign(new Error(`Vorgabe-HTML abweichend: ${hash}; erwartet ${HTML_HASH}.`), { rueckgabewert: 1 });
 
   const publicDir = join(ausgabe, 'public');
@@ -74,6 +79,7 @@ export async function bauen(wurzel, ausgabe) {
     } }],
   });
   writeFileSync(join(ausgabe, 'vertrag-buendel.json'), JSON.stringify(buendel.metafile, null, 2) + '\n');
+  abbruchPruefen();
   await befehl('astro-build', [join(wurzel, 'scripts/astro.mjs'), 'build', '--root', 'scripts/browser/probeseite']);
   const ergebnis = { htmlHash: hash, befehle, warnungen: buendel.warnings.map(w => w.text), dist: join(ausgabe, 'probeseite') };
   writeFileSync(join(ausgabe, 'bau.json'), JSON.stringify(ergebnis, null, 2) + '\n');

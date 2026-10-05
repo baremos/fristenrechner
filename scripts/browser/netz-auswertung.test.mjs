@@ -102,13 +102,16 @@ test('Seitenanfrage bleibt trotz gescheitertem Netzversuch ein strenger Seitenbe
   assert.equal(r.hintergrundanfragen.length, 0);
 });
 
-test('CDP-Beleg einer Browser-Oberfläche ordnet blockierte externe Anfrage dem Hintergrund zu', () => {
+test('Gleiche CDP-URL ohne Zuordnung der konkreten Anfrage bleibt ungeklärt, auch mit abweichendem Initiator', () => {
   const url = 'https://browser.example/update';
   const daten = log([start({ initiator: 'edge://downloads-hub/', request_type: 'main frame' }), ende()]);
   assert.ok(netzNachweis(daten).unklar.length > 0, 'Ohne CDP-Beleg bleibt diese Anfrage ungeklärt');
   const r = netzNachweis(daten, [], [{ url, targetId: 'downloads', quelle: 'Browser-Target-CDP' }]);
-  assert.equal(r.hintergrundanfragen[0].status, 'blockiert');
-  assert.equal(r.verbindungen.length + r.unklar.length + r.seitenverdacht.length, 0);
+  assert.equal(r.hintergrundanfragen.length, 0);
+  assert.ok(r.unklar.some(e => /weder Seite noch Browserhintergrund/.test(e.grund)));
+  const andere = netzNachweis(log([start({ initiator: 'https://anderer.example', request_type: 'other' }), ende()]), [], [{ url }]);
+  assert.equal(andere.hintergrundanfragen.length, 0);
+  assert.ok(andere.unklar.length > 0);
 });
 
 test('Gleiche URL in Seite und Oberfläche bleibt durch die Seitenspur ein Seitenfehler', () => {
@@ -123,7 +126,8 @@ test('Erfolgreiche externe Oberflächenverbindung bleibt trotz späterem Fehler 
   const r = netzNachweis(log([start({ initiator: 'edge://downloads-hub/' }),
     e('HTTP_STREAM_JOB_CONTROLLER_BOUND', 1, 0, { source_dependency: { id: 4, type: 2 } }),
     e('TCP_CONNECT', 4, 2, { remote_address: '203.0.113.1:443' }, 2), ende(-101)]), [], [{ url }]);
-  assert.equal(r.hintergrundanfragen[0].status, 'verbunden');
+  assert.equal(r.hintergrundanfragen.length, 0);
+  assert.ok(r.unklar.length > 0);
   assert.equal(r.verbindungen.length, 1);
   assert.equal(r.verbindungen[0].ziel, '203.0.113.1:443');
 });

@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 import { browserDownload, echterMausklick, exportInstrumentationQuelle } from './download.mjs';
+import { pruefung } from './auswertung.mjs';
 
 const beginn = (params = {}) => ({ method: 'Browser.downloadWillBegin', params: {
   guid: 'download-1', frameId: 'frame', url: 'blob:http://127.0.0.1:1234/datei', suggestedFilename: 'probe.xlsx', ...params,
@@ -71,7 +72,7 @@ for (const [name, ereignisse, erwartet] of [
   ['falscher Frame', [beginn({ frameId: 'downloads-hub' }), fortschritt()], /Frame der Prüfseite/],
   ['fremder Ursprung', [beginn({ url: 'https://extern.invalid/datei' }), fortschritt()], /lokaler Ressource/],
   ['falsches Format', [beginn({ suggestedFilename: 'probe.pdf' }), fortschritt()], /Dateiendung xlsx/],
-  ['Pfad in GUID', [beginn({ guid: '../fremd' }), fortschritt()], /Sichere Downloadkennung/],
+  ['Pfad in GUID', [beginn({ guid: '../fremd' }), fortschritt()], /sichere Downloadkennung/],
 ]) test(`${name} besteht nicht; Nachweis bleibt auch bei Fehler und es gibt keinen Wiederholungsklick`, async () => {
   const p = probe({ ereignisse });
   await assert.rejects(browserDownload(p.kontext, p.optionen), erwartet);
@@ -119,13 +120,27 @@ test('Nach einem Download-Hub wird zuerst die Prüfseite aktiviert, danach Treff
 });
 
 for (const [name, optionen, erwartet] of [
-  ['fehlender Fokus', { fokus: false }, /den Fokus/],
+  ['fehlender Fokus', { fokus: false }, /bestätigten Fokus/],
   ['Überdeckung', { ueberdeckt: true }, /ohne Überdeckung/],
   ['unsichtbares Bedienelement', { breite: 0 }, /Sichtbares Bedienelement/],
 ]) test(`Bei ${name} entsteht kein Input und kein synthetischer Ausweichklick`, async () => {
   const p = klickProbe(optionen);
   await assert.rejects(echterMausklick(p.kontext), erwartet);
   assert.ok(p.aufrufe.every(a => typeof a === 'string' || !a.method.startsWith('Input.')));
+});
+
+test('Downloadrichtlinie und Messfrist werden ungültig; falscher Dateityp bleibt Produktabweichung', async () => {
+  for (const [optionen, status] of [[{ steuerungsfehler: true }, 'ungültig'], [{ ereignisse: [] }, 'ungültig'],
+    [{ ereignisse: [beginn({ suggestedFilename: 'probe.pdf' }), fortschritt()] }, 'nicht bestanden']]) {
+    const p = probe(optionen);
+    assert.equal((await pruefung({ ergebnisse: [] }, 'W5-xlsx', 'Download', () => browserDownload(p.kontext, p.optionen))).status, status);
+  }
+});
+
+test('Fehlende Kontextantwort ist Messfehler und löst keinen Download aus', async () => {
+  const p = probe(); p.kontext.browserCdp.send = async () => undefined;
+  assert.equal((await pruefung({ ergebnisse: [] }, 'W5-xlsx', 'Download', () => browserDownload(p.kontext, p.optionen))).status, 'ungültig');
+  assert.deepEqual(p.nachweis.ereignisse, []);
 });
 
 test('Exportinstrumentierung beobachtet echten Klick, Anker und Blob-Widerruf, ohne Originalaufrufe oder Rückgaben zu verändern', () => {

@@ -125,6 +125,32 @@ test('Ungültige PID ruft weder CDP noch Betriebssystem auf', async () => {
   }
 });
 
+test('Exit-Code 77 bleibt trotz ESRCH abnormal und ungültig', async () => {
+  const p = probe({ fehltAb: 0 }); p.argumente.child.exitCode = 77;
+  const r = await beendeBrowserProzess(p.argumente, p.optionen);
+  assert.equal(r.status, 'ungültig'); assert.equal(r.exit.code, 77);
+  assert.equal(r.exit.status, 'abnormal');
+  assert.equal(r.nachkommen.status, 'nicht geprüft');
+  assert.match(r.meldung, /abnormaler Prozessabschluss/);
+});
+
+for (const antwort of [true, 'ESRCH', 'EPERM', 'EACCES']) test(`Bekannter Nachprozess mit ${antwort} wird geprüft, niemals beendet`, async () => {
+  const p = probe({ fehltAb: 0 });
+  p.argumente.bekannteBrowserProzesse = [{ pid: pid + 1 }];
+  p.optionen.kill = (kennung, signal) => {
+    assert.equal(signal, 0);
+    if (kennung === pid) throw fehler('ESRCH');
+    assert.equal(kennung, pid + 1);
+    if (typeof antwort === 'string') throw fehler(antwort);
+    return antwort;
+  };
+  const r = await beendeBrowserProzess(p.argumente, p.optionen);
+  assert.equal(r.status, antwort === 'ESRCH' ? 'bestanden' : 'ungültig');
+  assert.equal(r.nachkommen.bekannteProzesse.length, 1);
+  assert.equal(r.nachkommen.status, 'nicht geprüft', 'Kein vollständiger Prozessbaum behauptet');
+  assert.ok(!p.aufrufe.some(a => a.signal === 'SIGKILL'));
+});
+
 test('Browser.close-Antwort allein löst den nachgestellten Transport-Wartezustand nicht; Trennung vor PID-Probe schon', async () => {
   const p = probe({ fehltAb: Infinity, endeAb: Infinity });
   let getrennt = false;

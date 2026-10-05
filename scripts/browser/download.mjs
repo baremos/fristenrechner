@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { isAbsolute } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { anfrageBewerten } from './auswertung.mjs';
+import { Messfehler, messbefehl } from './fehler.mjs';
 
 // Instrumentierung ausschließlich im Prüfdokument, Originalaufrufe unverändert.
 // Der Webadapter widerruft Blob-URLs nach 1 s; diese Zeit muss bei einem fehlenden
@@ -36,10 +37,8 @@ URL.revokeObjectURL=function(url){
 // Richtlinie überschreiben. Ein fehlendes Ereignis rechtfertigt keinen Wechsel.
 export async function browserDownload({ browserCdp, ausgabe, browserContextId, frameId, endung, aktivieren, nachweis },
   { jetzt = () => performance.now(), warten = ms => new Promise(r => setTimeout(r, ms)), fristMs = 15000 } = {}) {
-  assert.ok(isAbsolute(ausgabe), 'Absoluter eigener Downloadordner');
-  assert.ok(typeof frameId === 'string' && frameId, 'Frame der Prüfseite belegt');
-  assert.ok(['json', 'xlsx', 'pdf'].includes(endung), 'Bekanntes Exportformat');
-  assert.ok(Number.isFinite(fristMs) && fristMs >= 0, 'Gültige Downloadfrist');
+  if (!isAbsolute(ausgabe) || typeof frameId !== 'string' || !frameId || !['json', 'xlsx', 'pdf'].includes(endung)
+      || !Number.isFinite(fristMs) || fristMs < 0) throw new Messfehler('Ungültige Download-Messparameter.');
   const beginn = jetzt(), anfang = browserCdp.events.length;
   const parameter = { behavior: 'allowAndName', downloadPath: ausgabe, eventsEnabled: true };
   nachweis.steuerung = { methode: 'Browser.setDownloadBehavior', parameter, bestaetigt: false };
@@ -49,7 +48,7 @@ export async function browserDownload({ browserCdp, ausgabe, browserContextId, f
     while (true) {
       const r = lesen(); if (r) return r;
       const rest = fristMs - (jetzt() - start);
-      if (rest <= 0) throw new Error(`Zeitüberschreitung: ${beschreibung}`);
+      if (rest <= 0) throw new Messfehler(`Zeitüberschreitung: ${beschreibung}`);
       await warten(Math.min(50, rest));
     }
   };
@@ -57,23 +56,24 @@ export async function browserDownload({ browserCdp, ausgabe, browserContextId, f
     // TargetInfo kann auch die ID des Standardkontexts melden. getBrowserContexts
     // liefert nur separat angelegte Kontexte. Für den Standardkontext muss der
     // optionale Parameter entfallen, statt eine nicht adressierbare ID zu senden.
-    const { browserContextIds } = await browserCdp.send('Target.getBrowserContexts', {}, 5000);
-    assert.ok(Array.isArray(browserContextIds), 'Browserkontexte bestätigt');
-    assert.ok(browserContextId || browserContextIds.length === 0, 'Downloadkontext der Prüfseite eindeutig');
+    const kontexte = await messbefehl(() => browserCdp.send('Target.getBrowserContexts', {}, 5000));
+    const browserContextIds = kontexte?.browserContextIds;
+    if (!Array.isArray(browserContextIds)) throw new Messfehler('Browserkontexte nicht bestätigt.');
+    if (!browserContextId && browserContextIds.length !== 0) throw new Messfehler('Downloadkontext der Prüfseite nicht eindeutig.');
     if (browserContextIds.includes(browserContextId)) parameter.browserContextId = browserContextId;
     nachweis.steuerung.kontext = { targetContextId: browserContextId ?? null, browserContextIds,
       art: parameter.browserContextId ? 'separater Browserkontext' : 'Standardkontext' };
     // Für jeden Export am Kontext der Prüfseite bestätigen; kein Page-Fallback,
     // kein wiederholter Klick und kein Erfolg allein anhand einer Exportmeldung.
-    await browserCdp.send('Browser.setDownloadBehavior', parameter, 5000);
+    await messbefehl(() => browserCdp.send('Browser.setDownloadBehavior', parameter, 5000));
     nachweis.steuerung.bestaetigt = true;
     nachweis.klick = await aktivieren();
     const start = await bis(() => browserCdp.events.slice(anfang).find(e => e.method === 'Browser.downloadWillBegin'), `Beginn des ${endung}-Downloads`);
     nachweis.start = start; nachweis.beginnNachMs = jetzt() - beginn;
-    assert.equal(start.params.frameId, frameId, 'Download gehört zum Frame der Prüfseite');
+    if (start.params?.frameId !== frameId) throw new Messfehler('Download gehört nicht zum belegten Frame der Prüfseite.');
     assert.ok(anfrageBewerten(start.params.url).erlaubt, 'Download stammt aus lokaler Ressource');
     assert.ok(start.params.suggestedFilename.endsWith(`.${endung}`), `Dateiendung ${endung}`);
-    assert.match(start.params.guid, /^[a-zA-Z0-9-]+$/, 'Sichere Downloadkennung');
+    if (typeof start.params.guid !== 'string' || !/^[a-zA-Z0-9-]+$/.test(start.params.guid)) throw new Messfehler('Keine sichere Downloadkennung.');
     const fertig = await bis(() => browserCdp.events.slice(anfang).find(e => e.method === 'Browser.downloadProgress'
       && e.params.guid === start.params.guid && ['completed', 'canceled'].includes(e.params.state)), `Abschluss des ${endung}-Downloads`);
     nachweis.abschluss = fertig; nachweis.abschlussNachMs = jetzt() - beginn;
@@ -90,14 +90,16 @@ export async function browserDownload({ browserCdp, ausgabe, browserContextId, f
 // gehen erst nach Page.bringToFront, Fokus- und Treffpunktbeleg an die Prüfseite.
 // Keine HTMLElement.click()-Aktivierung und kein zweiter Versuch.
 export async function echterMausklick({ send, wert, selector }) {
-  await send('Page.bringToFront');
+  const steuern = (name, parameter) => messbefehl(() => send(name, parameter));
+  await steuern('Page.bringToFront');
   const punkt = await wert(`(() => {const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw new Error('Bedienelement fehlt');if(e.disabled)throw new Error('Bedienelement ist gesperrt');e.scrollIntoView({block:'center',inline:'center',behavior:'instant'});const r=e.getBoundingClientRect();const x=r.x+r.width/2,y=r.y+r.height/2;const hit=document.elementFromPoint(x,y);return {x,y,breite:r.width,hoehe:r.height,fokus:document.hasFocus(),treffer:hit===e || e.contains(hit)};})()`);
-  assert.ok(punkt.fokus, 'Prüfseite hat nach Page.bringToFront den Fokus');
+  if (!punkt || typeof punkt !== 'object') throw new Messfehler('Klickpunkt nicht bestätigt.');
+  if (!punkt.fokus) throw new Messfehler('Prüfseite hat nach Page.bringToFront keinen bestätigten Fokus.');
   assert.ok(punkt.breite > 0 && punkt.hoehe > 0 && Number.isFinite(punkt.x) && Number.isFinite(punkt.y), 'Sichtbares Bedienelement');
   assert.ok(punkt.treffer, 'Klickpunkt trifft das Bedienelement ohne Überdeckung');
   const position = { x: punkt.x, y: punkt.y };
-  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...position });
-  await send('Input.dispatchMouseEvent', { type: 'mousePressed', ...position, button: 'left', clickCount: 1 });
-  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...position, button: 'left', clickCount: 1 });
+  await steuern('Input.dispatchMouseEvent', { type: 'mouseMoved', ...position });
+  await steuern('Input.dispatchMouseEvent', { type: 'mousePressed', ...position, button: 'left', clickCount: 1 });
+  await steuern('Input.dispatchMouseEvent', { type: 'mouseReleased', ...position, button: 'left', clickCount: 1 });
   return punkt;
 }

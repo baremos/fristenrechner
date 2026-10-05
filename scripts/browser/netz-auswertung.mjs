@@ -89,7 +89,7 @@ const datenEreignis = name => /^(?:SOCKET_BYTES_(?:SENT|RECEIVED)|UDP_BYTES_(?:S
  * Quellenformate: Chromium net/log/net_log_event_type_list.h sowie
  * net/dns/host_resolver_manager.cc (StartIPv6ReachabilityCheck).
  */
-export function netzNachweis(daten, seitenanfragen = [], browserTargetAnfragen = []) {
+export function netzNachweis(daten, seitenanfragen = []) {
   const ergebnis = { hintergrundanfragen: [], verbindungen: [], unklar: [], grenzen: [], seitenverdacht: [] };
   if (daten?.netlogAbschluss?.vollstaendig === false) {
     ergebnis.grenzen.push({ quelle: 'Browser-NetLog', ...daten.netlogAbschluss });
@@ -215,7 +215,6 @@ export function netzNachweis(daten, seitenanfragen = [], browserTargetAnfragen =
   }
 
   const seitenUrls = new Set(seitenanfragen.map(a => a.url));
-  const browserUrls = new Set(browserTargetAnfragen.map(a => a.url));
   for (const [key, gruppe] of gruppen) {
     const starts = gruppe.filter(e => e.name === 'URL_REQUEST_START_JOB' && e.phase === begin);
     const zugeordnet = abhaengigkeiten(key);
@@ -231,10 +230,10 @@ export function netzNachweis(daten, seitenanfragen = [], browserTargetAnfragen =
         .some(s => typeof s === 'string' && /https?:\/\/127\.0\.0\.1(?:[: /;}]|$)/.test(s));
       const basis = { quelle: 'Browser-NetLog', sourceId: e.source.id, zeit: e.time, url: p.url, ziel: p.url, methode: p.method ?? null };
       if (seitenspur) ergebnis.seitenverdacht.push({ ...basis, grund: 'Externe Anfrage mit Seitenzuordnung' });
-      // Bestätigte Target-CDP-Zuordnung ergänzt die NetLog-Hintergrundspur.
-      // Jede Seitenspur hat Vorrang, auch bei derselben URL in beiden Targets.
-      const zuordnung = !seitenspur && (browserUrls.has(p.url)
-        || p.initiator === 'not an origin' && p.request_type === 'other');
+      // Nur die Initiator-/Typdaten dieses konkreten NetLog-Request-Jobs belegen
+      // Browserhintergrund. CDP-URL-Gleichheit verbindet keine Anfragekennungen.
+      // Jede Seitenspur hat Vorrang; andere Initiatoren bleiben ungeklärt.
+      const zuordnung = !seitenspur && p.initiator === 'not an origin' && p.request_type === 'other';
       // Antwort-Header allein reichen nicht: Cache-Lesen bzw. lokale Proxy-
       // Antworten belegen keine Verbindung zum fremden Ziel. CONNECTED kann
       // bei HTTP nur die Verbindung zum Proxy meinen. Ausschlaggebend bleiben
@@ -258,6 +257,7 @@ export function netzNachweis(daten, seitenanfragen = [], browserTargetAnfragen =
       const blockiert = !transport && !tunnelErfolg && typeof netError === 'number' && netError < 0
         && (delegiert ? lokalerProxyTransport : vorVerbindung || lokalerProxy);
       if (zuordnung) ergebnis.hintergrundanfragen.push({ ...basis, status: transport || tunnelErfolg ? 'verbunden' : blockiert ? 'blockiert' : 'unklar',
+        zuordnung: { initiator: p.initiator, requestType: p.request_type, sourceTyp: e.source.type },
         netError: netError ?? null, fehler: fehlerNamen.get(netError) ?? null, proxy: proxies, beleg: blockiert ? 'Fehlerabschluss vor Verbindung oder am belegten lokalen Sperrproxy' : null });
       if (!zuordnung && !seitenspur) melden('unklar', e, p.url, 'Anfrage lässt sich weder Seite noch Browserhintergrund zuordnen');
       if (!blockiert && !transport && !tunnelErfolg) melden('unklar', e, p.url, 'Externe Anfrage ohne belegte Sperre oder Verbindung');

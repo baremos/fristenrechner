@@ -5,6 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { strFromU8, unzipSync } from 'fflate';
 import { browserDownload, echterMausklick, exportInstrumentationQuelle } from './download.mjs';
+import { Messfehler, messbefehl } from './fehler.mjs';
 
 const SCHLUESSEL = 'baremos-fristenrechner-projekt-v1';
 const IMPORT_PROJEKT = {
@@ -20,20 +21,22 @@ const methode = ereignis => ereignis.method ?? ereignis.methode;
 // des Dialogs kehrt auch kein Fensterfokus zurück. Der CDP-Abbruch muss deshalb
 // vor der Nutzeraktivierung eingeschaltet und durch ein echtes cancel belegt sein.
 export async function dateiauswahlAbbrechen({ send, aktivieren, wert, bis }) {
-  const anfang = await wert('globalThis.__browserLaufDateifeldEreignisse.length');
-  await send('Page.setInterceptFileChooserDialog', { enabled: true, cancel: true });
+  const anfang = await messbefehl(() => wert('globalThis.__browserLaufDateifeldEreignisse.length'));
+  await messbefehl(() => send('Page.setInterceptFileChooserDialog', { enabled: true, cancel: true }));
   try {
     await aktivieren();
-    return await bis(async () => {
+    return await messbefehl(() => bis(async () => {
       const ereignisse = await wert(`globalThis.__browserLaufDateifeldEreignisse.slice(${anfang})`);
       return ereignisse.some(e => e.typ === 'cancel' && e.isTrusted === true) ? ereignisse : false;
-    }, 'CDP-Steuerung: echtes cancel-Ereignis nach Dateiauswahlabbruch');
+    }, 'CDP-Steuerung: echtes cancel-Ereignis nach Dateiauswahlabbruch'));
   } finally {
-    await send('Page.setInterceptFileChooserDialog', { enabled: true, cancel: false });
+    await messbefehl(() => send('Page.setInterceptFileChooserDialog', { enabled: true, cancel: false }));
   }
 }
 
 export async function pruefeBox320({ send, wert, frisch, berechnen, ausgabe, protokoll }) {
+  const originalSend = send;
+  send = (name, parameter) => messbefehl(() => originalSend(name, parameter));
   // CDP Emulation.setScrollbarsHidden blendet nur die Browser-Bildlaufleisten
   // aus. Kein CSS der Probeseite wird verändert; 320 bedeutet hier 320 Pixel
   // nutzbare Layoutbreite, nicht 320 minus eine Windows-Bildlaufleiste.
@@ -50,24 +53,28 @@ export async function pruefeBox320({ send, wert, frisch, berechnen, ausgabe, pro
     const ohne = await messen();
     const messung = { id: 'BOX-320', ohneGlobaleRegel: ohne, mitGlobalerRegel: null, bilder: [] };
     (protokoll.messungen ??= []).push(messung);
-    assert.equal(ohne.innerWidth, 320, '320 CSS-Pixel Browser-Viewport tatsächlich eingestellt');
-    assert.equal(ohne.clientWidth, 320, '320 CSS-Pixel nutzbare Layoutbreite ohne Bildlaufleisten');
-    assert.equal(ohne.visualViewportWidth, 320, '320 CSS-Pixel sichtbarer Viewport ohne Zoom');
-    assert.equal(ohne.scrollX, 0, 'Überlaufmessung beginnt am linken Viewportrand');
+    await messbefehl(() => {
+      assert.equal(ohne.innerWidth, 320, '320 CSS-Pixel Browser-Viewport tatsächlich eingestellt');
+      assert.equal(ohne.clientWidth, 320, '320 CSS-Pixel nutzbare Layoutbreite ohne Bildlaufleisten');
+      assert.equal(ohne.visualViewportWidth, 320, '320 CSS-Pixel sichtbarer Viewport ohne Zoom');
+      assert.equal(ohne.scrollX, 0, 'Überlaufmessung beginnt am linken Viewportrand');
+    });
     assert.ok(ohne.timeline, 'Zeitschiene gerendert');
     const bildOhne = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-    writeFileSync(join(ausgabe, 'box-320-ohne.png'), Buffer.from(bildOhne.data, 'base64'));
+    await messbefehl(() => writeFileSync(join(ausgabe, 'box-320-ohne.png'), Buffer.from(bildOhne.data, 'base64')));
     messung.bilder.push('box-320-ohne.png');
     // Eine ausschließlich im Prüfdokument gesetzte Gegenprobe grenzt die Ursache ein.
     await wert(`(() => {const s=document.createElement('style');s.id='browser-lauf-box-sizing';s.textContent='*,*::before,*::after{box-sizing:border-box}';document.head.append(s);})()`);
     await wert('scrollTo(0,0)');
     const mit = await messen();
     messung.mitGlobalerRegel = mit;
-    assert.equal(mit.clientWidth, 320, 'Layoutbreite der Gegenprobe bleibt 320 CSS-Pixel');
-    assert.equal(mit.scrollX, 0, 'Gegenprobe beginnt am linken Viewportrand');
+    await messbefehl(() => {
+      assert.equal(mit.clientWidth, 320, 'Layoutbreite der Gegenprobe bleibt 320 CSS-Pixel');
+      assert.equal(mit.scrollX, 0, 'Gegenprobe beginnt am linken Viewportrand');
+    });
     assert.ok(mit.timeline, 'Zeitschiene der Gegenprobe gerendert');
     const bildMit = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-    writeFileSync(join(ausgabe, 'box-320-mit.png'), Buffer.from(bildMit.data, 'base64'));
+    await messbefehl(() => writeFileSync(join(ausgabe, 'box-320-mit.png'), Buffer.from(bildMit.data, 'base64')));
     messung.bilder.push('box-320-mit.png');
     const ueberlauf = Math.max(0, ohne.timeline.rechts - ohne.clientWidth);
     if (ueberlauf > 0.5) (protokoll.befunde ??= []).push({
@@ -86,7 +93,7 @@ export async function pruefeBox320({ send, wert, frisch, berechnen, ausgabe, pro
 
 export async function pruefeWebadapter(kontext) {
   const { cdp, browserCdp, basisUrl, ausgabe, protokoll, pruefung, navigieren } = kontext;
-  const send = (name, parameter) => cdp.send(name, parameter);
+  const send = (name, parameter) => messbefehl(() => cdp.send(name, parameter));
   const befunde = protokoll.befunde ??= [];
   const dateien = protokoll.dateien ??= [];
   const auswahlBeobachtungen = [];
@@ -96,18 +103,21 @@ export async function pruefeWebadapter(kontext) {
   // Nutzeraktivierung entstehen; allein Input.dispatch* löst die Bedienung aus.
   async function wert(expression) {
     const antwort = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: false });
-    if (antwort.exceptionDetails) throw new Error(`Browserausdruck fehlgeschlagen: ${antwort.exceptionDetails.exception?.description ?? antwort.exceptionDetails.text}`);
+    if (antwort.exceptionDetails) throw new Messfehler(`Browserausdruck fehlgeschlagen: ${antwort.exceptionDetails.exception?.description ?? antwort.exceptionDetails.text}`);
+    if (!antwort.result) throw new Messfehler('Browserausdruck ohne Messergebnis.');
     return antwort.result.value;
   }
 
-  async function bis(fn, beschreibung, timeout = 8000) {
+  async function bis(fn, beschreibung, timeout = 8000, produkt = false) {
     const ende = Date.now() + timeout;
     while (Date.now() < ende) {
       const ergebnis = await fn();
       if (ergebnis) return ergebnis;
       await pause(50);
     }
-    throw new Error(`Zeitüberschreitung: ${beschreibung}`);
+    // Nach bestätigter Steuerung kann eine ausgebliebene Produktreaktion ein
+    // Produktbefund sein. Fehlende Mess-/Dialogereignisse bleiben ungültig.
+    throw new (produkt ? Error : Messfehler)(`Zeitüberschreitung: ${beschreibung}`);
   }
 
   const inhalt = selector => wert(`document.querySelector(${JSON.stringify(selector)})?.textContent ?? null`);
@@ -163,19 +173,19 @@ export async function pruefeWebadapter(kontext) {
       if (!json) return false;
       const projekt = JSON.parse(json);
       return projektname === undefined || projekt.input.projekt.projektname === projektname ? projekt : false;
-    }, 'Speichern der Eingaben nach 350 ms');
+    }, 'Speichern der Eingaben nach 350 ms', 8000, true);
   }
 
   async function berechnen() {
     await klick('#schedule-form button[type="submit"]');
-    await bis(async () => (await inhalt('#form-message')) === 'Terminplan aktualisiert.', 'Terminplan nach Berechnen');
+    await bis(async () => (await inhalt('#form-message')) === 'Terminplan aktualisiert.', 'Terminplan nach Berechnen', 8000, true);
   }
 
   async function importDatei() {
     const projekt = await gespeichert();
     projekt.input.projekt = { ...IMPORT_PROJEKT };
     const pfad = join(ausgabe, 'import-sonderzeichen.json');
-    writeFileSync(pfad, `${JSON.stringify(projekt, null, 2)}\n`);
+    await messbefehl(() => writeFileSync(pfad, `${JSON.stringify(projekt, null, 2)}\n`));
     return pfad;
   }
 
@@ -198,7 +208,7 @@ export async function pruefeWebadapter(kontext) {
     else {
       await aktivieren();
       const auswahl = await bis(() => cdp.events.slice(anfang).find(e => methode(e) === 'Page.fileChooserOpened'), `Dateiauswahl nach ${aktivierung}`);
-      assert.ok(auswahl.params.backendNodeId, 'Dateiauswahl gehört zu einem echten Dateifeld');
+      if (!auswahl.params.backendNodeId) throw new Messfehler('Dateiauswahl ohne belegtes Dateifeld.');
       await send('DOM.setFileInputFiles', { backendNodeId: auswahl.params.backendNodeId, files: [datei] });
     }
     await pause(100);
@@ -223,13 +233,13 @@ export async function pruefeWebadapter(kontext) {
     try {
       nachweis.vorher = await seitenzustand();
       const { frameTree } = await send('Page.getFrameTree');
+      if (!frameTree?.frame?.id) throw new Messfehler('Frame der Prüfseite nicht bestätigt.');
       start = await browserDownload({ browserCdp, ausgabe, browserContextId: protokoll.pruefTarget.browserContextId,
         frameId: frameTree.frame.id, endung, nachweis, aktivieren: async () => {
           const punkt = await klick(selector), danach = await seitenzustand();
           const neu = danach.klicks.slice(nachweis.vorher.klicks.length);
           nachweis.aktivierung = { punkt, klicks: neu };
-          assert.equal(neu.length, 1, 'Genau ein Exportklick im Prüfdokument');
-          assert.ok(neu[0].isTrusted && neu[0].id === selector.slice(1), 'Browserseitiger Exportklick am richtigen Bedienelement');
+          if (neu.length !== 1 || !neu[0].isTrusted || neu[0].id !== selector.slice(1)) throw new Messfehler('Kein eindeutiger vertrauenswürdiger Exportklick am richtigen Bedienelement.');
           return punkt;
         } });
     } finally {
@@ -242,7 +252,7 @@ export async function pruefeWebadapter(kontext) {
     // vorgeschlagenen Namen als Schreibpfad übernehmen.
     const pfad = join(ausgabe, start.guid);
     await bis(() => existsSync(pfad), 'Heruntergeladene Datei');
-    const bytes = readFileSync(pfad);
+    const bytes = await messbefehl(() => readFileSync(pfad));
     assert.ok(bytes.length > 0, 'Download enthält Bytes');
     const eintrag = { format: endung, datei: basename(pfad), vorgeschlagenerName: start.suggestedFilename, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
     dateien.push(eintrag);
@@ -333,7 +343,7 @@ export async function pruefeWebadapter(kontext) {
     await pruefung('W6', 'Projektdatei über echtes Dateifeld importieren', async () => {
       await frisch();
       const beobachtung = await auswaehlen(await importDatei());
-      await bis(async () => (await inhalt('#import-message'))?.includes('geöffnet'), 'Importmeldung');
+      await bis(async () => (await inhalt('#import-message'))?.includes('geöffnet'), 'Importmeldung', 8000, true);
       for (const [name, erwartet] of Object.entries(IMPORT_PROJEKT)) assert.equal(await feldwert(name), erwartet, `Importiertes Feld ${name}`);
       assert.ok(await dateiaktionenFrei(), 'Dateiaktionen nach Import freigegeben');
       return { ...beobachtung, status: await inhalt('#import-message'), projekt: IMPORT_PROJEKT };
@@ -342,9 +352,9 @@ export async function pruefeWebadapter(kontext) {
       await frisch();
       await eingabe('projektname', 'Vor Übergröße');
       const pfad = join(ausgabe, 'import-zu-gross.json');
-      writeFileSync(pfad, Buffer.alloc(1024 * 1024 + 1, 0x20));
+      await messbefehl(() => writeFileSync(pfad, Buffer.alloc(1024 * 1024 + 1, 0x20)));
       await auswaehlen(pfad);
-      await bis(async () => (await inhalt('#import-message'))?.includes('1 MiB'), 'Meldung zur Größengrenze');
+      await bis(async () => (await inhalt('#import-message'))?.includes('1 MiB'), 'Meldung zur Größengrenze', 8000, true);
       assert.equal(await feldwert('projektname'), 'Vor Übergröße', 'Projekt bleibt erhalten');
       assert.ok(await dateiaktionenFrei(), 'Dateiaktionen nach Ablehnung freigegeben');
       return { bytes: 1024 * 1024 + 1, status: await inhalt('#import-message') };
@@ -352,21 +362,22 @@ export async function pruefeWebadapter(kontext) {
     await pruefung('W8', 'Dateiauswahlabbruch erhält Projekt und Aktionsmeldung', async () => {
       await frisch();
       await auswaehlen(await importDatei());
-      await bis(async () => (await inhalt('#import-message'))?.includes('geöffnet'), 'Importmeldung vor dem Abbruch');
+      await bis(async () => (await inhalt('#import-message'))?.includes('geöffnet'), 'Importmeldung vor dem Abbruch', 8000, true);
       await eingabe('projektname', 'Vor Abbruch');
       const vorher = await inhalt('#import-message');
       assert.ok(vorher?.trim(), 'Vorherige Aktionsmeldung ist nicht leer');
       const beobachtung = await auswaehlen(null);
       (protokoll.messungen ??= []).push({ id: 'W8', ...beobachtung });
-      try { await bis(dateiaktionenFrei, 'Freigabe nach browserseitigem Dateiauswahlabbruch'); }
+      try { await bis(dateiaktionenFrei, 'Freigabe nach browserseitigem Dateiauswahlabbruch', 8000, true); }
       catch (error) {
+        if (error instanceof Messfehler) throw error;
         befunde.push({ id: 'WEB-ABBRUCH', beschreibung: 'Der Browser hat ein echtes cancel-Ereignis geliefert; die Oberfläche gibt die Dateiaktionen danach nicht frei.', ...beobachtung });
         throw error;
       }
       assert.equal(await feldwert('projektname'), 'Vor Abbruch');
       assert.equal(await inhalt('#import-message'), vorher);
       const folgeimport = await auswaehlen(await importDatei());
-      await bis(async () => (await feldwert('projektname')) === IMPORT_PROJEKT.projektname, 'Erneuter Import nach dem Abbruch');
+      await bis(async () => (await feldwert('projektname')) === IMPORT_PROJEKT.projektname, 'Erneuter Import nach dem Abbruch', 8000, true);
       assert.ok(await dateiaktionenFrei(), 'Dateiaktionen nach erneutem Import freigegeben');
       return { ...beobachtung, status: vorher, folgeimport, weg: 'CDP Page.setInterceptFileChooserDialog mit cancel:true vor echter Input-Aktivierung; browserseitiges cancel mit isTrusted:true beobachtet. Projekt und vorherige Meldung erhalten; anschließender Import erfolgreich. Esc im sichtbaren Systemdialog bleibt eine Handprüfung.' };
     });
@@ -377,14 +388,14 @@ export async function pruefeWebadapter(kontext) {
       assert.equal(await feldwert('projektname'), 'Vor Zurücksetzen');
       assert.ok(await dateiaktionenFrei(), 'Dateiaktionen nach Abbruch freigegeben');
       const ja = await bestaetigen(true);
-      await bis(async () => (await inhalt('#reset-message')) === 'Neues Projekt angelegt.', 'Zurücksetzen bestätigt');
+      await bis(async () => (await inhalt('#reset-message')) === 'Neues Projekt angelegt.', 'Zurücksetzen bestätigt', 8000, true);
       assert.equal(await feldwert('projektname'), '');
       assert.ok(await dateiaktionenFrei(), 'Dateiaktionen nach Zurücksetzen freigegeben');
       return { dialoge: [nein, ja], status: await inhalt('#reset-message') };
     });
     await pruefung('W10', 'Gesperrter lokaler Speicher meldet den Fehler; Berechnen bleibt möglich', async () => {
       await frisch(`Object.defineProperty(window,'localStorage',{configurable:true,get(){throw new DOMException('gesperrt','SecurityError');}});`);
-      await bis(async () => (await inhalt('#storage-status'))?.includes('nicht verfügbar'), 'Meldung bei gesperrtem Speicher');
+      await bis(async () => (await inhalt('#storage-status'))?.includes('nicht verfügbar'), 'Meldung bei gesperrtem Speicher', 8000, true);
       await berechnen();
       return { status: await inhalt('#storage-status'), berechnung: await inhalt('#form-message') };
     });
@@ -392,7 +403,7 @@ export async function pruefeWebadapter(kontext) {
       await frisch(`globalThis.__browserLaufSchreibversuche=0;Storage.prototype.setItem=function(){globalThis.__browserLaufSchreibversuche++;throw new DOMException('voll','QuotaExceededError');};`);
       const vorher = await wert('globalThis.__browserLaufSchreibversuche');
       await eingabe('projektname', 'Speicher voll');
-      await bis(async () => (await wert('globalThis.__browserLaufSchreibversuche')) > vorher && (await inhalt('#storage-status'))?.includes('nicht verfügbar'), 'Meldung bei vollem Speicher nach neuer Eingabe');
+      await bis(async () => (await wert('globalThis.__browserLaufSchreibversuche')) > vorher && (await inhalt('#storage-status'))?.includes('nicht verfügbar'), 'Meldung bei vollem Speicher nach neuer Eingabe', 8000, true);
       assert.equal(await speicher(), null, 'Fehlgeschlagener Schreibversuch hinterlässt keine Datei');
       await berechnen();
       return { schreibversuche: await wert('globalThis.__browserLaufSchreibversuche'), status: await inhalt('#storage-status'), berechnung: await inhalt('#form-message') };
@@ -401,7 +412,7 @@ export async function pruefeWebadapter(kontext) {
       await pruefung(`W12-${aktivierung}`, `Dateifeld durch ${aktivierung} auslösen`, async () => {
         await frisch();
         const beobachtung = await auswaehlen(await importDatei(), aktivierung);
-        await bis(async () => (await inhalt('#import-message'))?.includes('geöffnet'), `Import nach ${aktivierung}`);
+        await bis(async () => (await inhalt('#import-message'))?.includes('geöffnet'), `Import nach ${aktivierung}`, 8000, true);
         assert.equal(await feldwert('projektname'), IMPORT_PROJEKT.projektname);
         assert.ok(await dateiaktionenFrei(), 'Dateiaktionen nach Tastaturimport freigegeben');
         return { ...beobachtung, fokus: await wert('document.activeElement?.id'), status: await inhalt('#import-message') };
@@ -418,7 +429,11 @@ export async function pruefeWebadapter(kontext) {
     await pruefung('BOX-320', 'Zeitschiene der gebauten README-Probeseite bei 320 CSS-Pixeln', () =>
       pruefeBox320({ send, wert, frisch, berechnen, ausgabe, protokoll }));
   } finally {
-    for (const identifier of [instrumentation, exportInstrumentation, ...vorabSkripte]) await send('Page.removeScriptToEvaluateOnNewDocument', { identifier }).catch(() => {});
-    await send('Page.setInterceptFileChooserDialog', { enabled: false }).catch(() => {});
+    const fehler = [];
+    for (const identifier of [instrumentation, exportInstrumentation, ...vorabSkripte]) {
+      try { await send('Page.removeScriptToEvaluateOnNewDocument', { identifier }); } catch (e) { fehler.push(e.message); }
+    }
+    try { await send('Page.setInterceptFileChooserDialog', { enabled: false }); } catch (e) { fehler.push(e.message); }
+    if (fehler.length) throw new Messfehler(`Webadapter-Aufräumen unvollständig: ${fehler.join('; ')}`);
   }
 }

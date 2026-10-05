@@ -5,11 +5,11 @@ import './browser/download.test.mjs';
 import './browser/webadapter.test.mjs';
 import './browser/netz-cdp.test.mjs';
 import './browser/netz-auswertung.test.mjs';
+import './browser/rahmen.test.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
-import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +18,7 @@ import {
   anfrageBewerten, argumente, auswerten, netlogAnfragen, netzErlaubt,
   neuesProtokoll, pruefung,
 } from './browser/auswertung.mjs';
+import { ERGEBNISKATALOG } from './browser/ergebniskatalog.mjs';
 
 const basis = ['--phase', 'vertrag', '--ausgabe', 'scratchpad/browser-probe'];
 
@@ -31,7 +32,9 @@ const protokoll = (daten = {}) => neuesProtokoll({
 });
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const temp = realpathSync(tmpdir());
+const testBasis = join(wurzel, 'scratchpad/tmp-v6a-r6');
+mkdirSync(testBasis, { recursive: true });
+const temp = realpathSync(testBasis);
 const arbeit = mkdtempSync(join(temp, 'browser-tests-'));
 test.after(() => {
   // Nur den selbst erzeugten, tatsächlich in der Temp-Basis liegenden Ordner löschen.
@@ -150,7 +153,7 @@ test('Fehlgeschlagene Prüfung bleibt sichtbar und verhindert keine Folgeprüfun
   assert.deepEqual(bericht.ergebnisse.map(e => [e.id, e.status]), [['W1', 'nicht bestanden'], ['W2', 'bestanden']]);
   assert.equal(bericht.ergebnisse[0].meldung, 'Datei fehlt');
   assert.equal(bericht.ergebnisse[1].details, null);
-  assert.equal(auswerten(bericht).code, 1);
+  assert.equal(auswerten(bericht).code, 2, 'Fehlende Vertragsfälle bleiben ungültig');
 });
 
 test('Doppelte Prüfkennungen werden vor einem zweiten Seiteneffekt abgewiesen', async () => {
@@ -164,23 +167,23 @@ test('Doppelte Prüfkennungen werden vor einem zweiten Seiteneffekt abgewiesen',
 
 test('Vollständig bestandene Ergebnisse mit lokalen Ressourcen ergeben Code 0', () => {
   assert.deepEqual(auswerten({
-    ergebnisse: [{ status: 'bestanden' }, { status: 'bestanden' }],
+    phase: 'vertrag', ergebnisse: ERGEBNISKATALOG.vertrag.map(id => ({ id, status: 'bestanden' })),
     netzanfragen: [{ url: 'http://127.0.0.1:41123/' }, { url: 'blob:http://127.0.0.1:41123/datei' }, { url: 'data:image/png;base64,AA==' }],
-  }), { status: 'bestanden', code: 0, bestanden: 2, fehler: 0, netzfehler: 0 });
+  }), { status: 'bestanden', code: 0, bestanden: 14, fehler: 0, netzfehler: 0, katalogfehler: [] });
 });
 
 test('Eine fremde Anfrage lässt auch sonst bestandene Prüfungen scheitern', () => {
   assert.deepEqual(auswerten({
-    ergebnisse: [{ status: 'bestanden' }],
+    phase: 'vertrag', ergebnisse: ERGEBNISKATALOG.vertrag.map(id => ({ id, status: 'bestanden' })),
     netzanfragen: [{ url: 'http://127.0.0.1:4321/' }, { url: 'https://fremd.invalid/' }],
-  }), { status: 'nicht bestanden', code: 1, bestanden: 1, fehler: 0, netzfehler: 1 });
+  }), { status: 'nicht bestanden', code: 1, bestanden: 14, fehler: 0, netzfehler: 1, katalogfehler: [] });
 });
 
 test('Auswertung zählt fachliche Fehler und Netzfehler getrennt', () => {
   assert.deepEqual(auswerten({
-    ergebnisse: [{ status: 'bestanden' }, { status: 'nicht bestanden' }, { status: 'nicht bestanden' }],
+    phase: 'vertrag', ergebnisse: ERGEBNISKATALOG.vertrag.map((id, i) => ({ id, status: i < 2 ? 'nicht bestanden' : 'bestanden' })),
     netzanfragen: [{ url: 'https://fremd.invalid/' }, { url: 'file:///probe.html' }],
-  }), { status: 'nicht bestanden', code: 1, bestanden: 1, fehler: 2, netzfehler: 2 });
+  }), { status: 'nicht bestanden', code: 1, bestanden: 12, fehler: 2, netzfehler: 2, katalogfehler: [] });
 });
 
 for (const ergebnisse of [undefined, [], [{ status: 'übersprungen' }], [{}]]) {

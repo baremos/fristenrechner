@@ -10,7 +10,8 @@ import { closeSync, existsSync, mkdirSync, openSync, readSync, readFileSync, rea
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Cdp, ausgabePruefen, echterPfad, innen, pause, prozess } from './emulator/rahmen.mjs';
-import { argumente, anfrageBewerten, auswerten, neuesProtokoll, pruefung } from './browser/auswertung.mjs';
+import { argumente, anfrageBewerten, auswerten, gesamtAuswerten, neuesProtokoll, pruefung } from './browser/auswertung.mjs';
+import { Messfehler, messbefehl } from './browser/fehler.mjs';
 import { bauen } from './browser/bauen.mjs';
 import { pruefeWebadapter } from './browser/webadapter.mjs';
 import { beendeBrowserProzess, beobachteBrowserProzess, browserProzessIdentitaet } from './browser/prozessende.mjs';
@@ -57,9 +58,10 @@ export function browserArgumente(profil, netlog, proxyPort) {
   // [E] https://chromium.googlesource.com/chromium/src/+/main/extensions/common/switches.cc
   // [N] https://chromium.googlesource.com/chromium/src/+/main/components/network_session_configurator/common/network_switches.cc
   // [P] https://chromium.googlesource.com/chromium/src/+/main/net/docs/proxy.md
-  // Die Namen sind zusätzlich in den lokalen Browser-154-DLLs nachgewiesen
-  // (scratchpad/v6a-r2-schalterbeleg.json). Das belegt keine vollständige Wirkung
-  // in Edge: nur NetLog/CDP entscheiden über den Netzbefund. Keine geratenen
+  // Die Verweise benennen Definitionen/Proxyregeln im Chromium-Quellbaum.
+  // Namen lassen sich dort und in den Binärdateien der installierten Version
+  // nachprüfen; ihre bloße Existenz belegt keine vollständige Wirkung in Edge.
+  // Erst die CDP-/NetLog-Auswertung des jeweiligen Laufs belegt den Netzbefund. Keine geratenen
   // Edge-Anmelde-, Copilot- oder Rewards-Features und keine unbelegten Altflags.
   return [
     '--headless=new', // [C] Reproduzierbare Steuerung ohne sichtbare Fenster.
@@ -133,7 +135,7 @@ async function toterProxy() {
 async function warten(fn, beschreibung, ms = 15000) {
   const beginn = Date.now();
   while (Date.now() - beginn < ms) { const r = await fn(); if (r) return r; await pause(50); }
-  throw new Error(`Zeitüberschreitung: ${beschreibung}`);
+  throw new Messfehler(`Zeitüberschreitung: ${beschreibung}`);
 }
 
 async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, arbeitsstand, htmlHash, signal, diagnose = false }) {
@@ -203,24 +205,28 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
     await cdp.send('Page.setInterceptFileChooserDialog', { enabled: true });
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
     const navigieren = async (pfad = '/') => {
-      if (signal?.aborted) throw new Error('Lauf unterbrochen.');
+      if (signal?.aborted) throw new Messfehler('Lauf unterbrochen.');
       const url = new URL(pfad, basisUrl);
       if (url.origin !== basisUrl) throw new Error('Navigation außerhalb der Probeseite abgewiesen.');
       const start = cdp.events.length;
-      const navigation = await cdp.send('Page.navigate', { url: url.href });
-      if (navigation.errorText) throw new Error(`Navigation fehlgeschlagen: ${navigation.errorText}`);
+      const navigation = await messbefehl(() => cdp.send('Page.navigate', { url: url.href }));
+      if (navigation.errorText) throw new Messfehler(`Navigation fehlgeschlagen: ${navigation.errorText}`);
       await warten(() => cdp.events.slice(start).some(e => e.method === 'Page.loadEventFired'), 'Seite laden');
-      const vorhanden = await cdp.send('Runtime.evaluate', { expression: 'Boolean(document.querySelector("[data-fristenrechner]"))', returnByValue: true, userGesture: false });
+      const vorhanden = await messbefehl(() => cdp.send('Runtime.evaluate', { expression: 'Boolean(document.querySelector("[data-fristenrechner]"))', returnByValue: true, userGesture: false }));
       if (!vorhanden.result.value) throw new Error('Komponente fehlt in der gebauten Probeseite.');
       await pause(100);
     };
-    // Neue Phasen ergänzen nur diese Zuordnung sowie PHASEN und ihre eigenen Module.
+    // Neue Phasen ergänzen diese Zuordnung, den Ergebniskatalog und ihre Module.
     const phasen = {
       vertrag: async () => {
         await navigieren('/vertrag.html');
         await pruefe('V-VERTRAG', 'Browser-Vertrag mit echten Exportfunktionen', async () => {
-          const gruppen = await cdp.evaluate('browserVertrag.pruefeBedienung(document.querySelector("[data-fristenrechner]"))', 60000);
-          if (!Array.isArray(gruppen) || gruppen.length !== 9) throw new Error('Die neun Vertragsgruppen sind nicht vollständig.');
+          const antwort = await messbefehl(() => cdp.send('Runtime.evaluate', {
+            expression: 'browserVertrag.pruefeBedienung(document.querySelector("[data-fristenrechner]"))', returnByValue: true, awaitPromise: true, userGesture: false,
+          }, 60000));
+          if (antwort.exceptionDetails) throw new Error(antwort.exceptionDetails.exception?.description ?? antwort.exceptionDetails.text);
+          const gruppen = antwort.result.value;
+          if (!Array.isArray(gruppen) || gruppen.length !== 9) throw new Messfehler('Die neun Vertragsgruppen sind nicht vollständig.');
           gruppen.forEach((beschreibung, i) => protokoll.ergebnisse.push({ id: `V${i + 1}`, beschreibung, status: 'bestanden' }));
           return { gruppen };
         });
@@ -239,10 +245,12 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
   } finally {
     signal?.removeEventListener('abort', abbruch);
     if (netzMonitor) {
-      try { await netzMonitor.bereit(); }
+      try { await netzMonitor.endePlanen(); }
       catch (e) { protokoll.ergebnisse.push({ id: 'NETZ-CDP', status: 'ungültig', meldung: e.message }); }
     }
-    cdp?.close();
+    const aufraeumfehler = [];
+    const aufraeumen = async fn => { try { await fn(); } catch (e) { aufraeumfehler.push(e.message); } };
+    await aufraeumen(() => cdp?.close());
     const zustand = () => {
       // Nur den kurzen Dateischluss lesen, keine wiederholte NetLog-Auswertung.
       let netlog;
@@ -256,7 +264,17 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
       return { netlog, targets: protokoll.netzTargets?.map(t => ({ targetId: t.targetId, url: t.url, beendet: Boolean(t.beendet) })),
         websocket: browserCdp?.ws.readyState ?? null, pipes: beobachtung?.daten };
     };
-    if (child?.pid) protokoll.ergebnisse.push(await beendeBrowserProzess({ browserCdp, child, beendet: () => beendet }, { diagnose, zustand }));
+    if (child?.pid) await aufraeumen(async () => {
+      let bekannteBrowserProzesse = protokoll.prozessIdentitaet?.bekannteBrowserProzesse ?? [];
+      if (protokoll.prozessIdentitaet?.bestaetigt && browserCdp && !browserCdp.closed) {
+        try {
+          const vorEnde = browserProzessIdentitaet(child.pid, await browserCdp.send('SystemInfo.getProcessInfo', {}, 5000));
+          protokoll.prozesseVorEnde = vorEnde;
+          if (vorEnde.bestaetigt) bekannteBrowserProzesse = [...bekannteBrowserProzesse, ...vorEnde.bekannteBrowserProzesse];
+        } catch (e) { protokoll.prozesseVorEnde = { status: 'nicht geprüft', meldung: e.message }; }
+      }
+      protokoll.ergebnisse.push(await beendeBrowserProzess({ browserCdp, child, beendet: () => beendet, bekannteBrowserProzesse }, { diagnose, zustand }));
+    });
     // CDP bis zur Browser.close-Antwort, danach Transport lösen. NetLog bleibt
     // bis zum Prozessende Pflicht; seine Vollständigkeit wird unten geprüft.
     if (netzMonitor) {
@@ -265,12 +283,15 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
         if (!protokoll.ergebnisse.some(r => r.id === 'NETZ-CDP')) protokoll.ergebnisse.push({ id: 'NETZ-CDP', status: 'ungültig', meldung: e.message });
       }
     }
-    netzMonitor?.close();
-    browserCdp?.close();
+    await aufraeumen(() => netzMonitor?.close());
+    await aufraeumen(() => browserCdp?.close());
     // Nach einem Browserabsturz können geerbte Pipe-Handles den Node-Läufer
     // offen halten. Ein nicht bestätigtes Prozessende ist oben als Fehler erfasst.
-    child?.stdout.destroy(); child?.stderr.destroy(); child?.unref();
-    await proxy?.close();
+    await aufraeumen(() => child?.stdout.destroy());
+    await aufraeumen(() => child?.stderr.destroy());
+    await aufraeumen(() => child?.unref());
+    await aufraeumen(() => proxy?.close());
+    if (aufraeumfehler.length) protokoll.ergebnisse.push({ id: 'AUFRAEUMEN', status: 'ungültig', meldung: aufraeumfehler.join('; ') });
     protokoll.proxyVerbindungen = proxy?.anfragen ?? [];
     protokoll.prozessBeobachtung = beobachtung?.daten ?? null;
     protokoll.downloadEreignisse = browserCdp?.events.filter(e => /^Browser\.download/.test(e.method)) ?? [];
@@ -305,7 +326,9 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
   return protokoll;
 }
 
-export async function main(argv) {
+// Austauschen der Ausführungsschritte erlaubt Gegenproben ohne Browser/Build.
+export async function main(argv, { prozess: ausfuehren = prozess, bauen: bauErzeugen = bauen, serverStarten = lokalerServer,
+  phaseAusfuehren = laufPhase, browserFinden = name => browserKandidaten(name).find(p => existsSync(p) && statSync(p).isFile()) } = {}) {
   let optionen, ausgabe;
   try { optionen = argumente(argv); ausgabe = ausgabeVorbereiten(optionen.ausgabe); }
   catch (e) { console.error(`${e.message}\nAufruf: node scripts/browser-lauf.mjs --phase <vertrag|webadapter|alle-v6a> --ausgabe <neuer-oder-leerer-Ordner> [--browser <edge|chrome|beide>] [--diagnose]`); return 64; }
@@ -315,38 +338,48 @@ export async function main(argv) {
   const abbrechen = () => controller.abort();
   process.once('SIGINT', abbrechen); process.once('SIGTERM', abbrechen);
   try {
-    const git = await prozess('git', ['rev-parse', 'HEAD'], { cwd: wurzel });
+    const git = await ausfuehren('git', ['rev-parse', 'HEAD'], { cwd: wurzel, signal: controller.signal });
     if (git.code !== 0 || !/^[a-f0-9]{40}$/.test(git.out.trim())) throw new Error('Commit konnte nicht bestimmt werden.');
     bericht.commit = git.out.trim();
-    const status = await prozess('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: wurzel });
+    const status = await ausfuehren('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: wurzel, signal: controller.signal });
     if (status.code !== 0) throw new Error('Arbeitsstand konnte nicht bestimmt werden.');
     bericht.arbeitsstand = status.out.trim() || 'sauber';
     // Neue, noch nicht eingecheckte Läufer sind Teil des Nachweises.
-    const dateien = await prozess('git', ['ls-files', '-co', '--exclude-standard', '-z'], { cwd: wurzel });
+    const dateien = await ausfuehren('git', ['ls-files', '-co', '--exclude-standard', '-z'], { cwd: wurzel, signal: controller.signal });
     if (dateien.code !== 0) throw new Error('Eingaben konnten nicht bestimmt werden.');
     bericht.eingaben = [...new Set(dateien.out.split('\0').filter(p => /^(scripts\/browser|packages\/(kern|oberflaeche)\/)/.test(p)))].filter(p => existsSync(join(wurzel, p)))
       .map(p => ({ datei: p, sha256: createHash('sha256').update(readFileSync(join(wurzel, p))).digest('hex') }));
     const gewuenscht = optionen.browser === 'beide' ? ['edge', 'chrome'] : [optionen.browser];
-    const browser = gewuenscht.map(name => ({ browser: name, programm: browserKandidaten(name).find(p => existsSync(p) && statSync(p).isFile()) }));
+    const browser = gewuenscht.map(name => ({ browser: name, programm: browserFinden(name) }));
     bericht.nichtInstalliert = browser.filter(b => !b.programm).map(b => b.browser);
-    if (!browser.some(b => b.programm) || optionen.browser !== 'beide' && bericht.nichtInstalliert.length) throw new Error('Gewünschter Browser ist nicht installiert.');
-    const bau = await bauen(wurzel, ausgabe);
+    if (bericht.nichtInstalliert.length) console.error(`Angeforderter Browser nicht installiert: ${bericht.nichtInstalliert.join(', ')}. Gesamtlauf ungültig; vorhandene Browser laufen zur Befundsuche weiter.`);
+    if (!browser.some(b => b.programm)) throw new Error('Kein angeforderter Browser ist installiert.');
+    const bau = await bauErzeugen(wurzel, ausgabe, { signal: controller.signal });
+    if (controller.signal.aborted) throw new Error('Lauf während des Builds unterbrochen.');
     bericht.bau = bau;
-    server = await lokalerServer(bau.dist);
+    server = await serverStarten(bau.dist);
     for (const b of browser.filter(b => b.programm)) for (const phase of optionen.phasen) {
       if (controller.signal.aborted) throw new Error('Lauf unterbrochen.');
       console.log(`${b.browser}: Phase ${phase} startet.`);
-      const protokoll = await laufPhase({ ...b, phase, ausgabe: join(ausgabe, `${b.browser}-${phase}`), basisUrl: server.basisUrl,
+      const protokoll = await phaseAusfuehren({ ...b, phase, ausgabe: join(ausgabe, `${b.browser}-${phase}`), basisUrl: server.basisUrl,
         commit: bericht.commit, arbeitsstand: bericht.arbeitsstand, htmlHash: bau.htmlHash, signal: controller.signal, diagnose: optionen.diagnose });
+      protokoll.auswertung = auswerten(protokoll);
       bericht.laeufe.push({ browser: b.browser, phase, version: protokoll.version, ...protokoll.auswertung, protokoll: `${b.browser}-${phase}/protokoll.json` });
       console.log(`${b.browser}: Phase ${phase}: ${protokoll.auswertung.status}.`);
     }
-    bericht.code = bericht.laeufe.some(l => l.code === 2) ? 2 : bericht.laeufe.some(l => l.code === 1) ? 1 : 0;
+    if (controller.signal.aborted) throw new Error('Lauf unterbrochen.');
   } catch (e) { bericht.fehler = e.message; bericht.code = e.rueckgabewert ?? 2; console.error(e.message); }
   finally {
-    if (server) { bericht.serverAnfragen = server.anfragen; await server.close(); }
+    if (server) {
+      bericht.serverAnfragen = server.anfragen;
+      try { await server.close(); }
+      catch (e) { bericht.aufraeumfehler = e.message; bericht.code = 2; console.error(`Abschließendes Aufräumen fehlgeschlagen: ${e.message}`); }
+    }
     process.removeListener('SIGINT', abbrechen); process.removeListener('SIGTERM', abbrechen);
     bericht.ende = new Date().toISOString();
+    bericht.auswertung = gesamtAuswerten(bericht);
+    bericht.code = bericht.code === 2 || bericht.auswertung.code === 2 ? 2 : bericht.code === 1 || bericht.auswertung.code === 1 ? 1 : 0;
+    bericht.status = bericht.code === 2 ? 'ungültig' : bericht.code === 1 ? 'nicht bestanden' : 'bestanden';
     writeFileSync(join(ausgabe, 'protokoll.json'), JSON.stringify(bericht, null, 2) + '\n');
   }
   return bericht.code;

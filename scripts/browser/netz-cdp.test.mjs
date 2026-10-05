@@ -3,6 +3,7 @@ import test from 'node:test';
 import { BrowserCdp, seitenNetzStarten } from './netz-cdp.mjs';
 import { browserOberflaecheBeleg } from './browser-oberflaeche.mjs';
 import { auswerten } from './auswertung.mjs';
+import { ERGEBNISKATALOG } from './ergebniskatalog.mjs';
 
 function kanal() {
   const ws = new EventTarget();
@@ -23,6 +24,91 @@ function mock({ fehler } = {}) {
   } };
   return { cdp, aufrufe, protokoll: { netzanfragen: [] } };
 }
+
+test('Entdecktes Web-Target ohne angehängte Sitzung bleibt auch nach Zerstörung ungültig', async () => {
+  const { cdp, protokoll } = mock();
+  const monitor = await seitenNetzStarten(cdp, protokoll, 'pruefseite');
+  cdp.ws.empfangen({ method: 'Target.targetCreated', params: { targetInfo: {
+    targetId: 'ohne-sitzung', type: 'service_worker', url: 'http://127.0.0.1:1234/sw.js', attached: true } } });
+  await assert.rejects(monitor.bereit(), /Entdecktes Web-Target ohne Messsitzung/);
+  cdp.ws.empfangen({ method: 'Target.targetDestroyed', params: { targetId: 'ohne-sitzung' } });
+  await assert.rejects(monitor.bereit(), /ohne Messsitzung/);
+  assert.equal(protokoll.netzEntdeckteTargets.find(t => t.targetId === 'ohne-sitzung').angehaengt, false);
+  monitor.close();
+});
+
+for (const method of ['Target.detachedFromTarget', 'Inspector.detached', 'Target.targetDestroyed']) {
+  test(`Verlust der Hauptsitzung über ${method} wird vor geplantem Ende ungültig`, async () => {
+    const { cdp } = mock(); const monitor = await seitenNetzStarten(cdp, { netzanfragen: [] }, 'pruefseite');
+    cdp.ws.empfangen({ method, sessionId: method === 'Inspector.detached' ? 'seite' : undefined,
+      params: { sessionId: 'seite', targetId: 'pruefseite', reason: 'target_closed' } });
+    await assert.rejects(monitor.bereit(), /Unerwarteter Verlust der Messsitzung.*pruefseite/);
+    monitor.close();
+  });
+}
+
+test('Geplantes Ende erlaubt Sitzungsabgänge und Socket-close erst nach abgeschlossener Messung', async () => {
+  const { cdp, protokoll } = mock(); const monitor = await seitenNetzStarten(cdp, protokoll, 'pruefseite');
+  await monitor.endePlanen();
+  cdp.ws.empfangen({ method: 'Target.detachedFromTarget', params: { sessionId: 'seite' } });
+  cdp.ws.dispatchEvent(new Event('close'));
+  await monitor.bereit();
+  assert.equal(protokoll.netzSitzungsabgaenge[0].erwartet, true);
+  assert.ok(protokoll.netzMessende);
+  monitor.close();
+});
+
+test('Ungeplantes Socket-close macht den Netznachweis ungültig', async () => {
+  const { cdp, protokoll } = mock(); const monitor = await seitenNetzStarten(cdp, protokoll, 'pruefseite');
+  cdp.ws.dispatchEvent(new Event('close'));
+  await assert.rejects(monitor.bereit(), /Verbindung vor geplantem Messende verloren/); monitor.close();
+});
+
+for (const type of ['service_worker', 'shared_worker']) test(`Lokaler ${type} ohne Elternsitzung wird direkt zugeordnet und gesperrt`, async () => {
+  const { cdp, protokoll, aufrufe } = mock();
+  const monitor = await seitenNetzStarten(cdp, protokoll, 'pruefseite', 'http://127.0.0.1:1234');
+  cdp.ws.empfangen({ method: 'Target.targetCreated', params: { targetInfo: { targetId: 'direkt', type, url: 'http://127.0.0.1:1234/sw.js' } } });
+  cdp.ws.empfangen({ method: 'Target.attachedToTarget', params: { sessionId: 'direkt', targetInfo: { targetId: 'direkt', type, url: 'http://127.0.0.1:1234/sw.js' } } });
+  await monitor.bereit();
+  assert.equal(protokoll.netzTargets.find(t => t.sessionId === 'direkt').seite, true);
+  assert.equal(protokoll.netzTargets.find(t => t.sessionId === 'direkt').elternSitzung, null);
+  cdp.ws.empfangen({ method: 'Fetch.requestPaused', sessionId: 'direkt', params: { requestId: 'a', request: { url: 'https://extern.invalid/' } } });
+  await monitor.bereit();
+  assert.ok(aufrufe.some(a => a.method === 'Fetch.failRequest' && a.sessionId === 'direkt'));
+  assert.equal(protokoll.netzanfragen[0].gesperrt, true);
+  monitor.close();
+});
+
+for (const [zerstoert, abgeschlossen] of [[true, true], [false, true], [true, false]]) {
+  test(`Workerabgang braucht Zerstörungsbeleg=${zerstoert} und abgeschlossene Anfrage=${abgeschlossen}`, async () => {
+    const { cdp, protokoll } = mock(); const monitor = await seitenNetzStarten(cdp, protokoll, 'pruefseite');
+    cdp.ws.empfangen({ method: 'Target.attachedToTarget', sessionId: 'seite', params: {
+      sessionId: 'worker', targetInfo: { targetId: 'worker', type: 'worker', url: 'blob:http://127.0.0.1/a' } } });
+    await monitor.bereit();
+    cdp.ws.empfangen({ method: 'Network.requestWillBeSent', sessionId: 'worker', params: {
+      requestId: 'a', request: { url: 'http://127.0.0.1/a' } } });
+    if (abgeschlossen) cdp.ws.empfangen({ method: 'Network.loadingFinished', sessionId: 'worker', params: { requestId: 'a' } });
+    cdp.ws.empfangen({ method: 'Target.detachedFromTarget', params: { sessionId: 'worker' } });
+    if (zerstoert) cdp.ws.empfangen({ method: 'Target.targetDestroyed', params: { targetId: 'worker' } });
+    if (zerstoert && abgeschlossen) {
+      await monitor.bereit(); assert.equal(protokoll.netzSitzungsabgaenge[0].erwartet, true);
+    } else await assert.rejects(monitor.bereit(), /Unerwarteter Verlust/);
+    monitor.close();
+  });
+}
+
+test('Worker mit offenem WebSocket bleibt nach HTTP-Abschluss derselben Kennung unvollständig', async () => {
+  const { cdp, protokoll } = mock(); const monitor = await seitenNetzStarten(cdp, protokoll, 'pruefseite');
+  cdp.ws.empfangen({ method: 'Target.attachedToTarget', sessionId: 'seite', params: {
+    sessionId: 'worker', targetInfo: { targetId: 'worker', type: 'worker', url: 'blob:http://127.0.0.1/a' } } });
+  await monitor.bereit();
+  cdp.ws.empfangen({ method: 'Network.webSocketCreated', sessionId: 'worker', params: { requestId: 'a', url: 'ws://127.0.0.1/a' } });
+  cdp.ws.empfangen({ method: 'Network.loadingFinished', sessionId: 'worker', params: { requestId: 'a' } });
+  cdp.ws.empfangen({ method: 'Target.targetDestroyed', params: { targetId: 'worker' } });
+  await assert.rejects(monitor.bereit(), /Unerwarteter Verlust/);
+  assert.deepEqual(protokoll.netzSitzungsabgaenge[0].offeneAnfragen, ['webSocket:a']);
+  monitor.close();
+});
 
 test('Flacher CDP-Transport erhält sessionId, Antwort und gemeinsame Befehlskennungen', async () => {
   const ws = kanal(), cdp = new BrowserCdp(ws);
@@ -315,7 +401,8 @@ for (const methode of ['Target.targetInfoChanged', 'Page.frameNavigated']) {
     assert.equal(protokoll.netzanfragen.length, 0);
     assert.equal(protokoll.browserTargetAnfragen.filter(a => a.gesperrt).length, 2);
     assert.ok(aufrufe.some(a => a.method === 'Fetch.failRequest' && a.params.requestId === 'fetch-extern'));
-    protokoll.ergebnisse = [{ id: 'PROBE', status: 'bestanden' }];
+    protokoll.phase = 'vertrag';
+    protokoll.ergebnisse = ERGEBNISKATALOG.vertrag.map(id => ({ id, status: 'bestanden' }));
     assert.equal(auswerten(protokoll).code, 0, 'Blockierte Oberflächenversuche sind kein Seitenfehler');
     monitor.close();
   });
@@ -379,7 +466,8 @@ for (const fehlerhaft of [false, true]) test(`Navigation zu 127.0.0.1 braucht vo
     await monitor.bereit();
     assert.equal(protokoll.netzanfragen[0].gesperrt, true);
     assert.equal(protokoll.netzTargets.find(t => t.sessionId === 'leer').seite, true);
-    protokoll.ergebnisse = [{ id: 'PROBE', status: 'bestanden' }];
+    protokoll.phase = 'vertrag';
+    protokoll.ergebnisse = ERGEBNISKATALOG.vertrag.map(id => ({ id, status: 'bestanden' }));
     assert.equal(auswerten(protokoll).code, 1, 'Externe Anfrage einer lokalen Web-Seite bleibt Seitenfehler');
   }
   monitor.close();
