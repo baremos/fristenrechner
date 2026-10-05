@@ -146,6 +146,8 @@ Die folgende Auswahl erläutert die Werkzeugkennungen und die verbleibende Einze
 
 **Weitere Angaben im ausgelieferten Baum:** `pako` 2.2.0 über `jspdf` besteht mit `(MIT AND Zlib)`; das Paket enthält MIT in `LICENSE` und Zlib-Hinweise in `lib/zlib/deflate.js`. `dompurify` 3.4.15 über die optionale Kante von `jspdf` besteht mit `(MPL-2.0 OR Apache-2.0)` unter Apache-2.0. Dafür ist keine Einzelausnahme nötig.
 
+Die optionalen Module von jsPDF (`html2canvas`, `dompurify`, `canvg` und über `canvg` unter anderem `core-js` und `rgbcolor`) bleiben im npm-Baum; die Lizenzprüfung zählt sie weiter als ausgeliefert. jsPDF lädt die drei Module für `html()` und `addSvgAsImage()`; der PDF-Export der Oberfläche verwendet diese Funktionen nicht. Der App-Build ersetzt sie durch ein Ersatzmodul, das beim Laden einen Fehler meldet. K2 prüft das Fehlen der optionalen Chunks und ihrer Kennzeichen im App-Bündel sowie nackte Modulnamen in `import()`. Die Website entscheidet über einen solchen Ausschluss in ihrem eigenen PR.
+
 ### Optionaler Baum von sharp und libvips
 
 Im beobachteten Graphen führt der einzige Eingang zu `sharp` 0.35.4 über `astro.optionalDependencies`. Auch dessen Plattformpakete werden optional eingebunden. `@img/sharp-wasm32` folgt als normale Abhängigkeit zweier optionaler Plattformpakete; der gesamte Weg bleibt damit optional. Ohne optionale Kanten ist keines dieser Pakete von den lokalen Manifesten aus erreichbar. Die betreffenden Lockfile-Einträge tragen außerdem `optional: true`.

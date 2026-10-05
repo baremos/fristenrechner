@@ -124,6 +124,7 @@ test('Dateistamm ohne Hash von Vite', () => {
   assert.equal(dateistamm('_astro/jspdf.es.min.DrSiKu-u.js'), 'jspdf.es.min');
   assert.equal(dateistamm('_astro/Fristenrechner.astro_astro_type_script_index_0_lang.DWQGDAA6.js'), 'Fristenrechner.astro_astro_type_script_index_0_lang');
   assert.equal(dateistamm('_astro/ohne-hash.js'), 'ohne-hash');
+  assert.equal(dateistamm('_astro/purify.es.AbCdEfGh.mjs'), 'purify.es');
 });
 
 const syntaxFunde = [
@@ -185,6 +186,12 @@ const SAUBER = {
   'startfehler.html': '<!doctype html><html><head><style>body{margin:0}</style></head><body><p>Text</p></body></html>',
   '_astro/haupt.AbCdEfGh.js': 'export const a = 1;',
   '_astro/a.AbCdEfGh.css': '.a{background:url(data:image/png;base64,AA==)}',
+};
+
+// Unabhängig vom echten Bündel: Die App braucht seit D6 keine Code-Ausnahme.
+const DYNAMISCHER_EINTRAG = {
+  datei: 'probe', name: 'Function', hoechstzahl: 1,
+  grund: 'Konstruierter Eintrag zur Prüfung der begrenzten Ausnahme.',
 };
 
 // Konstruierter Ausschnitt mit denselben acht Aufrufstellen wie die Appadapter.
@@ -257,7 +264,7 @@ const k2Gegenproben = [
   ['at hinter ?.', { '_astro/haupt.AbCdEfGh.js': 'export const x = l?.at(0);' }, /at ohne Eintrag/],
   ['Laufzeitausnahme über der Höchstzahl', { '_astro/jspdf.es.min.AbCdEfGh.js': 'a.at(1); a.at(2); a.at(3); a.at(4); a.at(5);' }, /5 × at, erlaubt sind 4/],
   ['Adresse ohne Eintrag', { '_astro/haupt.AbCdEfGh.js': 'fetch("https://example.invalid/g");' }, /Adresse ohne Eintrag/],
-  ['erlaubte Adresse zu oft', { '_astro/html2canvas.AbCdEfGh.js': 'const a = "http://www.w3.org/2000/svg", b = "http://www.w3.org/2000/svg", c = "http://www.w3.org/2000/svg";' }, /3 × http:\/\/www\.w3\.org\/2000\/svg, erlaubt sind 2/],
+  ['erlaubte Adresse zu oft', { '_astro/index.astro_astro_type_script_index_0_lang.AbCdEfGh.js': 'const a = "http://www.w3.org/2000/svg", b = "http://www.w3.org/2000/svg";' }, /2 × http:\/\/www\.w3\.org\/2000\/svg, erlaubt sind 1/],
   ['erlaubte Adresse in anderer Datei', { '_astro/haupt.AbCdEfGh.js': 'const a = "http://www.w3.org/2000/svg";' }, /Adresse ohne Eintrag/],
   ['Skript in der Fehlerseite', { 'startfehler.html': '<!doctype html><html><head></head><body><script>1</script></body></html>' }, /Fehlerseite darf kein Skript/],
   ['Fehlerseite fehlt', { 'startfehler.html': null }, /startfehler\.html fehlt in dist/],
@@ -301,7 +308,7 @@ const k2Gegenproben = [
   ['window.eval', { '_astro/haupt.AbCdEfGh.js': 'window.eval("1");' }, /1 × eval ohne Eintrag in dynamischerCode/],
   ['new Function', { '_astro/haupt.AbCdEfGh.js': 'new Function("return 1");' }, /1 × Function ohne Eintrag in dynamischerCode/],
   ['setTimeout mit Text', { '_astro/haupt.AbCdEfGh.js': 'setTimeout("f()", 1);' }, /1 × setTimeout mit Text ohne Eintrag/],
-  ['Function in index.es über der Höchstzahl', { '_astro/index.es.AbCdEfGh.js': 'Function("return this")(); Function("x")();' }, /2 × Function, erlaubt sind 1/],
+  ['Function ohne frühere core-js-Ausnahme', { '_astro/probe.AbCdEfGh.js': 'Function("return this")(); Function("x")();' }, /2 × Function ohne Eintrag in dynamischerCode/],
   // Befunde aus Runde 2: Kommentarzeichen in Skript und Stil, Endtag mit Attribut,
   // kodierte Werte, Leerraum außerhalb von HTML, indirektes eval
   ['<!-- in einer Zeichenkette im Skript', { 'index.html': seite('<script>const x="<!--";a.replaceChildren();const y="-->";</script>') }, /index\.html: 1 × replaceChildren/],
@@ -347,11 +354,15 @@ for (const [liste, aendern] of [
   ['adressen mit name statt wortlaut', (v) => { v.adressen[0].name = v.adressen[0].wortlaut; delete v.adressen[0].wortlaut; }],
   ['laufzeitAusnahmen mit leerem Namen', (v) => { v.laufzeitAusnahmen[0].name = ''; }],
   ['adressen mit leerer Datei', (v) => { v.adressen[0].datei = ' '; }],
+  ['jspdfZusatzmodule fehlt', (v) => { delete v.jspdfZusatzmodule; }],
+  ['jspdfZusatzmodule mit leerer Chunkliste', (v) => { v.jspdfZusatzmodule.dateistaemme = []; }],
+  ['jspdfZusatzmodule mit ungültigem Kennzeichen', (v) => { v.jspdfZusatzmodule.kennzeichen = [null]; }],
 ]) {
   test(`K2 Gegenprobe Regeldatei: ${liste}`, () => {
     const vorgabe = structuredClone(VORGABE);
+    vorgabe.dynamischerCode = [{ ...DYNAMISCHER_EINTRAG }];
     aendern(vorgabe);
-    const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/index.es.AbCdEfGh.js': 'Function("a")(); Function("b")();' }), { vorgabe });
+    const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/probe.AbCdEfGh.js': 'Function("a")(); Function("b")();' }), { vorgabe });
     assert.ok(fehler.some((f) => /^app-pruefungen\.json: /.test(f)), fehler.join('\n'));
   });
 }
@@ -366,8 +377,62 @@ test('K2: Tags in Skripten und Kommentaren zählen nicht als Tags', () => {
   assert.deepEqual(fehler, []);
 });
 
-test('K2: Rückfall von core-js über Function mit Eintrag besteht', () => {
-  const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/index.es.AbCdEfGh.js': 'Function("return this")(); x instanceof Function;' }));
+test('K2: leere dynamischerCode-Liste besteht ohne TypeError', () => {
+  assert.deepEqual(VORGABE.dynamischerCode, []);
+  const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/probe.AbCdEfGh.js': 'x instanceof Function;' }));
+  assert.deepEqual(fehler, []);
+});
+
+test('K2: konstruierte Function-Ausnahme besteht bis zur Höchstzahl', () => {
+  const vorgabe = structuredClone(VORGABE);
+  vorgabe.dynamischerCode = [{ ...DYNAMISCHER_EINTRAG }];
+  const datei = '_astro/probe.AbCdEfGh.js';
+  const { fehler } = pruefeDist(ordner({ ...SAUBER, [datei]: 'Function("return this")(); x instanceof Function;' }), { vorgabe });
+  assert.deepEqual(fehler, []);
+  const gegenprobe = pruefeDist(ordner({ ...SAUBER, [datei]: 'Function("a")(); Function("b")();' }), { vorgabe });
+  assert.ok(gegenprobe.fehler.some(f => /2 × Function, erlaubt sind 1/.test(f)), gegenprobe.fehler.join('\n'));
+});
+
+for (const stamm of ['html2canvas', 'purify.es', 'index.es']) {
+  for (const endung of ['.AbCdEfGh.js', '.js', '.AbCdEfGh.mjs']) {
+    test(`K2 D6 Gegenprobe: nicht referenzierter ${stamm}${endung}-Chunk scheitert`, () => {
+      const { fehler } = pruefeDist(ordner({ ...SAUBER, [`_astro/${stamm}${endung}`]: 'export const x = 1;' }));
+      assert.ok(fehler.some(f => f.includes('optionaler jsPDF-Chunk')), fehler.join('\n'));
+    });
+  }
+}
+
+for (const kennzeichen of ['afterSanitize', 'IN_PLACE', 'Unable to find element in cloned iframe', 'zloirock', '__core-js_shared__']) {
+  for (const [datei, inhalt] of [
+    ['_astro/haupt.AbCdEfGh.js', `export const k = ${JSON.stringify(kennzeichen)};`],
+    ['index.html', seite(`<p>${kennzeichen}</p>`)],
+    ['_astro/a.AbCdEfGh.css', `/* ${kennzeichen} */`],
+  ]) {
+    test(`K2 D6 Gegenprobe: ${kennzeichen} in ${datei} scheitert`, () => {
+      const { fehler } = pruefeDist(ordner({ ...SAUBER, [datei]: inhalt }));
+      assert.ok(fehler.some(f => f.includes('Kennzeichen eines optionalen jsPDF-Moduls') && f.includes(kennzeichen)), fehler.join('\n'));
+    });
+  }
+}
+
+for (const modul of ['html2canvas', 'dompurify', 'canvg', 'core-js/modules/es.promise.js', '@anbieter/modul']) {
+  for (const pfad of [JSON.stringify(modul), `'${modul}'`, `\`${modul}\``]) {
+    test(`K2 D6 Gegenprobe: nackter import(${pfad}) scheitert`, () => {
+      const code = `import(${pfad});`;
+      const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/haupt.AbCdEfGh.js': code }));
+      assert.ok(fehler.some(f => f.includes('nackte Modulnamen')), fehler.join('\n'));
+    });
+  }
+}
+
+test('K2 D6: import() liest Escapes und prüft auch Inline-Module', () => {
+  const { fehler } = pruefeDist(ordner({ ...SAUBER, 'index.html': seite('<script type="module">import("dompu\\u0072ify")</script>') }));
+  assert.ok(fehler.some(f => f.includes('import("dompurify")') && f.includes('nackte Modulnamen')), fehler.join('\n'));
+});
+
+test('K2 D6: lokale import()-Pfade und jsPDF-Lademeldungen bleiben erlaubt', () => {
+  const code = 'import("./jspdf-zusatzmodule-leer.AbCdEfGh.js"); import(`../x.js`); import("/_astro/x.js"); const a = "Could not load html2canvas", b = "DOMPurify", c = "canvg";';
+  const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/haupt.AbCdEfGh.js': code }));
   assert.deepEqual(fehler, []);
 });
 
