@@ -10,10 +10,11 @@ import { syncBuiltinESMExports } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { erzeugeHinweise } from './hinweise-dritter.mjs';
 import { menschenlesbar, pruefeAusdruck, pruefePackliste, pruefeProjekt as pruefeProjektMitVorgaben, vorgabe } from './check-licenses.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
-const scratchpad = resolve(hier, '../scratchpad');
+const scratchpad = resolve(hier, '../scratchpad/test-check-licenses');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'lizenzen-test-'));
 test.after(() => rmSync(arbeit, { recursive: true, force: true }));
@@ -21,7 +22,12 @@ test.after(() => rmSync(arbeit, { recursive: true, force: true }));
 // Synthetische Bäume haben eigene Ausnahmen. Die echte Projektfreigabe wird
 // getrennt am unveränderten Baum geprüft, auch mit festem Ablaufdatum.
 function pruefeProjekt(wurzel, optionen = {}) {
-  return pruefeProjektMitVorgaben(wurzel, { ausnahmen: [], ...optionen });
+  return pruefeProjektMitVorgaben(wurzel, {
+    ausnahmen: [],
+    // Diese Fälle prüfen den npm-Graph; der Inventarweg hat eigene Gegenproben.
+    inventarPruefung: () => ({ fehler: [], platzhalter: 0 }),
+    ...optionen,
+  });
 }
 
 function schreiben(datei, inhalt) {
@@ -806,9 +812,15 @@ function cli(f, args) {
   // Derselbe Skriptinhalt mit eigenen Prüfdaten für den synthetischen Baum.
   const skript = join(f.wurzel, 'scripts/check-licenses.mjs');
   schreiben(skript, readFileSync(join(hier, 'check-licenses.mjs'), 'utf8'));
+  schreiben(join(f.wurzel, 'scripts/hinweise-pruefung.mjs'),
+    `export { pruefeInventar } from '${new URL('hinweise-pruefung.mjs', import.meta.url).href}';\n`);
+  const i = { formatVersion: 2, apache: { datei: 'LICENSE', sha256: createHash('sha256').update(readFileSync(join(f.wurzel, 'LICENSE'))).digest('hex') },
+    npm: [], eingebettet: [], buildHilfscode: [], android: { projektmodule: [], maven: [] }, ausnahmen: [] };
+  schreiben(join(f.wurzel, 'scripts/hinweise-dritter.json'), i);
+  schreiben(join(f.wurzel, 'app/src/hinweise-dritter.txt'), erzeugeHinweise(f.wurzel, i).toString('utf8'));
   schreiben(join(f.wurzel, 'scripts/check-licenses.json'), { ...vorgabe, einzelausnahmen: [] });
   return spawnSync(process.execPath, [skript, '--wurzel', f.wurzel, ...args], {
-    encoding: 'utf8', cwd: arbeit, env: { ...process.env, TEMP: arbeit, TMP: arbeit },
+    encoding: 'utf8', cwd: arbeit, env: process.env,
   });
 }
 
@@ -901,9 +913,11 @@ for (const inhalt of [null, '{']) {
     const f = probe();
     const skript = join(f.wurzel, 'scripts/check-licenses.mjs');
     schreiben(skript, readFileSync(join(hier, 'check-licenses.mjs'), 'utf8'));
+    schreiben(join(f.wurzel, 'scripts/hinweise-pruefung.mjs'),
+      `export { pruefeInventar } from '${new URL('hinweise-pruefung.mjs', import.meta.url).href}';\n`);
     if (inhalt !== null) schreiben(join(f.wurzel, 'scripts/check-licenses.json'), inhalt);
     const lauf = spawnSync(process.execPath, [skript, '--json', '--wurzel', f.wurzel], {
-      encoding: 'utf8', cwd: arbeit, env: { ...process.env, TEMP: arbeit, TMP: arbeit },
+      encoding: 'utf8', cwd: arbeit, env: process.env,
     });
     assert.equal(lauf.status, 1);
     assert.equal(lauf.stderr, '');

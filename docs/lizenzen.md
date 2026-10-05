@@ -283,7 +283,7 @@ Der Emulatorrahmen baut den Testempfänger sowie die Gegenprobe und die Variante
 
 ## Lauf und Befund
 
-Die Prüfung läuft offline, ohne npm-Aufruf und ohne Ausführung von Code oder Installationsskripten aus Abhängigkeiten:
+Die Prüfung läuft offline, ohne npm-Aufruf und ohne Ausführung von Installationsskripten aus Abhängigkeiten:
 
 ```text
 node scripts/check-licenses.mjs
@@ -307,6 +307,206 @@ Im Lauf vom 2026-09-29 trugen drei Pakete Installationshaken: `core-js` 3.50.0, 
 Das Skript erfasst `preinstall`, `install`, `postinstall` und `binding.gyp`. `prepare` und `prepack` sind keine hier geprüften Installationshaken für Registry-Pakete; Quellinstallationen aus Git benötigen eine eigene Prüfung. Lizenzfehler unterdrücken die Suche nach Hinweis- und Binärdateien nicht. Weder die Bereichseinordnung noch das Abschalten von Installationsskripten entfernt bereits enthaltene Programme. Der tatsächliche Build-Baum wurde für den lokalen Endstandlauf geprüft, siehe [F-Droid-Nachweis](fdroid-build.md); bei Änderungen ist diese Prüfung zu erneuern.
 
 ## Hinweise Dritter, Paketinhalt und verbleibende Arbeit
+
+### Werkzeuge für die Hinweise der App
+
+Stand: **Werkzeuge vorhanden, Inhalte mit Platzhaltern, Einbindung in die App folgt.**
+[`scripts/hinweise-dritter.json`](../scripts/hinweise-dritter.json) führt den vorläufigen
+Bestand nach dem Ersatz der optionalen jsPDF-Module. Die erzeugte Datei
+[`app/src/hinweise-dritter.txt`](../app/src/hinweise-dritter.txt) wird noch nicht in die
+App-Seite eingebunden. Sie ist keine abschließend geprüfte Sammlung der Hinweise.
+
+Das Inventar verwendet `formatVersion: 2`. Seine Felder:
+
+| Gruppe oder Feld | Bedeutung |
+|---|---|
+| `apache` | Repositorydatei `LICENSE` mit SHA-256 für den einmaligen Apache-2.0-Text. |
+| `npm` | Paketname `paket`, `version`, gewählte `lizenz`, Lockfile-`ort`, `imBuendel` und `lizenzdatei` mit paketrelativer `datei` und `sha256`. Bei OR-Angaben steht hier die gewählte Alternative. |
+| `eingebettet` | Fremdanteil mit `name`, enthaltendem `paket`, Paket-`ort`, `quelle`, Lizenzangabe, vollständigem `wortlaut` und `behaelter` mit paketrelativer Datei und SHA-256. `quelle` beschreibt die Herkunft; gelesen wird ausschließlich die Behälterdatei. |
+| `buildHilfscode` | Werkzeugpaket, Version, Lizenz, Paketort oder `null`, genaue normalisierte `module`, `imBuendel`, Quellbeleg und eigener `wortlaut`. Virtuelle Hilfen sind keine eigenen Lockfile-Orte. |
+| `android.projektmodule` | Modulname, belegte Version, Lizenz, Paketort oder `null` und Lizenzdatei beziehungsweise Wortlaut. |
+| `android.maven` | Je Artefakt `gruppe`, `name`, `version`, `lizenz` und gegebenenfalls zusätzliche Hinweise als `wortlaut`. |
+| `ausnahmen` | Ausgelieferter Lockfile-Ort ohne eigenes Web-Modul: Paket, Version, Lizenzwahl und nichtleerer `grund`. Ein Eintrag ohne passenden ausgelieferten Lockfile-Ort ist ein Fehler. |
+| `status` | Pflichtfeld jedes Gruppeneintrags: `platzhalter` oder `vollstaendig`. `wortlaut: null` ist nur bei einem Platzhalter zulässig, wenn das Format einen Wortlaut verlangt. |
+| `versionsbeleg` | Pflicht bei Null-Ort-Einträgen: bekannte Belegform `art`, repositoryrelative `datei` und SHA-256; beim Gradle-Projekt zusätzlich die gehashte Projektzuordnung unter `settings`. |
+| `lizenzentscheidung` | Offene Angabe des Platzhalterbestands mit unveränderter `angabe`, nichtleerem `grund` und gehashtem Quellenbeleg `beleg`; gezählt und benannt, im strengen Modus ein Fehler. |
+
+Der vorläufige Bestand umfasst acht npm-Pakete, 15 eingebettete Anteile, drei
+Hilfscodeeinträge, zwei Android-Projektmodule, 46 Maven-Artefakte und 18 Ausnahmen.
+Alle **92 Einträge** tragen `status: "platzhalter"`. Der Rolldown-Hilfscode aus dem
+Vorbestand erscheint im aktuellen Client-Modulprotokoll nicht und trägt
+`imBuendel: false`; die Inhaltsprüfung muss diesen Stand erneut abgleichen.
+Die ersetzten optionalen jsPDF-Module und ihr entfallener Unterbaum tragen die
+Ausnahmebegründung „im Bündel ersetzt, K2 prüft das Fehlen“. Die Lockfile-Kategorie
+„ausgeliefert“ bleibt eine Einordnung des Abhängigkeitsgraphen und ist keine
+Aussage darüber, welche Pakete tatsächlich gerenderten Code im Web-Bündel haben.
+`@capacitor/android` wird über das Android-Projektmodul erfasst.
+
+Die Befehle laufen offline aus der Repositorywurzel:
+
+```text
+node scripts/hinweise-dritter.mjs --schreiben
+node scripts/hinweise-dritter.mjs --pruefen
+npm run lizenzen
+node scripts/check-licenses.mjs --streng
+node scripts/check-licenses.mjs --buendel app/.astro/module-client.json
+node scripts/check-licenses.mjs --gradle-modell app/android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml
+```
+
+Der Generator liest ausschließlich Dateien innerhalb der Repositorywurzel,
+einschließlich installierter Pakete unter `node_modules`. Er prüft die SHA-256 der
+unveränderten Quellbytes **vor** der Übernahme. Die einzige Textnormalisierung ist
+CRLF beziehungsweise CR zu LF; Einrückungen, Zeilenumbrüche und übriger Wortlaut
+bleiben erhalten. Das Ergebnis hat feste Gruppen- und Eintragsreihenfolge,
+UTF-8 ohne BOM und LF. Die bestehende Regel `app/src/** text eol=lf` in
+`.gitattributes` gilt auch für die erzeugte Datei. Apache-2.0 steht einmal vor den
+Paketen; die betreffenden Einträge verweisen darauf. Zusatzhinweise bleiben eigene
+Wortlaute. Der vollständige Apache-Text muss von ihnen getrennt vorliegen.
+`--pruefen` vergleicht die Datei bytegenau; Erfolg bleibt ohne Konsolenausgabe.
+
+Die Lizenzprüfung verlangt für jeden ausgelieferten Lockfile-Ort einen
+Inventareintrag oder eine begründete Ausnahme. Sie vergleicht Namen, Versionen und
+die Lizenzwahl mit Lockfile und installiertem Manifest. Zusätzlich wird jede
+Lizenzwahl ausgelieferter npm-Pakete, eingebetteter Anteile, gerenderten
+Build-Hilfscodes, Android-Projektmodule und Maven-Artefakte zentral gegen den
+Bereich `ausgeliefert` in `scripts/check-licenses.json` geprüft. Der
+Werkzeugbereich darf gerenderten Hilfscode nicht freigeben. Auch Platzhalter
+werden geprüft. Gesperrte und unbekannte Angaben sind in jedem Modus Fehler,
+ausgenommen ausschließlich die unten festgelegten zwölf Übergangsangaben im
+Normalmodus. Ein Entscheidungsbeleg allein erlaubt keine weitere Ausnahme.
+
+Das Inventar verwendet Format 2. Null-Ort-Einträge benötigen einen
+`versionsbeleg`: Beim OXC-Hilfscode sind Identität und Version an die
+Quellkennung im installierten Rolldown-Code mit SHA-256 gebunden; beim erzeugten
+Cordova-Projekt an die Projektzuordnung in `app/android/settings.gradle` und
+`versionName` in seiner erzeugten Gradle-Datei. Die Version dieses Projekts ist
+`1.0`, nicht die frühere beschreibende Angabe „erzeugtes Geruest“. Fehlende oder
+veränderte Belege sind Fehler; der erzeugte Projektordner muss deshalb vor der
+Inventarprüfung vorhanden sein. Die Modulkennungen im Client-Protokoll werden
+zusätzlich gegen die belegte OXC-Version geprüft.
+
+Die zwölf folgenden Angaben des vorläufigen Bestands sind **offene
+Lizenzentscheidungen**, keine Freigaben. Die feste Liste in
+`scripts/hinweise-uebergang.mjs` bindet Gruppe, Identität, wörtliche Angabe,
+Belegdatei und SHA-256 unabhängig vom Inventar. Ein Test hält ihre Länge und
+ihren vollständigen Inhalt fest. Jede trägt eine `lizenzentscheidung`
+mit unveränderter Angabe, Grund und gehashtem Quellenbeleg. Im Normalmodus werden
+sie gezählt und einzeln benannt (`zusammenfassung.offeneLizenzen` und
+`offeneLizenzen` in JSON). Im strengen Modus ist jede ein benannter Fehler,
+zusätzlich zum Fehler für die 92 Platzhalter. Dieser Übergang erlaubt die Prüfung
+der vorbereiteten Werkzeuge, ohne ungeprüfte Angaben stillschweigend in die
+Freigabeliste aufzunehmen. Eine andere Identität oder Angabe, ein fehlender oder
+geänderter Beleg oder der Status `vollstaendig` darf diese Übergangsregel nicht
+nutzen. Die Regeln in
+`check-licenses.json` bleiben unverändert.
+
+| Paket / Anteil | Angabe | Gruppe |
+|---|---|---|
+| jsPDF / FileSaver.js | MIT (nur Verweis auf github.com/eligrey/FileSaver.js/blob/master/LICENSE.md) | eingebettet |
+| jsPDF / rgbcolor.js | @license Use it if you like it | eingebettet |
+| jsPDF / md5.js | Joseph Myers does not specify a particular license for his work. | eingebettet |
+| jsPDF / rc4.js | FPDF is released under a permissive license: there is no usage restriction. | eingebettet |
+| jsPDF / omggif.js | MIT-Text im Kommentar | eingebettet |
+| jsPDF / JPEGEncoder.js | BSD-3-Clause-Text im Kommentar | eingebettet |
+| jsPDF / WebPDecoder.js | WebM Software License Agreement + Additional IP Rights Grant (nur Haftungsausschluss und URLs im Kommentar); Port MIT | eingebettet |
+| jsPDF / standard_fonts_metrics.js | MIT + Adobe-AFM-Bedingungen (Wortlaut wie SPDX APAFML, Abgleich offen) | eingebettet |
+| jsPDF / BMPDecoder.js | keine Lizenzangabe in der Quelle | eingebettet |
+| jsPDF / ttffont.js | keine Lizenzangabe in der Quelle | eingebettet |
+| @oxc-project/runtime | noch zu belegen | buildHilfscode |
+| capacitor-cordova-android-plugins | noch zu belegen | android.projektmodule |
+
+Die jsPDF-Belege stehen jeweils am Behälter `dist/jspdf.es.min.js` im
+installierten Paket; die Fundstellen und SHA-256 stehen im
+[Inventar](../scripts/hinweise-dritter.json). Die übrigen beiden Belege sind
+zugleich die genannten Versionsquellen. Beschreibungen wie „MIT-Text im
+Kommentar“ sind keine geprüften SPDX-Ausdrücke. Eine spätere Entscheidung muss
+den Originaltext sichten, eine belegte Lizenzwahl festlegen oder die Auslieferung
+ändern. Die begründeten Lockfile-Ausnahmen bleiben im Inventar und im Abgleich;
+sie erscheinen nicht in der erzeugten Nutzerdatei. Standzeile und
+Platzhalterzeilen der verbleibenden Inhalte bleiben erhalten.
+
+`--buendel` liest ein abgeschlossenes Client-Modulprotokoll im Format 2 aus
+`app/.astro/`. Es nennt je Chunk Dateiname, Größe und SHA-256 der tatsächlich
+geschriebenen Ausgabe. Der Abgleich prüft diese Bytes gegen `app/dist`, die
+Importziele sowie die vollständige Menge der JS- und CSS-Ausgaben. Fehlende und
+zusätzliche Dateien scheitern. CSS-Ausgaben haben ebenfalls Größe und SHA-256;
+ihre genaue Zuordnung zu Quellmodulen liefert Vite/Rolldown hier nicht zuverlässig.
+Deshalb scheitern **im Modulgraphen sichtbare** Stil- und Asset-Module aus
+`node_modules` im gesamten Client-
+**und Server-Modulgraphen** ausdrücklich, auch mit null gerenderten JS-Bytes.
+Die Prüfung bildet die Abfrageleser von Vite und Astro nicht nach, sondern
+verlangt eine geschlossene Form: Ein Modul aus `node_modules` wird nur
+akzeptiert, wenn seine ganze Kennung ein einfacher Pfad mit der Endung `.js`,
+`.mjs`, `.cjs` oder `.json` ist, ohne jeden Abfrageanhang. Jede andere Form
+scheitert, auch übliche wie Teilmodule einer `.astro`-Datei aus einem Paket;
+im App-Build kommt keine solche Form vor. Pfadsegmente, die ein Dateisystem
+ohne Unterscheidung der Schreibweise oder Windows demselben Ordner zuordnet
+(andere Groß-/Kleinschreibung von `node_modules`, Segmente mit Punkt oder
+Leerzeichen am Ende, Kurzformen mit `~` und Ziffer), scheitern ebenfalls.
+Virtuelle Kennungen scheitern bei Stil-Endungen und bei Abfragen für
+Ressourcen (`url`, `raw`, `inline`, `worker`, `sharedworker`).
+**Grenze:** CSS-`@import` und CSS-`url(...)` in eigenen CSS-Dateien oder
+Style-Blöcken sowie `new URL(..., import.meta.url)` können Fremdinhalte
+übernehmen, ohne deren Herkunft als Fremdmodul im Graphen auszuweisen. Diese
+Wege werden nicht durch eine statische Prüfung der eigenen Quellen gesperrt.
+Der Abgleich bestätigt dafür keine Herkunftsabdeckung; sie benötigen eine
+gesonderte Inhaltsprüfung. Eine Mustersuche wäre kein belastbarer Ersatz für
+die Auswertung der CSS-, Astro- und Skriptsyntax.
+Serverseitig erzeugtes HTML, eingebettete Assets, Inhalte aus öffentlichen
+Dateien und von Erweiterungen direkt erzeugte Assets brauchen weiterhin eine
+Inhaltsprüfung; das Modulprotokoll beweist ihre vollständige Herkunft nicht.
+
+Jeder Paketort mit `renderedLength > 0` muss erfasst sein, und jeder mit
+`imBuendel: true` markierte Eintrag muss vorkommen. Verschachtelte Paketorte
+werden unterschieden. Nur der bereinigte Dateipfad entscheidet über den Paketort;
+Abfrageanhänge werden getrennt geprüft. Repositoryinterne absolute Modulpfade
+werden vor der Prüfung relativiert, auch in virtuellen Kennungen. Absolute Pfade,
+Laufwerkskennungen, UNC- und Windows-Namensraumpfade sind im gespeicherten
+Dateipfad verboten. Im einmal URL-dekodierten Abfrageanhang sind `//`, jeder
+Backslash und jedes Laufwerksmuster wie `C:` an jeder Stelle verboten;
+ein `/` am Anfang oder nach den geprüften Trennzeichen (auch Anführungszeichen)
+scheitert ebenfalls. Virtuelle
+Hilfen werden in beiden Richtungen anhand ihrer genauen Kennungen abgeglichen.
+Reine JS-Re-Exporte ohne gerenderte Bytes gelten nicht als eigener ausgelieferter
+Code; der Stil-/Asset-Schutz gilt trotzdem.
+
+Das Plugin in `scripts/modulprotokoll.mjs` sammelt mehrere Client-Ausgaben und
+lehnt gleiche Chunk-Dateinamen ab. Vor dem Build werden altes Protokoll und
+Zwischendatei entwertet. Bis zum vollständigen Astro-Build liegt nur eine
+Zwischendatei mit `abgeschlossen: false` vor; erst der Abschluss prüft die
+Ausgaben erneut und veröffentlicht das Protokoll atomar mit
+`abgeschlossen: true`. Ein abgebrochener Build hinterlässt kein gültiges
+Protokoll. Das sortierte JSON mit LF wird ausschließlich nach `app/.astro/`
+geschrieben, ohne Konsolenausgabe und ohne Änderungen an `dist`.
+`.astro/` ist von Git ausgeschlossen. Vites `build.license` wird nicht verwendet.
+
+`--gradle-modell` liest den `package`-Abschnitt des Release-Lint-Modells über
+`leseQuellXml` und den Parser des JDK. Zugelassen sind ausschließlich die am
+Release-Modell geprüften Formen: `dependencies` ohne Attribute,
+`compile` und `package` mit optionalem `roots` sowie blattförmige
+`dependency` mit `name` und optionalem `simpleName`. Unbekannte Knoten
+und Attribute scheitern auch im Compile-Abschnitt. Ein konstruierter Ausschnitt
+steht unter `scripts/pruefdaten/gradle-release-ausschnitt.xml`. Maven-Koordinaten
+und Projektmodule werden in beiden Richtungen verglichen; DTD und externe
+Entitäten sind ausgeschlossen. Ein Compile-Abschnitt ersetzt Package nicht.
+
+`app-bauen.mjs` liest das Modell im selben Lauf nach erfolgreichem
+`assembleRelease` (auch mit `:app:`-Präfix); fehlt es, scheitert der Lauf. Der
+direkte Lizenzlauf mit `--gradle-modell` liest die angegebene Datei. Es gibt keine
+Zeitregel zwischen Modell und APK. **Grenze: kein kausaler Herkunftsnachweis
+zwischen Modell und APK.** Weder Erzeugung im aktuellen Lauf noch zugehörige
+Artefakthashes werden belegt; Gradle kann Ausgaben wiederverwenden. Das Modell
+belegt weder vollständige Lizenzhinweise noch jeden eingebetteten AAR-/JAR-Anteil.
+
+Vor der Einbindung sind insbesondere die Originalwortlaute, die endgültige
+Paketliste, die Hilfscode-Lizenzen und die Android-Zusatzhinweise zu
+vervollständigen. Eingebettete Teile ohne oder mit besonderen Lizenzangaben
+benötigen weiterhin eine inhaltliche Prüfung. Vor dem ersten Einchecken neuer
+Fremdtexte ist die Übernahmeprüfung mit Quelle, Datum, Größe und SHA-256
+festzuhalten. Hashabgleich und Generator ersetzen diese Prüfung nicht. Das Entfernen
+eingebetteter Inventareinträge fällt automatisch nicht auf, auch nach einer
+Neugenerierung. Der endgültige Bestand benötigt deshalb eine eigene Inhaltsprüfung,
+einschließlich Chromium-Boundary und FlatBuffers in den Android-Artefakten.
 
 Die Prüfung liest Lizenz- und Hinweisdateien, bewertet deren Vollständigkeit jedoch nicht automatisch. Die beiden npm-Pakete bündeln im unten geprüften Stand keinen Fremdcode. Ihre Fremdabhängigkeiten werden über die Paketmanifeste angegeben. Gesammelte Originalhinweise und Lizenztexte tatsächlich gebündelter Fremdanteile gehören zum bündelnden Gastgeber, etwa zur Website, und offline lesbar in die App. Diese Hinweise bleiben anhand der jeweiligen Bündel zu vervollständigen. Eine Kennung in diesem Dokument ersetzt die Texte nicht. Auch Werkzeugpakete wie Rolldown und sharp enthalten weitere, nicht als eigene Lockfile-Pakete erfasste Anteile.
 

@@ -1,0 +1,11 @@
+<!-- Konstruierter Ausschnitt der Knoten- und Attributformen des Release-Modells. -->
+<dependencies>
+  <compile roots="org.probe:runtime:3.0.0@jar,:@@:probe-native::release">
+    <dependency name="org.probe:runtime:3.0.0@jar" simpleName="org.probe:runtime"/>
+    <dependency name=":@@:probe-native::release" simpleName="artifacts::probe-native"/>
+  </compile>
+  <package roots="org.probe:runtime:3.0.0@jar,:@@:probe-native::release">
+    <dependency name="org.probe:runtime:3.0.0@jar" simpleName="org.probe:runtime"/>
+    <dependency name=":@@:probe-native::release" simpleName="artifacts::probe-native"/>
+  </package>
+</dependencies>

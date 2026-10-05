@@ -108,7 +108,40 @@ node scripts/app-bauen.mjs --android --aufgabe assembleRelease --streng
 node scripts/app-bauen.mjs --android-quellen
 ```
 
-`--android` verwendet in der Voreinstellung `assembleDebug`. Der Ablauf ist: Rechenkern bauen, App-Seite mit Astro bauen, K1 und K2, `cap sync android`, K3 und K4, `scripts/android-build.mjs`, K5 an der erzeugten APK. Jeder Fehler beendet den Ablauf. `ASTRO_TELEMETRY_DISABLED=1` und `CI=1` gelten für alle Unterprozesse.
+`--android` verwendet in der Voreinstellung `assembleDebug`. Der Ablauf ist: Rechenkern bauen, App-Seite mit Astro bauen, K1 und K2, Hinweise Dritter mit Bündelabgleich, `cap sync android`, K3 und K4, `scripts/android-build.mjs`, bei `assembleRelease` Hinweise Dritter mit Gradle-Abgleich, K5 an der erzeugten APK. Jeder Fehler beendet den Ablauf. `ASTRO_TELEMETRY_DISABLED=1` und `CI=1` gelten für alle Unterprozesse.
+
+Auch `node scripts/app-bauen.mjs --web` führt nach K2 den Inventar- und
+Bündelabgleich aus. `--pruefen` verwendet das bereits vorhandene Modulprotokoll;
+für einen neuen Stand ist vorher zu bauen. Der Build liest
+`app/.astro/module-client.json`; nach `assembleRelease`, auch mit `:app:`-Präfix,
+liest er zusätzlich
+`app/android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml`.
+Das Modell wird im selben Lauf nach erfolgreichem `assembleRelease` gelesen.
+Ein fehlendes Modell beendet die Kette. Eine Zeitregel zwischen Modell und APK
+wird nicht geprüft. **Grenze: kein kausaler Herkunftsnachweis zwischen Modell
+und APK.** Die Prüfung belegt weder die Erzeugung des Modells im aktuellen Lauf
+noch zugehörige Artefakthashes; Gradle kann Ausgaben wiederverwenden.
+Der Android-Build im Debug-Modus benötigt
+kein Release-Modell. Beide Abgleiche verwenden den Normalmodus des Inventars:
+Platzhalter sind hier noch zugelassen. `app-bauen.mjs --streng` behält seine
+bisherige Bedeutung für Werkzeuge und Android-Arbeitskopie; für ein Inventar ohne
+Platzhalter ist gesondert `node scripts/check-licenses.mjs --streng` erforderlich.
+
+Die neuen Prüfungen bleiben im Erfolgsfall ohne Ausgabe. Nur Fehler erscheinen
+und brechen den Build ab. Das gilt auch für den F-Droid-prebuild, der `--web`
+aufruft: Die Auswertung behandelt unbekannte Protokollzeilen als Beanstandungen.
+Eine neue Erfolgszeile hätte ein Muster mit einer Belegzeile aus einem echten Lauf
+nötig gemacht. Deshalb bleiben `scripts/fdroid/app-meldungen.json` und dessen
+Fixtures unverändert. Ein neuer F-Droid-Lauf ist damit nicht vorweggenommen.
+
+Der Bündelabgleich bestätigt Paketorte mit gerenderten Modulen und die erfassten
+virtuellen Hilfen in beiden Richtungen. Er entdeckt keine zusätzlichen Fremdteile
+innerhalb einer Distribution. Der Gradle-Abgleich bestätigt Maven-Koordinaten und
+Projektmodule des `package`-Abschnitts des Release-Modells in beiden Richtungen;
+er prüft weder den Wortlaut noch die Vollständigkeit von Lizenz- und
+Urheberhinweisen in den Artefakten. Das Inventar und der Generator sind in
+[lizenzen.md](lizenzen.md#werkzeuge-für-die-hinweise-der-app) beschrieben.
+Stand: Werkzeuge vorhanden, Inhalte mit Platzhaltern, Einbindung in die App folgt.
 
 Unter Linux ist das Projekt-SDK nur mit der Gruppe „Build" eingerichtet. Der Release-Build mit strenger Prüfung startet dort so:
 

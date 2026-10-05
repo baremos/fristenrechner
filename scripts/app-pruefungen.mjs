@@ -569,7 +569,7 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
     const inhalt = ['.js', '.mjs', '.css', '.html'].includes(endung) ? readFileSync(pfad) : null;
     const text = inhalt?.toString('utf8') ?? null;
     if (text !== null) {
-      // D6: auch nicht referenzierte Chunks und Kennzeichen in HTML/CSS ablehnen.
+      // Optionale jsPDF-Module auch ohne Referenz und in HTML/CSS ablehnen.
       if (vorgabe.jspdfZusatzmodule.dateistaemme.includes(dateistamm(datei))) {
         fehler.push(`${datei}: optionaler jsPDF-Chunk ist im App-Bündel nicht erlaubt.`);
       }

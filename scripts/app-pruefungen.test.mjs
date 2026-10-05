@@ -188,7 +188,7 @@ const SAUBER = {
   '_astro/a.AbCdEfGh.css': '.a{background:url(data:image/png;base64,AA==)}',
 };
 
-// Unabhängig vom echten Bündel: Die App braucht seit D6 keine Code-Ausnahme.
+// Unabhängig vom echten Bündel: Die App braucht mit dem Ausschluss der optionalen jsPDF-Module keine Code-Ausnahme.
 const DYNAMISCHER_EINTRAG = {
   datei: 'probe', name: 'Function', hoechstzahl: 1,
   grund: 'Konstruierter Eintrag zur Prüfung der begrenzten Ausnahme.',
@@ -309,7 +309,7 @@ const k2Gegenproben = [
   ['new Function', { '_astro/haupt.AbCdEfGh.js': 'new Function("return 1");' }, /1 × Function ohne Eintrag in dynamischerCode/],
   ['setTimeout mit Text', { '_astro/haupt.AbCdEfGh.js': 'setTimeout("f()", 1);' }, /1 × setTimeout mit Text ohne Eintrag/],
   ['Function ohne frühere core-js-Ausnahme', { '_astro/probe.AbCdEfGh.js': 'Function("return this")(); Function("x")();' }, /2 × Function ohne Eintrag in dynamischerCode/],
-  // Befunde aus Runde 2: Kommentarzeichen in Skript und Stil, Endtag mit Attribut,
+  // Weitere Gegenproben: Kommentarzeichen in Skript und Stil, Endtag mit Attribut,
   // kodierte Werte, Leerraum außerhalb von HTML, indirektes eval
   ['<!-- in einer Zeichenkette im Skript', { 'index.html': seite('<script>const x="<!--";a.replaceChildren();const y="-->";</script>') }, /index\.html: 1 × replaceChildren/],
   ['Skript im Kommentar-Mantel', { 'index.html': seite('<script><!--\nlet a; a ||= 1;\n//--></script>') }, /index\.html: 1 × logische Zuweisung/],
@@ -323,7 +323,7 @@ const k2Gegenproben = [
   ['eval mit ?.()', { '_astro/haupt.AbCdEfGh.js': 'eval?.("1");' }, /1 × eval ohne Eintrag/],
   ['Function im Kommaausdruck', { '_astro/haupt.AbCdEfGh.js': '(0, Function)("x");' }, /1 × Function ohne Eintrag/],
   ['Stil-Element mit Ereignis-Attribut', { 'index.html': '<!doctype html><html><head><style onload="x()">a{}</style></head><body></body></html>' }, /Ereignis-Attribut onload/],
-  // Befunde aus Runde 3: Textinhalt, fremde Namensräume, eingebettete Dokumente, eval
+  // Weitere Gegenproben: Textinhalt, fremde Namensräume, eingebettete Dokumente, eval
   ['<!-- im Titel', { 'index.html': '<!doctype html><html><head><title><!--</title></head><body><script>eval("1")</script></body></html>' }, /1 × eval ohne Eintrag/],
   ['<!-- in noscript', { 'index.html': seite('<noscript><!--</noscript><script>eval("1")</script>') }, /1 × eval ohne Eintrag/],
   ['<!-- in textarea', { 'index.html': seite('<textarea><!--</textarea><script>eval("1")</script>') }, /1 × eval ohne Eintrag/],
@@ -395,7 +395,7 @@ test('K2: konstruierte Function-Ausnahme besteht bis zur Höchstzahl', () => {
 
 for (const stamm of ['html2canvas', 'purify.es', 'index.es']) {
   for (const endung of ['.AbCdEfGh.js', '.js', '.AbCdEfGh.mjs']) {
-    test(`K2 D6 Gegenprobe: nicht referenzierter ${stamm}${endung}-Chunk scheitert`, () => {
+    test(`K2 jsPDF-Zusatzmodule Gegenprobe: nicht referenzierter ${stamm}${endung}-Chunk scheitert`, () => {
       const { fehler } = pruefeDist(ordner({ ...SAUBER, [`_astro/${stamm}${endung}`]: 'export const x = 1;' }));
       assert.ok(fehler.some(f => f.includes('optionaler jsPDF-Chunk')), fehler.join('\n'));
     });
@@ -408,7 +408,7 @@ for (const kennzeichen of ['afterSanitize', 'IN_PLACE', 'Unable to find element 
     ['index.html', seite(`<p>${kennzeichen}</p>`)],
     ['_astro/a.AbCdEfGh.css', `/* ${kennzeichen} */`],
   ]) {
-    test(`K2 D6 Gegenprobe: ${kennzeichen} in ${datei} scheitert`, () => {
+    test(`K2 jsPDF-Zusatzmodule Gegenprobe: ${kennzeichen} in ${datei} scheitert`, () => {
       const { fehler } = pruefeDist(ordner({ ...SAUBER, [datei]: inhalt }));
       assert.ok(fehler.some(f => f.includes('Kennzeichen eines optionalen jsPDF-Moduls') && f.includes(kennzeichen)), fehler.join('\n'));
     });
@@ -417,7 +417,7 @@ for (const kennzeichen of ['afterSanitize', 'IN_PLACE', 'Unable to find element 
 
 for (const modul of ['html2canvas', 'dompurify', 'canvg', 'core-js/modules/es.promise.js', '@anbieter/modul']) {
   for (const pfad of [JSON.stringify(modul), `'${modul}'`, `\`${modul}\``]) {
-    test(`K2 D6 Gegenprobe: nackter import(${pfad}) scheitert`, () => {
+    test(`K2 jsPDF-Zusatzmodule Gegenprobe: nackter import(${pfad}) scheitert`, () => {
       const code = `import(${pfad});`;
       const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/haupt.AbCdEfGh.js': code }));
       assert.ok(fehler.some(f => f.includes('nackte Modulnamen')), fehler.join('\n'));
@@ -425,12 +425,12 @@ for (const modul of ['html2canvas', 'dompurify', 'canvg', 'core-js/modules/es.pr
   }
 }
 
-test('K2 D6: import() liest Escapes und prüft auch Inline-Module', () => {
+test('K2 jsPDF-Zusatzmodule: import() liest Escapes und prüft auch Inline-Module', () => {
   const { fehler } = pruefeDist(ordner({ ...SAUBER, 'index.html': seite('<script type="module">import("dompu\\u0072ify")</script>') }));
   assert.ok(fehler.some(f => f.includes('import("dompurify")') && f.includes('nackte Modulnamen')), fehler.join('\n'));
 });
 
-test('K2 D6: lokale import()-Pfade und jsPDF-Lademeldungen bleiben erlaubt', () => {
+test('K2 jsPDF-Zusatzmodule: lokale import()-Pfade und jsPDF-Lademeldungen bleiben erlaubt', () => {
   const code = 'import("./jspdf-zusatzmodule-leer.AbCdEfGh.js"); import(`../x.js`); import("/_astro/x.js"); const a = "Could not load html2canvas", b = "DOMPurify", c = "canvg";';
   const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/haupt.AbCdEfGh.js': code }));
   assert.deepEqual(fehler, []);
