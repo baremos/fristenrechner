@@ -1,6 +1,7 @@
 // Liest eine XML-Quelldatei mit dem Parser des JDK und gibt den Baum als JSON aus.
 // Aufruf: java scripts/XmlQuelle.java <Datei>
-// Nur Elemente und Attribute; Text muss Leerraum sein. Keine DTD oder eigenen Entitaeten.
+// Elemente und Attribute; Text muss ohne --textwerte Leerraum sein.
+// Keine DTD oder eigenen Entitaeten, auch nicht im Modus --textwerte.
 // Java-Quelle und JSON-Ausgabe enthalten nur ASCII, andere Zeichen werden maskiert.
 
 import java.io.InputStream;
@@ -17,8 +18,8 @@ import org.xml.sax.SAXParseException;
 
 public class XmlQuelle {
     public static void main(String[] args) {
-        if (args.length != 1) {
-            System.err.println("Aufruf: java XmlQuelle.java <Datei>");
+        if (args.length != 1 && !(args.length == 2 && args[1].equals("--textwerte"))) {
+            System.err.println("Aufruf: java XmlQuelle.java <Datei> [--textwerte]");
             System.exit(1);
         }
         try {
@@ -44,7 +45,7 @@ public class XmlQuelle {
             });
             StringBuilder ausgabe = new StringBuilder();
             try (InputStream strom = Files.newInputStream(Path.of(args[0]))) {
-                baum(leser.parse(strom), ausgabe);
+                baum(leser.parse(strom), ausgabe, args.length == 2);
             }
             System.out.println(ausgabe);
         } catch (Exception fehler) {
@@ -54,7 +55,7 @@ public class XmlQuelle {
         }
     }
 
-    private static void baum(Node knoten, StringBuilder ausgabe) throws SAXException {
+    private static void baum(Node knoten, StringBuilder ausgabe, boolean textwerte) throws SAXException {
         ausgabe.append("{\"name\":");
         text(knoten.getNodeType() == Node.DOCUMENT_NODE ? "#" : knoten.getNodeName(), ausgabe);
         ausgabe.append(",\"attribute\":{");
@@ -70,15 +71,18 @@ public class XmlQuelle {
         }
         ausgabe.append("},\"kinder\":[");
         boolean erstes = true;
+        StringBuilder inhalt = new StringBuilder();
         for (Node kind = knoten.getFirstChild(); kind != null; kind = kind.getNextSibling()) {
             switch (kind.getNodeType()) {
                 case Node.ELEMENT_NODE -> {
                     if (!erstes) ausgabe.append(',');
-                    baum(kind, ausgabe);
+                    baum(kind, ausgabe, textwerte);
                     erstes = false;
                 }
                 case Node.TEXT_NODE, Node.CDATA_SECTION_NODE -> {
-                    if (!kind.getNodeValue().chars().allMatch(c -> c == ' ' || c == '\t' || c == '\n' || c == '\r')) {
+                    if (textwerte) {
+                        inhalt.append(kind.getNodeValue());
+                    } else if (!kind.getNodeValue().chars().allMatch(c -> c == ' ' || c == '\t' || c == '\n' || c == '\r')) {
                         throw new SAXException();
                     }
                 }
@@ -86,7 +90,12 @@ public class XmlQuelle {
                 default -> throw new SAXException();
             }
         }
-        ausgabe.append("]}");
+        ausgabe.append(']');
+        if (textwerte) {
+            ausgabe.append(",\"text\":");
+            text(inhalt.toString(), ausgabe);
+        }
+        ausgabe.append('}');
     }
 
     private static void text(String wert, StringBuilder ausgabe) {

@@ -26,6 +26,9 @@ import { isDeepStrictEqual } from 'node:util';
 import { crc32, inflateRawSync } from 'node:zlib';
 import { parse } from '@babel/parser';
 import { findeJdk, standardSdk, vorgabe as werkzeugVorgabe, windows } from './werkzeuge.mjs';
+import { leseQuellXml } from './xml-quelle.mjs';
+export { leseQuellXml } from './xml-quelle.mjs';
+import { pruefeGradlePruefsummen } from './gradle-pruefsummen.mjs';
 
 const HIER = new URL('.', import.meta.url);
 export const VORGABE = JSON.parse(readFileSync(new URL('app-pruefungen.json', HIER), 'utf8'));
@@ -766,6 +769,9 @@ function versionscode(version) {
 export function pruefeGradle({ wurzel, vorgabe = VORGABE, umgebung = process.env } = {}) {
   const fehler = [];
   fehler.push(...pruefeNativeQuellen({ wurzel, umgebung }));
+  versucht(fehler, 'K4 Prüfsummen', () => {
+    fehler.push(...pruefeGradlePruefsummen({ datei: join(wurzel, 'app/android/gradle/verification-metadata.xml'), umgebung }).fehler);
+  });
   versucht(fehler, 'K4 Git', () => {
     // Nur der Index legt den Modus künftiger Klone fest. Der Dateisystemmodus
     // unter Windows belegt das Ausführungsrecht für einen Linux-Klon nicht.
@@ -823,17 +829,6 @@ export function pruefeGradle({ wurzel, vorgabe = VORGABE, umgebung = process.env
     }
   });
   return fehler;
-}
-
-// Wie SdkPruefung.java direkt aus der Quelle starten, ohne Compile-Schritt.
-function leseQuellXml(datei, java, umgebung) {
-  const lauf = spawnSync(java, [fileURLToPath(new URL('XmlQuelle.java', HIER)), datei], {
-    encoding: 'utf8', env: umgebung, timeout: 30_000,
-  });
-  if (lauf.error || lauf.status !== 0) {
-    throw new Error(`${basename(datei)}: XML-Quellprüfung fehlgeschlagen (${lauf.error?.code ?? `Rückgabewert ${lauf.status}`}).`);
-  }
-  return JSON.parse(lauf.stdout);
 }
 
 function pruefeExportPfade(baum) {

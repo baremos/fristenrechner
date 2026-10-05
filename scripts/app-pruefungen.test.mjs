@@ -11,7 +11,7 @@ import { standardSdk, windows } from './werkzeuge.mjs';
 
 const echteKonfiguration = JSON.parse(readFileSync(new URL('../app/capacitor.config.json', import.meta.url), 'utf8'));
 const projekt = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const scratchpad = process.env.TMP ?? join(projekt, 'scratchpad/paket-2.6/tmp');
+const scratchpad = join(projekt, 'scratchpad/test-app-pruefungen');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'app-pruefungen-'));
 after(() => rmSync(arbeit, { recursive: true, force: true }));
@@ -690,7 +690,7 @@ test('K3: Symlink-Ziel wird erfasst, die verlinkte Datei nicht gelesen', { skip:
 function gradleProbe() {
   const w = ordner({ 'scripts/toolchain.json': JSON.stringify(toolchain), 'app/package.json': JSON.stringify({ version: appVersion }) });
   nativeProbe(w);
-  for (const datei of ['app/build.gradle', 'build.gradle', 'variables.gradle', 'gradle/wrapper/gradle-wrapper.properties']) {
+  for (const datei of ['app/build.gradle', 'build.gradle', 'variables.gradle', 'gradle/wrapper/gradle-wrapper.properties', 'gradle/verification-metadata.xml']) {
     const ziel = join(w, 'app/android', datei);
     mkdirSync(dirname(ziel), { recursive: true });
     copyFileSync(join(projekt, 'app/android', datei), ziel);
@@ -714,6 +714,16 @@ function ersetze(w, datei, von, nach) {
 
 test('K4: eingecheckte Gradle-Werte, SDK-Bindungen und bin-Wrapper bestehen', () => {
   assert.deepEqual(pruefeGradle({ wurzel: gradleProbe() }), []);
+});
+test('K4 Gegenprobe: Prüfsummendatei fehlt', () => {
+  const w = gradleProbe();
+  rmSync(join(w, 'app/android/gradle/verification-metadata.xml'));
+  erwartetFehler('K4 fehlende Prüfsummendatei', pruefeGradle({ wurzel: w }), /verification-metadata.xml fehlt/);
+});
+test('K4 Gegenprobe: Metadatenprüfung abgeschaltet', () => {
+  const w = gradleProbe();
+  ersetze(w, 'app/android/gradle/verification-metadata.xml', '<verify-metadata>true', '<verify-metadata>false');
+  erwartetFehler('K4 abgeschaltete Metadatenprüfung', pruefeGradle({ wurzel: w }), /verify-metadata muss true sein/);
 });
 test('K4: Wrappermodus 100644 scheitert, git update-index --chmod=+x behebt ihn', () => {
   const w = gradleProbe();
