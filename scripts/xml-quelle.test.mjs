@@ -2,7 +2,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -12,16 +11,18 @@ const quelle = fileURLToPath(new URL('XmlQuelle.java', import.meta.url));
 const jdk = findeJdk();
 assert.ok(jdk.pfad, 'Die XML-Quellprüfung braucht ein JDK 21 nach docs/toolchain.md.');
 const java = join(jdk.pfad, 'bin', windows ? 'java.exe' : 'java');
-const arbeit = mkdtempSync(join(tmpdir(), 'xml-quelle-'));
+const scratchpad = fileURLToPath(new URL('../scratchpad/test-xml-quelle', import.meta.url));
+mkdirSync(scratchpad, { recursive: true });
+const arbeit = mkdtempSync(join(scratchpad, 'xml-quelle-'));
 after(() => rmSync(arbeit, { recursive: true, force: true }));
 
-function lese(xml) {
+function lese(xml, textwerte = false) {
   const ordner = join(arbeit, 'Quelle mit Leerzeichen und ü');
   mkdirSync(ordner, { recursive: true });
   const datei = join(ordner, 'quelle.xml');
   writeFileSync(datei, xml);
   // --source 17 prüft zugleich, dass keine neueren Sprachmittel nötig sind.
-  const lauf = spawnSync(java, ['--source', '17', quelle, datei], { encoding: 'utf8', timeout: 30_000 });
+  const lauf = spawnSync(java, ['--source', '17', quelle, datei, ...(textwerte ? ['--textwerte'] : [])], { encoding: 'utf8', timeout: 30_000 });
   assert.ifError(lauf.error);
   return lauf;
 }
@@ -75,4 +76,21 @@ test('XML-Quelle löst XInclude nicht auf', () => {
   assert.deepEqual(JSON.parse(r.stdout).kinder[0].kinder, [
     { name: 'xi:include', attribute: { href: 'file:///nicht-lesen.xml' }, kinder: [] },
   ]);
+});
+
+test('XML-Quelle: Textwerte nur im ausdrücklich gewählten Modus, auch CDATA', () => {
+  const r = lese('<r>\n<v>true</v><v><![CDATA[false]]></v>ä&amp;</r>', true);
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(JSON.parse(r.stdout).kinder[0], {
+    name: 'r', attribute: {}, text: '\nä&', kinder: [
+      { name: 'v', attribute: {}, kinder: [], text: 'true' },
+      { name: 'v', attribute: {}, kinder: [], text: 'false' },
+    ],
+  });
+});
+test('XML-Quelle: Textmodus öffnet keinen Weg für DTD oder Entitäten', () => {
+  const r = lese('<!DOCTYPE r [<!ENTITY geheim SYSTEM "file:///nicht-lesen.txt">]><r>&geheim;</r>', true);
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, '');
+  assert.equal(r.stderr.trim(), 'XML-Datei ist ungueltig oder nicht lesbar.');
 });
