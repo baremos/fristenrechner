@@ -299,12 +299,10 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
     try {
       const netlog = netlogLesen(readFileSync(netlogDatei, 'utf8'));
       protokoll.netlogAbschluss = netlog.netlogAbschluss;
-      const nachweis = netzNachweis(netlog, protokoll.netzanfragen, { messende: protokoll.netzMessende,
-        prozessende: protokoll.ergebnisse.find(e => e.id === 'ENDE') });
+      const nachweis = netzNachweis(netlog, protokoll.netzanfragen);
       protokoll.hintergrundanfragen = nachweis.hintergrundanfragen;
       protokoll.netzVerbindungen = nachweis.verbindungen;
       protokoll.netzUnklar = nachweis.unklar;
-      protokoll.netzBrowserendeAbbrueche = nachweis.beimBrowserendeAbgebrochen;
       protokoll.netzanfragen.push(...nachweis.seitenverdacht);
       protokoll.grenzen.push(...nachweis.grenzen);
       if (nachweis.hintergrundanfragen.some(a => a.status === 'blockiert')) protokoll.grenzen.push(
@@ -317,7 +315,6 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
       await pruefe('NETZ-VERBINDUNGEN', 'Keine tatsächliche externe Browserverbindung in den auswertbaren NetLog-Ereignissen', () => {
         if (nachweis.verbindungen.length) throw new Error(`${nachweis.verbindungen.length} externe Verbindungen; siehe netzVerbindungen.`);
         return { externeVerbindungen: 0, netlogVollstaendig: netlog.netlogAbschluss.vollstaendig,
-          beimBrowserendeAbgebrocheneHintergrundanfragen: nachweis.beimBrowserendeAbgebrochen.length,
           blockierteHintergrundversuche: nachweis.hintergrundanfragen.filter(a => a.status === 'blockiert').length, proxyVerbindungen: protokoll.proxyVerbindungen.length };
       });
       if (nachweis.unklar.length) throw new Error(`${nachweis.unklar.length} ungeklärte Netzereignisse; siehe netzUnklar.`);

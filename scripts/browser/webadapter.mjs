@@ -6,6 +6,7 @@ import { basename, join } from 'node:path';
 import { strFromU8, unzipSync } from 'fflate';
 import { browserDownload, echterMausklick, exportInstrumentationQuelle } from './download.mjs';
 import { browserErgebnis, Messfehler, messbefehl, Produktabweichung } from './fehler.mjs';
+import { sperrpruefungQuelle } from './bedienelement.mjs';
 
 const SCHLUESSEL = 'baremos-fristenrechner-projekt-v1';
 const IMPORT_PROJEKT = {
@@ -101,10 +102,13 @@ export async function pruefeWebadapter(kontext) {
 
   // Cdp.evaluate setzt userGesture:true. Für Messungen darf keine künstliche
   // Nutzeraktivierung entstehen; allein Input.dispatch* löst die Bedienung aus.
-  async function wert(expression) {
+  async function wert(expression, optionen) {
     const antwort = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: false });
-    return browserErgebnis(antwort);
+    return browserErgebnis(antwort, optionen);
   }
+
+  const produktwert = expression => wert(expression, { produktbefund: true });
+  const bedienbar = selector => produktwert(`(() => {const gesperrt=${sperrpruefungQuelle};const selector=${JSON.stringify(selector)};const e=document.querySelector(selector);if(!e)return {produktabweichung:{art:'element-fehlt',selector}};if(gesperrt(e))return {produktabweichung:{art:'element-gesperrt',selector}};return true;})()`);
 
   async function bis(fn, beschreibung, timeout = 8000, produkt = false) {
     const ende = Date.now() + timeout;
@@ -121,10 +125,10 @@ export async function pruefeWebadapter(kontext) {
   const inhalt = selector => wert(`document.querySelector(${JSON.stringify(selector)})?.textContent ?? null`);
   const feldwert = name => wert(`document.querySelector(${JSON.stringify(`[name="${name}"]`)})?.value ?? null`);
   const speicher = () => wert(`localStorage.getItem(${JSON.stringify(SCHLUESSEL)})`);
-  const dateiaktionenFrei = () => wert(`['save-json','export-excel','export-pdf','open-json','reset-project'].every(id => {const e=document.getElementById(id);return e && !e.disabled;})`);
+  const dateiaktionenFrei = () => wert(`(() => {const gesperrt=${sperrpruefungQuelle};return ['save-json','export-excel','export-pdf','open-json','reset-project'].every(id => {const e=document.getElementById(id);return e && !gesperrt(e);});})()`);
 
   async function bereit() {
-    await bis(() => wert(`(() => {for(const selector of ['[data-fristenrechner]','#save-json','#storage-status']){if(!document.querySelector(selector))return {produktabweichung:{art:'element-fehlt',selector}};}if(document.querySelector('#storage-status').textContent.includes('wird geladen'))return false;if(document.querySelector('#save-json').disabled)return {produktabweichung:{art:'element-gesperrt',selector:'#save-json'}};return true;})()`), 'Initialisierung der Probeseite', 8000, true);
+    await bis(() => produktwert(`(() => {const gesperrt=${sperrpruefungQuelle};for(const selector of ['[data-fristenrechner]','#save-json','#storage-status']){if(!document.querySelector(selector))return {produktabweichung:{art:'element-fehlt',selector}};}if(document.querySelector('#storage-status').textContent.includes('wird geladen'))return false;if(gesperrt(document.querySelector('#save-json')))return {produktabweichung:{art:'element-gesperrt',selector:'#save-json'}};return true;})()`), 'Initialisierung der Probeseite', 8000, true);
   }
 
   async function frisch(vorab) {
@@ -153,14 +157,17 @@ export async function pruefeWebadapter(kontext) {
     return echterMausklick({ send, wert, selector });
   }
 
-  async function taste(key, code, windowsVirtualKeyCode, extra = {}) {
+  async function taste(selector, key, code, windowsVirtualKeyCode, extra = {}) {
+    await bedienbar(selector);
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode, ...extra });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode, modifiers: extra.modifiers ?? 0 });
   }
 
   async function eingabe(name, text) {
-    await klick(`[name="${name}"]`);
-    await taste('a', 'KeyA', 65, { modifiers: 2 });
+    const selector = `[name="${name}"]`;
+    await klick(selector);
+    await taste(selector, 'a', 'KeyA', 65, { modifiers: 2 });
+    await bedienbar(selector);
     await send('Input.insertText', { text });
     assert.equal(await feldwert(name), text, `Eingabe in ${name}`);
   }
@@ -194,7 +201,7 @@ export async function pruefeWebadapter(kontext) {
       if (aktivierung === 'Maus') await klick('#open-json');
       else {
         // Fokus über CDP; der Tastaturrundgang selbst gehört zur späteren Phase tastatur.
-        await wert(`(() => {const selector='#open-json';const e=document.querySelector(selector);if(!e)return {produktabweichung:{art:'element-fehlt',selector}};if(e.disabled)return {produktabweichung:{art:'element-gesperrt',selector}};return true;})()`);
+        await bedienbar('#open-json');
         const dokument = await send('DOM.getDocument');
         if (!dokument?.root?.nodeId) throw new Messfehler('CDP-Dokument für den Tastaturfokus nicht bestätigt.');
         const auswahl = await send('DOM.querySelector', { nodeId: dokument.root.nodeId, selector: '#open-json' });
@@ -202,17 +209,18 @@ export async function pruefeWebadapter(kontext) {
         const { nodeId } = auswahl;
         if (nodeId === 0) throw new Produktabweichung({ art: 'element-fehlt', selector: '#open-json' });
         await send('Page.bringToFront');
+        await bedienbar('#open-json');
         await send('DOM.focus', { nodeId });
         if (!await wert(`document.hasFocus() && document.activeElement === document.querySelector('#open-json')`)) throw new Messfehler('Fokus am Dateifeld nicht bestätigt.');
-        if (aktivierung === 'Enter') await taste('Enter', 'Enter', 13, { text: '\r' });
-        else await taste(' ', 'Space', 32, { text: ' ' });
+        if (aktivierung === 'Enter') await taste('#open-json', 'Enter', 'Enter', 13, { text: '\r' });
+        else await taste('#open-json', ' ', 'Space', 32, { text: ' ' });
       }
     };
     let abbruchereignisse;
     if (datei === null) abbruchereignisse = await dateiauswahlAbbrechen({ send, aktivieren, wert, bis });
     else {
       await aktivieren();
-      const auswahl = await bis(() => cdp.events.slice(anfang).find(e => methode(e) === 'Page.fileChooserOpened'), `Dateiauswahl nach ${aktivierung}`);
+      const auswahl = await bis(() => cdp.events.slice(anfang).find(e => methode(e) === 'Page.fileChooserOpened'), `Dateiauswahl nach ${aktivierung}`, 8000, true);
       if (!auswahl.params.backendNodeId) throw new Messfehler('Dateiauswahl ohne belegtes Dateifeld.');
       await send('DOM.setFileInputFiles', { backendNodeId: auswahl.params.backendNodeId, files: [datei] });
     }
@@ -233,7 +241,7 @@ export async function pruefeWebadapter(kontext) {
   async function download(selector, endung, meldung) {
     const nachweis = { id: `W5-${endung}`, format: endung, selector };
     protokoll.messungen.push(nachweis);
-    const seitenzustand = () => wert(`({status:document.querySelector(${JSON.stringify(meldung)})?.textContent,disabled:document.querySelector(${JSON.stringify(selector)})?.disabled,fokus:document.hasFocus(),klicks:globalThis.__browserLaufExportKlicks,anker:globalThis.__browserLaufDownloadAnker,blobs:globalThis.__browserLaufBlobURLs})`);
+    const seitenzustand = () => wert(`(() => {const gesperrt=${sperrpruefungQuelle};const e=document.querySelector(${JSON.stringify(selector)});return {status:document.querySelector(${JSON.stringify(meldung)})?.textContent,disabled:e ? gesperrt(e) : null,fokus:document.hasFocus(),klicks:globalThis.__browserLaufExportKlicks,anker:globalThis.__browserLaufDownloadAnker,blobs:globalThis.__browserLaufBlobURLs};})()`);
     let start;
     try {
       nachweis.vorher = await seitenzustand();

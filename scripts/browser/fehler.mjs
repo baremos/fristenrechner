@@ -19,11 +19,13 @@ export function produktbefundPruefen(wert) {
   throw new Produktabweichung(befund);
 }
 
-export function browserErgebnis(antwort) {
+// Nur ausdrücklich benannte Messausdrücke dürfen Produktmarker liefern.
+// Gewöhnliche Seitendaten werden unverändert durchgereicht.
+export function browserErgebnis(antwort, { produktbefund = false } = {}) {
   if (antwort?.exceptionDetails) throw new Messfehler(`Browserausdruck fehlgeschlagen: ${antwort.exceptionDetails.exception?.description ?? antwort.exceptionDetails.text}`);
   if (!antwort?.result || typeof antwort.result !== 'object'
       || (!Object.hasOwn(antwort.result, 'value') && antwort.result.type !== 'undefined')) throw new Messfehler('Browserausdruck ohne Messergebnis.');
-  return produktbefundPruefen(antwort.result.value);
+  return produktbefund ? produktbefundPruefen(antwort.result.value) : antwort.result.value;
 }
 
 export async function messbefehl(fn) {

@@ -32,7 +32,7 @@ const protokoll = (daten = {}) => neuesProtokoll({
 });
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const testBasis = join(wurzel, 'scratchpad/tmp-v6a-r7');
+const testBasis = join(wurzel, 'scratchpad/tmp-v6a-r8');
 mkdirSync(testBasis, { recursive: true });
 const temp = realpathSync(testBasis);
 const arbeit = mkdtempSync(join(temp, 'browser-tests-'));

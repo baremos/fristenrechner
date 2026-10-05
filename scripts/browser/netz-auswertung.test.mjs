@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BROWSERENDE_ABBRUCH, netlogLesen, netzNachweis } from './netz-auswertung.mjs';
+import { netlogLesen, netzNachweis } from './netz-auswertung.mjs';
+import { auswerten } from './auswertung.mjs';
+import { ERGEBNISKATALOG } from './ergebniskatalog.mjs';
 
 const namen = ['URL_REQUEST_START_JOB', 'HTTP_STREAM_JOB_CONTROLLER_BOUND', 'HTTP_STREAM_JOB_CONTROLLER_PROXY_SERVER_RESOLVED',
   'URL_REQUEST_DELEGATE_CONNECTED', 'HTTP_TRANSACTION_READ_RESPONSE_HEADERS', 'TCP_CONNECT', 'SOCKET_BYTES_SENT',
@@ -21,91 +23,27 @@ const proxy = (id = 1, port = 54321) => [
   e('HTTP_STREAM_JOB_CONTROLLER_PROXY_SERVER_RESOLVED', id + 10, 0, { proxy_chain: `[127.0.0.1:${port}]` }, 5),
 ];
 
-// Kleine konstruierte Anfrage-/Stream-Kette mit erfundenen Kennungen und Ziel.
-// Zeitbezug: NetLog time + timeTickOffset = UTC in Millisekunden.
-function browserendeProbe() {
-  const events = [e('REQUEST_ALIVE', 1, 1), start(), e('HTTP_STREAM_JOB_CONTROLLER', 11, 1, {}, 5),
-    ...proxy(), e('HTTP_STREAM_JOB', 21, 1, { source_dependency: { id: 11, type: 5 } }, 6),
+// Konstruierte Hintergrundanfrage ohne Request-Job-Abschluss, Sperr- oder
+// Verbindungsbeleg. Späte CANCELLED-/Lebensdauer-Enden ändern das nicht.
+test('Beim Messende offene Hintergrundanfrage bleibt ungeklärt und macht den Netznachweis ungültig', () => {
+  const events = [e('REQUEST_ALIVE', 1, 1), start(),
+    e('HTTP_STREAM_JOB_CONTROLLER', 11, 1, {}, 5), ...proxy(),
+    e('HTTP_STREAM_JOB', 21, 1, {}, 6),
     e('HTTP_STREAM_JOB_CONTROLLER_BOUND', 11, 0, { source_dependency: { id: 21, type: 6 } }, 5),
     e('CANCELLED', 1), e('HTTP_STREAM_JOB', 21, 2, {}, 6),
     e('HTTP_STREAM_JOB_CONTROLLER', 11, 2, {}, 5), e('REQUEST_ALIVE', 1, 2)];
-  events.forEach((e, i) => { e.time = i < 7 ? '120' : '150'; });
-  const daten = log(events); daten.constants.timeTickOffset = '1700000000000';
-  const kontext = { messende: '2023-11-14T22:13:20.100Z', prozessende: {
-    status: 'bestanden', prozessPruefung: { proben: [{ vorhanden: false, code: 'ESRCH' }] },
-    exit: { status: 'regulär' }, nachkommen: { bekannteStatus: 'abwesend bestätigt' },
-  } };
-  return { daten, kontext, lesen: () => netlogLesen(JSON.stringify(daten)) };
-}
-
-test('Belegter Browserende-Abbruch wird eigens gezählt und behält Anfrage, Abbruchzeiten und abgeschlossene Quellen', () => {
-  const p = browserendeProbe(), r = netzNachweis(p.lesen(), [], p.kontext);
-  assert.equal(r.unklar.length + r.verbindungen.length, 0);
-  assert.equal(r.beimBrowserendeAbgebrochen.length, 1);
-  assert.equal(r.hintergrundanfragen[0].status, BROWSERENDE_ABBRUCH);
-  const beleg = r.beimBrowserendeAbgebrochen[0].beleg;
-  assert.equal(beleg.cancelledUtc, '2023-11-14T22:13:20.150Z');
-  assert.equal(beleg.requestAliveEndeUtc, beleg.cancelledUtc);
-  assert.deepEqual(beleg.quellen.map(q => q.sourceId), [1, 11, 21]);
-});
-
-test('Vor Messende begonnene, bis Browserende offene Anfrage braucht dieselben vollständigen Abbruchbelege', () => {
-  const p = browserendeProbe();
-  p.daten.events.forEach(e => { if (e.time === '120') e.time = '90'; });
-  const r = netzNachweis(p.lesen(), [], p.kontext);
-  assert.equal(r.beimBrowserendeAbgebrochen.length, 1); assert.equal(r.unklar.length, 0);
-});
-
-test('NetLog-Zeitbezug als JSON-Zahl liefert denselben belegten Browserende-Abbruch', () => {
-  const p = browserendeProbe(); p.daten.constants.timeTickOffset = Number(p.daten.constants.timeTickOffset);
-  const r = netzNachweis(p.lesen(), [], p.kontext);
-  assert.equal(r.beimBrowserendeAbgebrochen.length, 1); assert.equal(r.unklar.length, 0);
-});
-
-for (const [fall, aendern] of [
-  ['ohne CANCELLED', p => { p.daten.events = p.daten.events.filter(e => e.type !== typen.CANCELLED); }],
-  ['mit bereits abgeschlossenem Request-Job', p => { p.daten.events.splice(7, 0, { ...ende(0), time: '125' }); }],
-  ['ohne REQUEST_ALIVE-Ende', p => { p.daten.events.pop(); }],
-  ['ohne REQUEST_ALIVE-Beginn', p => { p.daten.events.shift(); }],
-  ['mit offenem Stream-Job', p => { p.daten.events = p.daten.events.filter(e => !(e.type === typen.HTTP_STREAM_JOB && e.phase === 2)); }],
-  ['mit fehlender Quellenabhängigkeit', p => { p.daten.events = p.daten.events.filter(e => e.source.id !== 21); }],
-  ['mit abweichendem Initiator', p => { p.daten.events.find(e => e.type === typen.URL_REQUEST_START_JOB).params.initiator = 'https://anderer.example'; }],
-  ['mit abweichender Anfrageart', p => { p.daten.events.find(e => e.type === typen.URL_REQUEST_START_JOB).params.request_type = 'main frame'; }],
-  ['ohne bestätigtes Prozessende', p => { p.kontext.prozessende.status = 'ungültig'; }],
-  ['ohne Abwesenheitsprobe', p => { p.kontext.prozessende.prozessPruefung.proben = []; }],
-  ['mit abnormalem Exit', p => { p.kontext.prozessende.exit.status = 'abnormal'; }],
-  ['mit offenem Nachprozess', p => { p.kontext.prozessende.nachkommen.bekannteStatus = 'Ende nicht bestätigt'; }],
-  ['ohne protokolliertes Messende', p => { delete p.kontext.messende; }],
-  ['ohne NetLog-Zeitbezug', p => { delete p.daten.constants.timeTickOffset; }],
-  ['mit Abbruch vor dem Messende', p => { p.kontext.messende = '2023-11-14T22:13:20.200Z'; }],
-  ['mit Beginn vor Messende ohne Abbruchbeleg', p => { p.daten.events.forEach(e => { if (e.time === '120') e.time = '90'; }); p.daten.events = p.daten.events.filter(e => e.type !== typen.CANCELLED); }],
-]) test(`Browserende-Ausnahme ${fall} bleibt ungeklärt`, () => {
-  const p = browserendeProbe(); aendern(p);
-  const r = netzNachweis(p.lesen(), [], p.kontext);
-  assert.equal(r.beimBrowserendeAbgebrochen.length, 0);
-  assert.ok(r.unklar.length > 0);
-});
-
-test('Abgeschnittenes NetLog erlaubt selbst mit allen erhaltenen Abbruchereignissen keine Browserende-Ausnahme', () => {
-  const p = browserendeProbe(), daten = p.lesen(); daten.netlogAbschluss.vollstaendig = false;
-  const r = netzNachweis(daten, [], p.kontext);
-  assert.equal(r.beimBrowserendeAbgebrochen.length, 0); assert.ok(r.unklar.length > 0);
-});
-
-test('Seitenspur hat auch bei vollständigem Browserende-Abbruch Vorrang', () => {
-  const p = browserendeProbe(), r = netzNachweis(p.lesen(), [{ url: 'https://browser.example/update' }], p.kontext);
-  assert.equal(r.beimBrowserendeAbgebrochen.length, 0); assert.equal(r.seitenverdacht.length, 1);
-});
-
-for (const verbunden of [false, true]) test(`Transportbeleg (verbunden=${verbunden}) gewinnt gegen den Browserende-Abbruch`, () => {
-  const p = browserendeProbe();
-  p.daten.events.push(e('HTTP_STREAM_JOB_CONTROLLER_BOUND', 21, 0, { source_dependency: { id: 31, type: 2 } }, 6),
-    e('TCP_CONNECT', 31, 1, { address_list: ['203.0.113.1:443'] }, 2));
-  if (verbunden) p.daten.events.push(e('TCP_CONNECT', 31, 2, { remote_address: '203.0.113.1:443' }, 2));
-  const r = netzNachweis(p.lesen(), [], p.kontext);
-  assert.equal(r.beimBrowserendeAbgebrochen.length, 0);
-  if (verbunden) { assert.equal(r.verbindungen.length, 1); assert.equal(r.hintergrundanfragen[0].status, 'verbunden'); }
-  else assert.ok(r.unklar.length > 0);
+  events.forEach((event, i) => { event.time = i < 7 ? '90' : '150'; });
+  const r = netzNachweis(netlogLesen(JSON.stringify(log(events))));
+  assert.equal(r.hintergrundanfragen[0].status, 'unklar');
+  assert.equal(r.hintergrundanfragen[0].beleg, null);
+  assert.equal(r.verbindungen.length, 0);
+  assert.equal(r.unklar.length, 1);
+  assert.match(r.unklar[0].grund, /ohne belegte Sperre oder Verbindung/);
+  const protokoll = { phase: 'webadapter', ergebnisse: [
+    ...ERGEBNISKATALOG.webadapter.map(id => ({ id, status: 'bestanden' })),
+    ...(r.unklar.length ? [{ id: 'NETZ-NACHWEIS', status: 'ungültig' }] : []),
+  ] };
+  assert.equal(auswerten(protokoll).code, 2);
 });
 
 test('Vollständiges NetLog wird samt Abschluss bestätigt, einschließlich BOM und Formatierung', () => {

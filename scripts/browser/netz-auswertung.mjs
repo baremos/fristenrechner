@@ -1,5 +1,6 @@
 // Reine NetLog-Auswertung. CDP-Anfragen der Seite bleiben ein eigener strenger
 // Nachweis; ein fehlgeschlagener Browser-Hintergrundversuch ist kein Seitenfehler.
+// Eine beim Messende noch offene Hintergrundanfrage macht den Lauf ungültig; der Lauf ist zu wiederholen.
 import { anfrageBewerten } from './auswertung.mjs';
 import { browserOberflaecheBeleg } from './browser-oberflaeche.mjs';
 
@@ -79,7 +80,6 @@ const lokal = adresse => typeof adresse === 'string' && /^127\.0\.0\.1:[0-9]+$/.
 const schluessel = quelle => `${quelle?.type}:${quelle?.id}`;
 const negativ = params => Object.entries(params ?? {}).some(([k, v]) => /(?:^|_)net_error$/.test(k) && typeof v === 'number' && v < 0);
 const datenEreignis = name => /^(?:SOCKET_BYTES_(?:SENT|RECEIVED)|UDP_BYTES_(?:SENT|RECEIVED)|QUIC_SESSION_PACKET_(?:SENT|RECEIVED)|QUIC_SESSION_CRYPTO_HANDSHAKE_COMPLETE|QUIC_SESSION_HANDSHAKE_DONE_FRAME_RECEIVED)$/.test(name);
-export const BROWSERENDE_ABBRUCH = 'beim Browserende abgebrochen, keine Verbindung';
 
 /**
  * Fehlende Abschlüsse/Zuordnung ergeben unklar, niemals stillschweigend grün.
@@ -90,8 +90,8 @@ export const BROWSERENDE_ABBRUCH = 'beim Browserende abgebrochen, keine Verbindu
  * Quellenformate: Chromium net/log/net_log_event_type_list.h sowie
  * net/dns/host_resolver_manager.cc (StartIPv6ReachabilityCheck).
  */
-export function netzNachweis(daten, seitenanfragen = [], { messende, prozessende } = {}) {
-  const ergebnis = { hintergrundanfragen: [], beimBrowserendeAbgebrochen: [], verbindungen: [], unklar: [], grenzen: [], seitenverdacht: [] };
+export function netzNachweis(daten, seitenanfragen = []) {
+  const ergebnis = { hintergrundanfragen: [], verbindungen: [], unklar: [], grenzen: [], seitenverdacht: [] };
   if (daten?.netlogAbschluss?.vollstaendig === false) {
     ergebnis.grenzen.push({ quelle: 'Browser-NetLog', ...daten.netlogAbschluss });
     ergebnis.unklar.push({ grund: daten.netlogAbschluss.grund });
@@ -131,65 +131,18 @@ export function netzNachweis(daten, seitenanfragen = [], { messende, prozessende
   };
   // Quellenabhängigkeiten werden nur vorwärts verfolgt. Andere URL_REQUESTs
   // dürfen nicht über gemeinsam benutzte Sockets einer Anfrage zugeschlagen werden.
-  const quellenKette = start => {
+  const abhaengigkeiten = start => {
     const gefunden = new Set();
     const offen = [start];
-    let vollstaendig = true;
     while (offen.length) {
       const key = offen.pop();
       if (gefunden.has(key)) continue;
       const gruppe = gruppen.get(key) ?? [];
-      if (!gruppe.length) vollstaendig = false;
-      if (key !== start && gruppe.some(e => e.name === 'URL_REQUEST_START_JOB')) { vollstaendig = false; continue; }
+      if (key !== start && gruppe.some(e => e.name === 'URL_REQUEST_START_JOB')) continue;
       gefunden.add(key);
       for (const e of gruppe) if (e.params?.source_dependency) offen.push(schluessel(e.params.source_dependency));
     }
-    return { keys: [...gefunden], vollstaendig, ereignisse: [...gefunden].flatMap(key => gruppen.get(key) ?? []) };
-  };
-  const abhaengigkeiten = start => quellenKette(start).ereignisse;
-
-  const messendeMs = typeof messende === 'string' ? Date.parse(messende) : NaN;
-  const offset = typeof c.timeTickOffset === 'number' ? c.timeTickOffset
-    : typeof c.timeTickOffset === 'string' && c.timeTickOffset.trim() ? Number(c.timeTickOffset) : NaN;
-  const zeitMs = e => typeof e?.time === 'string' && e.time.trim() && Number.isFinite(offset)
-    && Number.isFinite(Number(e.time)) ? offset + Number(e.time) : NaN;
-  const endeBestaetigt = prozessende?.status === 'bestanden'
-    && prozessende.prozessPruefung?.proben?.at(-1)?.vorhanden === false
-    && prozessende.exit?.status !== 'abnormal'
-    && prozessende.nachkommen?.bekannteStatus !== 'Ende nicht bestätigt';
-  const abbruchBeleg = (key, start, abschnitt) => {
-    if (daten.netlogAbschluss?.vollstaendig !== true || !endeBestaetigt || !Number.isFinite(messendeMs)
-        || !Number.isFinite(zeitMs(start))) return null;
-    if (abschnitt.some(e => e.name === 'URL_REQUEST_START_JOB' && e.phase === end)) return null;
-    const cancelled = abschnitt.find(e => e.name === 'CANCELLED' && e.phase === c.logEventPhase.PHASE_NONE && zeitMs(e) > messendeMs);
-    const aliveEnde = abschnitt.find(e => e.name === 'REQUEST_ALIVE' && e.phase === end
-      && abschnitt.indexOf(e) > abschnitt.indexOf(cancelled) && zeitMs(e) >= zeitMs(cancelled));
-    if (!cancelled || !aliveEnde || zeitMs(cancelled) < zeitMs(start)) return null;
-    const kette = quellenKette(key);
-    const ids = new Set(kette.ereignisse.map(e => e.source.id));
-    if (!kette.vollstaendig || ergebnis.unklar.some(e => ids.has(e.sourceId))) return null;
-    // Diese enge Ausnahme belegt ausschließlich abgebrochene Anfrage-/Stream-
-    // Quellen vor dem Transport. Weitere Quellentypen oder Transportereignisse
-    // brauchen ihre bisherige Auswertung und werden hier nicht freigesprochen.
-    const lebensdauer = { URL_REQUEST: 'REQUEST_ALIVE', HTTP_STREAM_JOB_CONTROLLER: 'HTTP_STREAM_JOB_CONTROLLER', HTTP_STREAM_JOB: 'HTTP_STREAM_JOB' };
-    const quellen = [];
-    for (const quelle of kette.keys) {
-      const events = gruppen.get(quelle);
-      const typ = quellenTypen.get(events?.[0]?.source.type);
-      const name = lebensdauer[typ];
-      if (!name) return null;
-      const anfaenge = events.filter(e => e.name === name && e.phase === begin);
-      const enden = events.filter(e => e.name === name && e.phase === end);
-      if (anfaenge.length !== 1 || enden.length !== 1 || events.indexOf(enden[0]) <= events.indexOf(anfaenge[0])
-          || !Number.isFinite(zeitMs(anfaenge[0])) || (zeitMs(anfaenge[0]) > zeitMs(start) && quelle === key)
-          || zeitMs(anfaenge[0]) > zeitMs(enden[0])
-          || zeitMs(enden[0]) < zeitMs(cancelled) || !Number.isFinite(zeitMs(enden[0]))) return null;
-      quellen.push({ sourceId: events[0].source.id, sourceTyp: typ, beginn: anfaenge[0].time, ende: enden[0].time });
-    }
-    if (kette.ereignisse.some(e => /^(?:TCP_CONNECT|UDP_CONNECT|UDP_BYTES_|SSL_CONNECT|QUIC_|SOCKET_BYTES_|SOCKET_CONNECT|HOST_RESOLVER_|DNS_|HTTP_TRANSACTION_|URL_REQUEST_DELEGATE_CONNECTED)/.test(e.name))) return null;
-    return { messende, cancelled: cancelled.time, requestAliveEnde: aliveEnde.time,
-      cancelledUtc: new Date(zeitMs(cancelled)).toISOString(), requestAliveEndeUtc: new Date(zeitMs(aliveEnde)).toISOString(),
-      netlogVollstaendig: true, prozessendeBestaetigt: true, quellen };
+    return [...gefunden].flatMap(key => gruppen.get(key) ?? []);
   };
 
   // Transportbelege erfassen auch Verbindungen ohne HTTP-Anfrage (z.B. UDP).
@@ -304,14 +257,11 @@ export function netzNachweis(daten, seitenanfragen = [], { messende, prozessende
         && q.params?.headers?.some(h => /^HTTP\/\S+ 2[0-9][0-9](?: |$)/.test(h)));
       const blockiert = !transport && !tunnelErfolg && typeof netError === 'number' && netError < 0
         && (delegiert ? lokalerProxyTransport : vorVerbindung || lokalerProxy);
-      const abbruch = zuordnung && !blockiert && !transport && !tunnelErfolg ? abbruchBeleg(key, e, abschnitt) : null;
-      if (abbruch) ergebnis.beimBrowserendeAbgebrochen.push({ ...basis, status: BROWSERENDE_ABBRUCH, beleg: abbruch });
-      if (zuordnung) ergebnis.hintergrundanfragen.push({ ...basis, status: transport || tunnelErfolg ? 'verbunden' : blockiert ? 'blockiert' : abbruch ? BROWSERENDE_ABBRUCH : 'unklar',
+      if (zuordnung) ergebnis.hintergrundanfragen.push({ ...basis, status: transport || tunnelErfolg ? 'verbunden' : blockiert ? 'blockiert' : 'unklar',
         zuordnung: { initiator: p.initiator, requestType: p.request_type, sourceTyp: e.source.type },
-        netError: netError ?? null, fehler: fehlerNamen.get(netError) ?? null, proxy: proxies,
-        beleg: blockiert ? 'Fehlerabschluss vor Verbindung oder am belegten lokalen Sperrproxy' : abbruch });
+        netError: netError ?? null, fehler: fehlerNamen.get(netError) ?? null, proxy: proxies, beleg: blockiert ? 'Fehlerabschluss vor Verbindung oder am belegten lokalen Sperrproxy' : null });
       if (!zuordnung && !seitenspur) melden('unklar', e, p.url, 'Anfrage lässt sich weder Seite noch Browserhintergrund zuordnen');
-      if (!blockiert && !abbruch && !transport && !tunnelErfolg) melden('unklar', e, p.url, 'Externe Anfrage ohne belegte Sperre, Verbindung oder Browserende-Abbruch');
+      if (!blockiert && !transport && !tunnelErfolg) melden('unklar', e, p.url, 'Externe Anfrage ohne belegte Sperre oder Verbindung');
     }
   }
   // WEBSOCKET_ALIVE ist kein URL_REQUEST_START_JOB. Die URL darf deshalb weder

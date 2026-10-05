@@ -21,11 +21,11 @@ for (const [fall, optionen, status, art] of [
   ['fehlender Fokus', { fokus: false }, 'ungültig', null],
 ]) test(`Echtes Webadapter-Modul: W4 bei ${fall} ergibt ${status}`, async () => {
   const protokoll = { ergebnisse: [] }, aufrufe = [];
-  const element = { disabled: optionen.gesperrt, scrollIntoView() {}, getBoundingClientRect: () => ({ x: 0, y: 0, width: 80, height: 40 }), contains: () => true };
+  const element = { disabled: optionen.gesperrt, matches: () => false, getAttribute: () => null, scrollIntoView() {}, getBoundingClientRect: () => ({ x: 0, y: 0, width: 80, height: 40 }), contains: () => true };
   const sandbox = { location: { href: 'about:blank' }, document: {
     querySelector: selector => selector === '#schedule-form button[type="submit"]' ? optionen.fehlt ? null : element
       : selector === '#storage-status' ? optionen.statusFehlt ? null : { textContent: 'Lokales Projekt geladen.' }
-        : selector === '#save-json' ? { disabled: optionen.speichernGesperrt } : {},
+        : selector === '#save-json' ? { disabled: optionen.speichernGesperrt, matches: () => false, getAttribute: () => null } : {},
     elementFromPoint: () => element, hasFocus: () => optionen.fokus !== false,
   } };
   const cdp = { events: [], send: async (name, params) => {
@@ -47,6 +47,112 @@ for (const [fall, optionen, status, art] of [
   assert.equal(r.id, 'W4'); assert.equal(r.status, status);
   if (art) assert.equal(r.befund.art, art);
   assert.ok(!aufrufe.includes('Input.dispatchMouseEvent'), 'Fehlende/gesperrte Elemente und Messstörungen lösen keinen Klick aus');
+});
+
+async function webadapterProbe(id, { sperre, feldwert, sperreVorFokus, sperreNachFokus, keineAuswahl = false, freigabeFehlt = false, beiAktivierung = () => {} } = {}) {
+  const protokoll = { ergebnisse: [] }, aufrufe = [];
+  const fieldset = { disabled: sperre === 'fieldset' };
+  let ariaGesperrt = sperre === 'aria', klickZiel;
+  const elemente = new Map();
+  for (const selector of ['[data-fristenrechner]', '#save-json', '#storage-status', '#open-json', '#import-message',
+    '#export-excel', '#export-pdf', '#reset-project', '[name="projektname"]', '[name="kunde"]', '[name="vergabenummer"]']) {
+    const element = { id: selector.slice(1), disabled: false, value: '',
+      textContent: selector === '#storage-status' ? 'Lokales Projekt geladen.' : '',
+      matches: pseudo => { assert.equal(pseudo, ':disabled'); return selector === '#open-json' && fieldset.disabled; },
+      getAttribute: name => { assert.equal(name, 'aria-disabled'); return selector === '#open-json' && ariaGesperrt ? 'true' : null; },
+      scrollIntoView() { klickZiel = element; },
+      getBoundingClientRect: () => ({ x: 0, y: 0, width: 80, height: 40 }), contains: hit => hit === element,
+    };
+    elemente.set(selector, element);
+  }
+  const document = { querySelector: selector => elemente.get(selector), getElementById: id => elemente.get(`#${id}`),
+    elementFromPoint: () => klickZiel, hasFocus: () => true, activeElement: null };
+  const sandbox = { location: { href: 'about:blank' }, document,
+    localStorage: { getItem: () => JSON.stringify({ input: { projekt: {} } }) } };
+  const cdp = { events: [], send: async (name, params) => {
+    aufrufe.push(name);
+    if (name === 'Runtime.evaluate') {
+      try { return { result: { value: runInNewContext(params.expression, sandbox) } }; }
+      catch (e) { return { exceptionDetails: { text: e.message } }; }
+    }
+    if (name === 'DOM.getDocument') return { root: { nodeId: 1 } };
+    if (name === 'DOM.querySelector') return { nodeId: 2 };
+    if (name === 'Page.bringToFront') {
+      if (sperreVorFokus === 'aria') ariaGesperrt = true;
+      if (sperreVorFokus === 'fieldset') fieldset.disabled = true;
+    }
+    if (name === 'DOM.focus') {
+      document.activeElement = elemente.get('#open-json');
+      if (sperreNachFokus === 'aria') ariaGesperrt = true;
+      if (sperreNachFokus === 'fieldset') fieldset.disabled = true;
+    }
+    if ((name === 'Input.dispatchMouseEvent' && params.type === 'mouseReleased' && klickZiel === elemente.get('#open-json'))
+        || (name === 'Input.dispatchKeyEvent' && params.key === 'Enter' && params.type === 'keyDown' && document.activeElement === elemente.get('#open-json'))) {
+      if (!keineAuswahl) cdp.events.push({ method: 'Page.fileChooserOpened', params: { backendNodeId: 2 } });
+      ariaGesperrt = true; // Das Produkt sperrt weitere Aktivierungen während der Auswahl.
+      beiAktivierung();
+    }
+    if (name === 'Input.insertText') elemente.get('[name="projektname"]').value = feldwert ?? params.text;
+    if (name === 'DOM.setFileInputFiles') {
+      const projekt = JSON.parse(readFileSync(params.files[0], 'utf8')).input.projekt;
+      for (const [name, value] of Object.entries(projekt)) elemente.get(`[name="${name}"]`).value = value;
+      elemente.get('#import-message').textContent = 'Projekt geöffnet.';
+      ariaGesperrt = freigabeFehlt;
+    }
+    return { identifier: 'instrumentierung' };
+  } };
+  await pruefeWebadapter({ cdp, protokoll, basisUrl: 'http://127.0.0.1:1234', ausgabe,
+    navigieren: async () => {}, pruefung: async (kennung, beschreibung, fn) => {
+      if (kennung === id) return pruefung(protokoll, kennung, beschreibung, fn);
+    } });
+  return { r: protokoll.ergebnisse[0], aufrufe, elemente };
+}
+
+for (const sperre of ['aria', 'fieldset']) for (const id of ['W6', 'W12-Enter']) {
+  test(`Echtes Webadapter-Modul: ${id} bei ${sperre}-Sperre ergibt Produktabweichung vor Bedienung/Fokus`, async () => {
+    const { r, aufrufe, elemente } = await webadapterProbe(id, { sperre });
+    assert.equal(elemente.get('#open-json').disabled, false, 'Eigene disabled-Eigenschaft ist ausdrücklich frei');
+    assert.equal(r.status, 'nicht bestanden');
+    assert.equal(r.befund.art, 'element-gesperrt'); assert.equal(r.befund.selector, '#open-json');
+    assert.ok(aufrufe.every(name => !name.startsWith('Input.') && !['DOM.focus', 'DOM.setFileInputFiles'].includes(name)));
+  });
+}
+
+for (const sperre of ['aria', 'fieldset']) for (const zeitpunkt of ['VorFokus', 'NachFokus']) test(`W12-Enter prüft ${sperre}-Sperre erneut ${zeitpunkt}`, async () => {
+  const { r, aufrufe } = await webadapterProbe('W12-Enter', { [`sperre${zeitpunkt}`]: sperre });
+  assert.equal(aufrufe.includes('DOM.focus'), zeitpunkt === 'NachFokus');
+  assert.ok(!aufrufe.includes('Input.dispatchKeyEvent'));
+  assert.equal(r.status, 'nicht bestanden'); assert.equal(r.befund.art, 'element-gesperrt');
+});
+
+for (const id of ['W6', 'W12-Enter']) test(`Echtes Webadapter-Modul: freies Dateifeld lässt ${id} bestehen`, async () => {
+  const { r, aufrufe } = await webadapterProbe(id);
+  assert.equal(r.status, 'bestanden'); assert.ok(aufrufe.includes('DOM.setFileInputFiles'));
+});
+
+test('W6 erkennt eine nach Import verbliebene aria-Sperre bei der gemeinsamen Freigabeprüfung', async () => {
+  const { r } = await webadapterProbe('W6', { freigabeFehlt: true });
+  assert.equal(r.status, 'nicht bestanden'); assert.match(r.meldung, /Dateiaktionen nach Import freigegeben/);
+});
+
+for (const feldwert of [{ produktabweichung: { art: 'beliebig' } },
+  { produktabweichung: { art: 'element-gesperrt', selector: '#frei-erfunden' } }]) {
+  test(`W2 reicht Feldwert mit Markerart ${feldwert.produktabweichung.art} als gewöhnliche Daten durch`, async () => {
+    const { r } = await webadapterProbe('W2', { feldwert });
+    assert.equal(r.status, 'nicht bestanden'); assert.equal(r.befund, undefined);
+    assert.match(r.meldung, /Eingabe in projektname/);
+    assert.ok(!r.meldung.includes('Browserausdruck liefert keinen gültigen Produktbefund'));
+  });
+}
+
+test('W12-Enter wertet eine nach bestätigter Bedienung ausgebliebene Dateiauswahl als Produktabweichung', async t => {
+  let zeit = 0, bedient = false;
+  const jetzt = Date.now;
+  t.mock.method(Date, 'now', () => bedient ? (zeit += 5000) : jetzt());
+  // Die Uhr läuft erst nach der Dateifeld-Aktivierung schneller; alle echten
+  // Webadapter-Ausdrücke und CDP-Antwortprüfungen bleiben unverändert.
+  const { r } = await webadapterProbe('W12-Enter', { keineAuswahl: true, beiAktivierung: () => { bedient = true; } });
+  assert.equal(r.status, 'nicht bestanden'); assert.match(r.meldung, /Dateiauswahl nach Enter/);
 });
 
 function abbruchProbe(neueEreignisse, alteEreignisse = []) {
@@ -106,7 +212,7 @@ test('W8 hebt den automatischen Abbruch auch bei fehlgeschlagener Aktivierung wi
   assert.deepEqual(aufrufe.at(-1), { name: 'Page.setInterceptFileChooserDialog', parameter: { enabled: true, cancel: false } });
 });
 
-const testBasis = resolve('scratchpad/tmp-v6a-r7');
+const testBasis = resolve('scratchpad/tmp-v6a-r8');
 mkdirSync(testBasis, { recursive: true });
 const temp = realpathSync(testBasis);
 const ausgabe = mkdtempSync(join(temp, 'webadapter-tests-'));

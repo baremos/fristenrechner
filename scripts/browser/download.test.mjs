@@ -8,11 +8,28 @@ import { pruefung } from './auswertung.mjs';
 import { browserErgebnis, messbefehl } from './fehler.mjs';
 
 test('Messbefehl erhält einen strukturierten Produktbefund; fehlende oder ungültige Ausdruckbelege bleiben Messfehler', async () => {
-  const berichten = antwort => pruefung({ ergebnisse: [] }, 'W4', 'Ausdruck', () => messbefehl(() => browserErgebnis(antwort)));
+  const berichten = antwort => pruefung({ ergebnisse: [] }, 'W4', 'Ausdruck', () => messbefehl(() => browserErgebnis(antwort, { produktbefund: true })));
   const produkt = await berichten({ result: { value: { produktabweichung: { art: 'element-gesperrt', selector: '#berechnen' } } } });
   assert.equal(produkt.status, 'nicht bestanden'); assert.equal(produkt.befund.art, 'element-gesperrt');
   for (const antwort of [null, {}, { result: {} }, { result: { value: { produktabweichung: { art: 'unbekannt' } } } },
     { exceptionDetails: { text: 'Ausdruck gestört' } }]) assert.equal((await berichten(antwort)).status, 'ungültig');
+});
+
+test('Gewöhnliche Werte behalten auch gültige oder ungültige Produktmarker unverändert', () => {
+  for (const value of [{ produktabweichung: { art: 'element-gesperrt', selector: '#feld' } },
+    { produktabweichung: { art: 'beliebig' } }]) {
+    assert.equal(browserErgebnis({ result: { value } }), value);
+  }
+});
+
+test('exceptionDetails haben auch neben einem gültigen Produktmarker in beiden Aufrufwegen Vorrang', async () => {
+  const antwort = { result: { value: { produktabweichung: { art: 'element-gesperrt', selector: '#feld' } } },
+    exceptionDetails: { text: 'Messausdruck gestört' } };
+  for (const produktbefund of [false, true]) {
+    const r = await pruefung({ ergebnisse: [] }, 'W4', 'Ausdruck', () => browserErgebnis(antwort, { produktbefund }));
+    assert.equal(r.status, 'ungültig'); assert.equal(r.befund, undefined);
+    assert.match(r.meldung, /Messausdruck gestört/);
+  }
 });
 
 const beginn = (params = {}) => ({ method: 'Browser.downloadWillBegin', params: {
@@ -27,7 +44,7 @@ function probe({ ereignisse = [beginn(), fortschritt()], vorher = [], steuerungs
     if (method === 'Target.getBrowserContexts') return { browserContextIds: kontexte };
     if (steuerungsfehler) throw new Error('Richtlinie nicht bestätigt');
   } };
-  const kontext = { browserCdp, ausgabe: resolve('scratchpad/tmp-v6a'), browserContextId: 'eigener-kontext', frameId: 'frame', endung: 'xlsx', nachweis,
+  const kontext = { browserCdp, ausgabe: resolve('scratchpad/tmp-v6a-r8'), browserContextId: 'eigener-kontext', frameId: 'frame', endung: 'xlsx', nachweis,
     aktivieren: async () => { aufrufe.push({ method: 'echte Aktivierung' }); browserCdp.events.push(...ereignisse); return { fokus: true }; } };
   return { kontext, nachweis, aufrufe, optionen: { jetzt: () => zeit, warten: async ms => { zeit += ms; }, fristMs: 100 } };
 }
@@ -106,7 +123,7 @@ test('Schnelle Ereignisse während der Klickantwort gehen nicht verloren; inProg
 
 function klickProbe({ fokus = true, ueberdeckt = false, breite = 80, fehlt = false, gesperrt = false } = {}) {
   const aufrufe = [];
-  const element = { disabled: gesperrt, scrollIntoView: () => aufrufe.push('scroll'), getBoundingClientRect: () => ({ x: 10, y: 20, width: breite, height: 40 }), contains: hit => hit === element };
+  const element = { disabled: gesperrt, matches: () => false, getAttribute: () => null, scrollIntoView: () => aufrufe.push('scroll'), getBoundingClientRect: () => ({ x: 10, y: 20, width: breite, height: 40 }), contains: hit => hit === element };
   let aktiv = false;
   const document = { querySelector: selector => selector === '#export-excel' && !fehlt ? element : null,
     elementFromPoint: () => ueberdeckt ? {} : element, hasFocus: () => aktiv };
