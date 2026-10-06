@@ -92,6 +92,7 @@ const ausdruckFaelle = [
   ['MPL-2.0', 'bereitgestellt', true, ['MPL-2.0']],
   ['(MIT OR GPL-3.0-or-later)', 'ausgeliefert', true, ['MIT']],
   ['(MIT AND Zlib)', 'ausgeliefert', true, ['MIT', 'Zlib']],
+  ['(Apache-2.0 AND BSL-1.0)', 'ausgeliefert', true, ['Apache-2.0', 'BSL-1.0']],
   ['MPL-2.0', 'ausgeliefert', false, []],
   ['MPL-2.0 OR MIT', 'ausgeliefert', true, ['MIT']],
   ['MIT AND MPL-2.0', 'ausgeliefert', false, []],
@@ -126,7 +127,7 @@ test('Umordnung und gleichartige Klammern ergeben dieselbe Lizenzangabe', () => 
 
 test('Alle Regeln sind zentral erfasst; Auslieferung ist eine echte Teilmenge', () => {
   assert.deepEqual(Object.entries(vorgabe.lizenzen).filter(([, b]) => b.includes('ausgeliefert')).map(([id]) => id).sort(),
-    ['0BSD', 'Apache-2.0', 'BSD-3-Clause', 'ISC', 'MIT', 'Zlib']);
+    ['0BSD', 'Apache-2.0', 'BSD-3-Clause', 'BSL-1.0', 'ISC', 'MIT', 'Zlib']);
   for (const b of Object.values(vorgabe.lizenzen)) assert.equal(b.includes('entwicklung'), b.includes('bereitgestellt'));
   assert.equal(vorgabe.einzelausnahmen.length, 1);
   assert.equal(vorgabe.einzelausnahmen[0].paket, 'rgbcolor');
@@ -190,6 +191,10 @@ test('Echte Ausnahme: Ablaufdatum ist eingeschlossen, der Folgetag scheitert', a
 });
 
 for (const bereich of ['ausgeliefert', 'bereitgestellt', 'entwicklung']) {
+  test(`BSL-1.0 ist in jedem Bereich zugelassen: ${bereich}`, () => {
+    assert.equal(pruefeAusdruck('BSL-1.0', bereich).zulaessig, true);
+    assert.deepEqual(pruefeAusdruck('bsl-1.0', bereich).auswahl, ['BSL-1.0']);
+  });
   test(`GPL bleibt auch mit bekannter Kennung unzulässig: ${bereich}`, () => {
     assert.equal(pruefeAusdruck('GPL-3.0-or-later', bereich).zulaessig, false);
     assert.deepEqual(pruefeAusdruck('GPL-3.0-or-later OR MIT', bereich).auswahl, ['MIT']);

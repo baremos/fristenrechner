@@ -21,6 +21,8 @@ Stand 2026-10-04, App-Version 0.1.0, geprüfter App-Endstand `5e6f230`, Nachweis
 
 Nach „Lizenzen“ steht der eigene aufklappbare Abschnitt „Hinweise zu Komponenten Dritter“. Die App liest `app/src/hinweise-dritter.txt` beim Web-Build mit `?raw` und zeigt den Originaltext in einem `<pre>` mit Zeilenumbruch an; Web- und Android-Komponenten stehen gemeinsam darin. Adressen in den Fremdtexten bleiben Textknoten ohne Links. Die Quelle, der Generator, die gehashten Originalbelege und die bekannten Einschränkungen stehen in [lizenzen.md](lizenzen.md#hinweise-dritter-paketinhalt-und-verbleibende-arbeit).
 
+Der Hinweisbestand vom 2026-10-06 umfasst 92 Haupteinträge und fünf eingebettete Android-Bestandteile (zusammen 97 statt zuvor 94), zehn separate Fremdtextdateien und 70 433 Bytes Hinweistext. Die Eintragszahl schließt die fünf Untereinträge der Android-Artefakte ein; die 92 Haupteinträge bleiben unverändert. Die Herkunftsabdeckung hat die in der Lizenzdokumentation genannten Grenzen.
+
 Der optionale Gastgebertext `bibliothekenHinweis` setzt in der App den freigegebenen Verweis auf diesen Abschnitt. Die Vorgabe der gemeinsamen Komponente bleibt bytegleich. Der Emulator-Quellvertrag prüft Titel, Einleitung, Quelle, Position und Satz. Die Menüphase öffnet den neuen Abschnitt zusammen mit allen `details.app-abschnitt` bei Schriftfaktor 1,0 und 2,0 und verlangt dessen geöffnetes `<pre>`. Ein erneuter Android-Build und Emulatorlauf stehen aus; dieser Quellvertrag ist kein Sichtnachweis.
 
 ## Festlegungen

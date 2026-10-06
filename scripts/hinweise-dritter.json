@@ -52,7 +52,43 @@
         "datei": "LICENSE",
         "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551"
       },
-      "status": "vollstaendig"
+      "status": "vollstaendig",
+      "originale": [
+        {
+          "datei": "node_modules/fflate/esm/browser.js",
+          "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
+          "von": 277,
+          "bis": 497,
+          "auszugSha256": "2890cfc7c334b4e6c377bd1355efbfb504752fe350c1ba3d1e70e7f1a439de31"
+        }
+      ],
+      "wortlaut": "// Some of the following code is similar to that of UZIP.js:\n// https://github.com/photopea/UZIP.js\n// However, the vast majority of the codebase has diverged from UZIP.js to increase performance and reduce bundle size.\n",
+      "zusatzhinweise": [
+        {
+          "wortlaut": "// efficient algorithm from UZIP.js",
+          "originale": [
+            {
+              "datei": "node_modules/fflate/esm/browser.js",
+              "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
+              "von": 14893,
+              "bis": 14928,
+              "auszugSha256": "2fa7d6b89ecb498db88b5a62f53c1aff8c05b0fa188dfb5ac45f007f4e169c1d"
+            }
+          ]
+        },
+        {
+          "wortlaut": "// more algorithms from UZIP.js",
+          "originale": [
+            {
+              "datei": "node_modules/fflate/esm/browser.js",
+              "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
+              "von": 15660,
+              "bis": 15691,
+              "auszugSha256": "2e4e1412951fcb78adecae8ca73812ced30677550cc5cc4d2537dc956c1845da"
+            }
+          ]
+        }
+      ]
     },
     {
       "paket": "iobuffer",
@@ -76,7 +112,17 @@
         "datei": "LICENSE",
         "sha256": "dc388ec35ff463288cdde3588a36fd4ed12a45deff053243b37309acc9ef583b"
       },
-      "status": "vollstaendig"
+      "status": "vollstaendig",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83",
+          "von": 0,
+          "bis": 2700,
+          "auszugSha256": "279d33644e3a566fc3701ee14de9f6073f5c0f558a93818c6add9d17958a81d6"
+        }
+      ],
+      "wortlaut": "/** @license\n *\n * jsPDF - PDF Document creation from JavaScript\n * Version 4.2.1 Built on 2026-03-17T11:11:27.057Z\n *                      CommitID 00000000\n *\n * Copyright (c) 2010-2025 James Hall <james@parall.ax>, https://github.com/MrRio/jsPDF\n *               2015-2025 yWorks GmbH, http://www.yworks.com\n *               2015-2025 Lukas Holländer <lukas.hollaender@yworks.com>, https://github.com/HackbrettXXX\n *               2016-2018 Aras Abbasi <aras.abbasi@gmail.com>\n *               2010 Aaron Spike, https://github.com/acspike\n *               2012 Willow Systems Corporation, https://github.com/willowsystems\n *               2012 Pablo Hess, https://github.com/pablohess\n *               2012 Florian Jenett, https://github.com/fjenett\n *               2013 Warren Weckesser, https://github.com/warrenweckesser\n *               2013 Youssef Beddad, https://github.com/lifof\n *               2013 Lee Driscoll, https://github.com/lsdriscoll\n *               2013 Stefan Slonevskiy, https://github.com/stefslon\n *               2013 Jeremy Morel, https://github.com/jmorel\n *               2013 Christoph Hartmann, https://github.com/chris-rock\n *               2014 Juan Pablo Gaviria, https://github.com/juanpgaviria\n *               2014 James Makes, https://github.com/dollaruw\n *               2014 Diego Casorran, https://github.com/diegocr\n *               2014 Steven Spungin, https://github.com/Flamenco\n *               2014 Kenneth Glassey, https://github.com/Gavvers\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n *\n * Contributor(s):\n *    siefkenj, ahwolf, rickygu, Midnith, saintclair, eaparango,\n *    kim3er, mfo, alnorth, Flamenco\n */"
     },
     {
       "paket": "jspdf-autotable",
@@ -88,7 +134,17 @@
         "datei": "LICENSE.txt",
         "sha256": "99a374e0385cf714d2faae5f6e02ec79217c6bcecec39bdb9e102091471b960a"
       },
-      "status": "vollstaendig"
+      "status": "vollstaendig",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs",
+          "sha256": "e75527c67984e642201d41fa2b11aa64e502cd3a38b5dc17461f4c204fabf144",
+          "von": 0,
+          "bis": 176,
+          "auszugSha256": "5d2a456354f6e12b3a9d1af23c056deac0818ac68106d769d6f869d1b8e9d7d9"
+        }
+      ],
+      "wortlaut": "/**\n * Improved text function with halign and valign support\n * Inspiration from: http://stackoverflow.com/questions/28327510/align-text-right-using-jspdf/28433113#28433113\n */"
     },
     {
       "paket": "pako",
@@ -291,7 +347,7 @@
         "datei": "dist/jspdf.es.min.js",
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
-      "wortlaut": "/**\n * @license\n  Copyright (c) 2008, Adobe Systems Incorporated\n  All rights reserved.\n\n  Redistribution and use in source and binary forms, with or without \n  modification, are permitted provided that the following conditions are\n  met:\n\n  * Redistributions of source code must retain the above copyright notice, \n    this list of conditions and the following disclaimer.\n  \n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the \n    documentation and/or other materials provided with the distribution.\n  \n  * Neither the name of Adobe Systems Incorporated nor the names of its \n    contributors may be used to endorse or promote products derived from \n    this software without specific prior written permission.\n\n  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS\n  IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,\n  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\n  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR \n  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\n  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\n  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\n  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\n  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\n  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\n  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n*/",
+      "wortlaut": "/**\n * @license\n  Copyright (c) 2008, Adobe Systems Incorporated\n  All rights reserved.\n\n  Redistribution and use in source and binary forms, with or without \n  modification, are permitted provided that the following conditions are\n  met:\n\n  * Redistributions of source code must retain the above copyright notice, \n    this list of conditions and the following disclaimer.\n  \n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the \n    documentation and/or other materials provided with the distribution.\n  \n  * Neither the name of Adobe Systems Incorporated nor the names of its \n    contributors may be used to endorse or promote products derived from \n    this software without specific prior written permission.\n\n  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS\n  IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,\n  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\n  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR \n  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\n  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\n  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\n  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\n  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\n  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\n  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n*/\n\n/*\nJPEG encoder ported to JavaScript and optimized by Andreas Ritter, www.bytestrom.eu, 11/2009\n\nBasic GUI blocking jpeg encoder\n*/",
       "status": "vollstaendig",
       "version": "4.2.1",
       "originale": [
@@ -302,6 +358,14 @@
           "von": 0,
           "bis": 1585,
           "auszugSha256": "b11919a00c60852a1a8eb4b9fa973aaafb0debb34d0e0e2a2c2b346c5ac86b4f"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/JPEGEncoder.js",
+          "von": 1586,
+          "bis": 1717,
+          "auszugSha256": "86b1c811f8ae7dd77e78188cece408af296970e1e26142da0d0c2e98fd96ed65"
         }
       ]
     },
@@ -413,7 +477,7 @@
         "datei": "dist/jspdf.es.min.js",
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
-      "wortlaut": "/**\n * @license\n * Unicode Bidi Engine based on the work of Alex Shensis (@asthensis)\n * MIT License\n */",
+      "wortlaut": "/**\n * @license\n * Unicode Bidi Engine based on the work of Alex Shensis (@asthensis)\n * MIT License\n */\n\n/**\n   * Table of Unicode types.\n   *\n   * Generated by:\n   *\n   * var bidi = require(\"./bidi/index\");\n   * var bidi_accumulate = bidi.slice(0, 256).concat(bidi.slice(0x0500, 0x0500 + 256 * 3)).\n   * concat(bidi.slice(0x2000, 0x2000 + 256)).concat(bidi.slice(0xFB00, 0xFB00 + 256)).\n   * concat(bidi.slice(0xFE00, 0xFE00 + 2 * 256));\n   *\n   * for( var i = 0; i < bidi_accumulate.length; i++) {\n   * \tif(bidi_accumulate[i] === undefined || bidi_accumulate[i] === 'ON')\n   * \t\tbidi_accumulate[i] = 'N'; //mark as neutral to conserve space and substitute undefined\n   * }\n   * var bidiAccumulateStr = 'return [ \"' + bidi_accumulate.toString().replace(/,/g, '\", \"') + '\" ];';\n   * require(\"fs\").writeFile('unicode-types.js', bidiAccumulateStr);\n   *\n   * Based on:\n   * https://github.com/mathiasbynens/unicode-8.0.0\n   */",
       "status": "vollstaendig",
       "version": "4.2.1",
       "originale": [
@@ -424,6 +488,14 @@
           "von": 0,
           "bis": 104,
           "auszugSha256": "6298e3dbf661278c4d44d7cd8b7947b06aa67f495155fe44350d36b009cfcacc"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/bidiEngine.js",
+          "von": 181,
+          "bis": 1000,
+          "auszugSha256": "3f5d835b08127235d95500c62ed53cf9e69f49a66f67b54a0b7328d483816ab8"
         }
       ]
     },
@@ -458,6 +530,21 @@
           "von": 0,
           "bis": 89,
           "auszugSha256": "67c7d1d9b19cbdcae751fe4d310febf3d57c10c0a40d151bfb8ebebe72f8f27c"
+        }
+      ],
+      "zusatzhinweise": [
+        {
+          "wortlaut": "/**\n * add 32bit decode func\n * @author soubok\n */",
+          "originale": [
+            {
+              "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+              "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+              "quellkarteQuelle": "../src/libs/BMPDecoder.js",
+              "von": 7573,
+              "bis": 7623,
+              "auszugSha256": "30a0da7d4951e335fb777aa0cc4cb8d673d0170ee90b63f341b9a245b3745d17"
+            }
+          ]
         }
       ]
     },
@@ -513,7 +600,7 @@
         "datei": "dist/jspdf.es.min.js",
         "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
       },
-      "wortlaut": "/**\n * @license\n * Copyright (c) 2016 Alexander Weidt,\n * https://github.com/BiggA94\n *\n * Licensed under the MIT License. http://opensource.org/licenses/mit-license\n */\n\n/** @license\n * jsPDF addImage plugin\n * Copyright (c) 2012 Jason Siefken, https://github.com/siefkenj/\n *               2013 Chris Dowling, https://github.com/gingerchris\n *               2013 Trinh Ho, https://github.com/ineedfat\n *               2013 Edwin Alejandro Perez, https://github.com/eaparango\n *               2013 Norah Smith, https://github.com/burnburnrocket\n *               2014 Diego Casorran, https://github.com/diegocr\n *               2014 James Robb, https://github.com/jamesbrobb\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n */\n\n/**\n * @license\n * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2017 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/** @license\n * jsPDF Autoprint Plugin\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * ====================================================================\n * Copyright (c) 2013 Youssef Beddad, youssef.beddad@gmail.com\n *               2013 Eduardo Menezes de Morais, eduardo.morais@usp.br\n *               2013 Lee Driscoll, https://github.com/lsdriscoll\n *               2014 Juan Pablo Gaviria, https://github.com/juanpgaviria\n *               2014 James Hall, james@parall.ax\n *               2014 Diego Casorran, https://github.com/diegocr\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/** @license\n * MIT license.\n * Copyright (c) 2012 Willow Systems Corporation, https://github.com/willowsystems\n *               2014 Diego Casorran, https://github.com/diegocr\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n *\n * Copyright (c) 2014 James Robb, https://github.com/jamesbrobb\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/** ====================================================================\n * @license\n * jsPDF XMP metadata plugin\n * Copyright (c) 2016 Jussi Utunen, u-jussi@suomi24.fi\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * jsPDF Context2D PlugIn Copyright (c) 2014 Steven Spungin (TwelveTone LLC) steven@twelvetone.tv\n *\n * Licensed under the MIT License. http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * jsPDF filters PlugIn\n * Copyright (c) 2014 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * jsPDF fileloading PlugIn\n * Copyright (c) 2018 Aras Abbasi (aras.abbasi@gmail.com)\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2018 Erik Koopmans\n * Released under the MIT License.\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * ====================================================================\n * Copyright (c) 2013 Youssef Beddad, youssef.beddad@gmail.com\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2017 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2018 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2019 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n *\n * Copyright (c) 2021 Antti Palola, https://github.com/Pantura\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/** @license\n * Copyright (c) 2012 Willow Systems Corporation, https://github.com/willowsystems\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * ====================================================================\n * Copyright (c) 2013 Eduardo Menezes de Morais, eduardo.morais@usp.br\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * jsPDF viewerPreferences Plugin\n * @author Aras Abbasi (github.com/arasabbasi)\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * jsPDF virtual FileSystem functionality\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */",
+      "wortlaut": "/**\n * @license\n * Copyright (c) 2016 Alexander Weidt,\n * https://github.com/BiggA94\n *\n * Licensed under the MIT License. http://opensource.org/licenses/mit-license\n */\n\n/** @license\n * jsPDF addImage plugin\n * Copyright (c) 2012 Jason Siefken, https://github.com/siefkenj/\n *               2013 Chris Dowling, https://github.com/gingerchris\n *               2013 Trinh Ho, https://github.com/ineedfat\n *               2013 Edwin Alejandro Perez, https://github.com/eaparango\n *               2013 Norah Smith, https://github.com/burnburnrocket\n *               2014 Diego Casorran, https://github.com/diegocr\n *               2014 James Robb, https://github.com/jamesbrobb\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n */\n\n/**\n * @license\n * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2017 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/** @license\n * jsPDF Autoprint Plugin\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * ====================================================================\n * Copyright (c) 2013 Youssef Beddad, youssef.beddad@gmail.com\n *               2013 Eduardo Menezes de Morais, eduardo.morais@usp.br\n *               2013 Lee Driscoll, https://github.com/lsdriscoll\n *               2014 Juan Pablo Gaviria, https://github.com/juanpgaviria\n *               2014 James Hall, james@parall.ax\n *               2014 Diego Casorran, https://github.com/diegocr\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/** @license\n * MIT license.\n * Copyright (c) 2012 Willow Systems Corporation, https://github.com/willowsystems\n *               2014 Diego Casorran, https://github.com/diegocr\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n *\n * Copyright (c) 2014 James Robb, https://github.com/jamesbrobb\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/** ====================================================================\n * @license\n * jsPDF XMP metadata plugin\n * Copyright (c) 2016 Jussi Utunen, u-jussi@suomi24.fi\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * jsPDF Context2D PlugIn Copyright (c) 2014 Steven Spungin (TwelveTone LLC) steven@twelvetone.tv\n *\n * Licensed under the MIT License. http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * jsPDF filters PlugIn\n * Copyright (c) 2014 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * jsPDF fileloading PlugIn\n * Copyright (c) 2018 Aras Abbasi (aras.abbasi@gmail.com)\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2018 Erik Koopmans\n * Released under the MIT License.\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * ====================================================================\n * Copyright (c) 2013 Youssef Beddad, youssef.beddad@gmail.com\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2017 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2018 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2019 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n *\n * Copyright (c) 2021 Antti Palola, https://github.com/Pantura\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/** @license\n * Copyright (c) 2012 Willow Systems Corporation, https://github.com/willowsystems\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * ====================================================================\n * Copyright (c) 2013 Eduardo Menezes de Morais, eduardo.morais@usp.br\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * jsPDF viewerPreferences Plugin\n * @author Aras Abbasi (github.com/arasabbasi)\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * jsPDF virtual FileSystem functionality\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n// Image functionality ported from pdf.js\n\n/**\n   * Cubic bezier approximation of a circular arc centered at the origin, from (radians) a1 to a2, where a2-a1 < pi/2. The arc's radius is r.\n   *\n   * Returns an object with four points, where x1,y1 and x4,y4 are the arc's end points and x2,y2 and x3,y3 are the cubic bezier's control points.\n   *\n   * This algorithm is based on the approach described in: A. Riškus, \"Approximation of a Cubic Bezier Curve by Circular Arcs and Vice Versa,\" Information Technology and Control, 35(4), 2006 pp. 371-378.\n   */",
       "status": "vollstaendig",
       "version": "4.2.1",
       "originale": [
@@ -732,6 +819,22 @@
           "von": 0,
           "bis": 145,
           "auszugSha256": "50da9bcb6e50e0af2a93c1dafa695ccf4785073e3e5984eae10626930569ae11"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/addimage.js",
+          "von": 5840,
+          "bis": 5881,
+          "auszugSha256": "05894db0f9bee3b820a2a1553c0e226dd7002ccf129caeb39a58e40585c01190"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/context2d.js",
+          "von": 76480,
+          "bis": 76993,
+          "auszugSha256": "b28a768adf486f59b9c693e757f19a33e4d9c57b3946f37ba33078ab382e4a2e"
         }
       ]
     },
@@ -778,6 +881,12 @@
           "von": 15,
           "bis": 974,
           "auszugSha256": "4125652cdbd6fdba9b60c839df6abeb3fc9da98fca00b4cab15157951e080804"
+        }
+      ],
+      "belege": [
+        {
+          "datei": "node_modules/pako/dist/pako.esm.mjs",
+          "sha256": "c704f219caa9c3ddbaa23b925c078cc4390ea8c7db105c3aed8acb18c5fb248a"
         }
       ]
     }
@@ -1300,6 +1409,135 @@
             "datei": "scripts/hinweistexte/kotlin-2.0.21-NOTICE.txt",
             "sha256": "0b09a83d3ef7795c7dec65e815866597c066c53898f2852a76599b8f5552941a",
             "auszugSha256": "0b09a83d3ef7795c7dec65e815866597c066c53898f2852a76599b8f5552941a"
+          }
+        ],
+        "bestandteile": [
+          {
+            "name": "GWT-Ableitung",
+            "lizenz": "Apache-2.0",
+            "quelle": "libraries/stdlib/src/kotlin/collections",
+            "wortlaut": "Derived from GWT, (C) 2007-08 Google Inc.",
+            "herkunftsbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/README.md",
+              "groesse": 18558,
+              "sha256": "8a82f8702ea943f008c84a61b8df7b053b7d36cfa293e3abd59f839b728a5999",
+              "zeile": 64,
+              "von": 4260,
+              "bis": 4301,
+              "auszugSha256": "52d5885aa15f3f1a7f193256bca9cf95ea5ab7736697c6964b2882f4f140edb0"
+            },
+            "lizenzbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/third_party/gwt_license.txt",
+              "groesse": 11358,
+              "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+            },
+            "artefaktbeleg": {
+              "jar": "kotlin-stdlib-2.0.21.jar",
+              "jarSha256": "f31cc53f105a7e48c093683bbd5437561d1233920513774b470805641bedbc09",
+              "klasse": "kotlin/collections/AbstractList.class",
+              "klasseSha256": "6cbad11321c59594d67106fba04f50be0ff258b1f4e969080c0941ef5cf881b6",
+              "sourceFile": "AbstractList.kt",
+              "apk": {
+                "datei": "app-release-unsigned.apk",
+                "bytes": 7666170,
+                "sha256": "714e1868ee00f9d2a6b946f7dec798ae4a495b77c38aba62f8b2190271cc6728"
+              },
+              "dex": [
+                {
+                  "datei": "classes.dex",
+                  "sha256": "9886ef92da16453e913cbbc46630d222b1651e85b79fbd4957d2b24bbab222c7"
+                }
+              ],
+              "klassendeskriptor": "Lkotlin/collections/AbstractList;",
+              "alsKlasseDefiniert": true,
+              "minifyEnabled": false
+            }
+          },
+          {
+            "name": "Guava-Ableitung",
+            "lizenz": "Apache-2.0",
+            "quelle": "libraries/stdlib/jvm/src/kotlin/util/UnsignedJVM.kt",
+            "wortlaut": "Derived from Guava's UnsignedLongs, (C) 2011 The Guava Authors",
+            "herkunftsbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/README.md",
+              "groesse": 18558,
+              "sha256": "8a82f8702ea943f008c84a61b8df7b053b7d36cfa293e3abd59f839b728a5999",
+              "zeile": 72,
+              "von": 4664,
+              "bis": 4726,
+              "auszugSha256": "0078015de8eb05b76c05f9e6d336eed66951fd6a0d8de23f6bd0762885be6764"
+            },
+            "lizenzbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/third_party/guava_license.txt",
+              "groesse": 11358,
+              "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+            },
+            "artefaktbeleg": {
+              "jar": "kotlin-stdlib-2.0.21.jar",
+              "jarSha256": "f31cc53f105a7e48c093683bbd5437561d1233920513774b470805641bedbc09",
+              "klasse": "kotlin/UnsignedKt.class",
+              "klasseSha256": "edc094d2e521adbc3f646d3724fe357e7f6f35446fd12b85f8c87b933b783775",
+              "sourceFile": "UnsignedJVM.kt",
+              "apk": {
+                "datei": "app-release-unsigned.apk",
+                "bytes": 7666170,
+                "sha256": "714e1868ee00f9d2a6b946f7dec798ae4a495b77c38aba62f8b2190271cc6728"
+              },
+              "dex": [
+                {
+                  "datei": "classes.dex",
+                  "sha256": "9886ef92da16453e913cbbc46630d222b1651e85b79fbd4957d2b24bbab222c7"
+                }
+              ],
+              "klassendeskriptor": "Lkotlin/UnsignedKt;",
+              "alsKlasseDefiniert": true,
+              "minifyEnabled": false
+            }
+          },
+          {
+            "name": "Boost-Ableitung",
+            "lizenz": "BSL-1.0",
+            "quelle": "libraries/stdlib/jvm/src/kotlin/util/MathJVM.kt",
+            "wortlaut": "Derived from boost special math functions, Copyright Eric Ford & Hubert Holin 2001.",
+            "herkunftsbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/README.md",
+              "groesse": 18558,
+              "sha256": "8a82f8702ea943f008c84a61b8df7b053b7d36cfa293e3abd59f839b728a5999",
+              "zeile": 80,
+              "von": 5115,
+              "bis": 5198,
+              "auszugSha256": "d40f1aa4be444e73ba61e59bbcbfc2b49d4ebede33ddde77d7b00878073bfcd3"
+            },
+            "lizenzbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/third_party/boost_LICENSE.txt",
+              "groesse": 1337,
+              "sha256": "8d8291caf1cee26d23acf3eb67c9f9a2d58f1c681b16a4fbe8cbfb9e3c0b5a9b"
+            },
+            "artefaktbeleg": {
+              "jar": "kotlin-stdlib-2.0.21.jar",
+              "jarSha256": "f31cc53f105a7e48c093683bbd5437561d1233920513774b470805641bedbc09",
+              "klasse": "kotlin/math/MathKt__MathJVMKt.class",
+              "klasseSha256": "3a030ec3c6e3680c82cc5d13f2ef06d4829bfc275f1f810dcc9e914282ccf718",
+              "sourceFile": "MathJVM.kt",
+              "apk": {
+                "datei": "app-release-unsigned.apk",
+                "bytes": 7666170,
+                "sha256": "714e1868ee00f9d2a6b946f7dec798ae4a495b77c38aba62f8b2190271cc6728"
+              },
+              "dex": [
+                {
+                  "datei": "classes.dex",
+                  "sha256": "9886ef92da16453e913cbbc46630d222b1651e85b79fbd4957d2b24bbab222c7"
+                }
+              ],
+              "klassendeskriptor": "Lkotlin/math/MathKt__MathJVMKt;",
+              "alsKlasseDefiniert": true,
+              "minifyEnabled": false
+            },
+            "lizenztext": {
+              "datei": "scripts/hinweistexte/kotlin-2.0.21-third_party-boost_LICENSE.txt",
+              "sha256": "8d8291caf1cee26d23acf3eb67c9f9a2d58f1c681b16a4fbe8cbfb9e3c0b5a9b"
+            }
           }
         ]
       },
