@@ -381,6 +381,10 @@ Neun kosmetische Kommentarreste bleiben am App-Endstand: fünf in `Fristenrechne
 
 Die neun in der Nachprüfung vom 2026-10-04 genannten kosmetischen Kommentarreste wurden am 2026-10-05 bereinigt; ausführbarer Code und sichtbare Texte blieben dabei unverändert.
 
+### Nachtrag vom 2026-10-06
+
+Am 2026-10-06 wurden abweichend vom übernommenen Website-CSS die Vorgabefarben der Feldrahmen (`#99999d` zu `#8a8a8e`), Dateiknöpfe (`#96969a` zu `#8f8f93`) und des Tabellen-Rollbereichs (`#d7d7d3` zu `#878783`) verdunkelt. Anlass waren die im Browser-Läufer gemessenen Kontrastunterschreitungen. Die kleine Phasenbeschriftung der Teststellung verwendet nun ausschließlich als Textfarbe `#9a5f1f` statt `#a56721`; ihr Hintergrund mischt weiterhin 8 Prozent der unveränderten Phasenfarbe mit Weiß. Alle sechs Beschriftungsfarben sind gegen den jeweiligen Hintergrund geprüft. Die neuen Vorgaben erreichen berechnet mindestens 3,2:1 für die betroffenen Rahmen und 4,7:1 für die kleinen Beschriftungen; der Tabellenrahmen berücksichtigt auch die grauen Kopfzellen. Zeitschienenfarben, PDF- und Excel-Export, Fokusrahmen und sichtbare Texte bleiben unverändert. Der [Kontrasttest](../packages/oberflaeche/test/kontrast.test.ts) prüft die Farbpaare aus den Quellen und weist die alten Werte zurück; die Browser-Nachmessung und der Bildvergleich der Website stehen aus.
+
 ### Grenzen
 
 Der Nachweis beschreibt die Übernahme vom 2026-09-29, die Anpassung vom 2026-09-30 und die ausdrücklich benannten Nachprüfungen am App-Endstand `5e6f230`. Er ist kein vollständiges Review aller späteren Änderungen an der Oberfläche. Eine unabhängige Prüfung der Rechtekette gehört nicht dazu. Die datierte Rekonstruktion ergänzt die damaligen Belege; sie ersetzt weder den damals fehlenden Protokolleintrag noch ein schriftliches Urteil je Prüfpunkt des damaligen Kreuz-Reviews.
