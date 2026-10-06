@@ -425,7 +425,8 @@ for (const modul of ['html2canvas', 'dompurify', 'canvg', 'core-js/modules/es.pr
   }
 }
 
-for (const pfad of ['//fremd.example/x.js', '/\\\\fremd.example/x.js', '\\\\x.js', '/x\\\\y.js']) {
+for (const pfad of ['//fremd.example/x.js', '/\\\\fremd.example/x.js', '\\\\x.js', '/x\\\\y.js',
+  '/\t/fremd.example/x.js', '/\n/fremd.example/x.js', '/\r/fremd.example/x.js', '/\u0000/x.js', '/ /fremd.example/x.js', '/ /x.js']) {
   test(`K2 jsPDF-Zusatzmodule Gegenprobe: import(${JSON.stringify(pfad)}) ist kein lokaler Modulpfad`, () => {
     const code = `import(${JSON.stringify(pfad)});`;
     const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/haupt.AbCdEfGh.js': code }));

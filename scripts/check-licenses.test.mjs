@@ -130,12 +130,17 @@ test('Lizenzwahl: verschachtelte Ausdrücke werden entdoppelt aufgezählt und bl
 });
 
 test('Lizenzwahl: mehr als zwölf Kennungen werden ohne Aufzählung zurückgewiesen', () => {
-  const dreizehn = Array.from({ length: 13 }, (_, i) => (i % 2 ? '(MIT OR ISC)' : 'MIT')).join(' AND ');
+  const genauZwoelf = Array.from({ length: 12 }, () => 'MIT').join(' AND ');
+  const genauDreizehn = Array.from({ length: 13 }, () => 'MIT').join(' AND ');
+  const neunzehn = Array.from({ length: 13 }, (_, i) => (i % 2 ? '(MIT OR ISC)' : 'MIT')).join(' AND ');
+  assert.equal(pruefeAusdruck(genauZwoelf, 'ausgeliefert', 'MIT').zulaessig, true);
   const beginn = Date.now();
-  assert.throws(() => pruefeAusdruck(dreizehn, 'ausgeliefert', 'MIT'), /höchstens 12/);
+  assert.throws(() => pruefeAusdruck(genauDreizehn, 'ausgeliefert', 'MIT'), /höchstens 12/);
+  assert.throws(() => pruefeAusdruck(neunzehn, 'ausgeliefert', 'MIT'), /höchstens 12/);
   assert.ok(Date.now() - beginn < 2000);
-  // Ohne Lizenzwahl bleibt derselbe Ausdruck auswertbar.
-  assert.equal(pruefeAusdruck(dreizehn, 'ausgeliefert').zulaessig, true);
+  // Ohne Lizenzwahl bleiben dieselben Ausdrücke auswertbar.
+  assert.equal(pruefeAusdruck(genauDreizehn, 'ausgeliefert').zulaessig, true);
+  assert.equal(pruefeAusdruck(neunzehn, 'ausgeliefert').zulaessig, true);
 });
 
 test('Umordnung und gleichartige Klammern ergeben dieselbe Lizenzangabe', () => {
