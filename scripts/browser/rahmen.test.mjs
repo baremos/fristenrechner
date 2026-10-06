@@ -4,11 +4,13 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { main, wurzel } from '../browser-lauf.mjs';
+import { main as neuAuswerten } from '../browser-lauf-auswertung.mjs';
 import { auswerten, gesamtAuswerten } from './auswertung.mjs';
 import { bauen } from './bauen.mjs';
 import { ERGEBNISKATALOG } from './ergebniskatalog.mjs';
+import { phaseSichern } from './phasenprotokoll.mjs';
 
-const basis = resolve('scratchpad/tmp-v6a-r9');
+const basis = resolve('scratchpad/test-browser');
 mkdirSync(basis, { recursive: true });
 const arbeit = mkdtempSync(join(basis, 'rahmen-tests-'));
 test.after(() => {
@@ -31,7 +33,10 @@ function probe({ fehlt, codes = {}, aufraeumfehler = false } = {}) {
       assert.equal(signal.aborted, false); aufrufe.push(`${browser}/${phase}`);
       const p = vollstaendig(phase);
       const code = codes[`${browser}/${phase}`] ?? 0;
-      if (code !== 0) p.ergebnisse[0].status = code === 2 ? 'ungültig' : 'nicht bestanden';
+      if (code === 4 && phase === 'darstellung') {
+        p.ergebnisse[0].status='Sichtprüfung ausstehend';p.ergebnisse[0].details={teilfaelle:[{status:'bestanden',bild:'b7-320.png'}]};
+        p.sichtpruefung={bilder:[{id:'B7',bild:'b7-320.png',sha256:'a'.repeat(64)}]};
+      } else if (code !== 0) p.ergebnisse[0].status = code === 2 ? 'ungültig' : 'nicht bestanden';
       p.auswertung = { code: 0 }; // main muss die tatsächlichen Fälle selbst auswerten.
       return p;
     },
@@ -40,6 +45,48 @@ function probe({ fehlt, codes = {}, aufraeumfehler = false } = {}) {
 }
 const argv = (name, browser = 'beide', phase = 'alle-v6a') => ['--phase', phase, '--browser', browser, '--ausgabe', join(arbeit, name)];
 const bericht = name => JSON.parse(readFileSync(join(arbeit, name, 'protokoll.json'), 'utf8'));
+
+for(const art of ['serialisierung','ausfuehrung','zusammenfuehrung','schreiben']) {
+  test(`Phasenfehler ${art}: nur Edge-Darstellung ungültig; alle Folgephasen und Chrome laufen, Rahmen vollständig`,async()=>{
+    const p=probe(),ausfuehren=p.hilfen.phaseAusfuehren;
+    p.hilfen.phaseAusfuehren=async args=>{
+      const r=await ausfuehren(args);
+      if(args.browser==='edge'&&args.phase==='darstellung') {
+        if(art==='ausfuehrung')throw new RangeError('Invalid string length');
+        if(art==='serialisierung')r.messungen={toJSON(){throw new RangeError('Invalid string length');}};
+      }
+      return r;
+    };
+    p.hilfen.phaseSpeichern=(r,ordner)=>{
+      if(ordner.endsWith('edge-darstellung')) {
+        if(art==='zusammenfuehrung') {
+          const p=phaseSichern(r,ordner);
+          return {...p,get ergebnisse(){throw new RangeError('Invalid string length');}};
+        }
+        if(art==='schreiben')return phaseSichern(r,ordner,{schreiben:()=>{throw new Error('Schreibprobe gesperrt');}});
+      }
+      return phaseSichern(r,ordner);
+    };
+    const name=`phase-${art}`;assert.equal(await main(argv(name,'beide','alle'),p.hilfen),2);
+    const b=bericht(name);assert.equal(b.laeufe.length,8);assert.deepEqual(b.auswertung.kombinationsfehler,[]);
+    assert.deepEqual(b.laeufe.map(l=>l.code),[0,0,2,0,0,0,0,0]);assert.ok(b.ende);assert.equal(b.fehler,undefined);
+    const l=b.laeufe[2];assert.ok(l.ursachen[0].stelle);assert.match(l.ursachen[0].meldung,art==='schreiben'?/Schreibprobe/:/Invalid string length/);
+    if(art==='schreiben'){assert.equal(l.protokoll,null);assert.ok(l.protokollSchreibfehler);}
+    else {
+      const ph=JSON.parse(readFileSync(join(arbeit,name,'edge-darstellung','protokoll.json'),'utf8'));
+      assert.equal(ph.auswertung.code,2);assert.equal(ph.ergebnisse[0].status,'ungültig');assert.ok(ph.ergebnisse[0].ursache.stack);
+    }
+    assert.equal(p.aufrufe.at(-1),'aufraeumen');
+  });
+}
+
+for(const [name,codes,code]of [['vollständig',{},0],['sichtprüfung',{'edge/darstellung':4,'chrome/darstellung':4},4],['produkt-vor-sicht',{'edge/darstellung':4,'chrome/tastatur':1},1],['messung-vor-produkt',{'edge/darstellung':4,'edge/tastatur':2,'chrome/tastatur':1},2]]) {
+  test(`Die neue Sammelgruppe führt acht Browser/Phasen aus: ${name}`,async()=>{
+    const p=probe({codes});assert.equal(await main(argv(`alle-${name}`,'beide','alle'),p.hilfen),code);
+    assert.equal(bericht(`alle-${name}`).laeufe.length,8);assert.deepEqual(bericht(`alle-${name}`).auswertung.kombinationsfehler,[]);
+    assert.equal(p.aufrufe.at(-1),'aufraeumen');
+  });
+}
 
 test('Fehlender Chrome lässt Edge zur Befundsuche laufen, macht beide Phasen und Gesamtlauf ungültig', async () => {
   const p = probe({ fehlt: 'chrome' });
@@ -70,6 +117,15 @@ test('main sichert Aufräumfehler als ungültigen Gesamtbericht und entfernt die
   assert.equal(bericht('aufraeumfehler').auswertung.code, 2);
   assert.equal(bericht('aufraeumfehler').laeufe.length, 4);
   assert.deepEqual(['SIGINT', 'SIGTERM'].map(s => process.listenerCount(s)), vorher);
+});
+test('Erstlauf und Neuauswertung behandeln ausdrückliche Rahmenrückgabewerte identisch und geschlossen',async()=>{
+  for(const rueckgabewert of [1,3,4,64]) {
+    const p=probe(),name=`rahmenrueckgabe-${rueckgabewert}`;
+    p.hilfen.bauen=async()=>{throw Object.assign(new Error('Bau nicht bestätigt'),{rueckgabewert});};
+    const code=await main(argv(name),p.hilfen);assert.equal(code,2);
+    assert.equal(await neuAuswerten(['--lauf',join(arbeit,name)]),code);
+    assert.equal(JSON.parse(readFileSync(join(arbeit,name,'auswertung.json'),'utf8')).status,bericht(name).status);
+  }
 });
 
 test('Abbruch während der letzten Phase bleibt trotz vollständigem Ergebniskatalog ungültig', async () => {

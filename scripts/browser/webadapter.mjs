@@ -7,6 +7,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import { browserDownload, echterMausklick, exportInstrumentationQuelle } from './download.mjs';
 import { browserErgebnis, Messfehler, messbefehl, Produktabweichung } from './fehler.mjs';
 import { sperrpruefungQuelle } from './bedienelement.mjs';
+import { bildAufnehmen } from './belege.mjs';
 
 const SCHLUESSEL = 'baremos-fristenrechner-projekt-v1';
 const IMPORT_PROJEKT = {
@@ -61,8 +62,8 @@ export async function pruefeBox320({ send, wert, frisch, berechnen, ausgabe, pro
       assert.equal(ohne.scrollX, 0, 'Überlaufmessung beginnt am linken Viewportrand');
     });
     assert.ok(ohne.timeline, 'Zeitschiene gerendert');
-    const bildOhne = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-    await messbefehl(() => writeFileSync(join(ausgabe, 'box-320-ohne.png'), Buffer.from(bildOhne.data, 'base64')));
+    const bildOhne = await bildAufnehmen({send,ausgabe},'box-320-ohne.png');
+    (protokoll.bildbelege ??= []).push(bildOhne);
     messung.bilder.push('box-320-ohne.png');
     // Eine ausschließlich im Prüfdokument gesetzte Gegenprobe grenzt die Ursache ein.
     await wert(`(() => {const s=document.createElement('style');s.id='browser-lauf-box-sizing';s.textContent='*,*::before,*::after{box-sizing:border-box}';document.head.append(s);})()`);
@@ -74,8 +75,8 @@ export async function pruefeBox320({ send, wert, frisch, berechnen, ausgabe, pro
       assert.equal(mit.scrollX, 0, 'Gegenprobe beginnt am linken Viewportrand');
     });
     assert.ok(mit.timeline, 'Zeitschiene der Gegenprobe gerendert');
-    const bildMit = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-    await messbefehl(() => writeFileSync(join(ausgabe, 'box-320-mit.png'), Buffer.from(bildMit.data, 'base64')));
+    const bildMit = await bildAufnehmen({send,ausgabe},'box-320-mit.png');
+    protokoll.bildbelege.push(bildMit);
     messung.bilder.push('box-320-mit.png');
     const ueberlauf = Math.max(0, ohne.timeline.rechts - ohne.clientWidth);
     if (ueberlauf > 0.5) (protokoll.befunde ??= []).push({
