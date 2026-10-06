@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Browserprüfungen getrennt von npm test. Keine Installation, kein fremdes Netz.
 // Aufruf: node scripts/browser-lauf.mjs --phase alle-v6a --browser beide --ausgabe scratchpad/browser-1
+// Alle Phasen: node scripts/browser-lauf.mjs --phase alle --browser beide --ausgabe scratchpad/browser-2
 // Rückgabewerte: 0 bestanden, 1 Produktbefund, 2 Messfehler/ungültig,
-// 3 nur dokumentierte Grenzen, sonst bestanden;
+// 3 nur dokumentierte Grenzen, alles Übrige bestanden;
 // 4 Sichtprüfung ausstehend, 64 falscher Aufruf.
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';

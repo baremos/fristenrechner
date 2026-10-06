@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sichtAuswerten } from './browser/sichtpruefung.mjs';
-import { auswerten, gesamtAuswerten } from './browser/auswertung.mjs';
+import { auswerten, gesamtAuswerten, statusFuerCode } from './browser/auswertung.mjs';
 import { messbefehl } from './browser/fehler.mjs';
 import { MESSGRENZEN, grenzenBestaetigt } from './browser/ergebniskatalog.mjs';
 import { teilfaelleEntscheiden, teilfallUebersicht } from './browser/bedienung.mjs';
@@ -68,7 +68,12 @@ export async function main(argv) {
       Object.assign(lauf,wert,{neuesProtokoll:`${lauf.browser}-${lauf.phase}/auswertung.json`});
     }
     // Ein früherer Rahmenfehler kann durch Bildsichtung nicht verschwinden.
-    neu.auswertung=gesamtAuswerten(neu); neu.code=neu.auswertung.code; neu.status=neu.auswertung.status;
+    neu.auswertung=gesamtAuswerten(neu);
+    const rahmencode=neu.fehler||neu.aufraeumfehler?bericht.code:undefined;
+    // Dieselbe Zusammenführung wie im Erstlauf. Alte Phasenentscheidungen
+    // dürfen neu eingeordnet werden, ein früherer Rahmenfehler bleibt erhalten.
+    neu.code=rahmencode===2||neu.auswertung.code===2?2:rahmencode===1||neu.auswertung.code===1?1:neu.auswertung.code;
+    neu.status=statusFuerCode(neu.code);
     neu.neuAusgewertet=new Date().toISOString();
     await messbefehl(()=>writeFileSync(join(wurzel,'auswertung.json'),JSON.stringify(neu,null,2)+'\n'));
     console.log(`Gesamtlauf: ${neu.status}`); return neu.code;

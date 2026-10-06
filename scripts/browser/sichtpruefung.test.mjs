@@ -42,6 +42,12 @@ test('Sichtprüfung: vollständiger Vermerk oder vollständig ausstehend, niemal
   assert.equal(sichtEntscheiden({schema:1,pruefungen:[vermerk()]},bilder)[0].ergebnis,'bestanden');
   assert.equal(sichtEntscheiden({schema:1,pruefungen:[vermerk({ergebnis:'Sichtprüfung ausstehend',wer:'',wann:'',bemerkung:''})]},bilder)[0].ergebnis,'Sichtprüfung ausstehend');
 });
+test('Die Anleitung ist keine Entscheidung und lockert keine Hashbindung',()=>{
+  const daten={schema:1,anleitung:{ergebnis:['bestanden','nicht bestanden']},pruefungen:[vermerk()]};
+  assert.equal(sichtEntscheiden(daten,bilder)[0].ergebnis,'bestanden');
+  daten.pruefungen[0].sha256='b'.repeat(64);
+  assert.throws(()=>sichtEntscheiden(daten,bilder),Messfehler);
+});
 for(const [name,aenderung]of [['falsche Prüfsumme',{sha256:'b'.repeat(64)}],['unbekanntes Bild',{bild:'anders.png'}],['fehlende Person',{wer:''}],['fehlende Bemerkung',{bemerkung:''}],['ungültiges Datum',{wann:'2026-02-30'}],['falsche Gruppe',{id:'B10'}],['verändertes Kriterium',{kriterium:'anderes'}],['unbekannter Status',{ergebnis:'ok'}],['unvollständiger Vermerk',{ergebnis:'Sichtprüfung ausstehend'}]])test(`Sichtprüfung-Gegenprobe: ${name}`,()=>assert.throws(()=>sichtEntscheiden({schema:1,pruefungen:[vermerk(aenderung)]},bilder),Messfehler));
 test('Sichtprüfung verwirft doppelte/fehlende Kennungen und unbekanntes Format',()=>{
   for(const d of [{schema:2,pruefungen:[vermerk()]},{schema:1,pruefungen:[]},{schema:1,pruefungen:[vermerk(),vermerk()]}])assert.throws(()=>sichtEntscheiden(d,bilder),Messfehler);
@@ -81,6 +87,8 @@ test('Neue Sichtvermerke binden Ausschnitthash, Dokumentlage und AX-Namen; archi
     writeFileSync(join(ordner,'fokus.png'),Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),Buffer.alloc(30)]));
     const original=await schreibeSichtpruefung(ordner,[{id:'B1',bild:'fokus.png',kriterium:'Nativer Fokus'}]);
     const daten=JSON.parse(readFileSync(join(ordner,'sichtpruefung.json'),'utf8'));assert.equal(daten.schema,2);
+    assert.deepEqual(daten.anleitung.ergebnis,['bestanden','nicht bestanden']);
+    assert.match(daten.anleitung.wer,/Pflicht/);assert.match(daten.anleitung.wann,/Datum.*ISO-Zeit/);assert.match(daten.anleitung.bemerkung,/Pflicht/);
     const p={phase:'tastatur',ergebnisse:ERGEBNISKATALOG.tastatur.map(id=>({id,status:'bestanden'})),sichtpruefung:{bilder:original}};
     p.ergebnisse[0]={id:'B1',status:'Sichtprüfung ausstehend',details:{teilfaelle:[{status:'bestanden',sichtbilder:['fokus.png']}]}};
     for(const aendern of [d=>d.pruefungen[0].ausschnitte[0].sha256='b'.repeat(64),d=>d.pruefungen[0].ausschnitte[0].element.name='Fremdes Feld',

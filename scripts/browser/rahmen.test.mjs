@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { main, wurzel } from '../browser-lauf.mjs';
+import { main as neuAuswerten } from '../browser-lauf-auswertung.mjs';
 import { auswerten, gesamtAuswerten } from './auswertung.mjs';
 import { bauen } from './bauen.mjs';
 import { ERGEBNISKATALOG } from './ergebniskatalog.mjs';
@@ -116,6 +117,15 @@ test('main sichert Aufräumfehler als ungültigen Gesamtbericht und entfernt die
   assert.equal(bericht('aufraeumfehler').auswertung.code, 2);
   assert.equal(bericht('aufraeumfehler').laeufe.length, 4);
   assert.deepEqual(['SIGINT', 'SIGTERM'].map(s => process.listenerCount(s)), vorher);
+});
+test('Erstlauf und Neuauswertung behandeln ausdrückliche Rahmenrückgabewerte identisch und geschlossen',async()=>{
+  for(const rueckgabewert of [1,3,4,64]) {
+    const p=probe(),name=`rahmenrueckgabe-${rueckgabewert}`;
+    p.hilfen.bauen=async()=>{throw Object.assign(new Error('Bau nicht bestätigt'),{rueckgabewert});};
+    const code=await main(argv(name),p.hilfen);assert.equal(code,2);
+    assert.equal(await neuAuswerten(['--lauf',join(arbeit,name)]),code);
+    assert.equal(JSON.parse(readFileSync(join(arbeit,name,'auswertung.json'),'utf8')).status,bericht(name).status);
+  }
 });
 
 test('Abbruch während der letzten Phase bleibt trotz vollständigem Ergebniskatalog ungültig', async () => {

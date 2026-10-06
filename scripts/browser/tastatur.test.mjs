@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { tastaturSichtbeleg } from './tastatur.mjs';
+import { tastaturSichtbeleg, sichereAxBeleg } from './tastatur.mjs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { nativerFokus } from './tastatur-regeln.mjs';
 import { Messfehler } from './fehler.mjs';
 import { teilfall } from './bedienung.mjs';
@@ -13,6 +16,30 @@ const aufnahme=(nachweis,extra={})=>({sichtbild:async(name,optionen)=>{
   assert.equal(optionen.nachweis,nachweis);assert.equal(optionen.imViewport,true);assert.equal(optionen.fokuspflicht,true);assert.deepEqual(optionen.selectors,['#datum']);
   Object.assign(nachweis,{ausschnitte:[{element:{backendNodeId:97}}],...extra});return nachweis;
 }});
+test('Barrierebaum bleibt als gehashte Datei belegt; Protokollgröße hängt nicht von der Nutzlast der Knoten ab',async()=>{
+  const basis=resolve('scratchpad/test-tastatur');mkdirSync(basis,{recursive:true});const ordner=mkdtempSync(join(basis,'lauf-'));
+  try {
+    const elemente=[{selector:'#datum',backendNodeId:97}],messungen=[];
+    for(const [datei,zeichen] of [['klein.json',16],['gross.json',1024*1024]]) {
+      const nodes=baum();nodes[0].beschreibung='x'.repeat(zeichen);
+      const m=await sichereAxBeleg(ordner,datei,nodes,elemente);messungen.push(m);
+      const bytes=readFileSync(join(ordner,datei));assert.equal(m.bytes,bytes.length);
+      assert.equal(m.sha256,createHash('sha256').update(bytes).digest('hex'));
+      assert.deepEqual(JSON.parse(bytes),{elemente,nodes});
+      assert.equal(m.knoten,2);assert.equal(m.elemente,1);
+      assert.deepEqual(Object.keys(m).sort(),['bytes','datei','elemente','knoten','sha256']);
+    }
+    assert.ok(messungen[1].bytes>messungen[0].bytes+1000000);
+    assert.ok(Math.abs(JSON.stringify(messungen[1]).length-JSON.stringify(messungen[0]).length)<=5);
+  } finally {assert.equal(dirname(resolve(ordner)),basis);rmSync(ordner,{recursive:true,force:true});}
+});
+test('Barrierebaum mit Schreib- oder Serialisierungsfehler bleibt ein Messfehler',async()=>{
+  const basis=resolve('scratchpad/test-tastatur');mkdirSync(basis,{recursive:true});const ordner=mkdtempSync(join(basis,'lauf-'));
+  try {
+    await assert.rejects(()=>sichereAxBeleg(join(ordner,'fehlt'),'ax.json',baum(),[]),Messfehler);
+    await assert.rejects(()=>sichereAxBeleg(ordner,'ax.json',[{nodeId:'1',wert:1n}],[]),Messfehler);
+  } finally {assert.equal(dirname(resolve(ordner)),basis);rmSync(ordner,{recursive:true,force:true});}
+});
 test('Tastatur-Sichtbeleg erhält denselben nativen Teilfeldfokus nach Ausschnitt und Übersicht',async()=>{
   const nachweis={},vorher=nativerFokus(baum(),97);
   assert.equal(await tastaturSichtbeleg(aufnahme(nachweis),async()=>baum(),'fokus.png','#datum',vorher,nachweis),nachweis);

@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { basename, join } from 'node:path';
 import { bedienung, inventarQuelle, teilfall, teilfaelleEntscheiden, teilfallUebersicht, sichtbarQuelle } from './bedienung.mjs';
 import { sperrpruefungQuelle } from './bedienelement.mjs';
@@ -16,6 +17,15 @@ export const fehlerquelle=selector=>`(() => {const e=document.querySelector(${JS
   statusmeldungen:['form-message','import-message','export-message','excel-message','pdf-message'].map(id=>({id,text:document.getElementById(id)?.textContent??''})),
   felder:[...document.querySelectorAll('input,select')].map(e=>({selector:e.id?'#'+e.id:'[name="'+e.name+'"]',beschriftung:[...(e.labels??[])].map(l=>l.textContent.trim()).join(' '),bezug:e.getAttribute('aria-describedby'),ungueltig:e.getAttribute('aria-invalid'),fokus:e===document.activeElement,sichtbar:sichtbar(e),wert:e.value,minimum:e.min??null,validierung:e.validationMessage,gueltig:e.validity.valid,gruppentext:e.closest('.conditional-panel')?.textContent.trim()??''}))};})()`;
 export const lesefehlerQuelle=`globalThis.__browserLeseprobe=[];File.prototype.text=function(){__browserLeseprobe.push({name:this.name,bytes:this.size});return Promise.reject(new Error('Browser-Leseprobe'));};`;
+
+export async function sichereAxBeleg(ordner,datei,nodes,elemente) {
+  return messbefehl(()=>{
+    // Der vollständige Baum bleibt in der Datei; das Protokoll referenziert ihn.
+    const bytes=Buffer.from(JSON.stringify({elemente,nodes},null,2)+'\n');
+    writeFileSync(join(ordner,datei),bytes);
+    return {datei,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex'),knoten:nodes.length,elemente:elemente.length};
+  });
+}
 
 export async function tastaturSichtbeleg(b,axBaum,name,selector,axFokus,nachweis={}) {
   const beleg=await b.sichtbild(name,{selectors:[selector],nativerFokus:axFokus,imViewport:true,fokuspflicht:true,nachweis});
@@ -58,9 +68,8 @@ export async function pruefeTastatur(kontext) {
         const {node}=await b.send('DOM.describeNode',{nodeId});elemente.push({...e,backendNodeId:node?.backendNodeId});
       }
       const nodes=await axBaum();
-      fall.messungen={elemente,nodes};
       const bildname=`ax-${axFaelle.length}.json`;
-      await messbefehl(()=>writeFileSync(join(ausgabe,bildname),JSON.stringify(fall.messungen,null,2)+'\n'));
+      fall.messungen=await sichereAxBeleg(ausgabe,bildname,nodes,elemente);
       fall.datei=bildname;pruefeAx(nodes,elemente);
     });
     return fall;
@@ -80,7 +89,7 @@ export async function pruefeTastatur(kontext) {
         bestaetige(typeof fokus.kennung==='string','Fokus liegt an einem nicht inventarisierten Knoten.');
         fokus.normal=inventar.find(e=>e.kennung===fokus.kennung)?.normal;
         let axFokus=null;
-        if(['date','time'].includes(fokus.typ)) {
+        if(['date','time','datetime-local','month','week'].includes(fokus.typ)) {
           const nodes=await axBaum();
           const element=inventar.find(e=>e.kennung===fokus.kennung);
           const {root}=await b.send('DOM.getDocument'),{nodeId}=await b.send('DOM.querySelector',{nodeId:root.nodeId,selector:element.selector}),{node}=await b.send('DOM.describeNode',{nodeId});

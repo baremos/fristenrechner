@@ -66,7 +66,7 @@ export const fokusQuelle = `(() => {
     innerHeight,innerWidth,treffer:hit===v||v.contains(hit),malflaeche:flaeche.beleg,unbestimmt:flaeche.unbestimmt,
     outline:c.outlineStyle,outlineBreite:parseFloat(c.outlineWidth),outlineFarbe:c.outlineColor,boxSchatten:c.boxShadow,farbe:c.color,hintergrund:c.backgroundColor,
     rahmen:[c.borderTopColor,c.borderRightColor,c.borderBottomColor,c.borderLeftColor,c.borderTopWidth,c.borderRightWidth,c.borderBottomWidth,c.borderLeftWidth].join('|'),
-    nativeGrafik:e.matches('input,select,textarea')&&c.appearance!=='none',datentabelle:e.matches('.table-scroll')};
+    nativeGrafik:e.matches('input[type=date],input[type=time],input[type=datetime-local],input[type=month],input[type=week]')&&c.appearance!=='none',datentabelle:e.matches('.table-scroll')};
 })()`;
 
 export const textzuordnungQuelle = `(() => {

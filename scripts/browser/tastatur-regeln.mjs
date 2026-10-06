@@ -12,7 +12,8 @@ export function pruefeFokus(m) {
   const ring=m.outlineBreite>0 && !['none','hidden'].includes(m.outline) && farbe(m.outlineFarbe)[3]>0;
   // :focus-visible am Host bildet den Fokus der nativen Datumsteile nicht ab.
   // Geometrie/Verdeckung bleiben pflichtig, der innere Indikator braucht Bilder.
-  if(m.nativeGrafik&&!ring)return {sichtpruefung:true,kriterium:'Der native Fokusindikator ist am fokussierten Teilfeld sichtbar.'};
+  if(m.nativeGrafik&&['date','time','datetime-local','month','week'].includes(m.typ)&&!ring)
+    return {sichtpruefung:true,kriterium:'Der native Fokusindikator ist am fokussierten Teilfeld sichtbar.'};
   verlange(m.fokusVisible,'Tastaturfokus ist nicht als sichtbar bestätigt.',m);
   if(!ring)bestaetige(m.normal&&m.boxSchatten==='none'&&m.normal.boxSchatten===m.boxSchatten&&m.normal.hintergrund===m.hintergrund
     &&m.normal.rahmen===m.rahmen,'Möglicher alternativer Fokusindikator ist nicht eindeutig bestimmt.');

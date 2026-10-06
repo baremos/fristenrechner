@@ -46,11 +46,20 @@ export async function schreibeSichtpruefung(ordner, bilder) {
       return { id, bild, kriterium, sha256:vollbild.sha256, belegart:'Elementausschnitte', ausschnitte, vollbild,
         ergebnis:'Sichtprüfung ausstehend', wer:'', wann:'', bemerkung:'' };
     });
-    writeFileSync(join(ordner,'sichtpruefung.json'), JSON.stringify({ schema:2, beurteilt:'Die gehashten Elementausschnitte; das Vollbild bleibt ergänzender Beleg.', pruefungen },null,2)+'\n');
+    const anleitung={
+      ausfuellen:'Je Prüfung nur ergebnis, wer, wann und bemerkung ausfüllen; alle Belegangaben und Hashes unverändert lassen.',
+      ergebnis:['bestanden','nicht bestanden'],
+      wer:'Name der Prüfperson (Pflicht).',
+      wann:'Gültiges Datum JJJJ-MM-TT oder ISO-Zeit in UTC: JJJJ-MM-TTThh:mm:ss[.sss]Z (Pflicht).',
+      bemerkung:'Begründung der Sichtentscheidung (Pflicht).',
+      ausstehend:'Ungeprüfte Einträge bleiben bei Sichtprüfung ausstehend mit leeren Feldern wer, wann und bemerkung.',
+    };
+    writeFileSync(join(ordner,'sichtpruefung.json'), JSON.stringify({ schema:2, anleitung, beurteilt:'Die gehashten Elementausschnitte; das Vollbild bleibt ergänzender Beleg.', pruefungen },null,2)+'\n');
     return pruefungen.map(({ergebnis,wer,wann,bemerkung,...beleg})=>beleg);
   });
 }
 export function sichtEntscheiden(daten, bilder) {
+  // Die Anleitung erklärt die Eingabe, sie ist kein Prüfvermerk oder Beleg.
   bestaetige([1,2].includes(daten?.schema) && Array.isArray(daten.pruefungen) && Array.isArray(bilder) && bilder.length > 0, 'Sichtprüfbelege fehlen.');
   bestaetige(bilder.every(b=>daten.schema===(b.belegart==='Elementausschnitte'?2:1)),'Sichtschema passt nicht zum ursprünglichen Lauf.');
   const erwartet = bilder.map(b=>b.bild), gesehen = new Set();

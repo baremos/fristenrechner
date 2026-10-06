@@ -143,12 +143,41 @@ test('Sichtbarer Fokus: Geometrie, Treffpunkt und sichtbarer Rahmen; verdeckt, u
   for(const extra of [{treffer:false},{sichtbar:false},{fokusVisible:false},{outlineBreite:0},{rechts:400},{unten:1000}])assert.throws(()=>pruefeFokus(fokus(extra)),Abweichung);
   assert.throws(()=>pruefeFokus(fokus({breite:0})),Messfehler);
   assert.throws(()=>pruefeFokus(fokus({outlineFarbe:'color(srgb 0 0 0 / 0)'})),Abweichung);
-  assert.equal(pruefeFokus(fokus({outlineBreite:0,nativeGrafik:true,fokusVisible:false})).sichtpruefung,true);
+  assert.throws(()=>pruefeFokus(fokus({typ:'text',outlineBreite:0,nativeGrafik:true,fokusVisible:false})),Abweichung);
   assert.throws(()=>pruefeFokus(fokus({outlineBreite:0,boxSchatten:'0 0 0 3px red'})),Messfehler);
   assert.doesNotThrow(()=>pruefeFokus(fokus({datentabelle:true,hoehe:1200,oben:0,unten:1200})));
   assert.doesNotThrow(()=>pruefeFokus(fokus({datentabelle:true,hoehe:2000,oben:-500,unten:1500})));
   assert.throws(()=>pruefeFokus(fokus({datentabelle:true,hoehe:1200,oben:901,unten:2101})),Abweichung);
   assert.throws(()=>pruefeFokus(fokus({hoehe:1200,oben:0,unten:1200})),Abweichung);
+});
+test('Nur native Datum-/Zeitteilfelder brauchen eine Sichtprüfung; andere Felder ohne Ring bleiben Produktbefunde',()=>{
+  for(const typ of ['date','time','datetime-local','month','week']) {
+    const m=fokus({typ,nativeGrafik:true,outlineBreite:0,fokusVisible:false});
+    assert.equal(pruefeFokus(m).sichtpruefung,true);
+    const nodes=[{nodeId:'datum',backendDOMNodeId:7,name:{value:'Datum'}},
+      {nodeId:'tag',parentId:'datum',name:{value:'Teilfeld'},properties:[{name:'focused',value:{value:true}}]}];
+    assert.equal(nativerFokus(nodes,7).nodeId,'tag');
+    for(const extra of [{treffer:false},{sichtbar:false},{rechts:400},{nativeGrafik:false}])
+      assert.throws(()=>pruefeFokus({...m,...extra}),Abweichung);
+  }
+  for(const typ of ['text','number','email','checkbox','select-one','textarea',null])
+    for(const fokusVisible of [false,true])
+      assert.throws(()=>pruefeFokus(fokus({typ,nativeGrafik:true,outlineBreite:0,fokusVisible})),Abweichung);
+});
+test('Fokusmessquelle kennzeichnet nur native Datum-/Zeitfelder als nicht messbare Teilfeldgrafik',()=>{
+  const rechteck={left:1,right:151,top:10,bottom:50,width:150,height:40};
+  const c={visibility:'visible',opacity:'1',appearance:'auto',outlineStyle:'none',outlineWidth:'0',outlineColor:'rgb(0, 0, 0)'};
+  const messen=new Function('document','getComputedStyle','scrollX','scrollY','innerWidth','innerHeight',`return ${quellen.fokusQuelle}`);
+  for(const [tagName,type] of [['INPUT','date'],['INPUT','time'],['INPUT','datetime-local'],['INPUT','month'],['INPUT','week'],
+    ['INPUT','text'],['INPUT','number'],['SELECT','select-one'],['TEXTAREA','textarea']]) {
+    const e={tagName,type,dataset:{browserMesskennung:'1'},parentElement:null,closest:()=>null,getClientRects:()=>[rechteck],getBoundingClientRect:()=>rechteck,
+      matches:s=>s.split(',').includes(`input[type=${type}]`),contains:()=>false};
+    const document={activeElement:e,elementFromPoint:()=>e};
+    const m=messen(document,()=>c,0,0,320,900);
+    assert.equal(m.nativeGrafik,['date','time','datetime-local','month','week'].includes(type));
+    assert.equal(m.typ,type);
+    assert.equal(messen(document,()=>({...c,appearance:'none'}),0,0,320,900).nativeGrafik,false);
+  }
 });
 test('AX: vollständige Zuordnung verlangt Rolle und Namen jedes Elements',()=>{
   const e=[{selector:'button',backendNodeId:7}],nodes=[{nodeId:'1',backendDOMNodeId:7,role:{value:'button'},name:{value:'Berechnen'},ignored:false}];
