@@ -31,6 +31,21 @@ function probe({ fehltAb = 100, endeAb = fehltAb, cdpFehler = false, closed = fa
   };
 }
 
+test('Standardfrist lässt einen späten regulären Abschluss zu; unverändert lebender Browser bleibt nach Zwang ungültig',async()=>{
+  const p=probe({fehltAb:12000});delete p.optionen.fristMs;p.optionen.intervallMs=1000;
+  const r=await beendeBrowserProzess(p.argumente,p.optionen);assert.equal(r.status,'bestanden');assert.equal(r.zeiten.prozessAbwesendNachMs,12000);assert.equal(r.prozessPruefung.fristMs,30000);
+  const haengt=probe({fehltAb:Infinity});delete haengt.optionen.fristMs;haengt.optionen.intervallMs=1000;
+  const negativ=await beendeBrowserProzess(haengt.argumente,haengt.optionen);assert.equal(negativ.status,'ungültig');assert.equal(negativ.zeiten.zwangNachMs,30000);
+});
+
+test('Endnachweis führt bekannte Nachprozesse mit ihren belegten Typen; unbekannter Typ oder vorhandene PID wird nicht geraten',async()=>{
+  const p=probe({fehltAb:0});p.argumente.bekannteBrowserProzesse=[{pid:pid+1,type:'GPU'},{pid:pid+2,type:'storage.mojom.StorageService'},{pid:pid+3}];
+  p.optionen.kill=(kennung,signal)=>{assert.equal(signal,0);if(kennung===pid)throw fehler('ESRCH');return true;};
+  const r=await beendeBrowserProzess(p.argumente,p.optionen);assert.equal(r.status,'ungültig');
+  assert.deepEqual(r.nachkommen.bekannteProzesse.map(p=>p.typen),[['GPU'],['storage.mojom.StorageService'],[]]);
+  assert.ok(r.nachkommen.bekannteProzesse.every(p=>p.vorhanden===true));assert.ok(!r.zwang);
+});
+
 for (const [antwort, erwartet] of [[true, { vorhanden: true, code: null }],
   ['ESRCH', { vorhanden: false, code: 'ESRCH' }], ['EPERM', { vorhanden: true, code: 'EPERM' }]]) {
   test(`Signal 0: ${antwort} wird sprachunabhängig eingeordnet`, () => {

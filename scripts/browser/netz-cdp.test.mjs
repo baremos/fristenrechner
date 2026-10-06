@@ -24,6 +24,27 @@ function mock({ fehler } = {}) {
   } };
   return { cdp, aufrufe, protokoll: { netzanfragen: [] } };
 }
+test('Frische Ersatzseite bekommt vor Navigation sämtliche Netzsperren; keine bloße Leerseiten-Ausnahme',async()=>{
+  const {cdp,aufrufe,protokoll}=mock();const monitor=await seitenNetzStarten(cdp,protokoll,'pruefseite');
+  cdp.ws.empfangen({method:'Target.attachedToTarget',params:{sessionId:'neu',targetInfo:{targetId:'neu',type:'page',url:'about:blank'},waitingForDebugger:false}});
+  await monitor.bereit();const start=aufrufe.length;const beleg=await monitor.seiteAnmelden('neu');
+  assert.equal(beleg.bestaetigt,true);assert.deepEqual(aufrufe.slice(start).map(a=>a.method),['Network.enable','Page.enable','Fetch.enable','Target.setAutoAttach']);
+  cdp.ws.empfangen({method:'Target.targetInfoChanged',params:{targetInfo:{targetId:'neu',type:'page',url:'http://127.0.0.1:1234/'}}});
+  cdp.ws.empfangen({method:'Network.requestWillBeSent',sessionId:'neu',params:{requestId:'a',request:{url:'http://127.0.0.1:1234/'}}});
+  await monitor.bereit();assert.equal(protokoll.netzanfragen[0].targetId,'neu');
+  await assert.rejects(()=>monitor.seiteAnmelden('neu'),/nicht als unveränderte/);
+  await assert.rejects(()=>monitor.seiteAnmelden('fremd'),/nicht als unveränderte/);monitor.close();
+});
+test('Bereits navigierte oder unvollständig überwachte Ersatzseite wird abgewiesen',async()=>{
+  const {cdp,protokoll}=mock();const monitor=await seitenNetzStarten(cdp,protokoll,'pruefseite');
+  cdp.ws.empfangen({method:'Target.attachedToTarget',params:{sessionId:'neu',targetInfo:{targetId:'neu',type:'page',url:'about:blank'},waitingForDebugger:false}});
+  await monitor.bereit();cdp.ws.empfangen({method:'Target.targetInfoChanged',params:{targetInfo:{targetId:'neu',type:'page',url:'http://127.0.0.1:1234/'}}});
+  await assert.rejects(()=>monitor.seiteAnmelden('neu'),/Seitenzuordnung/);monitor.close();
+  const m=mock(),n=await seitenNetzStarten(m.cdp,m.protokoll,'pruefseite');
+  m.cdp.ws.empfangen({method:'Target.attachedToTarget',params:{sessionId:'neu',targetInfo:{targetId:'neu',type:'page',url:'about:blank'},waitingForDebugger:false}});
+  await n.bereit();const original=m.cdp.send;m.cdp.send=async(...args)=>{if(args[0]==='Fetch.enable')throw new Error('Sperre fehlt');return original(...args);};
+  await assert.rejects(()=>n.seiteAnmelden('neu'),/Sperre fehlt/);assert.equal(m.protokoll.netzTargets.find(t=>t.targetId==='neu').frischeSeiteBestaetigt,undefined);n.close();
+});
 
 test('Entdecktes Web-Target ohne angehängte Sitzung bleibt auch nach Zerstörung ungültig', async () => {
   const { cdp, protokoll } = mock();

@@ -60,7 +60,7 @@ export function prozessPidPruefen(pid, kill = process.kill.bind(process)) {
 // Keine tasklist-Ersatzprüfung: Sie ist langsam und belegt keine PID-Identität.
 export async function beendeBrowserProzess({ browserCdp, child, beendet, bekannteBrowserProzesse = [] },
   { kill = process.kill.bind(process), jetzt = () => performance.now(), warten = ms => new Promise(r => setTimeout(r, ms)),
-    fristMs = 8000, intervallMs = 50, zwangFristMs = 1000, diagnose = false, zustand } = {}) {
+    fristMs = 30000, intervallMs = 50, zwangFristMs = 1000, diagnose = false, zustand } = {}) {
   const beginn = jetzt();
   const ergebnis = { id: 'ENDE', beschreibung: 'Ende des eigenen Browserprozesses bestätigt',
     status: 'ungültig', prozessId: child?.pid ?? null,
@@ -85,7 +85,9 @@ export async function beendeBrowserProzess({ browserCdp, child, beendet, bekannt
     const start = jetzt();
     const pids = [...new Set(bekannteBrowserProzesse.map(p => p.pid).filter(pid => pid !== child.pid))];
     while (pids.length) {
-      ergebnis.nachkommen.bekannteProzesse = pids.map(pid => ({ pid, ...prozessPidPruefen(pid, kill) }));
+      ergebnis.nachkommen.bekannteProzesse = pids.map(pid => ({ pid,
+        typen:[...new Set(bekannteBrowserProzesse.filter(p=>p.pid===pid).map(p=>p.type).filter(Boolean))],
+        ...prozessPidPruefen(pid, kill) }));
       if (ergebnis.nachkommen.bekannteProzesse.every(p => p.vorhanden === false)) break;
       const rest = fristMs - (jetzt() - start);
       if (rest <= 0) break;

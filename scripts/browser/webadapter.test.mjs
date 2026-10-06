@@ -294,7 +294,7 @@ test('W8 hebt den automatischen Abbruch auch bei fehlgeschlagener Aktivierung wi
   assert.deepEqual(aufrufe.at(-1), { name: 'Page.setInterceptFileChooserDialog', parameter: { enabled: true, cancel: false } });
 });
 
-const testBasis = resolve('scratchpad/tmp-v6a-r9');
+const testBasis = resolve('scratchpad/test-browser');
 mkdirSync(testBasis, { recursive: true });
 const temp = realpathSync(testBasis);
 const ausgabe = mkdtempSync(join(temp, 'webadapter-tests-'));
@@ -317,10 +317,11 @@ function boxProbe(ohne, mit = layout()) {
   const protokoll = {};
   let gegenprobe = false;
   const kontext = {
-    ausgabe, protokoll,
+    ausgabe:mkdtempSync(join(ausgabe,'box-')), protokoll,
     send: async (name, parameter) => {
       aufrufe.push({ name, parameter });
-      return name === 'Page.captureScreenshot' ? { data: Buffer.from('Nachgestellte PNG-Daten').toString('base64') } : {};
+      const png=Buffer.alloc(40);Buffer.from([137,80,78,71,13,10,26,10]).copy(png);png.write('IHDR',12);png.writeUInt32BE(320,16);png.writeUInt32BE(900,20);
+      return name === 'Page.captureScreenshot' ? { data: png.toString('base64') } : {};
     },
     wert: async ausdruck => {
       if (ausdruck.includes('const element=')) return gegenprobe ? mit : ohne;
@@ -343,7 +344,9 @@ test('BOX-320 misst 320 Pixel nutzbare Layoutbreite und stellt die Emulation ans
   assert.equal(messung.ohneGlobaleRegel.clientWidth, 320);
   assert.equal(protokoll.messungen[0], messung);
   assert.deepEqual(messung.bilder, ['box-320-ohne.png', 'box-320-mit.png']);
-  assert.equal(readFileSync(join(ausgabe, 'box-320-ohne.png'), 'utf8'), 'Nachgestellte PNG-Daten');
+  assert.equal(readFileSync(join(kontext.ausgabe, 'box-320-ohne.png')).length,40);
+  assert.equal(protokoll.bildbelege.length,2);
+  assert.ok(protokoll.bildbelege.every(b=>b.bytes===40&&/^[a-f0-9]{64}$/.test(b.sha256)&&!('data' in b)));
   assert.deepEqual(aufrufe.slice(-2), [
     { name: 'Emulation.clearDeviceMetricsOverride', parameter: undefined },
     { name: 'Emulation.setScrollbarsHidden', parameter: { hidden: false } },
@@ -403,4 +406,11 @@ test('BOX-320 räumt die Bildlaufleisten auch bei einem Fehler im Zurücksetzen 
   };
   await assert.rejects(pruefeBox320(kontext), /Maße zurücksetzen fehlgeschlagen/);
   assert.deepEqual(aufrufe.at(-1), { name: 'Emulation.setScrollbarsHidden', parameter: { hidden: false } });
+});
+
+test('BOX-320-Bild ohne PNG-Nachweis bleibt Messfehler und verhindert die Emulationsbereinigung nicht',async()=>{
+  const {kontext,aufrufe}=boxProbe(layout()),send=kontext.send;
+  kontext.send=(m,p)=>m==='Page.captureScreenshot'?{data:Buffer.alloc(50).toString('base64')}:send(m,p);
+  await assert.rejects(()=>pruefeBox320(kontext),Messfehler);
+  assert.equal(aufrufe.at(-1).name,'Emulation.setScrollbarsHidden');
 });

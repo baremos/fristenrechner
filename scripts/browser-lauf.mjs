@@ -1,22 +1,27 @@
 #!/usr/bin/env node
 // Browserprüfungen getrennt von npm test. Keine Installation, kein fremdes Netz.
 // Aufruf: node scripts/browser-lauf.mjs --phase alle-v6a --browser beide --ausgabe scratchpad/browser-1
-// Rückgabewerte: 0 bestanden, 1 nicht bestanden, 2 ungültig, 64 falscher Aufruf.
+// Rückgabewerte: 0 bestanden, 1 Produktbefund, 2 Messfehler/ungültig,
+// 3 nur dokumentierte Grenzen, sonst bestanden;
+// 4 Sichtprüfung ausstehend, 64 falscher Aufruf.
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { createServer as createNetServer } from 'node:net';
-import { closeSync, existsSync, mkdirSync, openSync, readSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, createReadStream, existsSync, mkdirSync, openSync, readSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Cdp, ausgabePruefen, echterPfad, innen, pause, prozess } from './emulator/rahmen.mjs';
-import { argumente, anfrageBewerten, auswerten, gesamtAuswerten, neuesProtokoll, pruefung } from './browser/auswertung.mjs';
+import { argumente, anfrageBewerten, auswerten, gesamtAuswerten, neuesProtokoll, pruefung, statusFuerCode } from './browser/auswertung.mjs';
 import { browserErgebnis, Messfehler, messbefehl } from './browser/fehler.mjs';
 import { bauen } from './browser/bauen.mjs';
 import { pruefeWebadapter } from './browser/webadapter.mjs';
+import { pruefeDarstellung } from './browser/darstellung.mjs';
+import { pruefeTastatur } from './browser/tastatur.mjs';
 import { beendeBrowserProzess, beobachteBrowserProzess, browserProzessIdentitaet } from './browser/prozessende.mjs';
 import { BrowserCdp, seitenNetzStarten } from './browser/netz-cdp.mjs';
 import { netlogLesen, netzNachweis } from './browser/netz-auswertung.mjs';
+import { phaseSichern, ungueltigePhase } from './browser/phasenprotokoll.mjs';
 
 export const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export { argumente, anfrageBewerten, auswerten, neuesProtokoll } from './browser/auswertung.mjs';
@@ -138,6 +143,27 @@ async function warten(fn, beschreibung, ms = 15000) {
   throw new Messfehler(`Zeitüberschreitung: ${beschreibung}`);
 }
 
+export async function verbindeFrischeSeite({browserCdp,netzMonitor,protokoll,warten:warte,verbinden,cdp}) {
+  const {targetId}=await messbefehl(()=>browserCdp.send('Target.createTarget',{url:'about:blank'}));
+  if(typeof targetId!=='string'||!/^[A-Za-z0-9-]+$/.test(targetId))throw new Messfehler('Neue Seitenkennung fehlt.');
+  await warte(()=>protokoll.netzTargets.some(t=>t.targetId===targetId&&t.messbereit),'Überwachung der frischen Seite');
+  const beleg=await netzMonitor.seiteAnmelden(targetId);
+  if(beleg?.bestaetigt!==true||beleg.targetId!==targetId)throw new Messfehler('Überwachung der Ersatzseite nicht bestätigt.');
+  const neu=await verbinden(targetId);
+  try {
+    // Ein zurückgelassenes Dokument könnte noch verzögert in denselben lokalen
+    // Speicher schreiben. Erst sein bestätigtes Entladen beendet diese Wirkung.
+    const leer=await messbefehl(()=>cdp.send('Page.navigate',{url:'about:blank'}));
+    if(leer.errorText)throw new Messfehler(`Alte Prüfseite nicht entladen: ${leer.errorText}`);
+    await warte(async()=>browserErgebnis(await messbefehl(()=>cdp.send('Runtime.evaluate',{
+      expression:'location.href',returnByValue:true,userGesture:false,
+    })))==='about:blank','Altes Dokument entladen');
+    cdp.close();
+    // Alte Targets bleiben bis zum geplanten Browserende überwacht.
+    (protokoll.frischeSeiten??=[]).push(beleg);
+    return neu;
+  } catch(fehler) {neu.close();throw fehler;}
+}
 async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, arbeitsstand, htmlHash, signal, diagnose = false }) {
   mkdirSync(ausgabe);
   const protokoll = neuesProtokoll({ commit, arbeitsstand, phase, browser });
@@ -195,13 +221,17 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
     protokoll.pruefTarget = { targetId: id, browserContextId: target.browserContextId ?? null };
     netzMonitor = await seitenNetzStarten(browserCdp, protokoll, id, basisUrl);
     protokoll.pruefTarget.browserContextId = protokoll.netzTargets.find(t => t.targetId === id)?.browserContextId ?? target.browserContextId ?? null;
-    cdp = await Cdp.connect(`ws://127.0.0.1:${zeilen[0]}/devtools/page/${id}`);
-    cdp.ws.addEventListener('message', ev => {
+    const seiteVerbinden=async targetId=>{
+      const verbindung=await Cdp.connect(`ws://127.0.0.1:${zeilen[0]}/devtools/page/${targetId}`);
+      verbindung.ws.addEventListener('message', ev => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       const p = m.params;
       if (['Runtime.consoleAPICalled', 'Runtime.exceptionThrown', 'Log.entryAdded'].includes(m.method)) protokoll.konsolenmeldungen.push({ zeit: new Date().toISOString(), methode: m.method, daten: p });
-    });
-    for (const domain of ['Page', 'Runtime', 'Log', 'DOM']) await cdp.send(`${domain}.enable`);
+      });
+      for (const domain of ['Page', 'Runtime', 'Log', 'DOM']) await verbindung.send(`${domain}.enable`);
+      return verbindung;
+    };
+    cdp = await seiteVerbinden(id);
     await cdp.send('Page.setInterceptFileChooserDialog', { enabled: true });
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
     const navigieren = async (pfad = '/') => {
@@ -215,6 +245,10 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
       const vorhanden = await messbefehl(() => cdp.send('Runtime.evaluate', { expression: 'Boolean(document.querySelector("[data-fristenrechner]"))', returnByValue: true, userGesture: false }));
       if (!browserErgebnis(vorhanden)) throw new Error('Komponente fehlt in der gebauten Probeseite.');
       await pause(100);
+    };
+    const neueSeite=async()=>{
+      cdp=await verbindeFrischeSeite({browserCdp,netzMonitor,protokoll,warten,verbinden:seiteVerbinden,cdp});
+      return {cdp,browserCdp,basisUrl,ausgabe,navigieren};
     };
     // Neue Phasen ergänzen diese Zuordnung, den Ergebniskatalog und ihre Module.
     const phasen = {
@@ -232,6 +266,8 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
         });
       },
       webadapter: () => pruefeWebadapter({ cdp, browserCdp, basisUrl, ausgabe, protokoll, pruefung: pruefe, navigieren }),
+      darstellung: () => pruefeDarstellung({ cdp, browserCdp, basisUrl, ausgabe, protokoll, pruefung: pruefe, navigieren, neueSeite }),
+      tastatur: () => pruefeTastatur({ cdp, browserCdp, basisUrl, ausgabe, protokoll, pruefung: pruefe, navigieren }),
     };
     await phasen[phase]();
     await netzMonitor.bereit();
@@ -241,7 +277,7 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
       return { ausnahmen: 0 };
     });
   } catch (e) {
-    protokoll.ergebnisse.push({ id: 'LAUF', beschreibung: 'Vollständiger Phasenlauf', status: 'ungültig', meldung: e.message });
+    protokoll.ergebnisse.push(ungueltigePhase({phase,browser},e,'Phasenmessung').ergebnisse[0]);
   } finally {
     signal?.removeEventListener('abort', abbruch);
     if (netzMonitor) {
@@ -297,6 +333,9 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
     protokoll.downloadEreignisse = browserCdp?.events.filter(e => /^Browser\.download/.test(e.method)) ?? [];
     writeFileSync(join(ausgabe, 'browser.log'), beobachtung?.text() ?? '');
     try {
+      const pruefsumme=createHash('sha256');
+      for await (const bytes of createReadStream(netlogDatei)) pruefsumme.update(bytes);
+      protokoll.netlogDatei={datei:'netz.json',bytes:statSync(netlogDatei).size,sha256:pruefsumme.digest('hex')};
       const netlog = netlogLesen(readFileSync(netlogDatei, 'utf8'));
       protokoll.netlogAbschluss = netlog.netlogAbschluss;
       const nachweis = netzNachweis(netlog, protokoll.netzanfragen);
@@ -320,18 +359,16 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
       if (nachweis.unklar.length) throw new Error(`${nachweis.unklar.length} ungeklärte Netzereignisse; siehe netzUnklar.`);
     } catch (e) { protokoll.ergebnisse.push({ id: 'NETZ-NACHWEIS', status: 'ungültig', meldung: e.message }); }
     protokoll.ende = new Date().toISOString();
-    protokoll.auswertung = auswerten(protokoll);
-    writeFileSync(join(ausgabe, 'protokoll.json'), JSON.stringify(protokoll, null, 2) + '\n');
   }
   return protokoll;
 }
 
 // Austauschen der Ausführungsschritte erlaubt Gegenproben ohne Browser/Build.
 export async function main(argv, { prozess: ausfuehren = prozess, bauen: bauErzeugen = bauen, serverStarten = lokalerServer,
-  phaseAusfuehren = laufPhase, browserFinden = name => browserKandidaten(name).find(p => existsSync(p) && statSync(p).isFile()) } = {}) {
+  phaseAusfuehren = laufPhase, phaseSpeichern = phaseSichern, browserFinden = name => browserKandidaten(name).find(p => existsSync(p) && statSync(p).isFile()) } = {}) {
   let optionen, ausgabe;
   try { optionen = argumente(argv); ausgabe = ausgabeVorbereiten(optionen.ausgabe); }
-  catch (e) { console.error(`${e.message}\nAufruf: node scripts/browser-lauf.mjs --phase <vertrag|webadapter|alle-v6a> --ausgabe <neuer-oder-leerer-Ordner> [--browser <edge|chrome|beide>] [--diagnose]`); return 64; }
+  catch (e) { console.error(`${e.message}\nAufruf: node scripts/browser-lauf.mjs --phase <vertrag|webadapter|darstellung|tastatur|alle-v6a|alle> --ausgabe <neuer-oder-leerer-Ordner> [--browser <edge|chrome|beide>] [--diagnose]`); return 64; }
   const bericht = { beginn: new Date().toISOString(), optionen, laeufe: [], nichtInstalliert: [] };
   let server;
   const controller = new AbortController();
@@ -361,10 +398,23 @@ export async function main(argv, { prozess: ausfuehren = prozess, bauen: bauErze
     for (const b of browser.filter(b => b.programm)) for (const phase of optionen.phasen) {
       if (controller.signal.aborted) throw new Error('Lauf unterbrochen.');
       console.log(`${b.browser}: Phase ${phase} startet.`);
-      const protokoll = await phaseAusfuehren({ ...b, phase, ausgabe: join(ausgabe, `${b.browser}-${phase}`), basisUrl: server.basisUrl,
-        commit: bericht.commit, arbeitsstand: bericht.arbeitsstand, htmlHash: bau.htmlHash, signal: controller.signal, diagnose: optionen.diagnose });
-      protokoll.auswertung = auswerten(protokoll);
-      bericht.laeufe.push({ browser: b.browser, phase, version: protokoll.version, ...protokoll.auswertung, protokoll: `${b.browser}-${phase}/protokoll.json` });
+      const herkunft={browser:b.browser,phase,commit:bericht.commit,arbeitsstand:bericht.arbeitsstand};
+      const phasenordner=join(ausgabe,`${b.browser}-${phase}`);
+      let protokoll,zusammenfassung;
+      const zusammenfassen=p=>({browser:b.browser,phase,version:p.version,...p.auswertung,
+        ursachen:p.ergebnisse.filter(r=>r.ursache).map(r=>r.ursache),
+        ...(p.protokollSchreibfehler?{protokollSchreibfehler:p.protokollSchreibfehler}:{}),
+        protokoll:p.protokollSchreibfehler?null:`${b.browser}-${phase}/protokoll.json`});
+      try {
+        protokoll = await phaseAusfuehren({ ...b, phase, ausgabe: phasenordner, basisUrl: server.basisUrl,
+          commit: bericht.commit, arbeitsstand: bericht.arbeitsstand, htmlHash: bau.htmlHash, signal: controller.signal, diagnose: optionen.diagnose });
+        protokoll=await phaseSpeichern(protokoll,phasenordner);
+        zusammenfassung=zusammenfassen(protokoll);
+      } catch(fehler) {
+        protokoll=phaseSichern(ungueltigePhase(herkunft,fehler,'Phase ausführen oder zusammenführen'),phasenordner);
+        zusammenfassung=zusammenfassen(protokoll);
+      }
+      bericht.laeufe.push(zusammenfassung);
       console.log(`${b.browser}: Phase ${phase}: ${protokoll.auswertung.status}.`);
     }
     if (controller.signal.aborted) throw new Error('Lauf unterbrochen.');
@@ -378,8 +428,8 @@ export async function main(argv, { prozess: ausfuehren = prozess, bauen: bauErze
     process.removeListener('SIGINT', abbrechen); process.removeListener('SIGTERM', abbrechen);
     bericht.ende = new Date().toISOString();
     bericht.auswertung = gesamtAuswerten(bericht);
-    bericht.code = bericht.code === 2 || bericht.auswertung.code === 2 ? 2 : bericht.code === 1 || bericht.auswertung.code === 1 ? 1 : 0;
-    bericht.status = bericht.code === 2 ? 'ungültig' : bericht.code === 1 ? 'nicht bestanden' : 'bestanden';
+    bericht.code = bericht.code === 2 || bericht.auswertung.code === 2 ? 2 : bericht.code === 1 || bericht.auswertung.code === 1 ? 1 : bericht.auswertung.code;
+    bericht.status = statusFuerCode(bericht.code);
     writeFileSync(join(ausgabe, 'protokoll.json'), JSON.stringify(bericht, null, 2) + '\n');
   }
   return bericht.code;
