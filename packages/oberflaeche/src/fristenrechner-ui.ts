@@ -47,6 +47,12 @@ const phaseColors: Record<Meilenstein['phase'], string> = {
   zuschlag: '#4d6b3c',
 };
 
+// Nur die kleine Phasenbeschriftung; Zeitschiene und Exportfarben bleiben gleich.
+const phaseOrderColors: Record<Meilenstein['phase'], string> = {
+  ...phaseColors,
+  teststellung: '#9a5f1f',
+};
+
 const typeLabels: Record<Meilenstein['fristTyp'], string> = {
   gesetzlich: 'Gesetzliche Frist',
   praxis: 'Praxiswert',
@@ -633,9 +639,11 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       item.className = 'timeline-phase';
       item.style.setProperty('--phase-color', phaseColors[phase.id]);
 
+      const order = makeTextElement('span', `Phase ${index + 1}`, 'timeline-phase-order');
+      order.style.color = phaseOrderColors[phase.id];
       const header = document.createElement('header');
       header.append(
-        makeTextElement('span', `Phase ${index + 1}`, 'timeline-phase-order'),
+        order,
         makeTextElement('strong', phase.label),
       );
       const range = document.createElement('span');
