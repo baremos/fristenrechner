@@ -543,7 +543,7 @@ Rückgabewerte sind 0 für bestanden, 1 für Prüf- oder Werkzeugfehler und 64 f
 
 Vor dem Packlauf baut das Skript den Kern mit dem vorhandenen TypeScript-Compiler in einen Vergleichsordner und vergleicht Dateiliste und Inhalt byteweise mit `packages/kern/dist`. Das lässt den Paketbaum unverändert und erkennt auch zusätzliche alte Dateien, die ein bloßer Neubau stehen lässt. Fehlt `dist` oder weicht es ab, scheitert die Prüfung; vor einem neuen Lauf muss `packages/kern/dist` entfernt und der Kern ausdrücklich neu gebaut werden.
 
-Beim Kern sind nur `dist/*.js`, `dist/*.d.ts`, `package.json`, `LICENSE`, `NOTICE` und eine vorhandene README erlaubt. Die `dist`-Dateimenge in der Packliste muss dem frischen Vergleichsbuild entsprechen; jede JavaScript-Datei benötigt ihre zugehörige `.d.ts`. Bei der Oberfläche werden genau die von Git verfolgten Dateien unter `src` sowie `package.json`, `LICENSE`, `NOTICE` und `README.md` erwartet. Tests, Referenzdaten, `scratchpad` und `node_modules` sind ausgeschlossen. Die Konstante `KERN_README_PFLICHT` ist vorerst `false`; die Pflicht wird aktiviert, sobald der Kern eine README erhält, spätestens vor der Veröffentlichung.
+Beim Kern sind nur `dist/*.js`, `dist/*.d.ts`, `package.json`, `LICENSE`, `NOTICE` und eine vorhandene README erlaubt. Die `dist`-Dateimenge in der Packliste muss dem frischen Vergleichsbuild entsprechen; jede JavaScript-Datei benötigt ihre zugehörige `.d.ts`. Bei der Oberfläche werden genau die von Git verfolgten Dateien unter `src` sowie `package.json`, `LICENSE`, `NOTICE` und `README.md` erwartet. Tests, Referenzdaten, `scratchpad` und `node_modules` sind ausgeschlossen. Die Konstante `KERN_README_PFLICHT` ist `true`; die README-Pflicht des Kerns ist aktiviert.
 
 Die Prüfung verlangt `exports` mit einem nutzbaren Haupteinstieg, Zielen mit `./` und ohne gemischte Schlüssel für Bedingungen und Unterpfade. Ziele aus `exports`, `main`, `module`, `types` und `typings` müssen konkrete Dateien der Packliste sein. Die zusätzlichen Auflösungsfelder `browser` und `typesVersions` werden derzeit abgewiesen.
 
@@ -557,7 +557,7 @@ Dieser Ablauf ist vorbereitet, aber **nicht durchgeführt oder freigegeben**. `p
 
 1. Aus einem sauberen Linux-Checkout mit den festgelegten Werkzeugversionen arbeiten und die Versionen von Kern und Oberfläche im Gleichschritt halten.
 2. `packages/kern/dist` entfernen und den Kern ausdrücklich mit `npm run build --workspace packages/kern --offline` neu bauen. Der Kern hat kein `prepack`- oder `prepublishOnly`-Skript; außerdem schaltet `.npmrc` mit `ignore-scripts=true` Lebenszyklusskripte ab. `npm pack` und `npm publish` bauen den Kern daher nicht.
-3. `node scripts/npm-pakete.mjs --ausgabe scratchpad/npm-pakete-freigabe --ohne-cr` ausführen und Packliste, Prüfbericht sowie anschließend die tatsächlich erzeugten Archive prüfen. Die README-Pflicht des Kerns muss bis dahin aktiviert sein.
+3. `node scripts/npm-pakete.mjs --ausgabe scratchpad/npm-pakete-freigabe --ohne-cr` ausführen und Packliste, Prüfbericht sowie anschließend die tatsächlich erzeugten Archive prüfen. Die README-Pflicht des Kerns ist aktiviert.
 4. Nach gesonderter Veröffentlichungsfreigabe zuerst den Kern, danach die Oberfläche mit derselben Version veröffentlichen.
 
 ### Verbleibende Arbeit
@@ -565,7 +565,7 @@ Dieser Ablauf ist vorbereitet, aber **nicht durchgeführt oder freigegeben**. `p
 Vor Stufe 3 bleiben:
 
 1. Die MIT-Ausnahme für `rgbcolor` spätestens zu ihrem Ablauf am 2027-09-29 erneut prüfen; bei Versions- oder Metadatenänderungen muss sie angepasst oder entfernt werden.
-2. Die README-Pflicht aktivieren, sobald der Kern eine README erhält, und die Paketprüfung beim späteren Veröffentlichungsstand aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen.
+2. Die Paketprüfung beim späteren Veröffentlichungsstand aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen.
 3. Die erzeugten `.tgz`-Archive sichten und die Einbindung in eine Website mit eigenen Hinweisen des Gastgebers prüfen. Der aktuelle App-Web- und Android-Laufzeitbestand mit Originalhinweisen ist am 2026-10-05 geprüft; nach Bündeländerungen ist die Prüfung zu erneuern.
 4. Die im lokalen Endstandlauf belegte Behandlung des optionalen sharp-Baums und der weiteren vorgebauten Bestandteile bei Änderungen am Build-Baum erneut prüfen; Quelle und Grenzen: [F-Droid-Nachweis](fdroid-build.md).
 5. Android- und Gradle-Abhängigkeiten ergänzen; **teilweise erledigt am 2026-10-04 für `9ae4cd9`**: [Laufzeitmodule mit POM-Lizenzangaben und APK-/SUSS-Abgleich](#android--und-gradle-abhängigkeiten) sind erfasst. Die [Gradle-Prüfsummen](toolchain.md#gradle-prüfsummen) sind seit dem 2026-10-05 umgesetzt. Die Hinweise Dritter einschließlich der eingebetteten Laufzeitanteile sind am 2026-10-05 ergänzt; Werkzeugliste und Werkzeug-Lizenzregel bleiben offen. Die npm-Liste erfasst diese Gradle-Abhängigkeiten weiterhin nicht.

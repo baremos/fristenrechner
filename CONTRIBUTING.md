@@ -40,6 +40,8 @@ Die App soll bei F-Droid erscheinen. Jede Abhängigkeit muss frei lizenziert sei
 
 Welche Lizenzen zulässig sind, steht in [docs/lizenzen.md](docs/lizenzen.md). `npm run lizenzen` prüft alle Pakete aus dem Lockfile. Wer eine Abhängigkeit hinzufügt, lässt die Prüfung laufen und nennt im Pull Request, wofür das Paket gebraucht wird.
 
+Wer Gradle-Abhängigkeiten, das Android-Gradle-Plugin oder die Version von Capacitor ändert, erzeugt `app/android/gradle/verification-metadata.xml` unter Windows und Linux neu und prüft jede geänderte Prüfsumme. `npm run lizenzen` prüft die Gradle-Abhängigkeiten nicht; sie stehen in [docs/lizenzen.md](docs/lizenzen.md).
+
 ## Regeln für Texte
 
 Texte beschreiben, was die Software rechnet. Sie versprechen keine Rechtssicherheit und keine Beratung. Die Maintainer prüfen jeden öffentlichen Text vor der Veröffentlichung und passen Formulierungen bei Bedarf an.
@@ -55,11 +57,27 @@ Dateien aus anderen Quellen werden vor dem ersten Einchecken geprüft. Die Prüf
 | Abhängigkeiten installieren | `npm ci` | läuft |
 | Tests | `npm test` | läuft, prüft die Skripte, den Rechenkern, die Oberfläche und die App |
 | Typprüfung | `npm run check` | läuft für den Rechenkern, die Oberfläche und die App |
+| Tests der Oberfläche allein | `node node_modules/vitest/vitest.mjs run --root packages/oberflaeche` | läuft |
+| Typprüfung der Oberfläche allein | `node scripts/astro.mjs check --root packages/oberflaeche` | läuft |
+| Excel-Referenz erneuern | `node node_modules/vitest/vitest.mjs run --root packages/oberflaeche test/export-excel.test.ts --update` | nur nach bewusster Prüfung einer Änderung |
+| Browserprüfungen | `node scripts/browser-lauf.mjs --phase alle --browser beide --ausgabe <Ordner>` | braucht Microsoft Edge oder Google Chrome; nicht Teil von `npm test` |
 | Build der Pakete | `npm run build` | läuft für den Rechenkern und den Web-Teil der App |
 | Lizenzen der Abhängigkeiten prüfen | `npm run lizenzen` | läuft |
 | Werkzeuge für den Android-Build prüfen | `node scripts/android-build.mjs --nur-pruefen` | braucht JDK und Projekt-SDK |
 | Android-App bauen, Debug | `node scripts/app-bauen.mjs --android` | Web-Build, Übertragung nach Android, Gradle und die Prüfungen der Build-Kette in einem Lauf |
 | Android-App bauen, Release ohne Signatur | `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` | mit `--streng` nur, wenn Node, JDK und die Pakete des SDK der Festlegung entsprechen; die Version von npm prüft der Build nicht |
+
+Die Typprüfung der Oberfläche umfasst Astro, TypeScript und TypeScript-Tests. Der JavaScript-Testhelfer `packages/oberflaeche/test/struktur.mjs` prüft die XLSX-Ausgabe mit Node-Bordmitteln; er wird nicht ausgeliefert und ist kein allgemeiner XML-Leser. Die Warnung über ein fehlendes `src/pages` ist bei diesem Komponentenpaket erwartbar; die Probeseite des Gastgebers prüft den Seiten-Build. Die Referenz unter `packages/oberflaeche/test/referenz` enthält SHA-256, die Liste der Teile und alle XML-Teile einer festen Beispieltabelle; die Daten in `packages/oberflaeche/test/beispiel.ts` sind erfunden. Eine fehlende Referenz lässt den normalen Test scheitern. Die Referenz nur nach bewusster Prüfung einer Änderung mit dem `--update`-Befehl in der Tabelle erneuern.
+
+Der Browser-Vertragstest `packages/oberflaeche/test/bedienung.browser.ts` und die Browserprüfungen laufen mit `node scripts/browser-lauf.mjs` in Microsoft Edge oder Google Chrome ohne Fenster. Der Lauf startet den Browser mit gesperrter Namensauflösung, lädt die Prüfseiten aus dem lokalen Dateisystem und schreibt ein Protokoll in den angegebenen Ausgabeordner. Er gehört nicht zu `npm test`, weil er einen installierten Browser voraussetzt. Er ersetzt keine Prüfung durch Menschen mit Tastatur oder Screenreader.
+
+- `--phase` wählt `vertrag`, `webadapter`, `darstellung` oder `tastatur`; `alle-v6a` umfasst die ersten beiden, `alle` alle vier Phasen.
+- `--browser` wählt `edge`, `chrome` oder `beide`; `--ausgabe <Ordner>` legt den Ausgabeordner fest.
+- Rückgabewerte: `0` bestanden, `1` Produktbefund, `2` Messfehler oder ungültig, `3` nur dokumentierte Grenzen, `4` Sichtprüfung ausstehend, `64` falscher Aufruf.
+- Je Browser und Phase entsteht ein Ordner mit `protokoll.json`, Bildern und bei Sichtprüfungen `sichtpruefung.json`.
+- Für die Sichtprüfung je Eintrag nur `ergebnis` (`bestanden` oder `nicht bestanden`), `wer`, `wann` und `bemerkung` ausfüllen; Belegangaben und Bildprüfsummen unverändert lassen.
+- Danach schreibt `node scripts/browser-lauf-auswertung.mjs --lauf <Ordner>` jeweils `auswertung.json` neben `protokoll.json` und liefert den Rückgabewert neu.
+- Hintergrundanfragen des Browsers ohne sichere Zuordnung zu einer Seite oder zum Hintergrund machen die Phase ungültig; dann den Lauf wiederholen.
 
 Die Befehle funktionieren ohne private Dateien. Die Versionen der Werkzeuge stehen in [docs/toolchain.md](docs/toolchain.md).
 

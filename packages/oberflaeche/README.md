@@ -1,8 +1,14 @@
 # @baremos/fristenrechner-ui
 
-Astro-Komponente, Bedienlogik und Dateiexporte des Fristenrechners Vergabe. Die Berechnung kommt aus `@baremos/fristenrechner-kern`. Das Paket liefert Astro- und TypeScript-Quellen; der Gastgeber bündelt sie mit Astro.
+Astro-Komponente, Bedienlogik und Dateiexporte des Fristenrechners Vergabe. Die Berechnung kommt aus `@baremos/fristenrechner-kern`.
 
 Die Bedienlogik erhält Speicher, Import, Dateiausgabe, Zeit und Bestätigung über eine `Plattform`. Der enthaltene Web-Adapter verwendet den Browser. Native Adapter gehören zum jeweiligen Gastgeber. Die Komponente wird ausdrücklich durch den Gastgeber initialisiert.
+
+> Der Fristenrechner ist eine unverbindliche Rechenhilfe. Er ersetzt keine Rechtsberatung. Alle Angaben erfolgen ohne Gewähr.
+
+## Voraussetzungen
+
+Das Paket enthält Astro- und TypeScript-Quellen und wird ohne eigenen Build-Schritt ausgeliefert. Der Gastgeber bündelt sie mit Astro und dessen Vite; relative Importe ohne Dateiendung und ein CSS-Import mit `?inline` setzen das voraus. Prüft der Gastgeber Typen, prüft TypeScript die mitgelieferten Quellen mit den Einstellungen des Gastgebers. `webTexte` und `webExportInhalt` enthalten die Texte und Exportangaben der Website der BAREMOS IT GmbH, darunter deren Datenschutzhinweis, Herausgeber, Adresse und Dateipräfix. Andere Gastgeber übergeben eigene Werte.
 
 ## Einbindung
 
@@ -100,7 +106,7 @@ Fehlt `navigator.userActivation` beim Erzeugen des Adapters, registriert er zus�
 
 Der optionale Slot `herausgeber` steht in der Fußzeile für ein vom Gastgeber bereitgestelltes Logo oder andere Herausgeberinhalte. `nach-hinweis` folgt auf den fachlichen Hinweis und kann Kontaktinhalte aufnehmen. Das Paket liefert kein Logo und keine festen Kontaktlinks. Die sichtbare Fußzeile nennt den Herausgeber und, sofern vorhanden, den Hostnamen der Exportadresse.
 
-Die Rechnerstile sind auf `.fristenrechner` begrenzt. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
+Die Rechnerstile sind auf `.fristenrechner` begrenzt. Die Komponente legt `box-sizing: border-box` für ihre Elemente selbst fest. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
 
 | CSS-Variable | Vorgabe |
 |---|---|
@@ -110,24 +116,11 @@ Die Rechnerstile sind auf `.fristenrechner` begrenzt. Das aktivierte Menü verwe
 | `--color-text` | `#343438` |
 | `--field-label-height` | `1.6rem`; das Bindefrist-Raster verwendet `2.9rem` |
 
-Das Paket lädt keine Schriftdatei. Seine Druckregeln gelten nur für die Komponente. Seitenränder mit `@page` sowie Regeln für Website-Kopf, Website-Fuß, Breadcrumbs und äußere Layoutflächen gehören zum Gastgeber. Der [Prüfplan zur Barrierefreiheit](../../docs/testmatrix.md) trennt automatische Prüfungen von ausstehenden Sicht- und Bedienprüfungen.
+Das Paket lädt keine Schriftdatei. Seine Druckregeln gelten nur für die Komponente. Seitenränder mit `@page` sowie Regeln für Website-Kopf, Website-Fuß, Breadcrumbs und äußere Layoutflächen gehören zum Gastgeber. Der Prüfplan zur Barrierefreiheit im Repository trennt automatische Prüfungen von ausstehenden Sicht- und Bedienprüfungen.
 
 ## Prüfungen
 
-Aus der Repository-Wurzel mit den bereits installierten Werkzeugen:
-
-```powershell
-node node_modules/vitest/vitest.mjs run --root packages/oberflaeche
-node scripts/astro.mjs check --root packages/oberflaeche
-```
-
-Die Typprüfung umfasst Astro, TypeScript und TypeScript-Tests. Der JavaScript-Testhelfer `test/struktur.mjs` verwendet Node-Bordmittel zum Prüfen der XLSX-Ausgabe; er wird nicht ausgeliefert. Es ist kein allgemeiner XML-Leser. Die Warnung über ein fehlendes `src/pages` ist bei diesem Komponentenpaket erwartbar; die Probeseite des Gastgebers prüft den Seiten-Build.
-
-Die Referenz unter `test/referenz` enthält SHA-256, die Liste der Teile und alle XML-Teile einer festen Beispieltabelle. Die Daten in `test/beispiel.ts` sind erfunden. Eine fehlende Referenz lässt den normalen Test scheitern. Nur nach bewusster Prüfung einer Änderung erneuern:
-
-```powershell
-node node_modules/vitest/vitest.mjs run --root packages/oberflaeche test/export-excel.test.ts --update
-```
+Tests, Referenzdaten und Prüfbefehle gehören zum Repository und sind nicht Teil dieses Pakets; siehe die Beitragsregeln im Repository.
 
 ## Exporte
 
@@ -146,3 +139,17 @@ Regelversion, Rechtsstand und Rechtsstanddatum kommen aus dem Kern-Ergebnis. Pro
 PDF und Excel enthalten zusätzlich zur Herkunftszeile den festen Pakethinweis „Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.“ Er ist kein Gastgebertext und kann vom Gastgeber weder ersetzt noch weggelassen werden.
 
 Die Lizenzangaben der direkten Exportbibliotheken ersetzen keine Hinweise zu ihren mitgelieferten Abhängigkeiten. Ein Gastgeber muss die tatsächlich gebündelten Bibliotheken einschließlich optionaler Teile in seine Hinweise Dritter aufnehmen.
+
+jsPDF lädt `html2canvas`, `dompurify` und `canvg` nur für `html()` und `addSvgAsImage()`. Die Exporte dieses Pakets verwenden diese Funktionen nicht. Ein Gastgeber kann die drei Module beim Bündeln durch ein leeres Modul ersetzen.
+
+## English
+
+Astro component, user interface logic and file exports of Fristenrechner Vergabe. Calculations are provided by `@baremos/fristenrechner-kern`. The user interface logic receives storage, import, file output, time and confirmation through a `Plattform`. The included web adapter uses the browser; native adapters belong to the host.
+
+> Fristenrechner is a non-binding calculation aid. It does not replace legal advice. All information is provided without guarantee.
+
+The package contains Astro and TypeScript sources and is distributed without its own build step. The host bundles them with Astro and its Vite; relative imports without file extensions and a CSS import with `?inline` require this. If the host checks types, TypeScript checks the included sources using the host's settings. `webTexte` and `webExportInhalt` contain the texts and export details of the BAREMOS IT GmbH website, including its privacy notice, publisher, address and file prefix. Other hosts supply their own values.
+
+Use one component per page, pass `texte` and `exportInhalt` to it and explicitly initialize it with `initFristenrechner(root, optionen)` using the same values and a platform adapter. When removing the component, call the calculator's `dispose()` before the adapter's separate `dispose()`. The detailed interface documentation is in the German section.
+
+Texts and results are in German.
