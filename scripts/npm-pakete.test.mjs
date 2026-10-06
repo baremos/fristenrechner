@@ -111,7 +111,7 @@ function ohneListeneintrag(f, index, pfad) {
 
 function pruefen(f, optionen = {}) {
   return pruefePaketvertrag({ wurzel: f.wurzel, packliste: f.packliste, kernDateien: f.kernDateien,
-    oberflaecheDateien: f.oberflaecheDateien, kernReadmePflicht: false, ...optionen });
+    oberflaecheDateien: f.oberflaecheDateien, ...optionen });
 }
 
 function beanstandet(fehler, code, muster) {
@@ -261,15 +261,15 @@ test('LF-Dateien bestehen auch die Prüfung ohneCr', (t) => {
   assert.deepEqual(pruefen(probe(t), { ohneCr: true }), []);
 });
 
-test('README-Pflicht für den Kern bleibt bis zur Freigabe ausgeschaltet', (t) => {
-  assert.equal(KERN_README_PFLICHT, false);
+test('README-Pflicht für den Kern ist in der Vorgabe eingeschaltet', (t) => {
+  assert.equal(KERN_README_PFLICHT, true);
   const f = probe(t);
+  assert.deepEqual(pruefen(f), []);
   rmSync(join(f.wurzel, 'packages/kern/README.md'));
   ohneListeneintrag(f, 0, 'README.md');
-  assert.deepEqual(pruefen(f), []);
-  beanstandet(pruefen(f, { kernReadmePflicht: true }), 'NPM_README');
+  beanstandet(pruefen(f), 'NPM_README');
   datei(f, 'kern', 'README.md', '# Kern\n');
-  assert.deepEqual(pruefen(f, { kernReadmePflicht: true }), []);
+  assert.deepEqual(pruefen(f), []);
 });
 
 test('README der Oberfläche ist schon jetzt erforderlich', (t) => {
@@ -547,7 +547,7 @@ for (const pfad of ['LICENSE', 'NOTICE', 'package.json']) test(`Pflichtdatei ${p
 test('Vorhandene Kern-README muss auch ohne README-Pflicht in der Packliste stehen', (t) => {
   const f = probe(t);
   ohneListeneintrag(f, 0, 'README.md');
-  beanstandet(pruefen(f), 'NPM_README');
+  beanstandet(pruefen(f, { kernReadmePflicht: false }), 'NPM_README');
 });
 
 test('Doppelte Dateipfade und leere Dateilisten werden abgewiesen', (t) => {
