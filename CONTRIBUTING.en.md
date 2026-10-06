@@ -40,7 +40,7 @@ The app is meant to be published on F-Droid. Every dependency must be under a fr
 
 The permitted licenses are listed in [docs/lizenzen.md](docs/lizenzen.md). `npm run lizenzen` checks all packages from the lockfile. Whoever adds a dependency runs the check and states in the pull request what the package is needed for.
 
-Anyone who changes Gradle dependencies, the Android Gradle Plugin or the Capacitor version regenerates `app/android/gradle/verification-metadata.xml` on Windows and Linux and reviews every changed checksum. `npm run lizenzen` does not read the Gradle resolution; it checks the license declarations of the Android runtime artifacts recorded in `scripts/hinweise-dritter.json`. The release build with `node scripts/app-bauen.mjs` compares them with the actual Gradle resolution. The resolved runtime modules are listed in [docs/lizenzen.md](docs/lizenzen.md).
+Anyone who changes Gradle dependencies, the Android Gradle Plugin or the Capacitor version regenerates `app/android/gradle/verification-metadata.xml` on Windows and Linux and reviews every changed checksum. `npm run lizenzen` does not read the Gradle resolution; it checks the license declarations of the Android runtime artifacts recorded in `scripts/hinweise-dritter.json`. The release build with `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` compares the recorded runtime artifacts with the actual Gradle resolution. The resolved runtime modules are listed in [docs/lizenzen.md](docs/lizenzen.md).
 
 ## Rules for texts
 

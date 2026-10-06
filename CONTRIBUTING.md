@@ -40,7 +40,7 @@ Die App soll bei F-Droid erscheinen. Jede Abhängigkeit muss frei lizenziert sei
 
 Welche Lizenzen zulässig sind, steht in [docs/lizenzen.md](docs/lizenzen.md). `npm run lizenzen` prüft alle Pakete aus dem Lockfile. Wer eine Abhängigkeit hinzufügt, lässt die Prüfung laufen und nennt im Pull Request, wofür das Paket gebraucht wird.
 
-Wer Gradle-Abhängigkeiten, das Android-Gradle-Plugin oder die Version von Capacitor ändert, erzeugt `app/android/gradle/verification-metadata.xml` unter Windows und Linux neu und prüft jede geänderte Prüfsumme. `npm run lizenzen` liest die Gradle-Auflösung nicht; es prüft die Lizenzangaben der Android-Laufzeitartefakte, die in `scripts/hinweise-dritter.json` erfasst sind. Den Abgleich mit der tatsächlichen Gradle-Auflösung macht der Release-Build mit `node scripts/app-bauen.mjs`. Die aufgelösten Laufzeitmodule stehen in [docs/lizenzen.md](docs/lizenzen.md).
+Wer Gradle-Abhängigkeiten, das Android-Gradle-Plugin oder die Version von Capacitor ändert, erzeugt `app/android/gradle/verification-metadata.xml` unter Windows und Linux neu und prüft jede geänderte Prüfsumme. `npm run lizenzen` liest die Gradle-Auflösung nicht; es prüft die Lizenzangaben der Android-Laufzeitartefakte, die in `scripts/hinweise-dritter.json` erfasst sind. Den Abgleich mit der tatsächlichen Gradle-Auflösung macht der Release-Build mit `node scripts/app-bauen.mjs --android --aufgabe assembleRelease`. Die aufgelösten Laufzeitmodule stehen in [docs/lizenzen.md](docs/lizenzen.md).
 
 ## Regeln für Texte
 
