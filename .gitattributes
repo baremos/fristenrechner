@@ -31,6 +31,13 @@ app/android/app/capacitor.build.gradle text eol=lf
 app/src/** text eol=lf
 packages/oberflaeche/src/** text eol=lf
 
+# Übernommene Originaltexte und ihre Prüfsummen brauchen feste Quellbytes.
+scripts/hinweistexte/** text eol=lf
+# Die zusätzliche Abschlussleerzeile ist Teil der gehashten Quellfassung.
+scripts/hinweistexte/libwebp-COPYING.txt whitespace=-blank-at-eof
+# Leerzeichen am Zeilenende gehören hier zum unveränderten fremden Wortlaut.
+app/src/hinweise-dritter.txt whitespace=-blank-at-eol
+
 # Paketmanifeste und Paketbeschreibungen gehen unverändert in die npm-Pakete.
 # Mit festen Zeilenenden sind die Archive unter Windows und Linux gleich.
 packages/*/package.json text eol=lf

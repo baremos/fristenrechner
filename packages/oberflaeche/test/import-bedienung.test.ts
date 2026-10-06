@@ -10,7 +10,7 @@ import * as plattform from '../src/plattform';
 import { webExportInhalt, webTexte } from '../src/web-vorgaben';
 import type { HinweisPosition, ImportBedienung, MenueOption } from '../src/plattform';
 
-async function rendern(importBedienung?: ImportBedienung, importBeschriftung = webTexte.importBeschriftung, hinweisPosition?: HinweisPosition, menue?: MenueOption) {
+async function rendern(importBedienung?: ImportBedienung, importBeschriftung = webTexte.importBeschriftung, hinweisPosition?: HinweisPosition, menue?: MenueOption, bibliothekenHinweis?: string) {
   const quelle = readFileSync(new URL('../src/Fristenrechner.astro', import.meta.url), 'utf8');
   const kompiliert = transform(quelle, {
     filename: 'Fristenrechner.astro',
@@ -34,7 +34,7 @@ async function rendern(importBedienung?: ImportBedienung, importBeschriftung = w
   new Function('require', 'module', 'exports', code)(laden, modul, modul.exports);
   const container = await AstroContainer.create();
   return container.renderToString(modul.exports.default, {
-    props: { texte: { ...webTexte, importBeschriftung }, exportInhalt: webExportInhalt, importBedienung, hinweisPosition, menue },
+    props: { texte: { ...webTexte, importBeschriftung, ...(bibliothekenHinweis === undefined ? {} : { bibliothekenHinweis }) }, exportInhalt: webExportInhalt, importBedienung, hinweisPosition, menue },
   });
 }
 
@@ -42,6 +42,18 @@ it('behält das vorgerenderte HTML mit den Web-Vorgaben vollständig bei', async
   const html = await rendern();
   // Referenz aus der unveränderten Komponente von main (427995a), mit demselben Renderer.
   expect(createHash('sha256').update(html).digest('hex')).toBe('e6465ae87407c4e1e53036ecae4f9f2ac7e1f90b90fb5362483436fab41e8898');
+});
+
+it('ersetzt den Bibliothekssatz nur bei gesetztem Gastgebertext und erhält sonst die Vorgabe', async () => {
+  const vorgabe = 'Der PDF- und Excel-Export nutzt die Open-Source-Bibliotheken jsPDF, jsPDF-AutoTable und fflate (MIT-Lizenz).';
+  const app = 'Der PDF- und Excel-Export nutzt Open-Source-Bibliotheken. Ihre Lizenzhinweise stehen im Abschnitt „Hinweise zu Komponenten Dritter“.';
+  const html = await rendern();
+  expect(html).toContain(vorgabe);
+  expect(html).not.toContain('bibliothekenHinweis');
+  const ersetzt = await rendern(undefined, undefined, undefined, undefined, app);
+  expect(ersetzt).toContain(app);
+  expect(ersetzt).not.toContain(vorgabe);
+  expect(ersetzt).toContain('bibliothekenHinweis');
 });
 
 it('lässt mit menue aus auch Attribute und Styles im Website-HTML unverändert', async () => {

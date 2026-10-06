@@ -5,6 +5,7 @@ import { RECHTSSTAND, RECHTSSTAND_DATUM, REGELVERSION } from '@baremos/fristenre
 import app from '../../package.json';
 import lizenz from '../../../LICENSE?raw';
 import herausgeber from '../../../NOTICE?raw';
+import hinweiseDritter from '../hinweise-dritter.txt?raw';
 import { Content as Datenschutz } from '../../../docs/datenschutz.md';
 
 const texte = {
@@ -12,6 +13,7 @@ const texte = {
   datenschutzTitel: 'Die App verarbeitet Ihre Eingaben auf diesem Gerät.',
   datenschutzText: 'Sie hat keinen Internetzugriff. Von Ihnen gewählte Dateianbieter und Ziel-Apps können Dateien übertragen.',
   speicherNichtVerfuegbar: 'Lokales Speichern ist auf diesem Gerät nicht verfügbar.',
+  bibliothekenHinweis: 'Der PDF- und Excel-Export nutzt Open-Source-Bibliotheken. Ihre Lizenzhinweise stehen im Abschnitt „Hinweise zu Komponenten Dritter“.',
   ausgabeErfolg: {
     exportieren: { projekt: 'Projektdatei gespeichert.', excel: 'Excel-Datei gespeichert.', pdf: 'PDF gespeichert.' },
     teilen: { projekt: 'Projektdatei zum Teilen bereitgestellt.', excel: 'Excel-Datei zum Teilen bereitgestellt.', pdf: 'PDF zum Teilen bereitgestellt.' },
@@ -62,6 +64,11 @@ const texte = {
       <summary>Lizenzen</summary>
       <pre>{lizenz}</pre>
       <pre>{herausgeber}</pre>
+    </details>
+    <details class="app-abschnitt" id="app-hinweise-dritter">
+      <summary>Hinweise zu Komponenten Dritter</summary>
+      <p>Diese App enthält Komponenten Dritter. Aufgeführt sind die Komponenten, ihre Versionen, Lizenzen und Urheberhinweise. Die Lizenztexte stehen im Original (Englisch).</p>
+      <pre>{hinweiseDritter}</pre>
     </details>
   </main>
   <script>

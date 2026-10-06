@@ -78,6 +78,12 @@ export function quellvertrag(wurzel) {
   if (!/^# Datenschutz\r?\n/.test(readFileSync(join(wurzel, 'docs/datenschutz.md'), 'utf8'))) {
     throw new Error('Datenschutzdokument geändert oder nicht gefunden.');
   }
+  if (!app.includes("import hinweiseDritter from '../hinweise-dritter.txt?raw';")
+    || !/<details class="app-abschnitt" id="app-hinweise-dritter">\s*<summary>Hinweise zu Komponenten Dritter<\/summary>\s*<p>Diese App enthält Komponenten Dritter\. Aufgeführt sind die Komponenten, ihre Versionen, Lizenzen und Urheberhinweise\. Die Lizenztexte stehen im Original \(Englisch\)\.<\/p>\s*<pre>\{hinweiseDritter\}<\/pre>\s*<\/details>/.test(app)
+    || app.indexOf('id="app-hinweise-dritter"') < app.indexOf('<summary>Lizenzen</summary>')
+    || !app.includes("bibliothekenHinweis: 'Der PDF- und Excel-Export nutzt Open-Source-Bibliotheken. Ihre Lizenzhinweise stehen im Abschnitt „Hinweise zu Komponenten Dritter“.',")) {
+    throw new Error('Offline-Hinweise Dritter oder Bibliothekssatz geändert.');
+  }
   for (const id of ['import-message', 'reset-message']) {
     if (!new RegExp(`<p\\s[^>]*id="${id}"[^>]*role="status"[^>]*aria-live="polite"`).test(markup)
       || !ui.includes(`('#${id}')`)) throw new Error(`Statuszeile geändert: ${id}`);
