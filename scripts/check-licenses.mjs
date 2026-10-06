@@ -104,11 +104,17 @@ export function pruefeAusdruck(text, bereich, wahl) {
     const gewaehlt = pruefeAusdruck(wahl, bereich);
     if (gewaehlt.normalisiert.includes(' OR ') || !gewaehlt.zulaessig) throw new Error('Ungültige Lizenzwahl.');
     const soll = [...gewaehlt.auswahl].sort();
+    // Geschlossene Grenze gegen Ausdrücke, deren Kombinationen nicht mehr aufzählbar sind:
+    // höchstens 12 Kennungen; Zwischenergebnisse werden entdoppelt, damit der Umfang
+    // je Knoten durch die Zahl der Kennungen begrenzt bleibt.
+    const kennungen = (knoten) => knoten.id ? 1 : knoten.kinder.reduce((n, k) => n + kennungen(k), 0);
+    if (kennungen(baum) > 12) throw new Error('Lizenzausdruck hat zu viele Kennungen für eine Lizenzwahl (höchstens 12).');
+    const entdoppelt = (liste) => [...new Map(liste.map(s => [[...s].sort().join(' '), s])).values()];
     function moeglich(knoten, erlaubt) {
       if (knoten.id) return erlaubt.includes(knoten.id) ? [new Set([knoten.id])] : [];
       const kinder = knoten.kinder.map(k => moeglich(k, erlaubt));
-      if (knoten.operator === 'OR') return kinder.flat();
-      return kinder.reduce((a, b) => a.flatMap(x => b.map(y => new Set([...x, ...y]))), [new Set()]);
+      if (knoten.operator === 'OR') return entdoppelt(kinder.flat());
+      return kinder.reduce((a, b) => entdoppelt(a.flatMap(x => b.map(y => new Set([...x, ...y])))), [new Set()]);
     }
     auswahl = moeglich(baum, soll).some(s => gleich([...s].sort(), soll)) ? gewaehlt.auswahl : null;
   }

@@ -46,7 +46,7 @@ const TYP = 'application/vnd.openxmlformats-officedocument';
 const MAX_ZEILE = 1048576;
 const MAX_SPALTE = 16384;
 const MAX_TEXT = 32767;
-const MAX_FUSSZEILE = 255;
+export const MAX_FUSSZEILE = 255;
 const ERSTES_EIGENES_ZAHLENFORMAT = 164;
 /** Fester Zeitstempel der ZIP-Einträge, als Felder der Ortszeit (fflate liest Ortszeit). */
 const ZIP_ZEIT = [1980, 0, 1, 0, 0, 0] as const;

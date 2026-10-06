@@ -118,6 +118,26 @@ for (const ausdruck of [undefined, null, '', ' ', { type: 'MIT' }, ['MIT'], 'UNL
   });
 }
 
+test('Lizenzwahl: verschachtelte Ausdrücke werden entdoppelt aufgezählt und bleiben schnell', () => {
+  assert.equal(pruefeAusdruck('(MIT OR Apache-2.0) AND (MIT OR ISC)', 'ausgeliefert', 'MIT AND ISC').zulaessig, true);
+  assert.equal(pruefeAusdruck('(MIT OR Apache-2.0) AND (MIT OR ISC)', 'ausgeliefert', 'ISC').zulaessig, false);
+  const paar = '(MIT OR ISC)';
+  const zwoelf = Array.from({ length: 6 }, () => paar).join(' AND ');
+  const beginn = Date.now();
+  assert.equal(pruefeAusdruck(zwoelf, 'ausgeliefert', 'MIT AND ISC').zulaessig, true);
+  assert.equal(pruefeAusdruck(zwoelf, 'ausgeliefert', 'MIT').zulaessig, true);
+  assert.ok(Date.now() - beginn < 2000, 'Aufzählung mit zwölf Kennungen dauert zu lange');
+});
+
+test('Lizenzwahl: mehr als zwölf Kennungen werden ohne Aufzählung zurückgewiesen', () => {
+  const dreizehn = Array.from({ length: 13 }, (_, i) => (i % 2 ? '(MIT OR ISC)' : 'MIT')).join(' AND ');
+  const beginn = Date.now();
+  assert.throws(() => pruefeAusdruck(dreizehn, 'ausgeliefert', 'MIT'), /höchstens 12/);
+  assert.ok(Date.now() - beginn < 2000);
+  // Ohne Lizenzwahl bleibt derselbe Ausdruck auswertbar.
+  assert.equal(pruefeAusdruck(dreizehn, 'ausgeliefert').zulaessig, true);
+});
+
 test('Umordnung und gleichartige Klammern ergeben dieselbe Lizenzangabe', () => {
   const a = pruefeAusdruck('MIT OR (Apache-2.0 OR ISC)', 'entwicklung');
   const b = pruefeAusdruck('(ISC OR MIT) OR Apache-2.0', 'entwicklung');

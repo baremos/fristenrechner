@@ -425,6 +425,20 @@ for (const modul of ['html2canvas', 'dompurify', 'canvg', 'core-js/modules/es.pr
   }
 }
 
+for (const pfad of ['//fremd.example/x.js', '/\\\\fremd.example/x.js', '\\\\x.js', '/x\\\\y.js']) {
+  test(`K2 jsPDF-Zusatzmodule Gegenprobe: import(${JSON.stringify(pfad)}) ist kein lokaler Modulpfad`, () => {
+    const code = `import(${JSON.stringify(pfad)});`;
+    const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/haupt.AbCdEfGh.js': code }));
+    assert.ok(fehler.some(f => f.includes('kein lokaler Modulpfad')), fehler.join('\n'));
+  });
+}
+
+test('K2 jsPDF-Zusatzmodule: wurzelbezogene und relative import()-Pfade gelten als lokal', () => {
+  const code = `import('/x.js'); import('./y.js'); import('../z.js');`;
+  const { fehler } = pruefeDist(ordner({ ...SAUBER, '_astro/haupt.AbCdEfGh.js': code }));
+  assert.ok(!fehler.some(f => f.includes('kein lokaler Modulpfad')), fehler.join('\n'));
+});
+
 test('K2 jsPDF-Zusatzmodule: import() liest Escapes und prüft auch Inline-Module', () => {
   const { fehler } = pruefeDist(ordner({ ...SAUBER, 'index.html': seite('<script type="module">import("dompu\\u0072ify")</script>') }));
   assert.ok(fehler.some(f => f.includes('import("dompurify")') && f.includes('nackte Modulnamen')), fehler.join('\n'));

@@ -130,8 +130,10 @@ function konstanterText(k) {
 
 function pruefeModulpfad(knoten, fehler) {
   const text = konstanterText(knoten);
-  if (text !== null && !/^(?:\.{1,2}\/|\/)/.test(text)) {
-    fehler.push(`import(${JSON.stringify(text)}): kein lokaler Modulpfad; nackte Modulnamen sind im App-Bündel nicht erlaubt.`);
+  // Lokal heißt: relativ (./, ../) oder wurzelbezogen mit genau einem Schrägstrich.
+  // „//host/…“ wäre eine protokollrelative Adresse, Rückstriche normalisiert der Browser dazu.
+  if (text !== null && (!/^(?:\.{1,2}\/|\/(?!\/))/.test(text) || text.includes('\\'))) {
+    fehler.push(`import(${JSON.stringify(text)}): kein lokaler Modulpfad; nackte Modulnamen und fremde Adressen sind im App-Bündel nicht erlaubt.`);
   }
 }
 

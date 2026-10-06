@@ -13,7 +13,7 @@ import {
   typeLabels,
   uniqueWarnings,
 } from './fristenrechner-export-data';
-import { adresse, FUSS, fussText, schreibeXlsx, type XlsxMappe, type XlsxWert, type XlsxStil, type XlsxZeile } from './xlsx-schreiber';
+import { adresse, FUSS, fussText, MAX_FUSSZEILE, schreibeXlsx, type XlsxMappe, type XlsxWert, type XlsxStil, type XlsxZeile } from './xlsx-schreiber';
 
 const AKZENT = 'FFA7303C';
 const AKZENT_HELL = 'FFF7EAEC';
@@ -136,7 +136,8 @@ export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, er
 
   const fusszeile = `${FUSS.LINKS}${fussText(inhalt.herausgeber)}${FUSS.MITTE}${fussText(inhalt.adresse?.text ?? '')}\n${fussText(exportHaftungshinweis)}${FUSS.RECHTS}Seite ${FUSS.SEITE} von ${FUSS.SEITEN}`;
   // Einschließlich Steuerzeichen und verdoppelter &; der feste Hinweis bleibt vollständig.
-  if (fusszeile.length >= 255) throw new Error('Die Excel-Fußzeile muss unter 255 Zeichen bleiben.');
+  // Die rohe Länge einschließlich Steuerzeichen bleibt bewusst unter der Grenze des Schreibers.
+  if (fusszeile.length >= MAX_FUSSZEILE) throw new Error(`Die Excel-Fußzeile muss unter ${MAX_FUSSZEILE} Zeichen bleiben.`);
 
   return {
     eigenschaften: {
