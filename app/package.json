@@ -16,8 +16,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@baremos/fristenrechner-kern": "0.0.0",
-    "@baremos/fristenrechner-ui": "0.0.0",
+    "@baremos/fristenrechner-kern": "0.1.0",
+    "@baremos/fristenrechner-ui": "0.1.0",
     "@capacitor/android": "8.5.2",
     "@capacitor/core": "8.5.2"
   },

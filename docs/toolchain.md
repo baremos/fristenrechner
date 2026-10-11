@@ -254,7 +254,7 @@ Die Prüfsummen der Gradle-Abhängigkeiten stehen seit dem 2026-10-05 in `app/an
 
 | Ort | Maßnahme | Arbeitspaket |
 |---|---|---|
-| `package.json` aller Workspaces | exakte Versionen, `engines` für Node | 2.2 |
+| `package.json` der Wurzel und der App | exakte Versionen, `engines` für Node; die beiden npm-Pakete tragen seit dem 2026-10-11 kein `engines` mehr | 2.2 |
 | `.npmrc` | `save-exact=true`, `engine-strict=true`, `ignore-scripts=true`, `min-release-age=7` | 2.2 |
 | `package-lock.json` | eingecheckt, ein Lockfile für das ganze Repository | 2.2 |
 | `scripts/toolchain.json` | Referenzversionen, Prüfsummen, Revisionen des SDK | 2.1 |
@@ -434,6 +434,7 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 7. **`sdkmanager` ist abgekündigt.** Siehe Abschnitt „Android SDK". Die Festlegung auf die Kommandozeilenwerkzeuge 22.0 ist eine Übergangslösung.
 8. **Warnung des Android-Gradle-Plugins zum Format der Paketbeschreibung.** Die installierten Pakete tragen `package.xml` im Format 4. Das Android-Gradle-Plugin 8.13 versteht Format 3 und meldet das beim Build als Warnung. Der Build läuft durch.
 9. **Astro meldet Nutzungsdaten.** Astro 7.3.3 schickt bei `astro build` und `astro sync` Angaben zu System, Versionen, Befehl und einer zufälligen Kennung an `https://telemetry.astro.build`, bei `astro check` nur nach bestimmten Fehlern, etwa in der Konfiguration (`@astrojs/telemetry` 3.3.3, `dist/index.js` und `dist/post.js`; `astro/dist/core/build/index.js:32`, `cli/sync/index.js:19`, `core/sync/index.js:33-38`). Kein Versand, wenn `ASTRO_TELEMETRY_DISABLED` oder `TELEMETRY_DISABLED` einen Wert hat oder im Benutzerprofil `enabled: false` steht. In der Voreinstellung ist die Telemetrie im Profil eingeschaltet. Das Repository ruft Astro deshalb über `scripts/astro.mjs` auf, das die Variable für jeden Lauf setzt und selbst nichts in das Profil schreibt. `scripts/astro.test.mjs` lädt die installierte Telemetrie mit einem abgefangenen `fetch`: Mit der Umgebung des Skripts ruft sie `fetch` nicht auf, ohne die Variable einmal. Wer Astro direkt aufruft, setzt die Variable selbst.
+10. **npm 10.9.8 kennt `min-release-age` nicht.** Diese Fassung liest den Eintrag aus der `.npmrc` ohne Warnung mit, hat aber keine Definition für diese Option (geprüft am 2026-10-11 in `@npmcli/config` von npm 10.9.8 und 11.19.0) und setzt das Mindestalter nicht durch. Das Lockfile wird deshalb nur mit npm 11.19.0 geändert; `npm ci` mit npm 10.9.8 installiert den festgelegten Baum aus dem fertigen Lockfile.
 
 ## Pflege der Versionen
 
