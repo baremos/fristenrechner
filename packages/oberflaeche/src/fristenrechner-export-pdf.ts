@@ -4,7 +4,6 @@ import type { AusgabeDatei, ExportInhalt, ExportZeit } from './plattform';
 import {
   exportFileSuffix,
   exportHaftungshinweis,
-  exportHinweis,
   formatExportDate,
   phaseLabels,
   procedureLabel,
@@ -44,19 +43,39 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   pdf.setCreationDate(new Date(zeit.zeitpunkt));
   const pageWidth = pdf.internal.pageSize.getWidth();
-  const bottomLimit = pdf.internal.pageSize.getHeight() - 23;
+  const pageHeight = pdf.internal.pageSize.getHeight();
   const lineHeight = (): number => pdf.getFontSize() * pdf.getLineHeightFactor() / pdf.internal.scaleFactor;
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(8);
+  const footerLines = inhalt.adresse ? [inhalt.adresse.text, exportHaftungshinweis] : [exportHaftungshinweis];
+  const footerLineHeight = lineHeight();
+  const footerBlockHeight = (footerLines.length - 1) * footerLineHeight;
+  // Unterste Grundlinie: bisherige erste Fußzeile (13,5 mm Rand) plus eine
+  // 8-pt-Zeile. Ohne Adresse entfällt die obere Zeile. Die bisherigen Abstände
+  // von 4,5 mm zur Trennlinie und 5 mm zum Inhalt bleiben erhalten.
+  const footerLastY = pageHeight - 13.5 + footerLineHeight;
+  const footerFirstY = footerLastY - footerBlockHeight;
+  const footerMiddleY = footerFirstY + footerBlockHeight / 2;
+  const footerDividerY = footerFirstY - 4.5;
+  const bottomLimit = footerDividerY - 5;
+  const tableMarginBottom = pageHeight - bottomLimit;
+  // Der mittige Block und die seitlichen Texte müssen ohne Umbruch und ohne
+  // Überlagerung in die Fußzeile passen; Schrift und Wortlaut bleiben fest.
+  const footerCenterWidth = Math.max(...footerLines.map(text => pdf.getTextWidth(text)));
+  const footerSideWidth = (pageWidth - footerCenterWidth) / 2 - 12;
+  if (footerLines.some(text => /[\r\n]/.test(text)) || /[\r\n]/.test(inhalt.herausgeber)
+    || !Number.isFinite(bottomLimit) || bottomLimit <= 0
+    || pdf.getTextWidth(inhalt.herausgeber) >= footerSideWidth) {
+    throw new Error('Der PDF-Fußzeilenblock passt nicht auf die Seite.');
+  }
   const headerLines: string[] = pdf.splitTextToSize(projectHeader(input), pageWidth - 24);
   // Bis zwei Kopfzeilen gelten die bisherigen Positionen; jede weitere zählt voll.
   const headerOffset = Math.max(0, headerLines.length - 2) * lineHeight();
   const pageStartY = 25 + headerOffset;
   const tableMarginTop = 21 + headerOffset;
 
-  const drawPageChrome = (pageDocument: JsPdfDocument): void => {
+  const drawPageChrome = (pageDocument: JsPdfDocument, pageNumber: number, totalPages: number): void => {
     const pageWidth = pageDocument.internal.pageSize.getWidth();
-    const pageHeight = pageDocument.internal.pageSize.getHeight();
     pageDocument.setFont('helvetica', 'normal');
     pageDocument.setTextColor(...DARK);
     pageDocument.setFontSize(8);
@@ -65,20 +84,15 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
     pageDocument.setLineWidth(0.25);
     pageDocument.line(12, 17 + headerOffset, pageWidth - 12, 17 + headerOffset);
 
-    pageDocument.line(12, pageHeight - 18, pageWidth - 12, pageHeight - 18);
-    pageDocument.setFontSize(6.8);
+    pageDocument.line(12, footerDividerY, pageWidth - 12, footerDividerY);
     pageDocument.setTextColor(...MUTED);
-    pageDocument.text(
-      exportHinweis(inhalt),
-      pageWidth / 2,
-      pageHeight - 13.5,
-      { align: 'center', maxWidth: pageWidth - 24 },
-    );
-    pageDocument.setFontSize(8);
-    pageDocument.text(inhalt.herausgeber, 12, pageHeight - 9.5);
-    // Letzte Fußzeile auf jeder Seite, auch nach Tabellen- und Zeitschienenumbrüchen.
-    pageDocument.setTextColor(...DARK);
-    pageDocument.text(exportHaftungshinweis, pageWidth / 2, pageHeight - 5.5, { align: 'center' });
+    const pageLabel = `Seite ${pageNumber} von ${totalPages}`;
+    if (pageDocument.getTextWidth(pageLabel) >= footerSideWidth) {
+      throw new Error('Der PDF-Fußzeilenblock passt nicht auf die Seite.');
+    }
+    pageDocument.text(inhalt.herausgeber, 12, footerMiddleY);
+    pageDocument.text(footerLines, pageWidth / 2, footerFirstY, { align: 'center' });
+    pageDocument.text(pageLabel, pageWidth - 12, footerMiddleY, { align: 'right' });
   };
 
   let headerY = pageStartY;
@@ -123,7 +137,7 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
   const phaseNames = new Map(result.phasen.map((phase) => [phase.id, phase.label]));
   autoTable(pdf, {
     startY: tableStartY,
-    margin: { top: tableMarginTop, right: 12, bottom: 23, left: 12 },
+    margin: { top: tableMarginTop, right: 12, bottom: tableMarginBottom, left: 12 },
     head: [['Datum / Zeitraum', 'Termin', 'Phase', 'Rechtsgrundlage / Fristtyp']],
     body: result.meilensteine.map((milestone) => [
       milestone.bis !== undefined && milestone.dauerAT !== undefined
@@ -165,7 +179,7 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
     const finalY = (pdf as PdfWithLastTable).lastAutoTable?.finalY ?? tableStartY;
     autoTable(pdf, {
       startY: finalY + 7,
-      margin: { top: tableMarginTop, right: 12, bottom: 23, left: 12 },
+      margin: { top: tableMarginTop, right: 12, bottom: tableMarginBottom, left: 12 },
       head: [['Warnungen']],
       body: warnings.map((warning) => [warning]),
       theme: 'grid',
@@ -253,13 +267,7 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
   const totalPages = pdf.getNumberOfPages();
   for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
     pdf.setPage(pageNumber);
-    drawPageChrome(pdf);
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(8);
-    pdf.setTextColor(...MUTED);
-    pdf.text(`Seite ${pageNumber} von ${totalPages}`, pageWidth - 12, pageHeight - 9.5, { align: 'right' });
+    drawPageChrome(pdf, pageNumber, totalPages);
   }
   return pdf;
 }
