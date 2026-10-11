@@ -1681,7 +1681,7 @@
     {
       "ort": "node_modules/dompurify",
       "paket": "dompurify",
-      "version": "3.4.15",
+      "version": "3.4.16",
       "lizenz": "Apache-2.0",
       "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
       "status": "vollstaendig",
