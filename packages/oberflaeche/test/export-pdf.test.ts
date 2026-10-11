@@ -1,4 +1,5 @@
 import { expect, it, vi } from 'vitest';
+import { jsPDF } from 'jspdf';
 import { pdfAlsDatei } from '../src/fristenrechner-export-pdf';
 import { exportHaftungshinweis, exportHinweis } from '../src/fristenrechner-export-data';
 import { webExportInhalt } from '../src/web-vorgaben';
@@ -19,26 +20,94 @@ function pdfSeiten(bytes: Uint8Array) {
   ));
   const seiten = [...inhalt.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)].map((seite) => {
     const stream = seite[1];
-    const texte: { text: string; x: number; y: number; zeilenabstand: number }[] = [];
+    const texte: { text: string; x: number; y: number; zeilenabstand: number; schriftgroesse: number; schrift: string; farbe: number[] }[] = [];
     for (const block of stream.matchAll(/BT\n([\s\S]*?)\nET/g)) {
       let x = 0; let y = 0;
       const zeilenabstand = Number(block[1].match(/([\d.]+) TL/)![1]);
+      const schrift = block[1].match(/\/(\w+) ([\d.]+) Tf/)!;
+      const farbe = block[1].match(/([\d.]+) ([\d.]+) ([\d.]+) rg/);
       for (const befehl of block[1].matchAll(/(-?[\d.]+) (-?[\d.]+) Td|\(((?:\\.|[^\\)])*)\) Tj|(T\*)/g)) {
         if (befehl[1] !== undefined) { x += Number(befehl[1]); y += Number(befehl[2]); }
         else if (befehl[3] !== undefined) texte.push({ text: dekodiere(befehl[3]), x: x / punkteProMm,
-          y: (seitenhoehe - y) / punkteProMm, zeilenabstand: zeilenabstand / punkteProMm });
+          y: (seitenhoehe - y) / punkteProMm, zeilenabstand: zeilenabstand / punkteProMm,
+          schriftgroesse: Number(schrift[2]), schrift: schrift[1], farbe: farbe ? farbe.slice(1).map(Number) : [] });
         else y -= zeilenabstand;
       }
     }
     const trennlinien = [...stream.matchAll(/([\d.]+) ([\d.]+) m\n([\d.]+) ([\d.]+) l\nS/g)]
       .filter(linie => linie[2] === linie[4]).map(linie => (seitenhoehe - Number(linie[2])) / punkteProMm);
-    const rechteckAnfaenge = [...stream.matchAll(/-?[\d.]+ (-?[\d.]+) -?[\d.]+ -?[\d.]+ re/g)]
-      .map(rechteck => (seitenhoehe - Number(rechteck[1])) / punkteProMm);
-    return { texte, trennlinie: Math.min(...trennlinien), rechteckAnfang: Math.min(...rechteckAnfaenge) };
+    const rechtecke = [...stream.matchAll(/-?[\d.]+ (-?[\d.]+) -?[\d.]+ (-?[\d.]+) re/g)];
+    const rechteckAnfaenge = rechtecke.map(rechteck => (seitenhoehe - Number(rechteck[1])) / punkteProMm);
+    const rechteckEnden = rechtecke.map(rechteck => (seitenhoehe - Number(rechteck[1]) - Number(rechteck[2])) / punkteProMm);
+    return { texte, trennlinie: Math.min(...trennlinien), fussTrennlinie: Math.max(...trennlinien),
+      rechteckAnfang: Math.min(...rechteckAnfaenge), rechteckEnde: Math.max(...rechteckEnden), seitenhoehe: seitenhoehe / punkteProMm };
   });
   expect(seiten).toHaveLength(inhalt.match(/\/Type \/Page\b/g)!.length);
   return seiten;
 }
+
+it.each([true, false])('PDF-Fußzeile richtet den Block und die seitlichen Texte in Helvetica 8 pt aus (Adresse: %s)', async (mitAdresse) => {
+  const inhalt = { ...webExportInhalt, adresse: mitAdresse ? webExportInhalt.adresse : undefined };
+  const seiten = pdfSeiten((await pdfAlsDatei(eingabe, ergebnis, zeit, inhalt)).bytes);
+  const mass = new jsPDF({ unit: 'mm', format: 'a4' });
+  mass.setFont('helvetica', 'normal'); mass.setFontSize(8);
+  const breite = mass.internal.pageSize.getWidth();
+  for (const [index, seite] of seiten.entries()) {
+    const fuss = seite.texte.filter(text => text.y > seite.fussTrennlinie);
+    expect(fuss).toHaveLength(mitAdresse ? 4 : 3);
+    const haftung = fuss.find(text => text.text === exportHaftungshinweis)!;
+    const herausgeber = fuss.find(text => text.text === inhalt.herausgeber)!;
+    const seitenzahl = fuss.find(text => text.text === `Seite ${index + 1} von ${seiten.length}`)!;
+    const adresse = fuss.find(text => text.text === webExportInhalt.adresse!.text);
+    expect(adresse !== undefined).toBe(mitAdresse);
+    const ersteZeile = mitAdresse ? adresse! : haftung;
+    expect(haftung.y - ersteZeile.y).toBeCloseTo(mitAdresse ? haftung.zeilenabstand : 0, 8);
+    expect(ersteZeile.y - seite.fussTrennlinie).toBeCloseTo(4.5, 8);
+    expect(herausgeber.y).toBeCloseTo((ersteZeile.y + haftung.y) / 2, 8);
+    expect(seitenzahl.y).toBeCloseTo(herausgeber.y, 8);
+    expect(herausgeber.x).toBeCloseTo(12, 8);
+    expect(seitenzahl.x + mass.getTextWidth(seitenzahl.text)).toBeCloseTo(breite - 12, 8);
+    for (const text of mitAdresse ? [adresse!, haftung] : [haftung])
+      expect(text.x + mass.getTextWidth(text.text) / 2).toBeCloseTo(breite / 2, 8);
+    for (const text of fuss) {
+      expect(text.schriftgroesse).toBe(8);
+      expect(text.schrift).toBe('F1'); // Helvetica normal in jsPDFs Standardschriften.
+      expect(text.farbe).toHaveLength(3);
+      for (const [i, kanal] of [93, 93, 98].entries()) expect(text.farbe[i]).toBeCloseTo(kanal / 255, 3);
+    }
+    expect(seite.texte.map(text => text.text).join('\n')).not.toContain(exportHinweis(inhalt));
+  }
+});
+
+it.each([true, false])('PDF-Inhalt endet auch auf den letzten Tabellen- und Zeitschienenseiten oberhalb der Fußtrennlinie (Adresse: %s)', async (mitAdresse) => {
+  const result = calculateSchedule(eingabe);
+  result.warnungen = Array.from({ length: 65 }, (_, i) => `Zusätzlicher Warnhinweis ${i + 1}`);
+  result.phasen = [...result.phasen, ...result.phasen, ...result.phasen];
+  const inhalt = { ...webExportInhalt, adresse: mitAdresse ? webExportInhalt.adresse : undefined };
+  const seiten = pdfSeiten((await pdfAlsDatei(eingabe, result, zeit, inhalt)).bytes);
+  const tabellenseiten = seiten.filter(seite => seite.texte.some(text => ['Datum / Zeitraum', 'Warnungen'].includes(text.text)));
+  const zeitschienenseiten = seiten.filter(seite => seite.texte.some(text => text.text.startsWith('Phase ')));
+  expect(tabellenseiten.length).toBeGreaterThan(1);
+  expect(zeitschienenseiten.length).toBeGreaterThan(1);
+  for (const seite of seiten) {
+    expect(seite.rechteckEnde).toBeLessThanOrEqual(seite.fussTrennlinie - 5 + 0.000001);
+    const inhalt = seite.texte.filter(text => text.y > seite.trennlinie && text.y < seite.fussTrennlinie);
+    for (const text of inhalt) expect(text.y + text.schriftgroesse / (72 / 25.4)).toBeLessThan(seite.fussTrennlinie);
+  }
+  for (const gruppe of [tabellenseiten, zeitschienenseiten]) {
+    const letzte = gruppe[gruppe.length - 1];
+    expect(letzte.rechteckEnde).toBeLessThan(letzte.fussTrennlinie);
+  }
+});
+
+it.each([
+  { ...webExportInhalt, herausgeber: 'Ein zu langer Herausgeber '.repeat(10) },
+  { ...webExportInhalt, herausgeber: 'Herausgeber\nZusatz' },
+  { ...webExportInhalt, adresse: { text: 'Eine zu lange Adresse '.repeat(20), href: 'https://example.org' } },
+  { ...webExportInhalt, adresse: { text: 'Adresse\nZusatz', href: 'https://example.org' } },
+])('PDF scheitert bei einer Fußzeile ohne Platz geschlossen (%j)', async (inhalt) => {
+  await expect(pdfAlsDatei(eingabe, ergebnis, zeit, inhalt)).rejects.toThrow(/Fußzeilenblock/);
+});
 
 it('PDF zeigt Kopffelder mit 200/200/100 Zeichen auf jeder Seite vollständig untereinander', async () => {
   const bis = (text: string, laenge: number) => text.repeat(Math.ceil(laenge / text.length)).slice(0, laenge).replace(/\s$/, 'X');
@@ -148,7 +217,9 @@ it('PDF-Datei entsteht ohne Browser und zeigt Metadaten und Seitenzahlen', async
   const seiten = inhalt.match(/\/Type \/Page\b/g)!.length;
   expect(seiten).toBeGreaterThan(1);
   expect(inhalt.split(exportHaftungshinweis)).toHaveLength(seiten + 1);
-  expect(inhalt).toContain(exportHinweis(webExportInhalt));
+  expect(inhalt.split(webExportInhalt.adresse!.text)).toHaveLength(seiten + 1);
+  expect(inhalt.split(webExportInhalt.herausgeber)).toHaveLength(seiten + 1);
+  expect(inhalt).not.toContain(exportHinweis(webExportInhalt));
   expect(inhalt).toContain(`Seite ${seiten} von ${seiten}`);
   expect(inhalt).toContain('Zeitschiene');
 });
@@ -175,7 +246,7 @@ it('PDF bleibt bei gleichen Zeit- und Zufallswerten bytegleich zur Referenz mit 
     const bytes = Uint8Array.from(text, zeichen => zeichen.charCodeAt(0));
     const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
     expect(Array.from(hash, byte => byte.toString(16).padStart(2, '0')).join(''))
-      .toBe('43eb96ce153f11f8a706e8674a57fc9add504fa38d7d1b30b3d11d896df38ab1');
+      .toBe('529015e5d2c367acc3dc269c530c27f02a3be3e201f03a3f331d6a1a21a98f18');
   } finally { vi.restoreAllMocks(); vi.useRealTimers(); }
 });
 it('PDF verwendet den übergebenen Kalendertag und die Inhalte des Gastgebers', async () => {
@@ -187,7 +258,9 @@ it('PDF verwendet den übergebenen Kalendertag und die Inhalte des Gastgebers', 
   expect(text).toContain('(Terminplan)');
   expect(text).toContain('30.09.2026');
   expect(text).toContain(exportHaftungshinweis);
-  expect(text).toContain(exportHinweis(inhalt));
+  const seiten = pdfSeiten(datei.bytes);
+  for (const seite of seiten) expect(seite.texte.map(zeile => zeile.text)).toContain(inhalt.herausgeber);
+  expect(text).not.toContain(exportHinweis(inhalt));
   expect(text).not.toContain('BAREMOS');
   expect(text).not.toContain('baremos.de');
 });
