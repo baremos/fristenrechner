@@ -14,7 +14,7 @@
     "app"
   ],
   "scripts": {
-    "test": "npm run test:skripte && npm run build --workspace packages/kern && npm run test --workspaces --if-present",
+    "test": "npm run build --workspace packages/kern && npm run test:skripte && npm run test --workspaces --if-present",
     "test:skripte": "node --test \"scripts/*.test.mjs\" \"scripts/browser/*.test.mjs\"",
     "check": "npm run build --workspace packages/kern && npm run check --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
