@@ -100,6 +100,26 @@ it.each([true, false])('PDF-Inhalt endet auch auf den letzten Tabellen- und Zeit
   }
 });
 
+it.each([true, false])('PDF bricht einen langen Herausgeber im vorhandenen Fußbereich in zwei Zeilen um (Adresse: %s)', async (mitAdresse) => {
+  const kurz = { ...webExportInhalt, adresse: mitAdresse ? webExportInhalt.adresse : undefined };
+  const inhalt = { ...kurz, herausgeber: 'Vergabestelle des Landkreises Musterkreis' };
+  const referenz = pdfSeiten((await pdfAlsDatei(eingabe, ergebnis, zeit, kurz)).bytes);
+  const seiten = pdfSeiten((await pdfAlsDatei(eingabe, ergebnis, zeit, inhalt)).bytes);
+  expect(seiten).toHaveLength(referenz.length);
+  for (const [index, seite] of seiten.entries()) {
+    const fuss = seite.texte.filter(text => text.y > seite.fussTrennlinie);
+    const herausgeber = fuss.filter(text => Math.abs(text.x - 12) < 0.000001);
+    expect(herausgeber).toHaveLength(2);
+    expect(herausgeber.map(text => text.text).join(' ')).toBe(inhalt.herausgeber);
+    const mitte = fuss.filter(text => [webExportInhalt.adresse!.text, exportHaftungshinweis].includes(text.text));
+    expect((herausgeber[0].y + herausgeber[1].y) / 2).toBeCloseTo((mitte[0].y + mitte[mitte.length - 1].y) / 2, 8);
+    expect(herausgeber[0].y - 8 / (72 / 25.4)).toBeGreaterThan(seite.fussTrennlinie);
+    expect(herausgeber[1].y + 8 / (72 / 25.4)).toBeLessThan(seite.seitenhoehe);
+    expect(seite.fussTrennlinie).toBe(referenz[index].fussTrennlinie);
+    expect(seite.rechteckEnde).toBe(referenz[index].rechteckEnde);
+  }
+});
+
 it.each([
   { ...webExportInhalt, herausgeber: 'Ein zu langer Herausgeber '.repeat(10) },
   { ...webExportInhalt, herausgeber: 'Herausgeber\nZusatz' },

@@ -95,11 +95,17 @@ export function findeNpm(umgebung, node = process.execPath) {
   throw new Error('npm nicht gefunden. Aufruf über npm run build --workspace app oder npm neben Node installieren.');
 }
 
+// Builds prüfen einen festen Quellenstichtag unabhängig von der Systemuhr.
+// Die Pflegeprüfung (npm run lizenzen) behält den aktuellen UTC-Stichtag.
+export function pruefeBuildHinweise(wurzel, optionen) {
+  return pruefeProjekt(wurzel, { ...optionen, stichtag: '2026-10-15' }).fehler;
+}
+
 // Die ersetzbaren Funktionen erlauben Tests der gesamten Reihenfolge ohne Build.
 export function baue(argv, {
   wurzel = wurzelVorgabe, umgebung = process.env, node = process.execPath,
   spawn = spawnSync, pruefungen = appPruefungen, ausgabe = console.log, fehlerausgabe = console.error,
-  hinweisePruefung = (wurzel, optionen) => pruefeProjekt(wurzel, optionen).fehler,
+  hinweisePruefung = pruefeBuildHinweise,
 } = {}) {
   let werte;
   try {
@@ -166,6 +172,7 @@ export function baue(argv, {
     }
     if (!lauf('Android synchronisieren', [join(wurzel, 'node_modules', '@capacitor', 'cli', 'bin', 'capacitor'), 'sync', 'android'], app)
       || !pruefung('K3 Sync', pruefungen.pruefeSync({ wurzel, umgebung: env, ...(werte.streng ? {} : { vorher }) }))
+      || !hinweise({ nachAndroidSync: true })
       || !pruefung('K4 Gradle', pruefungen.pruefeGradle({ wurzel, umgebung: env }))) return 1;
     const args = [join(wurzel, 'scripts', 'android-build.mjs'), '--projekt', 'app/android', '--aufgabe', werte.aufgabe];
     if (werte.streng) args.push('--streng');
@@ -173,7 +180,7 @@ export function baue(argv, {
     if (!lauf('Android bauen', args, wurzel)) return 1;
     const debug = werte.aufgabe.endsWith('Debug');
     const apk = join(app, 'android', 'app', 'build', 'outputs', 'apk', debug ? 'debug' : 'release', debug ? 'app-debug.apk' : 'app-release-unsigned.apk');
-    if (!debug && !hinweise({ gradleModell: join(app, 'android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml') })) return 1;
+    if (!debug && !hinweise({ nachAndroidSync: true, gradleModell: join(app, 'android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml') })) return 1;
     if (!existsSync(apk) || !statSync(apk).isFile()) throw new Error(`Erzeugte APK fehlt: ${relative(wurzel, apk)}`);
     ausgabe(`APK: ${relative(wurzel, apk).split(sep).join('/')}`);
     return pruefung('K5 APK', pruefungen.pruefeApk(apk, { wurzel, debug, umgebung: env })) ? 0 : 1;

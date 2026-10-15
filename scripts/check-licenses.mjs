@@ -291,7 +291,7 @@ export function pruefePackliste(liste, workspaces, wurzel) {
 }
 
 export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelausnahmen,
-  stichtag = new Date().toISOString().slice(0, 10), buendel, gradleModell, streng = false,
+  stichtag = new Date().toISOString().slice(0, 10), buendel, gradleModell, nachAndroidSync = false, streng = false,
   inventarPruefung = pruefeInventar } = {}) {
   if (vorgabeFehler) throw vorgabeFehler;
   pruefeAusnahmen(ausnahmen, stichtag);
@@ -436,7 +436,7 @@ export function pruefeProjekt(wurzel, { packliste, ausnahmen = vorgabe?.einzelau
   else hinweise.push('npm-Packlisten wurden nicht geprüft; dafür --packliste verwenden.');
   hinweise.push('Installationsskripte und vorgebaute Programme sind Hinweise für Paket 2.8, keine automatische F-Droid-Freigabe.');
   hinweise.push('Proprietäre Dienste, eingebettete Fremdanteile und vollständige Lizenztexte werden nicht automatisch bewertet.');
-  const inventar = inventarPruefung(wurzel, liste, { buendel, gradleModell, streng, pruefeAusdruck });
+  const inventar = inventarPruefung(wurzel, liste, { buendel, gradleModell, nachAndroidSync, streng, pruefeAusdruck });
   fehler.push(...inventar.fehler);
   hinweise.push(`Hinweise Dritter: ${inventar.platzhalter} Platzhalter; ${streng ? 'strenger Modus' : 'Normalmodus'}.`);
   hinweise.push(`Entschiedene Einschränkungen der Hinweise Dritter: ${inventar.entschiedeneLizenzen?.length ?? 0}.`);
@@ -498,4 +498,4 @@ function haupt(argv) {
   process.exitCode = bericht.ok ? 0 : 1;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) haupt(process.argv.slice(2));
+if (import.meta.main) haupt(process.argv.slice(2));

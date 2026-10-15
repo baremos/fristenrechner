@@ -77,13 +77,15 @@ function pruefeStruktur(i) {
 }
 
 function pruefeInhaltsbestand(i) {
-  const jspdf = i.npm.find(e => e.paket === 'jspdf' && e.version === '4.2.1');
+  const jspdf = i.npm.find(e => e.paket === 'jspdf');
+  if (i.npm.some(e => e.paket === 'jspdf' && e.version !== '4.2.1')) throw new Error('Hinweise Dritter: Pflichtangaben für diese jsPDF-Version sind nicht gepflegt.');
   if (jspdf && !jspdf.originale?.some(q => q.datei === `${jspdf.ort}/dist/jspdf.es.min.js`
       && q.von === 0 && q.bis === 2700
       && q.sha256 === '761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83')) {
     throw new Error('Hinweise Dritter: vollständiger jsPDF-Bündelkopf fehlt.');
   }
-  const kotlin = i.android.maven.find(e => e.gruppe === 'org.jetbrains.kotlin' && e.name === 'kotlin-stdlib' && e.version === '2.0.21');
+  const kotlin = i.android.maven.find(e => e.gruppe === 'org.jetbrains.kotlin' && e.name === 'kotlin-stdlib');
+  if (i.android.maven.some(e => e.gruppe === 'org.jetbrains.kotlin' && e.name === 'kotlin-stdlib' && e.version !== '2.0.21')) throw new Error('Hinweise Dritter: Pflichtangaben für diese Kotlin-Version sind nicht gepflegt.');
   if (kotlin) for (const [name, lizenz, quelle, auszugSha256] of [
     ['GWT-Ableitung', 'Apache-2.0', 'libraries/stdlib/src/kotlin/collections', '52d5885aa15f3f1a7f193256bca9cf95ea5ab7736697c6964b2882f4f140edb0'],
     ['Guava-Ableitung', 'Apache-2.0', 'libraries/stdlib/jvm/src/kotlin/util/UnsignedJVM.kt', '0078015de8eb05b76c05f9e6d336eed66951fd6a0d8de23f6bd0762885be6764'],
@@ -262,7 +264,8 @@ export function pruefeOriginale(wurzel, e) {
 
 export function erzeugeHinweise(wurzel, inventar = leseInventar(wurzel)) {
   const i = pruefeFormat(inventar);
-  const apache = originaltext(leseQuelle(wurzel, i.apache));
+  const apacheBytes = leseQuelle(wurzel, i.apache);
+  const apache = originaltext(apacheBytes);
   const zeilen = [];
   // Nicht ausgelieferte Einträge bleiben geprüft, aber ohne Nutzertext.
   for (const e of gruppen(i).flat()) {
@@ -281,6 +284,7 @@ export function erzeugeHinweise(wurzel, inventar = leseInventar(wurzel)) {
       const bytes = e.lizenzdatei ? leseQuelle(wurzel, e.lizenzdatei, e.ort) : null;
       if (e.behaelter) leseQuelle(wurzel, e.behaelter, e.ort);
       const quelltext = bytes ? originaltext(bytes) : null;
+      if (e.lizenz === 'Apache-2.0' && bytes && !bytes.equals(apacheBytes)) throw new Error('Hinweise Dritter: Apache-Lizenzdatei weicht vom gemeinsamen Text ab; Zusatzhinweise getrennt pflegen.');
       if (quelltext?.includes(apache) && quelltext !== apache) throw new Error('Hinweise Dritter: Apache-Text in Lizenzdatei muss getrennt von Zusatzhinweisen stehen.');
       if (e.lizenz !== 'Apache-2.0' && quelltext !== apache && quelltext && !i.buildHilfscode.includes(e)) zeilen.push(quelltext);
       // Nur den doppelten Haupttext auslassen; Zusatzinhalte immer ausgeben.
@@ -327,4 +331,4 @@ function haupt(argv) {
     else pruefeHinweisdatei(wurzelVorgabe);
   } catch (e) { console.error(e.message); process.exitCode = 1; }
 }
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) haupt(process.argv.slice(2));
+if (import.meta.main) haupt(process.argv.slice(2));

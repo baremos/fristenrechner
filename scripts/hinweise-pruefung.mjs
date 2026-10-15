@@ -1,6 +1,6 @@
 // Inventarprüfung und optionale Abgleiche; Erfolg bleibt ohne Konsolenausgabe.
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { gruppen, leseInventar, leseQuelle, leseRepositorydatei, pruefeFormat, pruefeHinweisdatei, relativerPfad } from './hinweise-dritter.mjs';
 import { leseQuellXml } from './app-pruefungen.mjs';
@@ -134,10 +134,13 @@ export function pruefeGradleModell(i, datei, { umgebung = process.env, lesen = l
   ];
 }
 
-function pruefeVersionsbeleg(wurzel, e, protokoll) {
+function pruefeVersionsbeleg(wurzel, e, protokoll, nachAndroidSync) {
   const b = e.versionsbeleg;
   if (!b) throw new Error('Hinweise Dritter: Null-Ort-Eintrag ohne Versionsbeleg.');
-  const inhalt = leseQuelle(wurzel, b).toString('utf8');
+  // Das Cordova-Gerüst entsteht erst beim Sync. Vorher bleiben Settings,
+  // Herkunftsarchiv und Hinweistexte geprüft; nach dem Sync ist die Datei Pflicht.
+  const aufgeschoben = b.art === 'gradle-projekt' && !nachAndroidSync && !existsSync(join(wurzel, b.datei));
+  const inhalt = aufgeschoben ? null : leseQuelle(wurzel, b).toString('utf8');
   if (b.art === 'oxc-modulkennung') {
     const kennung = /#region \\0(@oxc-project\+runtime)@([^/\s]+)\/helpers\//g;
     const funde = [...inhalt.matchAll(kennung)];
@@ -151,13 +154,13 @@ function pruefeVersionsbeleg(wurzel, e, protokoll) {
     const settings = leseQuelle(wurzel, b.settings).toString('utf8');
     const funde = [...settings.matchAll(/project\(':([^']+)'\)\.projectDir\s*=\s*new File\('\.\/([^']+)\/'\)/g)];
     const projekt = funde.find(f => `app/android/${f[2]}/build.gradle` === b.datei);
-    const versionen = [...inhalt.matchAll(/\bversionName\s+["']([^"']+)["']/g)];
+    const versionen = [...(inhalt ?? '').matchAll(/\bversionName\s+["']([^"']+)["']/g)];
     if (!projekt || projekt[1] !== e.name || !settings.includes(`include ':${e.name}'`)
-        || versionen.length !== 1 || versionen[0][1] !== e.version) throw new Error('Hinweise Dritter: Projektmodul-Identität oder Version weicht vom Gradle-Beleg ab.');
+        || (!aufgeschoben && (versionen.length !== 1 || versionen[0][1] !== e.version))) throw new Error('Hinweise Dritter: Projektmodul-Identität oder Version weicht vom Gradle-Beleg ab.');
   } else throw new Error('Hinweise Dritter: unbekannte Versionsbelegform.');
 }
 
-export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, streng = false, pruefeAusdruck, umgebung = process.env } = {}) {
+export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, nachAndroidSync = false, streng = false, pruefeAusdruck, umgebung = process.env } = {}) {
   const fehler = [];
   const offeneLizenzen = [];
   const entschiedeneLizenzen = [];
@@ -199,7 +202,7 @@ export function pruefeInventar(wurzel, pakete, { buendel, gradleModell, streng =
       } catch { fehler.push(`Hinweise Dritter: Lizenz für ausgeliefert unbekannt oder nicht zugelassen: ${paket} | ${e.lizenz} | ${gruppe}.`); }
     }
     for (const e of [...i.buildHilfscode, ...i.android.projektmodule].filter(e => e.ort === null)) {
-      try { pruefeVersionsbeleg(wurzel, e, protokoll); }
+      try { pruefeVersionsbeleg(wurzel, e, protokoll, nachAndroidSync); }
       catch (f) { fehler.push(f.message); }
     }
     for (const p of pakete.filter(p => p.bereich === 'ausgeliefert')) {

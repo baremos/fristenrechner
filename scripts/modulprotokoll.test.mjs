@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { build } from 'vite';
+import { build, createServer } from 'vite';
 import { modulprotokoll } from '../app/astro.config.mjs';
 import { pruefeStilOderAsset, zerlegeKennung } from './modulprotokoll.mjs';
 
@@ -15,6 +15,21 @@ const ort = mkdtempSync(join(basis, 'modul-test-'));
 test.after(() => rmSync(ort, { recursive: true, force: true }));
 const chunk = (datei, ids) => ({ type: 'chunk', fileName: datei, code: 'Probe', isEntry: true, isDynamicEntry: false,
   imports: ['z.js', 'a.js'], dynamicImports: [], modules: Object.fromEntries(ids.map(id => [id, { renderedLength: 10, originalLength: 15 }])) });
+
+test('Plugin: Vite-Server für sync/check erhält das vorhandene Modulprotokoll', async () => {
+  const projekt = join(ort, 'sync-probe');
+  const datei = join(projekt, 'app/.astro/module-client.json');
+  mkdirSync(dirname(datei), { recursive: true });
+  writeFileSync(datei, 'vorhandenes Protokoll');
+  writeFileSync(datei + '.tmp', 'vorhandene Zwischendatei');
+  const server = await createServer({ root: projekt, configFile: false, logLevel: 'silent',
+    server: { middlewareMode: true, watch: null, ws: false }, plugins: [modulprotokoll(projekt)] });
+  try {
+    assert.ok(!server.config.plugins.some(p => p.name === 'hinweise-dritter:modulprotokoll'));
+    assert.equal(readFileSync(datei, 'utf8'), 'vorhandenes Protokoll');
+    assert.equal(readFileSync(datei + '.tmp', 'utf8'), 'vorhandene Zwischendatei');
+  } finally { await server.close(); }
+});
 
 test('Plugin: nur Client, keine Konsole, sortierte relative Kennungen, LF und deterministisch', t => {
   const p = modulprotokoll(ort);

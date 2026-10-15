@@ -56,6 +56,6 @@ Die bisherigen Laufzeitprüfungen fanden auf Emulatoren mit Android 11 und Andro
 
 ## Stand und Verantwortlichkeit
 
-Stand: 12. Oktober 2026, App-Version 0.1.0. Es gibt noch keine Veröffentlichung dieser App.
+Stand: 15. Oktober 2026, App-Version 0.1.0. Es gibt noch keine Veröffentlichung dieser App.
 
 Herausgeber: BAREMOS IT GmbH, Berlin. Verantwortlich: Andreas Schmidt.

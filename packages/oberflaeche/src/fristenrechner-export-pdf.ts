@@ -59,15 +59,27 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
   const footerDividerY = footerFirstY - 4.5;
   const bottomLimit = footerDividerY - 5;
   const tableMarginBottom = pageHeight - bottomLimit;
-  // Der mittige Block und die seitlichen Texte müssen ohne Umbruch und ohne
-  // Überlagerung in die Fußzeile passen; Schrift und Wortlaut bleiben fest.
+  // Der mittige Block bleibt fest; seitliche Texte dürfen im vorhandenen
+  // Fußbereich umbrechen, ohne Trennlinie oder Inhaltsgrenze zu verschieben.
   const footerCenterWidth = Math.max(...footerLines.map(text => pdf.getTextWidth(text)));
   const footerSideWidth = (pageWidth - footerCenterWidth) / 2 - 12;
   if (footerLines.some(text => /[\r\n]/.test(text)) || /[\r\n]/.test(inhalt.herausgeber)
     || !Number.isFinite(bottomLimit) || bottomLimit <= 0
-    || pdf.getTextWidth(inhalt.herausgeber) >= footerSideWidth) {
+    || footerSideWidth <= 0) {
     throw new Error('Der PDF-Fußzeilenblock passt nicht auf die Seite.');
   }
+  const footerSideLines = (text: string): string[] => {
+    const lines: string[] = pdf.getTextWidth(text) < footerSideWidth ? [text] : pdf.splitTextToSize(text, footerSideWidth);
+    const halfHeight = (lines.length - 1) * footerLineHeight / 2;
+    const fontHeight = pdf.getFontSize() / pdf.internal.scaleFactor;
+    if (footerMiddleY - halfHeight - fontHeight <= footerDividerY
+      || footerMiddleY + halfHeight + fontHeight >= pageHeight
+      || lines.some(line => pdf.getTextWidth(line) >= footerSideWidth)) {
+      throw new Error('Der PDF-Fußzeilenblock passt nicht auf die Seite.');
+    }
+    return lines;
+  };
+  const publisherLines = footerSideLines(inhalt.herausgeber);
   const headerLines: string[] = pdf.splitTextToSize(projectHeader(input), pageWidth - 24);
   // Bis zwei Kopfzeilen gelten die bisherigen Positionen; jede weitere zählt voll.
   const headerOffset = Math.max(0, headerLines.length - 2) * lineHeight();
@@ -87,12 +99,12 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
     pageDocument.line(12, footerDividerY, pageWidth - 12, footerDividerY);
     pageDocument.setTextColor(...MUTED);
     const pageLabel = `Seite ${pageNumber} von ${totalPages}`;
-    if (pageDocument.getTextWidth(pageLabel) >= footerSideWidth) {
-      throw new Error('Der PDF-Fußzeilenblock passt nicht auf die Seite.');
-    }
-    pageDocument.text(inhalt.herausgeber, 12, footerMiddleY);
+    const pageLines = footerSideLines(pageLabel);
+    pageDocument.text(publisherLines.length === 1 ? inhalt.herausgeber : publisherLines, 12,
+      footerMiddleY - (publisherLines.length - 1) * footerLineHeight / 2);
     pageDocument.text(footerLines, pageWidth / 2, footerFirstY, { align: 'center' });
-    pageDocument.text(pageLabel, pageWidth - 12, footerMiddleY, { align: 'right' });
+    pageDocument.text(pageLines.length === 1 ? pageLabel : pageLines, pageWidth - 12,
+      footerMiddleY - (pageLines.length - 1) * footerLineHeight / 2, { align: 'right' });
   };
 
   let headerY = pageStartY;

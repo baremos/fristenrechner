@@ -136,7 +136,7 @@ Die drei Dateifunktionen liefern `{ name, mime, bytes }` ohne Download und ohne 
 
 Regelversion, Rechtsstand und Rechtsstanddatum kommen aus dem Kern-Ergebnis. Projektdateien erzeugt und liest der Kern. Die früheren Downloadfunktionen `exportScheduleExcel` und `exportSchedulePdf` entfallen; der Gastgeber übergibt die erzeugten Bytes an `plattform.ausgabe.exportieren`.
 
-PDF und Excel enthalten zusätzlich zur Herkunftszeile den festen Pakethinweis „Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.“ Er ist kein Gastgebertext und kann vom Gastgeber weder ersetzt noch weggelassen werden.
+PDF und Excel enthalten den festen Pakethinweis „Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.“ Er ist kein Gastgebertext und kann vom Gastgeber weder ersetzt noch weggelassen werden.
 
 Die Lizenzangaben der direkten Exportbibliotheken ersetzen keine Hinweise zu ihren mitgelieferten Abhängigkeiten. Ein Gastgeber muss die tatsächlich gebündelten Bibliotheken einschließlich optionaler Teile in seine Hinweise Dritter aufnehmen.
 

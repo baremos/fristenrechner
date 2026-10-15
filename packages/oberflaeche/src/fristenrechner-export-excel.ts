@@ -134,7 +134,8 @@ export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, er
   verbinde(hinweiszeile, 1, SPALTEN, exportHinweis(inhalt), STIL.hinweis);
   if (inhalt.adresse) hyperlinks.push({ zelle: adresse(hinweiszeile, 1), ziel: inhalt.adresse.href });
 
-  const fusszeile = `${FUSS.LINKS}${fussText(inhalt.herausgeber)}${FUSS.MITTE}${fussText(inhalt.adresse?.text ?? '')}\n${fussText(exportHaftungshinweis)}${FUSS.RECHTS}Seite ${FUSS.SEITE} von ${FUSS.SEITEN}`;
+  const fussMitte = [inhalt.adresse?.text ?? '', exportHaftungshinweis].filter(Boolean).map(fussText).join('\n');
+  const fusszeile = `${FUSS.LINKS}${fussText(inhalt.herausgeber)}${FUSS.MITTE}${fussMitte}${FUSS.RECHTS}Seite ${FUSS.SEITE} von ${FUSS.SEITEN}`;
   // Einschließlich Steuerzeichen und verdoppelter &; der feste Hinweis bleibt vollständig.
   // Die rohe Länge einschließlich Steuerzeichen bleibt bewusst unter der Grenze des Schreibers.
   if (fusszeile.length >= MAX_FUSSZEILE) throw new Error(`Die Excel-Fußzeile muss unter ${MAX_FUSSZEILE} Zeichen bleiben.`);
