@@ -62,7 +62,7 @@ export function pruefeReflow(probe,faktor) {
   const breite=1280/faktor,{dom,layout,visuell}=probe??{};
   pruefeEmulation(dom,{innerWidth:breite,devicePixelRatio:1,schrift:16,visuelleSkala:1});
   bestaetige(Number.isFinite(dom.clientWidth)&&dom.clientWidth>0&&dom.clientWidth<=breite
-    &&Number.isFinite(layout?.clientWidth)&&Math.abs(layout.clientWidth-dom.clientWidth)<=1
+    &&Number.isFinite(layout?.clientWidth)&&Math.abs(layout.clientWidth-dom.clientWidth)<1
     &&visuell?.scale===1,'Reflow-Layoutbreite nicht unabhängig bestätigt.');
   return {faktor,ausgangsbreite:1280,layoutbreite:breite,schriftfaktor:1,
     methode:'Viewport-Breite bei unveränderter Schrift und Pixeldichte',...probe,bestaetigt:true};
@@ -186,5 +186,5 @@ export function browserzoomBestaetigt(basis,{dom,layout,visuell},faktor) {
     && [1,2,4].includes(faktor)&&basis.innerWidth>0&&basis.devicePixelRatio>0
     && Math.abs(dom.devicePixelRatio/basis.devicePixelRatio-faktor)<0.02
     && Math.abs(dom.innerWidth-basis.innerWidth/faktor)<1
-    && Math.abs(layout.clientWidth-dom.clientWidth)<=1&&dom.visuelleSkala===1&&visuell.scale===1;
+    && Math.abs(layout.clientWidth-dom.clientWidth)<1&&dom.visuelleSkala===1&&visuell.scale===1;
 }

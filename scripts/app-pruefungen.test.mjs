@@ -367,9 +367,14 @@ for (const [liste, aendern] of [
   });
 }
 
-test('K2: Modul mit export und Datenblock bestehen', () => {
+test('K2: eingebettetes Modul ohne Herkunftsbeleg scheitert auch mit unauffälligem Code; Datenblock besteht', () => {
   const { fehler } = pruefeDist(ordner({ ...SAUBER, 'index.html': seite('<script type="module">export const x = 1;</script><script type="application/json">{"a":1}</script>') }));
-  assert.deepEqual(fehler, []);
+  assert.ok(fehler.some(f=>f.includes('Eingebettetes Modulskript ohne Herkunftsbeleg')));
+  assert.deepEqual(pruefeDist(ordner({...SAUBER,'index.html':seite('<script type="application/json">{"a":1}</script>')})).fehler,[]);
+  for(const skript of ['<script type="module"></script>','<script TYPE=" MODULE ">const npmCode=1;</script>',
+    '<script>window.x=1;</script><script type="module">const npmCode=1;</script>']) {
+    assert.ok(pruefeDist(ordner({...SAUBER,'index.html':seite(skript)})).fehler.some(f=>f.includes('Eingebettetes Modulskript ohne Herkunftsbeleg')));
+  }
 });
 
 test('K2: Tags in Skripten und Kommentaren zählen nicht als Tags', () => {

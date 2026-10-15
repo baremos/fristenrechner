@@ -500,6 +500,7 @@ function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
         if (inhalt.trim()) fehler.push(`${ort}: Skript mit src und Inhalt.`);
         continue;
       }
+      if (art === 'module') fehler.push(`${ort}: Eingebettetes Modulskript ohne Herkunftsbeleg ist nicht erlaubt.`);
       if (inhalt.trim()) werteSkriptAus(inhalt, art, datei, ort);
     } else if (m[4] !== undefined) {
       pruefeTag('style', attributeVon(m[4]), datei, fehler);

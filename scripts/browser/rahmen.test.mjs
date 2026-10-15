@@ -43,7 +43,7 @@ function probe({ fehlt, codes = {}, aufraeumfehler = false } = {}) {
   };
   return { hilfen, aufrufe };
 }
-const argv = (name, browser = 'beide', phase = 'alle-v6a') => ['--phase', phase, '--browser', browser, '--ausgabe', join(arbeit, name)];
+const argv = (name, browser = 'beide', phase = 'grundlagen') => ['--phase', phase, '--browser', browser, '--ausgabe', join(arbeit, name)];
 const bericht = name => JSON.parse(readFileSync(join(arbeit, name, 'protokoll.json'), 'utf8'));
 
 for(const art of ['serialisierung','ausfuehrung','zusammenfuehrung','schreiben']) {

@@ -1,4 +1,4 @@
-// Neue Phasen ergänzen hier ihre Pflichtkennungen; alle-v6a bleibt unverändert.
+// Neue Phasen ergänzen hier ihre Pflichtkennungen; grundlagen bleibt unverändert.
 const gemeinsam = ['JS', 'ENDE', 'NETZ', 'NETZ-VERBINDUNGEN'];
 export const ERGEBNISKATALOG = Object.freeze({
   vertrag: Object.freeze([...Array.from({ length: 9 }, (_, i) => `V${i + 1}`), 'V-VERTRAG', ...gemeinsam]),

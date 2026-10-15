@@ -79,6 +79,7 @@ for (const [titel, datei, ersetzen, durch] of [
   ['Fokusklasse des Sheet fehlt', quelldateien[11], "overlay.classList.toggle('fr-menue-tastatur', aktiv)", "overlay.classList.toggle('anders', aktiv)"],
   ['App-Wortumbruch fehlt', quelldateien[1], 'overflow-wrap: anywhere;', 'overflow-wrap: normal;'],
   ['Hinweistitel geändert', quelldateien[1], '<summary>Hinweise zu Komponenten Dritter</summary>', '<summary>Andere Hinweise</summary>'],
+  ['Lizenzanker fehlt', quelldateien[1], '<summary>Lizenzen</summary>', '<summary>Andere Texte</summary>'],
   ['Hinweiseinleitung geändert', quelldateien[1], 'Diese App enthält Komponenten Dritter.', 'Diese App enthält andere Komponenten.'],
   ['Hinweisquelle fehlt', quelldateien[1], "../hinweise-dritter.txt?raw", '../anderer-text.txt?raw'],
   ['Hinweisausgabe fehlt', quelldateien[1], '<pre>{hinweiseDritter}</pre>', '<pre>anderer Text</pre>'],

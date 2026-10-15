@@ -1,5 +1,14 @@
 import { bestaetige, verlange, farbe } from './regeln.mjs';
 
+export function pruefeTastaturzyklus(weg,fokus,axFokus=null) {
+  bestaetige(typeof fokus?.kennung==='string','Fokus liegt an einem nicht inventarisierten Knoten.');
+  const schritt={kennung:fokus.kennung,selector:fokus.selector??null,axNodeId:axFokus?.nodeId??null};
+  const anfang=weg.findIndex(s=>s.kennung===schritt.kennung&&s.axNodeId===schritt.axNodeId);
+  weg.push(schritt);
+  verlange(anfang<0,'Tastaturfalle: wiederkehrender Fokuszyklus ohne Erreichen des Dokumentendes.',
+    {art:'Tastaturfalle',elemente:[...new Set(weg.slice(anfang).map(s=>s.kennung))],zyklus:weg.slice(anfang)});
+}
+
 export function pruefeFokus(m) {
   bestaetige(m&&!m.unbestimmt,'Visuelle Zuordnung des Tastaturfokus fehlt.');
   bestaetige(m && [m.breite,m.hoehe,m.links,m.rechts,m.oben,m.unten,m.innerWidth,m.innerHeight].every(Number.isFinite)
@@ -72,7 +81,9 @@ export function pruefeFehlerStatus(m,vorher) {
     &&JSON.stringify(m.statusmeldungen.map(s=>s.id).sort())===JSON.stringify(vorher.statusmeldungen.map(s=>s.id).sort()),'Statusregionen vor und nach der Aktion sind nicht vollständig zugeordnet.');
   // Nur vollständige Erfolgsaussagen. Insbesondere ist "konnte nicht ...
   // gespeichert werden" eine Fehlererklärung, keine Erfolgsmeldung.
-  const erfolg=/^(?:Terminplan aktualisiert\.|Projektdatei geöffnet(?:\.| \([^\n]+\)\.)|(?:Projektdatei|Excel-Datei|PDF) gespeichert\.)(?:\s|$)/;
+  // Exporttexte: web-vorgaben.ts, fristenrechner-export-action.ts (Web-Teilen)
+  // und app/src/pages/index.astro (Speichern/Teilen in der App).
+  const erfolg=/^(?:Terminplan aktualisiert\.|Projektdatei geöffnet(?:\.| \([^\n]+\)\.)|(?:Projektdatei|Excel-Datei|PDF) (?:gespeichert|zum Teilen bereitgestellt)\.|Die Datei wurde erstellt und zum Speichern bereitgestellt\.|Die (?:Projektdatei|Excel-Datei|PDF-Datei) wurde zum Teilen bereitgestellt\.)(?:\s|$)/;
   const falsch=m.statusmeldungen.filter(s=>erfolg.test(s.text)
     && (s.id==='form-message'&&/Kein Terminplan/.test(m.text)||s.text!==vorher.statusmeldungen.find(v=>v.id===s.id)?.text));
   verlange(!falsch.length,'Gleichzeitige falsche Erfolgsmeldung.',falsch);

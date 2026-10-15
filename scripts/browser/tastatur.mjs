@@ -8,7 +8,7 @@ import { dateiauswahlAbbrechen } from './webadapter.mjs';
 import { messbefehl, Produktabweichung } from './fehler.mjs';
 import { Abweichung, bestaetige, verlange, pruefeReihenfolge } from './regeln.mjs';
 import { fokusQuelle, liveQuelle } from './messquellen.mjs';
-import { pruefeAx, pruefeFokus, pruefeLive, pruefeFehlermeldung, nativerFokus, bestaetigeAxBaum, importReaktion, pruefeImportFehler, bestaetigeLeseprobe } from './tastatur-regeln.mjs';
+import { pruefeAx, pruefeFokus, pruefeLive, pruefeFehlermeldung, nativerFokus, bestaetigeAxBaum, importReaktion, pruefeImportFehler, bestaetigeLeseprobe, pruefeTastaturzyklus } from './tastatur-regeln.mjs';
 import { schreibeSichtpruefung } from './sichtpruefung.mjs';
 
 const SCHLUESSEL='baremos-fristenrechner-projekt-v1';
@@ -35,6 +35,26 @@ export async function tastaturSichtbeleg(b,axBaum,name,selector,axFokus,nachweis
     bestaetige(danach.nodeId===axFokus.nodeId,'Nativer Teilfeldfokus hat sich während des Sichtbelegs geändert.');
   }
   return beleg;
+}
+
+export async function bestaetigungsdialog(b,cdp,accept) {
+  await b.erreichen('#reset-project');const start=cdp.events.length;let fehler,dialog,geschlossen=false;
+  // Der Input-Aufruf kann bis zur Dialogantwort offen bleiben.
+  const aktivierung=b.aktivieren('#reset-project').catch(e=>{fehler=e;});
+  try {
+    dialog=await b.bis(()=>{if(fehler)throw fehler;return cdp.events.slice(start).find(e=>e.method==='Page.javascriptDialogOpening');},'Bestätigungsdialog');
+    bestaetige(dialog.params?.type==='confirm'&&typeof dialog.params.message==='string','Bestätigungsdialog nicht erkannt.');
+    await b.send('Page.handleJavaScriptDialog',{accept});geschlossen=true;
+    await aktivierung;if(fehler)throw fehler;
+    return {dialog,accept};
+  } finally {
+    dialog??=cdp.events.slice(start).find(e=>e.method==='Page.javascriptDialogOpening');
+    if(dialog&&!geschlossen) {
+      // Auch ein unerwarteter Dialogtyp muss vor dem Warten geschlossen sein.
+      await messbefehl(()=>b.send('Page.handleJavaScriptDialog',{accept:false}));geschlossen=true;
+    }
+    if(geschlossen||fehler)await aktivierung;
+  }
 }
 
 export async function pruefeTastatur(kontext) {
@@ -74,7 +94,7 @@ export async function pruefeTastatur(kontext) {
     });
     return fall;
   }
-  async function rundgang(fall) {
+  async function rundgang(fall,neutralisieren=false) {
     const inventar=await b.wert(inventarQuelle);
     bestaetige(Array.isArray(inventar)&&inventar.length>0,'Tastaturinventar fehlt.');
     const aktiv=inventar.filter(e=>e.sichtbar&&!e.gesperrt&&e.tabIndex>=0);
@@ -82,7 +102,7 @@ export async function pruefeTastatur(kontext) {
     const erwartet=aktiv.map(e=>e.kennung),roh=[],vorwaerts=[],rueckwaerts=[];
     fall.messungen.rundgang={inventar,roh,erwartet,vorwaerts,rueckwaerts};
     async function richtung(zurueck,liste) {
-      let letzte=null,letzterAx=null,grenze=false;
+      let letzte=null,grenze=false;const weg=[];
       for(let i=0;i<inventar.length*8+8;i++) {
         await b.tab(zurueck);const fokus=await b.wert(fokusQuelle);roh.push({richtung:zurueck?'rückwärts':'vorwärts',...fokus});
         if(fokus.tag==='BODY') {grenze=true;break;}
@@ -104,18 +124,14 @@ export async function pruefeTastatur(kontext) {
           sicht.push({id:'B1',...beleg,kriterium:entscheidung.kriterium});
           roh.at(-1).sichtpruefung={...beleg,kriterium:entscheidung.kriterium};
         }
-        if(fokus.kennung===letzte) {
-          // Datums-/Zeitfelder können mehrere native Unterfelder besitzen.
-          // Eine Wiederholung ist nur mit einem anderen fokussierten AX-Knoten
-          // innerhalb genau dieses DOM-Elements belegbar, sonst ungültig.
-          if(!axFokus)throw new Abweichung('Vertrauenswürdiges Tab verlässt das Bedienelement nicht.',fokus);
-          verlange(axFokus.nodeId!==letzterAx,'Tab bleibt im selben nativen Unterfeld hängen.',{vorher:letzterAx,nachher:axFokus});
-        } else {liste.push(fokus.kennung);letzte=fokus.kennung;}
-        letzterAx=axFokus?.nodeId??null;
+        const element=inventar.find(e=>e.kennung===fokus.kennung);
+        pruefeTastaturzyklus(weg,{...fokus,selector:element?.selector},axFokus);
+        if(fokus.kennung!==letzte) {liste.push(fokus.kennung);letzte=fokus.kennung;}
       }
       bestaetige(grenze,'Ende des Tastaturrundgangs nicht bestätigt.');
     }
     // Die erste Tab-Position muss aus dem neutralen Dokumentfokus entstehen.
+    if(neutralisieren&&(await b.aktiv()).tag!=='BODY')await richtung(false,[]);
     bestaetige((await b.aktiv()).tag==='BODY','Neutraler Ausgangsfokus für Rundgang fehlt.');
     await richtung(false,vorwaerts);await richtung(true,rueckwaerts);
     pruefeReihenfolge(erwartet,vorwaerts,rueckwaerts);
@@ -138,17 +154,7 @@ export async function pruefeTastatur(kontext) {
   async function importErfolg(pfad,taste='Enter') {
     const ev=await importieren(pfad,taste);await b.bis(async()=>/geöffnet/.test(await b.inhalt('#import-message')),'Importmeldung',{produkt:true});return ev;
   }
-  async function reset(accept) {
-    await b.erreichen('#reset-project');const start=cdp.events.length;let fehler;
-    // JavaScript-Dialoge können den Input-Aufruf bis zur Antwort anhalten.
-    const aktivierung=b.aktivieren('#reset-project').catch(e=>{fehler=e;});
-    try {
-      const ev=await b.bis(()=>{if(fehler)throw fehler;return cdp.events.slice(start).find(e=>e.method==='Page.javascriptDialogOpening');},'Bestätigungsdialog');
-      bestaetige(ev.params?.type==='confirm'&&typeof ev.params.message==='string','Bestätigungsdialog nicht erkannt.');
-      await b.send('Page.handleJavaScriptDialog',{accept});await aktivierung;if(fehler)throw fehler;
-      return {dialog:ev,accept};
-    } finally {await aktivierung;}
-  }
+  const reset=accept=>bestaetigungsdialog(b,cdp,accept);
   await b.send('Accessibility.enable');
   await b.frisch();await ax('ausgangszustand');
   await gruppe('B1','Vollständige Tastaturwege mit Tab, Umschalt+Tab, Eingabe und Leertaste',[
@@ -165,9 +171,7 @@ export async function pruefeTastatur(kontext) {
       await b.textEingeben('[name="kunde"]','Tastaturprobe');await b.textEingeben('[name="projektname"]','Vollständige Eingabe');await b.textEingeben('[name="vergabenummer"]','PROBE-2026');
       await b.berechnen();fall.messungen.live=await b.wert(liveQuelle);await ax('erweiterungen');
       // Zum neutralen Dokumentfokus wird ausschließlich weitergetabbt.
-      const inventar=await b.wert(inventarQuelle);
-      for(let i=0;i<inventar.length*8&&((await b.aktiv()).tag!=='BODY');i++)await b.tab();
-      await rundgang(fall);
+      await rundgang(fall,true);
     }],
     ['import-abbruch',async fall=>{
       await b.frisch();const pfad=await projektDatei('tastatur-import.json',p=>{p.input.projekt.projektname='Import über Tastatur';});

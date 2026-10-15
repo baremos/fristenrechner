@@ -216,6 +216,25 @@ test('Fehlertext verlangt Feldbezug und darf nicht gleichzeitig einen falschen E
   const importstatus=[{id:'import-message',text:''}];
   assert.doesNotThrow(()=>pruefeFehlermeldung({text:'Die Projektdatei konnte nicht geöffnet werden.',sichtbar:true,statusmeldungen:importstatus,felder:[{selector:'#open-json',beschriftung:'Projekt importieren'}]},{datei:true,vorher:{statusmeldungen:importstatus}}));
 });
+
+test('Falsche Exporterfolge werden mit allen aktuellen Web- und App-Texten erkannt; Fehlertexte bleiben Fehler',()=>{
+  const web=readFileSync(new URL('../../packages/oberflaeche/src/web-vorgaben.ts',import.meta.url),'utf8');
+  const app=readFileSync(new URL('../../app/src/pages/index.astro',import.meta.url),'utf8');
+  const aktion=readFileSync(new URL('../../packages/oberflaeche/src/fristenrechner-export-action.ts',import.meta.url),'utf8');
+  const webErfolg=/exportErfolg: '([^']+)'/.exec(web)?.[1];
+  assert.equal(webErfolg,'Die Datei wurde erstellt und zum Speichern bereitgestellt.');
+  const appTexte=[...app.matchAll(/(?:exportieren|teilen): \{ projekt: '([^']+)', excel: '([^']+)', pdf: '([^']+)' \}/g)].flatMap(m=>m.slice(1));
+  assert.equal(appTexte.length,6);assert.ok(aktion.includes('`Die ${copy.name} wurde zum Teilen bereitgestellt.`'));
+  const webTeilen=[...aktion.matchAll(/name: '([^']+)'/g)].map(m=>`Die ${m[1]} wurde zum Teilen bereitgestellt.`);assert.equal(webTeilen.length,3);
+  for(const id of ['export-message','excel-message','pdf-message'])for(const text of [webErfolg,...appTexte,...webTeilen]) {
+    const vorher={statusmeldungen:[{id,text:''}]},m={text:'Die Datei konnte nicht erstellt werden.',statusmeldungen:[{id,text}]};
+    assert.throws(()=>pruefeFehlerStatus(m,vorher),Abweichung,text);
+    assert.doesNotThrow(()=>pruefeFehlerStatus(m,m),'Unveränderter früherer Erfolg ist kein gleichzeitiger neuer Erfolg.');
+  }
+  for(const text of ['Die Datei konnte nicht zum Speichern bereitgestellt werden.','PDF konnte nicht gespeichert werden.']) {
+    assert.doesNotThrow(()=>pruefeFehlerStatus({text,statusmeldungen:[{id:'pdf-message',text}]},{statusmeldungen:[{id:'pdf-message',text:''}]}));
+  }
+});
 test('Farblose Darstellung: leere Zuordnung und geänderte Texte sind bestätigte Abweichungen',()=>{
   const m={phasen:[{name:'Angebotsphase',text:'Phase 1 Angebotsphase'}],warnungen:['Frist unterschritten'],fristtypen:[{typ:'Mindestfrist',phase:'Mindestfrist Angebotsphase',termin:'Angebotsabgabe'}]};
   assert.deepEqual(pruefeTextzuordnung(m,m),m);
@@ -245,7 +264,8 @@ test('Reduzierte Bewegung: Originalaufruf, CSS und tatsächliche Scrollpositione
 });
 test('Neue Phasen/Gruppe vollständig; die ursprüngliche Gruppe bleibt gleich',()=>{
   assert.deepEqual(argumente(['--phase','alle','--ausgabe','scratchpad/test-lauf']).phasen,['vertrag','webadapter','darstellung','tastatur']);
-  assert.deepEqual(argumente(['--phase','alle-v6a','--ausgabe','scratchpad/test-lauf']).phasen,['vertrag','webadapter']);
+  assert.deepEqual(argumente(['--phase','grundlagen','--ausgabe','scratchpad/test-lauf']).phasen,['vertrag','webadapter']);
+  assert.throws(()=>argumente(['--phase','alle-v6a','--ausgabe','scratchpad/test-lauf']),/--phase muss/);
   for(const phase of ['darstellung','tastatur']) {
     const p={phase,ergebnisse:ERGEBNISKATALOG[phase].map(id=>({id,status:'bestanden'}))};assert.equal(auswerten(p).code,0);
     assert.equal(auswerten({...p,ergebnisse:p.ergebnisse.slice(1)}).code,2);

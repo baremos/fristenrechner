@@ -156,10 +156,18 @@ export function bedienung({ cdp, basisUrl, navigieren, ausgabe, protokoll }) {
     if (maus) await echterMausklick({ send, wert, selector }); else await aktivieren(selector);
     await bis(async () => (await inhalt('#form-message')) === 'Terminplan aktualisiert.', 'Berechnung', { produkt: true });
   }
+  let bildzustand;
+  async function mitBildzustand(zustand, fn) {
+    bestaetige(!bildzustand && typeof zustand?.vorbereiten==='function' && typeof zustand?.bestaetigen==='function', 'Bildzustand nicht eindeutig eingerichtet.');
+    bildzustand=zustand;
+    try { return await fn(); } finally { bildzustand=null; }
+  }
   async function aufnahme(art, clip, dichte = 1, optionen) {
     const name = art.endsWith('.png') ? art : freierBildname(ausgabe, art);
+    await bildzustand?.vorbereiten(name);
     const beleg = await bildAufnehmen({send,ausgabe},name,clip,dichte,optionen);
     if (protokoll) (protokoll.bildbelege ??= []).push(beleg);
+    await bildzustand?.bestaetigen(name);
     return beleg;
   }
   async function bildkanalVorbereiten() {
@@ -292,7 +300,7 @@ export function bedienung({ cdp, basisUrl, navigieren, ausgabe, protokoll }) {
     bestaetige(vollbild,'Vollbildbeleg für Sichtinventar fehlt.');
     return Object.assign(nachweis,{bild:name,ausschnitte,vollbild});
   }
-  return { send, wert, bis, bedienbar, frisch, taste, tab, aktiv, erreichen, aktivieren, textEingeben, auswaehlen, berechnen, bild, sichtbild, aufnahme, bildkanalVorbereiten, ausgabe, protokoll, inhalt, feld };
+  return { send, wert, bis, bedienbar, frisch, taste, tab, aktiv, erreichen, aktivieren, textEingeben, auswaehlen, berechnen, bild, sichtbild, aufnahme, mitBildzustand, bildkanalVorbereiten, ausgabe, protokoll, inhalt, feld };
 }
 
 // Teilfälle werden unabhängig protokolliert; unerwartete Steuerungsfehler sind

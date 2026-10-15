@@ -63,6 +63,17 @@ test('Zoom braucht Umbruch und Pixeldichte zugleich; Pinchzoom, nur Pixeldichte,
     {...gut,visuell:{scale:2}},{...gut,layout:{clientWidth:1280}},{...gut,dom:{...gut.dom,visuelleSkala:2}},{...gut,visuell:{}}])
     assert.equal(browserzoomBestaetigt(basis,m,2),false);
 });
+
+test('Reflow und Zoom erlauben nur Abweichungen unter einem CSS-Pixel, in beiden Richtungen',()=>{
+  const basis={innerWidth:1280,devicePixelRatio:1};
+  for(const differenz of [-1.01,-1,-0.99,0,0.99,1,1.01]) {
+    const dom={innerWidth:640,devicePixelRatio:1,schrift:16,visuelleSkala:1,clientWidth:625};
+    const probe={dom,layout:{clientWidth:625+differenz},visuell:{scale:1}};
+    if(Math.abs(differenz)<1)assert.equal(pruefeReflow(probe,2).bestaetigt,true);
+    else assert.throws(()=>pruefeReflow(probe,2),Messfehler);
+    assert.equal(browserzoomBestaetigt(basis,{...probe,dom:{...dom,devicePixelRatio:2}},2),Math.abs(differenz)<1);
+  }
+});
 test('Emulationsreset bestätigt Metriken und Medien; unwirksames Zurücksetzen bleibt ungültig',async()=>{
   const b={send:async()=>{},taste:async()=>{},wert:async()=>({innerWidth:1280,devicePixelRatio:1,reduziert:true,forced:true})};
   await assert.rejects(()=>emulation(b).zuruecksetzen(),Messfehler);

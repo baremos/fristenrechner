@@ -71,7 +71,7 @@ The individual commands for the user interface require the built calculation cor
 
 The browser contract test `packages/oberflaeche/test/bedienung.browser.ts` and the browser checks run with `node scripts/browser-lauf.mjs` in Microsoft Edge or Google Chrome without a window. The run builds the test pages into the output folder, starts the browser with name resolution blocked and a discarding proxy, serves the pages from its own server on 127.0.0.1 and writes a log to the specified output folder. It is not part of `npm test` because it requires an installed browser. It does not replace checks by people using a keyboard or screen reader.
 
-- `--phase` selects `vertrag`, `webadapter`, `darstellung` or `tastatur`; `alle-v6a` covers the first two, `alle` all four phases.
+- `--phase` selects `vertrag`, `webadapter`, `darstellung` or `tastatur`; `grundlagen` covers the first two, `alle` all four phases.
 - `--browser` selects `edge`, `chrome` or `beide`; `--ausgabe <Folder>` sets the output folder.
 - Return codes: `0` passed, `1` product finding, `2` measurement error or invalid, `3` documented limitations only, `4` visual review pending, `64` incorrect invocation.
 - Each browser and phase gets a folder with `protokoll.json`; the phases `webadapter`, `darstellung` and `tastatur` also store images there, and `darstellung` and `tastatur` additionally `sichtpruefung.json`.
