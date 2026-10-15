@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "format": "Gekürztes App-Protokoll vom 2026-10-15; Zeilennummern aus ursprünglichem build.log. Keine absoluten Rechnerpfade oder APK enthalten.",
+  "laeufe": {
+    "lauf-4zdiuc_3-gezielt": [
+      {
+        "zeile": 36,
+        "text": "2026-10-15 17:09:13,222 DEBUG: > bash -e -u -o pipefail -x -c -- cd ../../..; npm ci --ignore-scripts --no-audit --no-fund; cp package-lock.json \"$FR_FDROID_LAUF/package-lock-app.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-vor-web.json\"; node scripts/fdroid/app-vorbereiten.mjs; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-web.json\"; python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe \"$FR_FDROID_LAUF/bereinigung.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-bereinigung.json\"; python3 \"$FR_FDROID_INVENTAR\" --alle node_modules \"$FR_FDROID_LAUF/npm-dateien-vor-scanner.json\""
+      },
+      {
+        "zeile": 48,
+        "text": "> @baremos/fristenrechner-kern@0.1.0 build"
+      },
+      {
+        "zeile": 78,
+        "text": "K3 Sync: bestanden"
+      },
+      {
+        "zeile": 79,
+        "text": "Hinweise Dritter: bestanden"
+      },
+      {
+        "zeile": 80,
+        "text": "K4 Gradle: bestanden"
+      }
+    ]
+  }
+}
