@@ -5,7 +5,8 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { dirname, join, relative, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { androidQuellen, argumente, baue, findeNpm } from './app-bauen.mjs';
+import { androidQuellen, argumente, baue, findeNpm, pruefeBuildHinweise } from './app-bauen.mjs';
+import { pruefeProjekt } from './check-licenses.mjs';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const basis = join(wurzel, 'scratchpad', 'test-app-bauen');
@@ -157,7 +158,7 @@ test('Android ohne --streng gibt den Schalter nicht an android-build weiter', ()
   assert.equal(p.pruefaufrufe.find(({ name }) => name === 'K3').args[0].vorher, p.vorher);
 });
 
-test('Hinweise: Bündel nach K2, Gradle-Modell nach Release-Build, Erfolg ohne neue Protokollzeile', () => {
+test('Hinweise: Bündel nach K2, Pflichtbeleg nach Sync, Gradle-Modell nach Release-Build', () => {
   const p = probe();
   const aufrufe = [];
   p.optionen.hinweisePruefung = (wurzel, optionen) => {
@@ -167,10 +168,27 @@ test('Hinweise: Bündel nach K2, Gradle-Modell nach Release-Build, Erfolg ohne n
   assert.equal(baue(['--android', '--aufgabe', ':app:assembleRelease'], p.optionen), 0);
   assert.deepEqual(aufrufe, [
     { wurzel: p.ort, optionen: { buendel: join(p.ort, 'app/.astro/module-client.json') }, letzter: 'K2' },
-    { wurzel: p.ort, optionen: { gradleModell: join(p.ort, 'app/android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml') }, letzter: 'Gradle' },
+    { wurzel: p.ort, optionen: { nachAndroidSync: true }, letzter: 'K3' },
+    { wurzel: p.ort, optionen: { nachAndroidSync: true, gradleModell: join(p.ort, 'app/android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml') }, letzter: 'Gradle' },
   ]);
   assert.ok(!p.meldungen.some(s => /Hinweise|Bündel|Gradle-Abgleich/.test(s)));
   assert.deepEqual(p.fehler, []);
+});
+test('Hinweise: fehlender oder abweichender Pflichtbeleg nach Sync stoppt vor Gradle', () => {
+  const p = probe();
+  p.optionen.hinweisePruefung = (_wurzel, o) => o.nachAndroidSync ? ['Hinweise Dritter: Gradle-Beleg fehlt oder weicht ab.'] : [];
+  assert.equal(baue(['--android'], p.optionen), 1);
+  assert.equal(p.schritte.at(-1), 'K3');
+  assert.ok(!p.schritte.includes('Gradle'));
+});
+
+test('Build-Hinweise bleiben nach Ablauf der Pflegeausnahme unabhängig von der Systemuhr', t => {
+  const Datum = globalThis.Date;
+  t.mock.method(globalThis, 'Date', class extends Datum {
+    constructor(...args) { super(...(args.length ? args : ['2027-09-30T00:00:00Z'])); }
+  });
+  assert.deepEqual(pruefeBuildHinweise(wurzel), []);
+  assert.throws(() => pruefeProjekt(wurzel), /Einzelausnahme abgelaufen: rgbcolor/);
 });
 for (const modus of ['--web', '--android']) {
   test(`Hinweise: ${modus} bricht beim Bündelfehler nach K2 ab`, () => {
@@ -431,13 +449,12 @@ test('Programmaufruf mit ungültigen Argumenten endet mit 1 und Hilfe', () => {
   assert.match(lauf.stderr, /Aufruf: node scripts\/app-bauen\.mjs/);
 });
 
-test('Programmaufruf mit fehlendem Build-Werkzeug endet mit 1 ohne Hilfe', () => {
-  const lauf = spawnSync(process.execPath, [join(wurzel, 'scripts', 'app-bauen.mjs'), '--web'], {
-    encoding: 'utf8', env: { ...process.env, npm_execpath: join(arbeit, 'fehlt', 'npm-cli.js'), CI: '1', ASTRO_TELEMETRY_DISABLED: '1' },
-  });
-  assert.equal(lauf.status, 1);
-  assert.match(lauf.stderr, /npm_execpath nennt eine fehlende Datei/);
-  assert.doesNotMatch(lauf.stderr, /Aufruf:/);
+test('Fehlendes Build-Werkzeug endet mit 1 ohne Hilfe und berührt nur die Probekopie', () => {
+  const p = probe();
+  p.optionen.umgebung.npm_execpath = join(p.ort, 'fehlt', 'npm-cli.js');
+  assert.equal(baue(['--web'], p.optionen), 1);
+  assert.match(p.fehler.join('\n'), /npm_execpath nennt eine fehlende Datei/);
+  assert.doesNotMatch(p.fehler.join('\n'), /Aufruf:/);
 });
 
 test('Import startet keine Build-Kette und gibt keine Aufrufhilfe aus', () => {

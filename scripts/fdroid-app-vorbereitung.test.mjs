@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { dateiManifest, vorbereiten } from './fdroid/app-vorbereiten.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
-const arbeit = mkdtempSync(join(tmpdir(), 'fdroid-app-vorbereitung-'));
+const basis = resolve(hier, '../scratchpad/test-fdroid-app-vorbereitung');
+mkdirSync(basis, { recursive: true });
+const arbeit = mkdtempSync(join(basis, 'fdroid-app-vorbereitung-'));
 test.after(() => rmSync(arbeit, { recursive: true, force: true }));
 const python = ['python3', 'python'].find((name) => spawnSync(name, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)']).status === 0);
 
@@ -34,6 +35,11 @@ function probe(aenderung = {}) {
       pruefeSync(werte) { assert.equal(werte.vorher, vorher); schritte.push('k3'); return []; },
       pruefeGradle() { schritte.push('k4'); return []; },
     },
+    hinweisePruefung(wurzel, optionen) {
+      assert.equal(wurzel, arbeit);
+      assert.deepEqual(optionen, { nachAndroidSync: true });
+      schritte.push('hinweise'); return [];
+    },
     manifest() { schritte.push('manifest'); return { dateien: [{ pfad: 'index.html' }] }; },
     schreiben(datei, text, optionen) {
       assert.equal(datei, join(arbeit, 'web-vor-bereinigung.json'));
@@ -49,17 +55,18 @@ function probe(aenderung = {}) {
 test('Web-Build K1/K2, Zustand, Sync, K3/K4 und Manifest laufen ohne Gradle in Reihenfolge', () => {
   const p = probe();
   assert.equal(vorbereiten([], p.konfig), 0);
-  assert.deepEqual(p.schritte, ['web', 'zustand', 'sync', 'k3', 'k4', 'manifest', 'schreiben']);
+  assert.deepEqual(p.schritte, ['web', 'zustand', 'sync', 'k3', 'hinweise', 'k4', 'manifest', 'schreiben']);
   assert.deepEqual(p.fehler, []);
 });
 
-for (const phase of ['web', 'sync', 'k3', 'k4']) {
+for (const phase of ['web', 'sync', 'k3', 'hinweise', 'k4']) {
   test(`Fehler in ${phase} stoppt vor dem Manifest`, () => {
     const p = probe();
     if (phase === 'web' || phase === 'sync') {
       const normal = p.konfig.spawn;
       p.konfig.spawn = (...args) => { normal(...args); return { status: p.schritte.at(-1) === phase ? 9 : 0 }; };
-    } else p.konfig.pruefungen[phase === 'k3' ? 'pruefeSync' : 'pruefeGradle'] = () => ['Gegenprobe'];
+    } else if (phase === 'hinweise') p.konfig.hinweisePruefung = () => ['Gegenprobe: Gradle-Beleg fehlt oder weicht ab'];
+    else p.konfig.pruefungen[phase === 'k3' ? 'pruefeSync' : 'pruefeGradle'] = () => ['Gegenprobe'];
     assert.equal(vorbereiten([], p.konfig), 1);
     assert.ok(!p.schritte.includes('manifest'));
     if (phase === 'k3') assert.ok(!p.schritte.includes('k4'));

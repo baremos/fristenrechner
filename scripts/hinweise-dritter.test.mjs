@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, 
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { erzeugeHinweise, gruppen, pruefeHinweisdatei, schreibeHinweise } from './hinweise-dritter.mjs';
+import { erzeugeHinweise, gruppen, pruefeFormat, pruefeHinweisdatei, schreibeHinweise } from './hinweise-dritter.mjs';
 import { pruefeProjekt } from './check-licenses.mjs';
 import { pruefeBuendel, pruefeGradleModell } from './hinweise-pruefung.mjs';
 import { findeJdk } from './werkzeuge.mjs';
@@ -106,6 +106,39 @@ test('Generator: Apache-Wortlaut als vollständiger Eintrag wird ebenfalls nur r
   p.i.android.maven[0].wortlaut = readFileSync(join(p.ort, 'LICENSE'), 'utf8');
   const s = erzeugeHinweise(p.ort, p.i).toString('utf8');
   assert.equal(s.split('Apache License\n').length - 1, 1);
+});
+
+for (const fall of ['abweichender Anhang', 'zusätzlicher Urheberhinweis', 'andere Zeilenenden']) {
+  test(`Apache-2.0: ${fall} wird nicht still verworfen`, () => {
+    const p = probe(), e = p.i.npm[1];
+    const apache = readFileSync(join(p.ort, 'LICENSE'), 'utf8');
+    const bytes = Buffer.from(fall === 'abweichender Anhang' ? apache.replace('[yyyy]', '2026')
+      : fall === 'zusätzlicher Urheberhinweis' ? apache + '\nCopyright Probe\n' : apache.replace(/\r?\n/g, '\r\n'));
+    e.lizenzdatei.sha256 = sha(bytes);
+    schreibe(p.ort, e.ort + '/LICENSE', bytes);
+    assert.throws(() => erzeugeHinweise(p.ort, p.i), /Apache-Lizenzdatei weicht/);
+    schreibe(p.ort, 'scripts/hinweise-dritter.json', p.i);
+    scheitert(p, /Apache-Lizenzdatei weicht/);
+  });
+}
+
+test('Gradle-Beleg: Probekopie ohne Sync-Datei besteht vorher; nach Sync sind Datei und Version Pflicht', () => {
+  const p = probe(), e = p.i.android.projektmodule[0];
+  const datei = join(p.ort, e.versionsbeleg.datei);
+  const bytes = readFileSync(datei);
+  assert.equal(bericht(p).ok, true);
+  assert.equal(bericht(p, { nachAndroidSync: true }).ok, true);
+  rmSync(datei);
+  assert.equal(bericht(p).ok, true);
+  scheitert(p, /build.gradle fehlt/, { nachAndroidSync: true });
+  writeFileSync(datei, bytes);
+  assert.equal(bericht(p, { nachAndroidSync: true }).ok, true);
+  writeFileSync(datei, 'versionName "9.0.0"\n');
+  scheitert(p, /abweichenden SHA-256/);
+  scheitert(p, /abweichenden SHA-256/, { nachAndroidSync: true });
+  e.versionsbeleg.sha256 = sha(readFileSync(datei));
+  schreibe(p.ort, 'scripts/hinweise-dritter.json', p.i);
+  scheitert(p, /Version weicht vom Gradle-Beleg ab/, { nachAndroidSync: true });
 });
 
 for (const [name, aendern, muster] of [
@@ -274,6 +307,37 @@ for (const gruppe of ['maven', 'eingebettet', 'buildHilfscode']) {
 }
 
 const bestand = JSON.parse(readFileSync(join(wurzel, 'scripts/hinweise-dritter.json')));
+
+for (const paket of ['jspdf', 'kotlin-stdlib']) {
+  test(`Pflichtangaben: neue Version von ${paket} scheitert geschlossen`, () => {
+    const p = probe();
+    const e = structuredClone(paket === 'jspdf' ? bestand.npm.find(e => e.paket === paket)
+      : bestand.android.maven.find(e => e.name === paket));
+    e.version = '99.0.0';
+    delete e.originale; delete e.wortlaut; delete e.bestandteile;
+    (paket === 'jspdf' ? p.i.npm : p.i.android.maven).push(e);
+    assert.throws(() => pruefeFormat(p.i), /Pflichtangaben.*Version.*nicht gepflegt/);
+    assert.throws(() => erzeugeHinweise(p.ort, p.i), /Pflichtangaben.*Version.*nicht gepflegt/);
+    schreibe(p.ort, 'scripts/hinweise-dritter.json', p.i);
+    for (const streng of [false, true]) scheitert(p, /Pflichtangaben.*Version.*nicht gepflegt/, { streng });
+  });
+}
+
+for (const [datei, code, muster] of [
+  ['hinweise-dritter.mjs', 1, /Aufruf: node scripts\/hinweise-dritter/],
+  ['check-licenses.mjs', 1, /Unbekanntes oder unvollständiges Argument/],
+  ['browser-lauf-auswertung.mjs', 64, /Aufruf: node scripts\/browser-lauf-auswertung/],
+]) {
+  test(`Hauptaufruf über Verzeichnisverweis: ${datei} führt Argumentprüfung aus`, () => {
+    const p = probe();
+    const alias = join(p.ort, 'skripte');
+    symlinkSync(join(wurzel, 'scripts'), alias, process.platform === 'win32' ? 'junction' : 'dir');
+    const lauf = spawnSync(process.execPath, [join(alias, datei), '--unbekannt'], { encoding: 'utf8' });
+    assert.equal(lauf.status, code, lauf.stderr);
+    assert.match(lauf.stdout + lauf.stderr, muster);
+    assert.equal(datei === 'check-licenses.mjs' ? lauf.stderr : lauf.stdout, '');
+  });
+}
 
 for (const fall of ['fehlender Kopf', 'verkürzter Kopf mit neuem Auszughash', 'verfälschter Auszughash', 'verfälschter Wortlaut']) {
   test(`jsPDF-Bündelkopf: ${fall} scheitert`, () => {

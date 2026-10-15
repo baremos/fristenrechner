@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 // Nach einer Bildsichtung: neuer Bericht, Rohprotokolle bleiben erhalten.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 import { sichtAuswerten } from './browser/sichtpruefung.mjs';
 import { auswerten, gesamtAuswerten, statusFuerCode } from './browser/auswertung.mjs';
 import { messbefehl } from './browser/fehler.mjs';
@@ -79,4 +78,4 @@ export async function main(argv) {
     console.log(`Gesamtlauf: ${neu.status}`); return neu.code;
   } catch(e) { console.error(e.message); return 2; }
 }
-if (process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) process.exitCode=await main(process.argv.slice(2));
+if (import.meta.main) process.exitCode=await main(process.argv.slice(2));

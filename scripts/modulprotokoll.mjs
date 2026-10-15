@@ -106,7 +106,7 @@ export function modulprotokoll(wurzel, { astro = false } = {}) {
     begonnen = false;
   }
   return {
-    name: 'hinweise-dritter:modulprotokoll', enforce: 'post',
+    name: 'hinweise-dritter:modulprotokoll', enforce: 'post', apply: 'build',
     entwerte, abschliessen,
     buildStart() { if (!begonnen) entwerte(); },
     buildEnd(fehler) { if (fehler) { gescheitert = true; rmSync(datei, { force: true }); rmSync(zwischen, { force: true }); } },

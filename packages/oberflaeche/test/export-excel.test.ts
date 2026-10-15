@@ -25,7 +25,7 @@ it('Excel-Kopf und -Fuß bleiben einschließlich Steuerzeichen unter 255 Zeichen
 it('Excel erlaubt 254 Fußzeichen und weist 255 ab, auch mit wörtlichen & im Gastgebertext', () => {
   const inhalt = { ...webExportInhalt, herausgeber: 'A & B', adresse: undefined };
   const m = beschreibeMappe(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, inhalt);
-  expect(m.blatt.fusszeile).toContain('A && B');
+  expect(m.blatt.fusszeile).toBe(`&LA && B&C${exportHaftungshinweis}&RSeite &P von &N`);
   const passend = { ...inhalt, herausgeber: inhalt.herausgeber + 'x'.repeat(254 - m.blatt.fusszeile!.length) };
   expect(beschreibeMappe(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, passend).blatt.fusszeile).toHaveLength(254);
   const blatt = leseArchiv(createScheduleExcel(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, passend)).get('xl/worksheets/sheet1.xml')!;
