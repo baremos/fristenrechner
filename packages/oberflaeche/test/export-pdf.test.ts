@@ -112,7 +112,7 @@ it.each([true, false])('PDF bricht einen langen Herausgeber im vorhandenen Fußb
     expect(herausgeber).toHaveLength(2);
     expect(herausgeber.map(text => text.text).join(' ')).toBe(inhalt.herausgeber);
     const mitte = fuss.filter(text => [webExportInhalt.adresse!.text, exportHaftungshinweis].includes(text.text));
-    expect((herausgeber[0].y + herausgeber[1].y) / 2).toBeCloseTo((mitte[0].y + mitte.at(-1)!.y) / 2, 8);
+    expect((herausgeber[0].y + herausgeber[1].y) / 2).toBeCloseTo((mitte[0].y + mitte[mitte.length - 1].y) / 2, 8);
     expect(herausgeber[0].y - 8 / (72 / 25.4)).toBeGreaterThan(seite.fussTrennlinie);
     expect(herausgeber[1].y + 8 / (72 / 25.4)).toBeLessThan(seite.seitenhoehe);
     expect(seite.fussTrennlinie).toBe(referenz[index].fussTrennlinie);
