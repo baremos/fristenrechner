@@ -80,6 +80,7 @@ export function quellvertrag(wurzel) {
   }
   if (!app.includes("import hinweiseDritter from '../hinweise-dritter.txt?raw';")
     || !/<details class="app-abschnitt" id="app-hinweise-dritter">\s*<summary>Hinweise zu Komponenten Dritter<\/summary>\s*<p>Diese App enthält Komponenten Dritter\. Aufgeführt sind die Komponenten, ihre Versionen, Lizenzen und Urheberhinweise\. Die Lizenztexte stehen im Original \(Englisch\)\.<\/p>\s*<pre>\{hinweiseDritter\}<\/pre>\s*<\/details>/.test(app)
+    || app.indexOf('<summary>Lizenzen</summary>') < 0
     || app.indexOf('id="app-hinweise-dritter"') < app.indexOf('<summary>Lizenzen</summary>')
     || !app.includes("bibliothekenHinweis: 'Der PDF- und Excel-Export nutzt Open-Source-Bibliotheken. Ihre Lizenzhinweise stehen im Abschnitt „Hinweise zu Komponenten Dritter“.',")) {
     throw new Error('Offline-Hinweise Dritter oder Bibliothekssatz geändert.');

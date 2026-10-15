@@ -4,10 +4,10 @@ import { layoutQuelle, kontrastQuelle, textzuordnungQuelle } from './messquellen
 import { Abweichung, bestaetige, verlange, pruefeEmulation, pruefeLayout, farbe, farbpaar, kontrast, textSchwelle, KONTRAST } from './regeln.mjs';
 import { schreibeSichtpruefung } from './sichtpruefung.mjs';
 import { Produktabweichung } from './fehler.mjs';
-import { messungAblegen } from './belege.mjs';
-import { hoverMessen } from './hover.mjs';
+import { messungAblegen, bestaetigeBildwechsel } from './belege.mjs';
+import { hoverMessen, hoverQuelle } from './hover.mjs';
 import { MESSGRENZEN } from './ergebniskatalog.mjs';
-import { pseudoZustand } from './dom-knoten.mjs';
+import { pseudoMessung } from './dom-knoten.mjs';
 
 export function pruefeKontraste(werte) {
   bestaetige(Array.isArray(werte) && werte.length > 0, 'Kontrastinventar fehlt.');
@@ -221,26 +221,44 @@ export async function pruefeDarstellung(kontext) {
       if(zustand==='hover') {
         fall.messungen.zustand={};
         await hoverMessen(b,selector,fall.messungen.zustand);
-        try { await kontrastfall(fall); }
-        finally { fall.bild=await b.bild(`b9-${fall.name}.png`,{selector}); }
+        const proben=fall.messungen.zustand.aufnahmen=[];
+        const bestaetigen=async bild=>{
+          const m=await b.wert(hoverQuelle(selector));proben.push({bild,hover:m?.hover,stabil:m?.stabil});
+          bestaetige(m?.hover===true&&m.stabil===true,'Hoverzustand während der Aufnahme nicht bestätigt.');
+        };
+        try {
+          await b.mitBildzustand({vorbereiten:bestaetigen,bestaetigen},async()=>{
+            try { await kontrastfall(fall); }
+            finally { fall.bild=await b.bild(`b9-${fall.name}.png`,{selector}); }
+          });
+        } finally {
+          try {
+            await bestaetigen('vor Zurücksetzen');
+            await b.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0.5,y:0.5,button:'none',buttons:0});
+            const m=await b.wert(hoverQuelle(selector));
+            fall.messungen.zustand.zurueckgesetzt={hover:m?.hover,stabil:m?.stabil,bestaetigt:m?.hover===false&&m.stabil===true};
+            bestaetige(fall.messungen.zustand.zurueckgesetzt.bestaetigt,'Hoverzustand nicht bestätigt zurückgesetzt.');
+          } catch(fehler) {sitzung.verwerfen();throw fehler;}
+        }
         return;
       }
-      await b.wert(`(() => {const s=document.createElement('style');s.id='browser-pseudo-messung';s.textContent=${JSON.stringify(`${selector}:${pseudo}{--browser-pseudo-bestaetigt:ja}`)};document.head.append(s);})()`);
-      fall.messungen.pseudoknoten=[];
-      await pseudoZustand(b,selector,pseudo==='focus-visible'?['focus','focus-visible']:[pseudo],fall.messungen.pseudoknoten);
+      const normalbild=await b.bild(`b9-normal-${ziel.kennung}.png`,{selector});
+      fall.messungen.zustand={selector,zustand:pseudo,bedienelement:ziel.selector};
+      let messung;
+      try {messung=await pseudoMessung(b,selector,pseudo,fall.messungen.zustand);}
+      catch(fehler) {sitzung.verwerfen();throw fehler;}
       try {
-        await b.wert('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
-        bestaetige(await b.wert(`getComputedStyle(document.querySelector(${JSON.stringify(selector)})).getPropertyValue('--browser-pseudo-bestaetigt').trim()`) === 'ja', 'Erzwungener Pseudozustand nicht bestätigt.');
-        fall.messungen.zustand = { selector,zustand:pseudo,bedienelement:ziel.selector,bestaetigt:true };
-        await kontrastfall(fall);
+        await b.mitBildzustand(messung,async()=>{
+          try { await kontrastfall(fall); }
+          finally {
+            fall.bild=await b.bild(`b9-${fall.name}.png`,{selector});
+            const beleg=name=>protokoll.bildbelege?.find(b=>b.datei===name);
+            fall.messungen.zustand.bildwechsel=bestaetigeBildwechsel(beleg(normalbild),beleg(fall.bild));
+          }
+        });
       } finally {
-        // Bild muss noch den erzwungenen Zustand zeigen.
-        try { fall.bild = await b.bild(`b9-${fall.name}.png`,{selector}); }
-        finally {
-          await pseudoZustand(b,selector,[],fall.messungen.pseudoknoten);
-          bestaetige(await b.wert(`getComputedStyle(document.querySelector(${JSON.stringify(selector)})).getPropertyValue('--browser-pseudo-bestaetigt').trim()`) !== 'ja', 'Pseudozustand nicht bestätigt zurückgesetzt.');
-          await b.wert("document.getElementById('browser-pseudo-messung').remove()");
-        }
+        try {await messung.zuruecksetzen();}
+        catch(fehler) {sitzung.verwerfen();throw fehler;}
       }
     }]);
   }

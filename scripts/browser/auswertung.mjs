@@ -3,8 +3,8 @@ import { ERGEBNISKATALOG, RAHMENFEHLER, ERGEBNISRANG } from './ergebniskatalog.m
 import { Messfehler } from './fehler.mjs';
 import { sichtstatusBestaetigt, grenzstatusBestaetigt } from './sichtpruefung.mjs';
 export const PHASEN = Object.keys(ERGEBNISKATALOG);
-// Die benannte Gruppe bleibt auch nach Ergänzung späterer Phasen auf V6a begrenzt.
-export const PHASENGRUPPEN = { 'alle-v6a': ['vertrag', 'webadapter'], alle: [...PHASEN] };
+// Die benannte Gruppe bleibt auch nach Ergänzung späterer Phasen auf Vertrag und Webadapter begrenzt.
+export const PHASENGRUPPEN = { 'grundlagen': ['vertrag', 'webadapter'], alle: [...PHASEN] };
 export const HTML_HASH = 'e6465ae87407c4e1e53036ecae4f9f2ac7e1f90b90fb5362483436fab41e8898';
 
 export function argumente(argv) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Browserprüfungen getrennt von npm test. Keine Installation, kein fremdes Netz.
-// Aufruf: node scripts/browser-lauf.mjs --phase alle-v6a --browser beide --ausgabe scratchpad/browser-1
+// Aufruf: node scripts/browser-lauf.mjs --phase grundlagen --browser beide --ausgabe scratchpad/browser-1
 // Alle Phasen: node scripts/browser-lauf.mjs --phase alle --browser beide --ausgabe scratchpad/browser-2
 // Rückgabewerte: 0 bestanden, 1 Produktbefund, 2 Messfehler/ungültig,
 // 3 nur dokumentierte Grenzen, alles Übrige bestanden;
@@ -145,13 +145,24 @@ async function warten(fn, beschreibung, ms = 15000) {
 }
 
 export async function verbindeFrischeSeite({browserCdp,netzMonitor,protokoll,warten:warte,verbinden,cdp}) {
+  if(typeof cdp.targetId!=='string'||!/^[A-Za-z0-9-]+$/.test(cdp.targetId))throw new Messfehler('Alte Seitenkennung fehlt.');
   const {targetId}=await messbefehl(()=>browserCdp.send('Target.createTarget',{url:'about:blank'}));
   if(typeof targetId!=='string'||!/^[A-Za-z0-9-]+$/.test(targetId))throw new Messfehler('Neue Seitenkennung fehlt.');
-  await warte(()=>protokoll.netzTargets.some(t=>t.targetId===targetId&&t.messbereit),'Überwachung der frischen Seite');
-  const beleg=await netzMonitor.seiteAnmelden(targetId);
-  if(beleg?.bestaetigt!==true||beleg.targetId!==targetId)throw new Messfehler('Überwachung der Ersatzseite nicht bestätigt.');
-  const neu=await verbinden(targetId);
+  async function schliessen(id) {
+    const r=await messbefehl(()=>browserCdp.send('Target.closeTarget',{targetId:id}));
+    if(r?.success!==true)throw new Messfehler('Schließen des Seiten-Tabs nicht bestätigt.');
+    await warte(async()=>{
+      const {targetInfos}=await messbefehl(()=>browserCdp.send('Target.getTargets'));
+      if(!Array.isArray(targetInfos))throw new Messfehler('Tab-Inventar nach dem Schließen fehlt.');
+      return !targetInfos.some(t=>t.targetId===id);
+    },'Seiten-Tab geschlossen');
+  }
+  let neu;
   try {
+    await warte(()=>protokoll.netzTargets.some(t=>t.targetId===targetId&&t.messbereit),'Überwachung der frischen Seite');
+    const beleg=await netzMonitor.seiteAnmelden(targetId);
+    if(beleg?.bestaetigt!==true||beleg.targetId!==targetId)throw new Messfehler('Überwachung der Ersatzseite nicht bestätigt.');
+    neu=await verbinden(targetId);
     // Ein zurückgelassenes Dokument könnte noch verzögert in denselben lokalen
     // Speicher schreiben. Erst sein bestätigtes Entladen beendet diese Wirkung.
     const leer=await messbefehl(()=>cdp.send('Page.navigate',{url:'about:blank'}));
@@ -159,11 +170,13 @@ export async function verbindeFrischeSeite({browserCdp,netzMonitor,protokoll,war
     await warte(async()=>browserErgebnis(await messbefehl(()=>cdp.send('Runtime.evaluate',{
       expression:'location.href',returnByValue:true,userGesture:false,
     })))==='about:blank','Altes Dokument entladen');
-    cdp.close();
-    // Alte Targets bleiben bis zum geplanten Browserende überwacht.
-    (protokoll.frischeSeiten??=[]).push(beleg);
+    await schliessen(cdp.targetId);cdp.close();
+    (protokoll.frischeSeiten??=[]).push({...beleg,ersetztesTargetId:cdp.targetId,alterTabGeschlossen:true});
     return neu;
-  } catch(fehler) {neu.close();throw fehler;}
+  } catch(fehler) {
+    try {await schliessen(targetId);} finally {neu?.close();}
+    throw fehler;
+  }
 }
 async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, arbeitsstand, htmlHash, signal, diagnose = false }) {
   mkdirSync(ausgabe);
@@ -229,7 +242,9 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
       const p = m.params;
       if (['Runtime.consoleAPICalled', 'Runtime.exceptionThrown', 'Log.entryAdded'].includes(m.method)) protokoll.konsolenmeldungen.push({ zeit: new Date().toISOString(), methode: m.method, daten: p });
       });
-      for (const domain of ['Page', 'Runtime', 'Log', 'DOM']) await verbindung.send(`${domain}.enable`);
+      try {for (const domain of ['Page', 'Runtime', 'Log', 'DOM']) await verbindung.send(`${domain}.enable`);}
+      catch(fehler) {verbindung.close();throw fehler;}
+      verbindung.targetId=targetId;
       return verbindung;
     };
     cdp = await seiteVerbinden(id);
@@ -369,7 +384,7 @@ export async function main(argv, { prozess: ausfuehren = prozess, bauen: bauErze
   phaseAusfuehren = laufPhase, phaseSpeichern = phaseSichern, browserFinden = name => browserKandidaten(name).find(p => existsSync(p) && statSync(p).isFile()) } = {}) {
   let optionen, ausgabe;
   try { optionen = argumente(argv); ausgabe = ausgabeVorbereiten(optionen.ausgabe); }
-  catch (e) { console.error(`${e.message}\nAufruf: node scripts/browser-lauf.mjs --phase <vertrag|webadapter|darstellung|tastatur|alle-v6a|alle> --ausgabe <neuer-oder-leerer-Ordner> [--browser <edge|chrome|beide>] [--diagnose]`); return 64; }
+  catch (e) { console.error(`${e.message}\nAufruf: node scripts/browser-lauf.mjs --phase <vertrag|webadapter|darstellung|tastatur|grundlagen|alle> --ausgabe <neuer-oder-leerer-Ordner> [--browser <edge|chrome|beide>] [--diagnose]`); return 64; }
   const bericht = { beginn: new Date().toISOString(), optionen, laeufe: [], nichtInstalliert: [] };
   let server;
   const controller = new AbortController();

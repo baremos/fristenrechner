@@ -71,7 +71,7 @@ Die Einzelbefehle der Oberfläche setzen den gebauten Rechenkern voraus (`npm ru
 
 Der Browser-Vertragstest `packages/oberflaeche/test/bedienung.browser.ts` und die Browserprüfungen laufen mit `node scripts/browser-lauf.mjs` in Microsoft Edge oder Google Chrome ohne Fenster. Der Lauf baut die Prüfseiten in den Ausgabeordner, startet den Browser mit gesperrter Namensauflösung und einem verwerfenden Proxy, liefert die Seiten über einen eigenen Server auf 127.0.0.1 aus und schreibt ein Protokoll in den angegebenen Ausgabeordner. Er gehört nicht zu `npm test`, weil er einen installierten Browser voraussetzt. Er ersetzt keine Prüfung durch Menschen mit Tastatur oder Screenreader.
 
-- `--phase` wählt `vertrag`, `webadapter`, `darstellung` oder `tastatur`; `alle-v6a` umfasst die ersten beiden, `alle` alle vier Phasen.
+- `--phase` wählt `vertrag`, `webadapter`, `darstellung` oder `tastatur`; `grundlagen` umfasst die ersten beiden, `alle` alle vier Phasen.
 - `--browser` wählt `edge`, `chrome` oder `beide`; `--ausgabe <Ordner>` legt den Ausgabeordner fest.
 - Rückgabewerte: `0` bestanden, `1` Produktbefund, `2` Messfehler oder ungültig, `3` nur dokumentierte Grenzen, `4` Sichtprüfung ausstehend, `64` falscher Aufruf.
 - Je Browser und Phase entsteht ein Ordner mit `protokoll.json`; die Phasen `webadapter`, `darstellung` und `tastatur` legen dort Bilder ab, `darstellung` und `tastatur` zusätzlich `sichtpruefung.json`.

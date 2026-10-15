@@ -8,6 +8,15 @@ import { messbefehl } from './fehler.mjs';
 // Rasteraufnahme und Scroll-Rücksetzung können auf andere Subpixel runden.
 // Ausschließlich Differenzen < 1 CSS-Pixel sind erlaubt, niemals ganze Pixel.
 export const LAGETOLERANZ = 1;
+export function bestaetigeBildwechsel(normal,zustand) {
+  bestaetige([normal,zustand].every(b=>/^[a-f0-9]{64}$/.test(b?.sha256??'')
+    &&[b.breite,b.hoehe,b.dichte,b.clip?.x,b.clip?.y,b.clip?.width,b.clip?.height,b.clip?.scale].every(Number.isFinite)
+    &&b.breite>0&&b.hoehe>0&&b.dichte>0), 'Normal- oder Zustandsbild fehlt.');
+  bestaetige(normal.breite===zustand.breite&&normal.hoehe===zustand.hoehe&&normal.dichte===zustand.dichte
+    &&JSON.stringify(normal.clip)===JSON.stringify(zustand.clip),'Normal- und Zustandsbild haben verschiedene Ausschnitte.');
+  bestaetige(normal.sha256!==zustand.sha256,'Normal- und Fokusbild haben denselben Hash; sichtbarer Zustandswechsel nicht bestätigt.');
+  return {normal:normal.datei,zustand:zustand.datei,normalSha256:normal.sha256,zustandSha256:zustand.sha256,bestaetigt:true};
+}
 export function bestaetigeElementlage(m) {
   const {vorher:v,nachher:n}=m;
   bestaetige(v?.scrollruhe?.bestaetigt===true&&n?.scrollruhe?.bestaetigt===true,
