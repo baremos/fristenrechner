@@ -189,7 +189,30 @@ export function bedienung({ cdp, basisUrl, navigieren, ausgabe, protokoll }) {
     }
     bestaetige(false,'Aufnahmekanal verändert weiterhin die Ausgangsgeometrie.');
   }
-  async function bild(name, { selector, rand = 24, imViewport = protokoll?.phase==='tastatur' } = {}) {
+  async function bild(name, { selector, rand = 24, imViewport = protokoll?.phase==='tastatur', geometrie={} } = {}) {
+    if(imViewport&&selector) {
+      Object.assign(geometrie,{bild:name,selector,imViewport:true,captureBeyondViewport:false,vorher:null,nachher:null,bestaetigt:false});
+      let beleg,aufnahmefehler;
+      try {
+        await wert(`(() => {const e=document.querySelector(${JSON.stringify(selector)});e?.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});})()`);
+        const lage=geometrie.vorher=await wert(elementlageQuelle(selector));
+        if(lage)lage.dokumentgroesse=(await send('Page.getLayoutMetrics')).cssContentSize;
+        bestaetige(lage?.scrollruhe?.bestaetigt===true,'Scrollruhe vor dem Vergleichsbild nicht bestätigt.');
+        const {clip}=elementClip(lage,lage.dokumentgroesse,rand,true);
+        geometrie.clip=clip;geometrie.dichte=lage.dichte;
+        beleg=await aufnahme(name,clip,lage.dichte,{captureBeyondViewport:false});
+        Object.assign(beleg,{aufnahmeart:'Sichtbarer Viewport',rollstand:lage.rollstand,fenster:lage.fenster,geometrie});
+      } catch(fehler) {aufnahmefehler=fehler;geometrie.fehler=fehler.message;}
+      finally {
+        try {
+          geometrie.nachher=await wert(elementlageQuelle(selector));
+          if(geometrie.nachher)geometrie.nachher.dokumentgroesse=(await send('Page.getLayoutMetrics')).cssContentSize;
+        } catch(fehler) {geometrie.nachherFehler=fehler.message;aufnahmefehler??=fehler;}
+      }
+      if(aufnahmefehler)throw aufnahmefehler;
+      bestaetigeElementlage(geometrie);
+      return name;
+    }
     const {cssContentSize}=await send('Page.getLayoutMetrics');
     bestaetige(cssContentSize&&[cssContentSize.width,cssContentSize.height].every(v=>Number.isFinite(v)&&v>0),'Dokumentgröße für vollständigen Bildbeleg fehlt.');
     const dichte=await wert('devicePixelRatio');bestaetige(Number.isFinite(dichte)&&dichte>0,'Pixeldichte für Bildbeleg nicht bestätigt.');

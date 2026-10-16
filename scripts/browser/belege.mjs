@@ -8,14 +8,36 @@ import { messbefehl } from './fehler.mjs';
 // Rasteraufnahme und Scroll-Rücksetzung können auf andere Subpixel runden.
 // Ausschließlich Differenzen < 1 CSS-Pixel sind erlaubt, niemals ganze Pixel.
 export const LAGETOLERANZ = 1;
-export function bestaetigeBildwechsel(normal,zustand) {
+export function bestaetigeBildwechsel(normal,zustand,nachweis={}) {
+  Object.assign(nachweis,{normal:normal?.datei,zustand:zustand?.datei,normalSha256:normal?.sha256,zustandSha256:zustand?.sha256,
+    normalGeometrie:normal?.geometrie??nachweis.normalGeometrie,zustandGeometrie:zustand?.geometrie??nachweis.zustandGeometrie,
+    toleranzExklusiv:LAGETOLERANZ,bestaetigt:false});
   bestaetige([normal,zustand].every(b=>/^[a-f0-9]{64}$/.test(b?.sha256??'')
     &&[b.breite,b.hoehe,b.dichte,b.clip?.x,b.clip?.y,b.clip?.width,b.clip?.height,b.clip?.scale].every(Number.isFinite)
     &&b.breite>0&&b.hoehe>0&&b.dichte>0), 'Normal- oder Zustandsbild fehlt.');
+  bestaetige(typeof normal.captureBeyondViewport==='boolean'&&normal.captureBeyondViewport===zustand.captureBeyondViewport,
+    'Normal- und Zustandsbild haben kein bestätigtes gemeinsames Aufnahmeverfahren.');
+  for(const b of [normal,zustand]) {
+    bestaetige(b.geometrie?.bestaetigt===true&&b.geometrie.imViewport===true&&b.captureBeyondViewport===false,
+      'Geometrie vor und nach dem Vergleichsbild im sichtbaren Viewport nicht bestätigt.');
+    bestaetigeElementlage(b.geometrie);
+  }
+  const v=normal.geometrie.vorher,n=zustand.geometrie.vorher;
+  bestaetige(['innerWidth','clientWidth'].every(k=>v.fenster[k]===n.fenster[k])&&v.dokumentgroesse.width===n.dokumentgroesse.width,
+    'Geänderte Layoutbreite zwischen Normal- und Zustandsbild (Fenster, Viewport oder Dokument).');
+  bestaetige(['innerHeight','clientHeight'].every(k=>v.fenster[k]===n.fenster[k])&&normal.dichte===zustand.dichte,
+    'Fensterhöhe oder Pixeldichte zwischen Normal- und Zustandsbild geändert.');
+  const proben=[v,normal.geometrie.nachher,n,zustand.geometrie.nachher];
+  bestaetige(['links','oben','rechts','unten','breite','hoehe'].every(k=>{
+    const werte=proben.map(p=>p.dokumentRechteck[k]);return Math.max(...werte)-Math.min(...werte)<LAGETOLERANZ;
+  }),
+    'Elementrechteck zwischen Normal- und Zustandsbild geändert.');
+  bestaetige(['x','y'].every(k=>Math.abs(n.rollstand[k]-v.rollstand[k])<LAGETOLERANZ),
+    'Rollstand zwischen Normal- und Zustandsbild geändert.');
   bestaetige(normal.breite===zustand.breite&&normal.hoehe===zustand.hoehe&&normal.dichte===zustand.dichte
     &&JSON.stringify(normal.clip)===JSON.stringify(zustand.clip),'Normal- und Zustandsbild haben verschiedene Ausschnitte.');
   bestaetige(normal.sha256!==zustand.sha256,'Normal- und Fokusbild haben denselben Hash; sichtbarer Zustandswechsel nicht bestätigt.');
-  return {normal:normal.datei,zustand:zustand.datei,normalSha256:normal.sha256,zustandSha256:zustand.sha256,bestaetigt:true};
+  nachweis.bestaetigt=true;return nachweis;
 }
 export function bestaetigeElementlage(m) {
   const {vorher:v,nachher:n}=m;
@@ -29,6 +51,9 @@ export function bestaetigeElementlage(m) {
   m.differenz=Object.fromEntries(['links','oben','rechts','unten','breite','hoehe'].map(k=>[k,n.dokumentRechteck[k]-v.dokumentRechteck[k]]));
   m.rollDifferenz={x:n.rollstand.x-v.rollstand.x,y:n.rollstand.y-v.rollstand.y};
   if(m.imViewport) {
+    bestaetige(['innerWidth','clientWidth'].every(k=>Number.isFinite(v.fenster?.[k])&&v.fenster[k]===n.fenster?.[k])
+      &&Number.isFinite(v.dokumentgroesse?.width)&&v.dokumentgroesse.width===n.dokumentgroesse?.width,
+      'Layoutbreite während der Aufnahme geändert oder unbestätigt (Fenster, Viewport oder Dokument).');
     m.fensterDifferenz=Object.fromEntries(['innerWidth','innerHeight','clientWidth','clientHeight'].map(k=>[k,n.fenster?.[k]-v.fenster?.[k]]));
     bestaetige(Object.values(m.fensterDifferenz).every(x=>Number.isFinite(x)&&Math.abs(x)<LAGETOLERANZ)
       &&Number.isFinite(v.dichte)&&v.dichte===n.dichte,'Viewport oder Pixeldichte hat sich während des Ausschnitts geändert.');

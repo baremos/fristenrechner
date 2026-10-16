@@ -60,6 +60,31 @@ export async function kontrastMessen(b,e,fall,ausgabe) {
   bestaetige(!unklar.length,`Kontrastmessung unvollständig: ${unklar.map(m=>m.selector+': '+m.meldung).join('; ')}`);
   verlange(!befunde.length,`${befunde.length} Kontrastunterschreitungen.`,befunde);
 }
+export async function fokusKontrastMessen(b,fall,{selector,pseudo,bedienelement,kennung,kontrastfall,verwerfen}) {
+  const nachweis=fall.messungen.zustand={selector,zustand:pseudo,bedienelement};
+  const wechsel=nachweis.bildwechsel={normal:`b9-normal-${kennung}.png`,zustand:`b9-${fall.name}.png`,
+    normalGeometrie:{},zustandGeometrie:{},bestaetigt:false};
+  const beleg=name=>b.protokoll.bildbelege?.find(b=>b.datei===name);
+  await b.bild(wechsel.normal,{selector,imViewport:true,geometrie:wechsel.normalGeometrie});
+  let messung;
+  try {messung=await pseudoMessung(b,selector,pseudo,nachweis);}
+  catch(fehler) {verwerfen();throw fehler;}
+  try {
+    await b.mitBildzustand(messung,async()=>{
+      // Das Vergleichspaar entsteht im selben sichtbaren Viewport, bevor
+      // Kontrast- und native Vollbilder die Layoutbreite verändern können.
+      // Auch bei einem Fehler nach dem Schreiben keine zweite Aufnahme unter
+      // demselben Namen: Sie würde die Geometrieursache mit EEXIST verdecken.
+      fall.bild=wechsel.zustand;
+      await b.bild(fall.bild,{selector,imViewport:true,geometrie:wechsel.zustandGeometrie});
+      bestaetigeBildwechsel(beleg(wechsel.normal),beleg(fall.bild),wechsel);
+      await kontrastfall(fall);
+    });
+  } finally {
+    try {await messung.zuruecksetzen();}
+    catch(fehler) {verwerfen();throw fehler;}
+  }
+}
 export function pruefeTextzuordnung(m, referenz, erwartet) {
   bestaetige(m && Array.isArray(m.phasen) && Array.isArray(m.warnungen) && Array.isArray(m.fristtypen), 'Textzuordnung nicht gemessen.');
   verlange(m.phasen.length > 0 && m.warnungen.length > 0 && m.fristtypen.length > 0, 'Phase, Warnung oder Fristtyp fehlt als Text.', m);
@@ -242,24 +267,8 @@ export async function pruefeDarstellung(kontext) {
         }
         return;
       }
-      const normalbild=await b.bild(`b9-normal-${ziel.kennung}.png`,{selector});
-      fall.messungen.zustand={selector,zustand:pseudo,bedienelement:ziel.selector};
-      let messung;
-      try {messung=await pseudoMessung(b,selector,pseudo,fall.messungen.zustand);}
-      catch(fehler) {sitzung.verwerfen();throw fehler;}
-      try {
-        await b.mitBildzustand(messung,async()=>{
-          try { await kontrastfall(fall); }
-          finally {
-            fall.bild=await b.bild(`b9-${fall.name}.png`,{selector});
-            const beleg=name=>protokoll.bildbelege?.find(b=>b.datei===name);
-            fall.messungen.zustand.bildwechsel=bestaetigeBildwechsel(beleg(normalbild),beleg(fall.bild));
-          }
-        });
-      } finally {
-        try {await messung.zuruecksetzen();}
-        catch(fehler) {sitzung.verwerfen();throw fehler;}
-      }
+      await fokusKontrastMessen(b,fall,{selector,pseudo,bedienelement:ziel.selector,kennung:ziel.kennung,
+        kontrastfall,verwerfen:()=>sitzung.verwerfen()});
     }]);
   }
   await gruppe('B9', 'WCAG-Kontrast aus berechneten Farben in allen sichtbaren Zuständen', kontrastfaelle);
