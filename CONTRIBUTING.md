@@ -79,7 +79,7 @@ Der Browser-Vertragstest `packages/oberflaeche/test/bedienung.browser.ts` und di
 - Danach schreibt `node scripts/browser-lauf-auswertung.mjs --lauf <Ordner>` jeweils `auswertung.json` neben `protokoll.json` und liefert den Rückgabewert neu.
 - Hintergrundanfragen des Browsers ohne sichere Zuordnung zu einer Seite oder zum Hintergrund machen die Phase ungültig; dann den Lauf wiederholen.
 
-Mit Edge 154 endet die Phase `darstellung` regelmäßig mit ungültigem Netznachweis, weil Edge nach etwa fünf Minuten eine Wallet-Konfiguration abfragt, die sich weder der Seite noch dem Browserhintergrund sicher zuordnen lässt; eine Verbindung kommt dabei nicht zustande. Chrome führt diese Phase vollständig aus.
+Mit Edge 154 und 155 endet die Phase `darstellung` regelmäßig mit ungültigem Netznachweis, weil Edge nach etwa fünf Minuten eine Wallet-Konfiguration abfragt, die sich weder der Seite noch dem Browserhintergrund sicher zuordnen lässt; eine Verbindung kommt dabei nicht zustande. Chrome führt diese Phase vollständig aus.
 
 Die Befehle funktionieren ohne private Dateien. Die Versionen der Werkzeuge stehen in [docs/toolchain.md](docs/toolchain.md).
 

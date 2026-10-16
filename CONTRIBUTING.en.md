@@ -79,7 +79,7 @@ The browser contract test `packages/oberflaeche/test/bedienung.browser.ts` and t
 - Afterwards, `node scripts/browser-lauf-auswertung.mjs --lauf <Folder>` writes `auswertung.json` next to each `protokoll.json` and returns the updated exit code.
 - Background requests by the browser without a reliable attribution to a page or to the background make the phase invalid; repeat the run in that case.
 
-With Edge 154, the `darstellung` phase regularly ends with invalid network evidence, because after about five minutes Edge requests a wallet configuration that cannot be reliably attributed to either the page or the browser background; no connection is made. Chrome runs this phase to completion.
+With Edge 154 and 155, the `darstellung` phase regularly ends with invalid network evidence, because after about five minutes Edge requests a wallet configuration that cannot be reliably attributed to either the page or the browser background; no connection is made. Chrome runs this phase to completion.
 
 The commands work without private files. The versions of the tools are in [docs/toolchain.md](docs/toolchain.md).
 
