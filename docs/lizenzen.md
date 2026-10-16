@@ -557,7 +557,7 @@ Am **2026-10-16** wurden die beiden Archive aus dem seit `286cdf4` unveränderte
 
 Die Verbraucherprobe vom **2026-10-16** unter Windows mit Node **22.23.2**, npm **10.9.8** und Astro **7.3.3** aus der Repository-Wurzel band beide Archive in ein leeres Astro-Projekt ein. `astro build` und `astro check` bestanden ohne Fehler und ohne Warnungen. Laut Quellkarten stammen alle 16 eingebundenen Quellen der beiden Pakete aus den Archiven, keine aus dem Workspace.
 
-Die Linux-Gegenprobe vom **2026-10-16** unter Debian **13** mit Node **24.21.0** und npm **11.19.0** ohne Netz und ohne Lebenszyklusskripte ergab zu Windows bytegleiche Archive mit identischen SHA-256- und SHA-1-Prüfsummen. Die Pakete sind damit nicht veröffentlicht; Herkunftsangaben wie `homepage` und `repository` folgen erst mit der Veröffentlichung.
+Die Linux-Gegenprobe vom **2026-10-16** unter Debian **13** mit Node **24.21.0** und npm **11.19.0** ohne Netz und ohne Lebenszyklusskripte ergab zu Windows bytegleiche Archive mit identischen SHA-256- und SHA-1-Prüfsummen. Veröffentlicht waren die Pakete damit nicht; die Herkunftsangaben `homepage` und `repository` fehlten in diesem Paketstand noch.
 
 Das Prüfskript [`scripts/npm-pakete.mjs`](../scripts/npm-pakete.mjs) führt den kombinierten Trockenlauf und anschließend `node scripts/check-licenses.mjs --packliste <Datei>` selbst aus:
 
