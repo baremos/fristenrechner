@@ -1,6 +1,6 @@
 # Signierung
 
-Stand 2026-10-04 · App-Endstand `5e6f230`, Nachweisstand `49dd420` · N1 mit der App, N4/N5 mit einer Testfassung belegt · Probeschlüssel gelöscht, echter Schlüssel offen
+Stand 2026-10-15 · eingefrorener App-Stand `286cdf4` · N1 mit der App, N4/N5 mit einer Testfassung erneut belegt · neue Probeschlüssel gelöscht, echter Schlüssel offen
 
 Dieses Dokument legt fest, wie die App signiert wird. Die Festlegungen S1 bis S12 hat der fachlich Verantwortliche am 2026-09-29 getroffen; S1 bleibt unter Vorbehalt.
 
@@ -84,7 +84,7 @@ Getroffen am 2026-09-29.
 
 ## Probe vor dem echten Schlüssel
 
-Der technische Nachweis in Stufe 2 braucht den echten Schlüssel nicht. Die Proben liefen mit dafür erzeugten Probeschlüsseln. Die Freigabe und die Erzeugung erfolgten am 2026-09-29. Für N4 und N5 entstand am Endstand eine [Testfassung mit eigener App-ID](#testfassung-am-endstand-vom-2026-10-04); die folgende Verwendungsregel bleibt unverändert.
+Der technische Nachweis in Stufe 2 braucht den echten Schlüssel nicht. Die Proben liefen mit dafür erzeugten Probeschlüsseln. Die erste Freigabe und Erzeugung erfolgten am 2026-09-29. Für N4 und N5 entstanden Testfassungen mit eigener App-ID am [Endstand vom 2026-10-04](#testfassung-am-endstand-vom-2026-10-04) und am [eingefrorenen Stand vom 2026-10-15](#nachweise-am-eingefrorenen-stand-vom-2026-10-15); die folgende Verwendungsregel bleibt unverändert.
 
 | Punkt | Festlegung |
 |---|---|
@@ -171,6 +171,59 @@ Am 2026-10-04 um 00:08 unter Debian bestanden: `fdroidserver.common.verify_apks`
 
 Werkzeuge: `apksigner` aus den Build-Tools 35.0.0 (Versionsausgabe 0.9), `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1 und OpenJDK 21.0.12.1. Die Gegenprobe mit einer zusätzlichen Datei `assets/public/fremd.txt` wurde abgelehnt; `apksigner` meldete „APK integrity check failed“ beziehungsweise „digest mismatch“. Die Eingaben blieben unverändert. Ein erster Lauf war wegen eines falschen Imports von `apksigcopier` im Probeskript ungültig; nach Korrektur des Imports bestand der zweite Lauf. Dies betrifft die Testfassung und die genannten lokalen Werkzeuge, keinen Buildserver von F-Droid.
 
+## Nachweise am eingefrorenen Stand vom 2026-10-15
+
+Die App-Eingaben entsprechen dem eingefrorenen Stand `286cdf4`. Die Testfassung hat die eigene App-ID `de.baremos.fristenrechner.probe`. F1 trägt `versionCode 100` und `versionName 0.1.0`, F2 `versionCode 101` und `versionName 0.1.1`. F1 wurde nach `clean` unter Windows am Stand `d5222a6` mit Node.js 22.23.2 und getrennt unter Linux am Stand `3e8ed9b` mit Node.js 24.21.0 gebaut; F2 unter Windows. Die beiden unsignierten F1 sind bytegleich.
+
+Am 2026-10-15 wurden außerhalb des Repositorys neue Probeschlüssel „Probe App“ und „Probe Upload“ erzeugt: RSA mit 4096 Bit, PKCS12. Beide Zertifikate nennen „Probe“ im Namen.
+
+| Zertifikat | SHA-256-Fingerabdruck |
+|---|---|
+| Probe App | `5638285d8dee5851404f78545d55bc3193b31c8883f00c436ebb9626fdd6be42` |
+| Probe Upload | `6f819b1a07f0cf82c2747d5bc72fc265463261910fb358580ecfc40c46f0f58b` |
+
+Signiert wurde unter Windows mit `scripts/signing/apk-signieren.mjs`, JDK 21.0.8 und den Build-Tools 35.0.0 (`apksigner` 0.9). Alle drei signierten Dateien wurden geprüft: v2 und v3 aktiv, v1, v3.1 und v4 aus, Ausrichtung erhalten.
+
+| Datei | Bytes | SHA-256 |
+|---|---:|---|
+| F1 unsigniert, Windows und Linux | 7 668 430 | `d5472cfd37a96ecdb0ea32bada63b00f8ce09c0dd4f18da1fb604081715205e0` |
+| F2 unsigniert, Windows | 7 668 430 | `14990cf350eb2e981438f3dcda99f99ff583235c6acc88b63ef777682cf42e78` |
+| F1, Probe App | 7 678 242 | `49151552c46ece521f6cb84ca5fa9520ca27b8edaff8edc3a740c286da06882a` |
+| F2, Probe App | 7 678 242 | `ec20dda44bd8951ec66125fa36fe698d24f6b507bde7c468c88e081f1ba48476` |
+| F2, Probe Upload | 7 678 242 | `0be0840042f27744e40114f7725b672876f3ef387892cf3bbb41b0338ec49a9b` |
+
+Die neuen Probeschlüssel wurden am 2026-10-15 um 17:39 MESZ nach N5 und vor N4 gelöscht. Die anschließende Suche nach Schlüssel- und Kennwortdateien auf dem Rechner und in Debian fand keine Kopien. N4 lief danach mit den bereits signierten Dateien.
+
+### Reproduzierbarer App-Build am eingefrorenen Stand (N1)
+
+Die unsignierte Release-APK mit der echten App-ID war am 2026-10-15 in den getrennten Builds bytegleich: Windows nach `clean`, frische Windows-Kopie, zwei Linux-Klone und lokaler F-Droid-Lauf. Ergebnis: 7 668 430 Bytes, SHA-256 `0645663f481f8eca7d49d6fa91ea758a4443df9712777285424c2673db6f2a02`. Der Windows-Build und der F-Droid-Lauf nach der Ergänzung der Gradle-Prüfsummen am Stand `28ce572` bestätigten dieselbe APK. Einzelheiten stehen im [Build-Nachweis](app.md#build-nachweis-am-eingefrorenen-stand-vom-2026-10-15) und im [F-Droid-Lauf](fdroid-build.md#lauf-am-eingefrorenen-stand-vom-2026-10-15).
+
+Grenzen: Alle Builds liefen auf einem Rechner, unter Windows und Debian 13.5 in WSL 2. Windows verwendete JDK 21.0.8 ohne `--streng`, Linux OpenJDK 21.0.12.1. Die beiden Linux-Klone bauten mit `--streng --ohne-testgruppe`. Gradle lief mit Netz; die Gegenprobe ohne Netz umfasste nur Web-Build und Android-Sync. Debug-APKs gehören nicht zu N1.
+
+### Update des gespeicherten Projekts am eingefrorenen Stand (N4)
+
+Am 2026-10-15 bestand N4 auf beiden Emulatoren einschließlich des Aufräumens. Die Probe löste den regulären Speicherweg der App über DOM-Ereignisse aus; sie schrieb den `localStorage` nicht selbst.
+
+| Schritt | API 30 | API 36 |
+|---|---|---|
+| Laufzeit am 2026-10-15, MESZ | 18:32:05 bis 18:34:49 | 18:34:50 bis 18:37:47 |
+| Vorprüfung und Emulatorstart | Bestanden. | Bestanden. |
+| F1 installieren und Projekt speichern | Bestanden. | Bestanden. |
+| F2 mit fremder Signatur | Abgelehnt; Gegenprobe bestanden. | Abgelehnt; Gegenprobe bestanden. |
+| F2 mit gleicher Signatur | Update mit erhaltenem Projekt bestanden. | Update mit erhaltenem Projekt bestanden. |
+| Rückschritt auf F1 | Abgelehnt; Gegenprobe bestanden. | Abgelehnt; Gegenprobe bestanden. |
+| Aufräumen | Bestanden; vorhandene fremde Installation unangetastet. | Bestanden; vorhandene fremde Installation unangetastet. |
+
+Grenzen: eigene App-ID und Emulatoren, kein echtes Gerät und kein Store-Update. Geprüft ist der gespeicherte Projektstand im `localStorage`, nicht der Erhalt sonstiger Dateien im Datenbereich. Der Nachweis ersetzt N6 nicht.
+
+### Übertragung der Signatur am eingefrorenen Stand (N5)
+
+Am 2026-10-15 von 17:38 bis 17:39 MESZ bestand N5 unter Debian mit allen Schritten 0 bis 8. `verify_apks` übertrug die Signatur der unter Windows signierten F1 auf die getrennt unter Linux gebaute unsignierte F1 und gab `None` zurück. Es entstand genau eine übertragene Datei; `cmp` bestätigte mit Rückgabe 0 die Bytegleichheit mit der signierten F1. `apksigner verify --min-sdk-version 24 --verbose --print-certs -Werr` bestätigte v2 und v3. Protokollierte Werkzeuge: `apksigner` 0.9 aus den Build-Tools 35.0.0 des Projekt-SDK, `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1, OpenJDK 21.0.12.1.
+
+Die Gegenprobe mit genau einem zusätzlichen APK-Eintrag wurde abgelehnt. Eine unabhängige Prüfung mit `apksigner` bestätigte „APK integrity check failed“ beziehungsweise „digest mismatch“. Die Prüfsummen der Originaleingaben und vorhandenen Arbeitskopien blieben unverändert.
+
+Grenzen: Geprüft sind die Testfassung und die lokale Werkzeugkombination, kein Buildserver von F-Droid und kein Wechsel zwischen Vertriebswegen. N6 bleibt offen.
+
 ## Geplanter Ablauf
 
 | Schritt | Werkzeug | Wer |
@@ -230,11 +283,11 @@ Für den Ablauf folgt daraus: Die Prüfsumme aus der Meldung des Skripts wird fe
 
 | Nr. | Nachweis | Wie | Stand |
 |---|---|---|---|
-| N1 | APK reproduzierbar gebaut | zwei Builds desselben Stands in getrennten Ordnern, danach derselbe Stand unter Windows und unter Linux. Verglichen werden die unsignierten Dateien Byte für Byte. | für die App am 2026-10-03/04 belegt: Windows nach `clean`, frische Windows-Kopie mit Node.js 22, zwei Linux-Klone und lokaler F-Droid-Lauf; Grenzen siehe [Abschlussnachweis](#reproduzierbarer-app-build-n1). |
+| N1 | APK reproduzierbar gebaut | zwei Builds desselben Stands in getrennten Ordnern, danach derselbe Stand unter Windows und unter Linux. Verglichen werden die unsignierten Dateien Byte für Byte. | für die App am 2026-10-15 erneut belegt: Windows nach `clean`, frische Windows-Kopie mit Node.js 22, zwei Linux-Klone und lokaler F-Droid-Lauf; Grenzen siehe [Nachweis am eingefrorenen Stand](#reproduzierbarer-app-build-am-eingefrorenen-stand-n1). |
 | N2 | Zertifikat geprüft | Verfahren, Länge, Gültigkeit mit Enddatum und Angaben gegen dieses Dokument | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
 | N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
-| N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, Projekt über die App im `localStorage` speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist unverändert vorhanden. Gegenproben: andere Signatur und Rückschritt werden abgelehnt. | am 2026-10-04 mit der Testfassung mit eigener App-ID auf API 30 und 36 belegt; API 30 mit gesondertem Aufräumfehler und deshalb ungültigem Gesamturteil der Probe. Fachliche Schritte bestanden, siehe [N4 am Endstand](#update-des-gespeicherten-projekts-n4). |
-| N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | am 2026-10-04 mit der Testfassung bestanden, einschließlich Gegenprobe: Build-Tools 35.0.0 (`apksigner` 0.9), `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1; siehe [N5 am Endstand](#übertragung-der-signatur-n5). |
+| N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, Projekt über die App im `localStorage` speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist unverändert vorhanden. Gegenproben: andere Signatur und Rückschritt werden abgelehnt. | am 2026-10-15 mit der Testfassung mit eigener App-ID auf API 30 und 36 erneut bestanden, einschließlich beider Gegenproben und Aufräumen; siehe [N4 am eingefrorenen Stand](#update-des-gespeicherten-projekts-am-eingefrorenen-stand-n4). |
+| N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | am 2026-10-15 mit der Testfassung erneut bestanden, einschließlich Gegenprobe: Build-Tools 35.0.0 (`apksigner` 0.9), `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1; siehe [N5 am eingefrorenen Stand](#übertragung-der-signatur-am-eingefrorenen-stand-n5). |
 | N6 | Wechsel zwischen den Vertriebswegen | Zertifikate und Folge der Schlüssel in den Dateien, die Google Play tatsächlich ausliefert, mit der Fassung für F-Droid vergleichen. Updates mit steigendem Versionscode in beiden Richtungen, ohne Datenverlust, auch auf Android 17. | offen, erst mit einem Konto bei Google Play möglich, vor der ersten Veröffentlichung |
 
 N1 bis N5 gehören zu Stufe 2: N1 prüft die unsignierte App; N2 und N3 sind nur für die Probeschlüssel belegt, N4 und N5 für die Testfassung mit eigener App-ID. Der echte Schlüssel sowie dessen N2 und N3 bleiben vor der ersten Veröffentlichung offen. N6 gehört zu Stufe 4.
@@ -252,7 +305,7 @@ Der Wechsel eines Schlüssels ist ein Notfall und kein Teil des gewöhnlichen Ab
 ## Offene Punkte
 
 1. S1 bleibt unter Vorbehalt, bis N6 erbracht ist.
-2. N4 ist für den `localStorage`-Projektstand der Testfassung auf den Testabbildern mit Android 11 und 16 belegt, siehe [Abschlussnachweis](#update-des-gespeicherten-projekts-n4). Die Datei im Datenbereich gehörte zur historischen Minimal-App-Probe und bleibt keine Voraussetzung für diesen Nachweis. Ein Store-Update mit der echten App-ID bleibt Teil von N6.
+2. N4 ist für den `localStorage`-Projektstand der Testfassung auf den Testabbildern mit Android 11 und 16 am 2026-10-15 erneut belegt, siehe [Nachweis am eingefrorenen Stand](#update-des-gespeicherten-projekts-am-eingefrorenen-stand-n4). Die Datei im Datenbereich gehörte zur historischen Minimal-App-Probe und bleibt keine Voraussetzung für diesen Nachweis. Ein Store-Update mit der echten App-ID bleibt Teil von N6.
 3. Klären, ob Google Play bei einem eigenen Schlüssel einen hybriden Block anfügt. Das zeigt sich erst an einer Datei, die Google Play ausliefert. Scheitert N6, sind diese Wege zu prüfen:
    - der Rückweg zur klassischen Signatur über das Recht `ROLLBACK` für K0. Ob Google Play ihn einrichtet und beibehält, ist offen.
    - eine hybride Signatur auch für die Fassung bei F-Droid. Sie braucht passende Schlüssel und einen Nachweis mit den Werkzeugen von F-Droid.
