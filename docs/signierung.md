@@ -218,7 +218,7 @@ Grenzen: eigene App-ID und Emulatoren, kein echtes Gerät und kein Store-Update.
 
 ### Übertragung der Signatur am eingefrorenen Stand (N5)
 
-Am 2026-10-15 von 17:38 bis 17:39 MESZ bestand N5 unter Debian mit allen Schritten 0 bis 8. `verify_apks` übertrug die Signatur der unter Windows signierten F1 auf die getrennt unter Linux gebaute unsignierte F1 und gab `None` zurück. Es entstand genau eine übertragene Datei; `cmp` bestätigte mit Rückgabe 0 die Bytegleichheit mit der signierten F1. `apksigner verify --min-sdk-version 24 --verbose --print-certs -Werr` bestätigte v2 und v3. Protokollierte Werkzeuge: `apksigner` 0.9 aus den Build-Tools 35.0.0 des Projekt-SDK, `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1, OpenJDK 21.0.12.1, Python 3.13.5.
+Am 2026-10-15 von 17:38 bis 17:39 MESZ bestand N5 unter Debian mit allen Schritten 0 bis 8. `verify_apks` übertrug die Signatur der unter Windows signierten F1 auf die getrennt unter Linux gebaute unsignierte F1 und gab `None` zurück. Es entstand genau eine übertragene Datei; `cmp` bestätigte mit Rückgabe 0 die Bytegleichheit mit der signierten F1. `apksigner verify --min-sdk-version 24 --verbose --print-certs -Werr` bestätigte v2 und v3. Protokollierte Werkzeuge: `apksigner` 0.9 aus den Build-Tools 35.0.0 des Projekt-SDK, `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1, OpenJDK 21.0.12.1.
 
 Die Gegenprobe mit genau einem zusätzlichen APK-Eintrag wurde abgelehnt. Eine unabhängige Prüfung mit `apksigner` bestätigte „APK integrity check failed“ beziehungsweise „digest mismatch“. Die Prüfsummen der Originaleingaben und vorhandenen Arbeitskopien blieben unverändert.
 

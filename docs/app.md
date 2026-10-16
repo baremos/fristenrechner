@@ -1,6 +1,6 @@
 # Android-App
 
-Stand 2026-10-15, App-Version 0.1.0, eingefrorener App-Stand `286cdf4`, Build-Nachweise bis `28ce572`. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
+Stand 2026-10-16, App-Version 0.1.0, eingefrorener App-Stand `286cdf4`, Build-Nachweise bis `28ce572`. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
 
 ## Aufbau
 
@@ -449,7 +449,9 @@ Gemessen am 2026-10-02: 14:34 und 15:10 Minuten auf API 30, 18:09 Minuten auf AP
 
 ### Dateiphase auf API 30 und 36
 
-**Ergebnis am eingefrorenen Stand (2026-10-15):** Die Dateiphase auf API 36 lief von 17:45 bis 18:31 MESZ mit Debug `aecc556f…69f6` und Release `0645663f…2a02`. Das Ergebnis umfasst 51 bestandene Befunde einschließlich des geschlossenen Systemdialogs und eine dokumentierte Grenze, keine fehlgeschlagenen oder ungültigen Befunde; Rückgabewert 3. Ein Fehler ausschließlich beim Schließen des Zielstreams ließ sich weiterhin nicht zuverlässig auslösen. Die Sicherungsprüfung mit `standard` und die Prüfung des Gerätewechsels bestanden. [[OFFEN: Dateiphase API 30 am eingefrorenen Stand]]
+**Ergebnis am eingefrorenen Stand (2026-10-15):** Die Dateiphase auf API 36 lief von 17:45 bis 18:31 MESZ mit Debug `aecc556f…69f6` und Release `0645663f…2a02`. Das Ergebnis umfasst 51 bestandene Befunde einschließlich des geschlossenen Systemdialogs und eine dokumentierte Grenze, keine fehlgeschlagenen oder ungültigen Befunde; Rückgabewert 3. Ein Fehler ausschließlich beim Schließen des Zielstreams ließ sich weiterhin nicht zuverlässig auslösen. Die Sicherungsprüfung mit `standard` und die Prüfung des Gerätewechsels bestanden.
+
+**Ergebnis am eingefrorenen Stand (2026-10-16):** Die Dateiphase auf API 30 (Android 11, `userdebug`, WebView 83.0.4103.120) lief von 07:21 bis 08:01 MESZ mit denselben APKs und ergab 47 bestandene Befunde, keine fehlgeschlagenen oder ungültigen Befunde und drei dokumentierte Grenzen; Rückgabewert 3. Grenzen bleiben der nicht zuverlässig auslösbare Schließfehler sowie die fehlenden auswertbaren UID-Zähler von `netstats` bei Debug und Release: Netzmelder und UID-Socketproben waren unauffällig, kurze Verbindungen zwischen den Proben sind damit nicht ausgeschlossen. Die Sicherungsprüfung mit `standard` bestand; ein Gerätewechsel wird auf API 30 nicht geprüft.
 
 Die Phase `dateien` ist am 2026-10-01 auf beiden Abbildern gelaufen, mit der
 Debug-APK `9dd552d0…690d` und der unveränderten Release-APK `06dadbca…b64e`:

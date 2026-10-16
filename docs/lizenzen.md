@@ -1,6 +1,6 @@
 # Lizenzen und Abhängigkeiten
 
-Stand der erneuerten Prüfungen: **2026-10-15**, eingefrorener App- und Paketstand `286cdf4`, ergänzte Gradle-Prüfsummen `28ce572`; Android-Laufzeitinventar weiterhin am Stand `9ae4cd9` vom 2026-10-04. Die npm-Bestandszahlen und einzeln gelesenen npm-Paketbelege unten stammen aus der Bestandsaufnahme vom **2026-09-29** mit Capacitor 8.5.2, dem npm-Lockfile im Format 3 und der damaligen Windows-Installation. Sie sind historische Angaben, keine neu erhobene npm-Bestandsliste. Dieses Dokument beschreibt Projektregeln und Paketbelege, keine Rechtsauskunft. Die [Android- und Gradle-Abhängigkeiten](#android--und-gradle-abhängigkeiten) sind unten gesondert erfasst; Werkzeugfestlegungen und Build-Nachweise behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
+Stand der erneuerten Prüfungen: **2026-10-15/16**, eingefrorener App- und Paketstand `286cdf4`, ergänzte Gradle-Prüfsummen `28ce572`; Android-Laufzeitinventar weiterhin am Stand `9ae4cd9` vom 2026-10-04. Die npm-Bestandszahlen und einzeln gelesenen npm-Paketbelege unten stammen aus der Bestandsaufnahme vom **2026-09-29** mit Capacitor 8.5.2, dem npm-Lockfile im Format 3 und der damaligen Windows-Installation. Sie sind historische Angaben, keine neu erhobene npm-Bestandsliste. Dieses Dokument beschreibt Projektregeln und Paketbelege, keine Rechtsauskunft. Die [Android- und Gradle-Abhängigkeiten](#android--und-gradle-abhängigkeiten) sind unten gesondert erfasst; Werkzeugfestlegungen und Build-Nachweise behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
 
 Das Projekt steht unter Apache-2.0. Der Wortlaut liegt in `LICENSE`, der Herausgeberhinweis in `NOTICE` in der Wurzel des Repositorys.
 
@@ -548,7 +548,16 @@ Am **2026-10-15** bestand `scripts/npm-pakete.mjs --ohne-cr` am Stand `286cdf4` 
 | `@baremos/fristenrechner-kern`, `0.1.0` | 14 | 43 103 | 178 680 | `6de117f02d02cf3713f04c88e12fc04e00403fad` | keine |
 | `@baremos/fristenrechner-ui`, `0.1.0` | 19 | 61 345 | 223 928 | `ed5c7417b693d6cbca0e30946223d2f171c9c2f3` | keine |
 
-Diese Werte stammen aus dem Paketprüflauf, nicht aus einer erneuten Sichtung erzeugter Archive. Die Offline-Verbraucherprobe vom 2026-10-04 bezieht sich weiterhin auf den älteren Paketstand.
+Am **2026-10-16** wurden die beiden Archive aus dem seit `286cdf4` unveränderten Paketstand mit `npm pack --ignore-scripts` tatsächlich erzeugt; Dateizahlen, gepackte und entpackte Größen sowie SHA-1-Prüfsummen bestätigen die Tabellenwerte vom Vortag. Die SHA-256-Prüfsummen der Archive lauten:
+
+| Paket, Version | SHA-256 |
+|---|---|
+| `@baremos/fristenrechner-kern`, `0.1.0` | `4445468d7569a1be9fcca5358122a7bc19f04a4b0a88fbd0997fe040bf2b6b70` |
+| `@baremos/fristenrechner-ui`, `0.1.0` | `51ead4ec734febdfa1717e2548c37f820e8e2c1e9872f659ad552004671f4900` |
+
+Die Verbraucherprobe vom **2026-10-16** unter Windows mit Node **22.23.2**, npm **10.9.8** und Astro **7.3.3** aus der Repository-Wurzel band beide Archive in ein leeres Astro-Projekt ein. `astro build` und `astro check` bestanden ohne Fehler und ohne Warnungen. Laut Quellkarten stammen alle 16 eingebundenen Quellen der beiden Pakete aus den Archiven, keine aus dem Workspace.
+
+Die Linux-Gegenprobe vom **2026-10-16** unter Debian **13** mit Node **24.21.0** und npm **11.19.0** ohne Netz und ohne Lebenszyklusskripte ergab zu Windows bytegleiche Archive mit identischen SHA-256- und SHA-1-Prüfsummen. Die Pakete sind damit nicht veröffentlicht; Herkunftsangaben wie `homepage` und `repository` folgen erst mit der Veröffentlichung.
 
 Das Prüfskript [`scripts/npm-pakete.mjs`](../scripts/npm-pakete.mjs) führt den kombinierten Trockenlauf und anschließend `node scripts/check-licenses.mjs --packliste <Datei>` selbst aus:
 
@@ -604,7 +613,7 @@ Vor Stufe 3 bleiben:
 
 1. Die MIT-Ausnahme für `rgbcolor` spätestens zu ihrem Ablauf am 2027-09-29 erneut prüfen; bei Versions- oder Metadatenänderungen muss sie angepasst oder entfernt werden.
 2. Die Paketprüfung beim späteren Veröffentlichungsstand aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen.
-3. Die erzeugten `.tgz`-Archive sichten und die Einbindung in eine Website mit eigenen Hinweisen des Gastgebers prüfen. Die Inhaltsprüfung des App-Web- und Android-Laufzeitbestands mit Originalhinweisen stammt vom 2026-10-05; die automatischen Bündel-, Hinweis- und Gradle-Modellabgleiche sind am 2026-10-15 erneuert. Nach Bündeländerungen ist die Inhaltsprüfung zu erneuern.
+3. Vor Veröffentlichung die dann erzeugten `.tgz`-Archive sichten und die eigenen Hinweise der einbindenden Website prüfen; die Einbindung der Archive am eingefrorenen Paketstand ist durch die Verbraucherprobe vom 2026-10-16 bestätigt. Die Inhaltsprüfung des App-Web- und Android-Laufzeitbestands mit Originalhinweisen stammt vom 2026-10-05; die automatischen Bündel-, Hinweis- und Gradle-Modellabgleiche sind am 2026-10-15 erneuert. Nach Bündeländerungen ist die Inhaltsprüfung zu erneuern.
 4. Die im lokalen Endstandlauf belegte Behandlung des optionalen sharp-Baums und der weiteren vorgebauten Bestandteile bei Änderungen am Build-Baum erneut prüfen; Quelle und Grenzen: [F-Droid-Nachweis](fdroid-build.md).
 5. Android- und Gradle-Abhängigkeiten ergänzen; **teilweise erledigt am 2026-10-04 für `9ae4cd9`**: [Laufzeitmodule mit POM-Lizenzangaben und APK-/SUSS-Abgleich](#android--und-gradle-abhängigkeiten) sind erfasst. Die [Gradle-Prüfsummen](toolchain.md#gradle-prüfsummen) sind seit dem 2026-10-05 umgesetzt. Die Hinweise Dritter einschließlich der eingebetteten Laufzeitanteile sind am 2026-10-05 ergänzt; Werkzeugliste und Werkzeug-Lizenzregel bleiben offen. Die npm-Liste erfasst diese Gradle-Abhängigkeiten weiterhin nicht.
 6. Entscheiden, ob zusätzlich zu `package-lock.json` eine erzeugte vollständige Abhängigkeitsliste mit Bereichen und Wegen eingecheckt wird, und ihren Aktualisierungsweg festlegen. Die Entscheidung ist offen; derzeit wird diese Liste mit `node scripts/check-licenses.mjs --json` erzeugt.
