@@ -41,9 +41,17 @@ export const inventarQuelle = `(() => {const sichtbar=${sichtbarQuelle},gesperrt
 
 export function bedienung({ cdp, basisUrl, navigieren, ausgabe, protokoll }) {
   const send = (name, parameter = {}, timeout) => messbefehl(() => cdp.send(name, parameter, timeout));
-  const wert = async (expression, optionen) => browserErgebnis(await send('Runtime.evaluate', {
+  const wert = async (expression, optionen, timeout) => browserErgebnis(await send('Runtime.evaluate', {
     expression, returnByValue: true, awaitPromise: true, userGesture: false,
-  }), optionen);
+  }, timeout), optionen);
+  async function wertMitWartezeit(expression,timeout,meldung) {
+    // Ausbleibende Frames lokal beenden: ein Transport-Timeout schließt die
+    // Seitensitzung und würde die eigentliche Layoutursache beim Reset verdecken.
+    const ergebnis=await wert(`(async()=>{let zeitgeber;try{return await Promise.race([
+      ${expression},new Promise(resolve=>{zeitgeber=setTimeout(()=>resolve({wartezeitAbgelaufen:true}),${timeout});})
+    ]);}finally{clearTimeout(zeitgeber);}})()`,undefined,timeout+1000);
+    bestaetige(ergebnis?.wartezeitAbgelaufen!==true,meldung);return ergebnis;
+  }
   async function bis(fn, beschreibung, { produkt = false, timeout = 8000 } = {}) {
     const ende = Date.now() + timeout;
     while (Date.now() < ende) { const r = await fn(); if (r) return r; await new Promise(r => setTimeout(r, 50)); }
@@ -162,9 +170,9 @@ export function bedienung({ cdp, basisUrl, navigieren, ausgabe, protokoll }) {
     bildzustand=zustand;
     try { return await fn(); } finally { bildzustand=null; }
   }
-  async function aufnahme(art, clip, dichte = 1, optionen) {
+  async function aufnahme(art, clip, dichte = 1, optionen, zustandVorbereitet = false) {
     const name = art.endsWith('.png') ? art : freierBildname(ausgabe, art);
-    await bildzustand?.vorbereiten(name);
+    if(!zustandVorbereitet)await bildzustand?.vorbereiten(name);
     const beleg = await bildAufnehmen({send,ausgabe},name,clip,dichte,optionen);
     if (protokoll) (protokoll.bildbelege ??= []).push(beleg);
     await bildzustand?.bestaetigen(name);
@@ -189,40 +197,89 @@ export function bedienung({ cdp, basisUrl, navigieren, ausgabe, protokoll }) {
     }
     bestaetige(false,'Aufnahmekanal verändert weiterhin die Ausgangsgeometrie.');
   }
+  function layoutpruefung(selector,geometrie) {
+    // Drei gleiche Proben über mehrere Frames und kurze Pausen erfassen auch
+    // verzögerte Scrollleisten/Umbrüche; das gesamte Ausrichten bleibt begrenzt.
+    const ruhe=geometrie.layoutruhe={erforderlicheProben:3,pauseMs:50,hoechstwartezeitMs:2000,proben:[],bestaetigt:false};
+    const anfang=Date.now(),meldung='Layout vor dem Vergleichsbild nicht zur Ruhe gekommen.';
+    const restzeit=()=>{const rest=ruhe.hoechstwartezeitMs-(Date.now()-anfang);bestaetige(rest>0,meldung);return rest;};
+    const werte=p=>[
+      ...['innerWidth','innerHeight','clientWidth','clientHeight'].map(k=>p?.fenster?.[k]),
+      ...['width','height'].map(k=>p?.dokumentgroesse?.[k]),
+      ...['links','oben','rechts','unten','breite','hoehe'].map(k=>p?.viewportRechteck?.[k]),
+      p?.rollstand?.x,p?.rollstand?.y,p?.dichte,p?.outline,p?.offset,
+    ];
+    async function ruhigeLage() {
+      let vorher,stabileProben=0;ruhe.bestaetigt=false;
+      try {
+        while(true) {
+          const lage=geometrie.vorher=await wertMitWartezeit(elementlageQuelle(selector),restzeit(),meldung);
+          if(lage)lage.dokumentgroesse=(await send('Page.getLayoutMetrics',{},restzeit()+1000)).cssContentSize;
+          const aktuell=werte(lage),gueltig=lage?.scrollruhe?.bestaetigt===true&&aktuell.every(Number.isFinite)
+            &&aktuell.slice(0,6).every(v=>v>0)&&lage.viewportRechteck.breite>0&&lage.viewportRechteck.hoehe>0;
+          stabileProben=gueltig?(vorher&&aktuell.every((v,i)=>v===vorher[i])?stabileProben+1:1):0;
+          ruhe.proben.push({...lage,zeitMs:Date.now()-anfang,stabileProben});
+          restzeit();
+          if(stabileProben>=ruhe.erforderlicheProben) {ruhe.bestaetigt=true;return lage;}
+          vorher=gueltig?aktuell:null;
+          await wertMitWartezeit(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(resolve,${ruhe.pauseMs}))))`,restzeit(),meldung);
+        }
+      } catch(fehler) {
+        ruhe.fehler=fehler.message;
+        if(Date.now()-anfang>=ruhe.hoechstwartezeitMs)throw new Messfehler(meldung,{cause:fehler});
+        throw fehler;
+      }
+    }
+    return {ruhigeLage,restzeit};
+  }
   async function bild(name, { selector, rand = 24, imViewport = protokoll?.phase==='tastatur', geometrie={}, fokusvergleich=false, referenzGeometrie } = {}) {
     if(imViewport&&selector) {
       Object.assign(geometrie,{bild:name,selector,imViewport:true,captureBeyondViewport:false,vorher:null,nachher:null,bestaetigt:false});
       let beleg,aufnahmefehler;
       try {
-        await wert(`(() => {const e=document.querySelector(${JSON.stringify(selector)});e?.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});})()`);
-        let lage=geometrie.vorher=await wert(elementlageQuelle(selector));
-        if(lage)lage.dokumentgroesse=(await send('Page.getLayoutMetrics')).cssContentSize;
-        bestaetige(lage?.scrollruhe?.bestaetigt===true,'Scrollruhe vor dem Vergleichsbild nicht bestätigt.');
+        // Das erneute Binden des Pseudozustands muss vor der Layoutruhe liegen.
+        const aufnahmename=name.endsWith('.png')?name:freierBildname(ausgabe,name);
+        await bildzustand?.vorbereiten(aufnahmename);
+        const {ruhigeLage,restzeit}=layoutpruefung(selector,geometrie);
+        if(referenzGeometrie) {
+          const soll=referenzGeometrie.vorher?.rollstand;
+          bestaetige(soll&&[soll.x,soll.y].every(v=>Number.isFinite(v)&&v>=0),'Rollstand aus dem Normalbild fehlt.');
+          geometrie.referenzRollstand={soll:{...soll},ist:null,bestaetigt:false};
+          // Erneutes Zentrieren kann trotz gleichem Element andere ganze Pixel treffen.
+          await wert(`scrollTo({left:${soll.x},top:${soll.y},behavior:'instant'})`,undefined,restzeit());
+        } else {
+          await wert(`(() => {const e=document.querySelector(${JSON.stringify(selector)});e?.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});})()`,undefined,restzeit());
+        }
+        let lage=await ruhigeLage();
+        if(referenzGeometrie) {
+          const r=geometrie.referenzRollstand;r.ist={...lage.rollstand};
+          r.bestaetigt=['x','y'].every(k=>r.soll[k]===r.ist[k]);
+          bestaetige(r.bestaetigt,`Rollstand aus dem Normalbild nicht exakt erreichbar (Soll: ${r.soll.x}, ${r.soll.y}; erreicht: ${r.ist.x}, ${r.ist.y}; möglicherweise verkürztes Dokument).`);
+        }
         const vollstaendig=elementClip(lage,lage.dokumentgroesse,rand);
         geometrie.ausschnittart=fokusvergleich?(referenzGeometrie?.ausschnittart
           ??(vollstaendig.clip.height>lage.fenster.clientHeight?'oberer Teil':'vollständig')):'vollständig';
         bestaetige(['vollständig','oberer Teil'].includes(geometrie.ausschnittart),'Ausschnittart für Vergleichsbild nicht bestätigt.');
         geometrie.abstand=Math.max(rand,lage.outline+Math.abs(lage.offset)+2,referenzGeometrie?.abstand??0);
         geometrie.abgeschnitteneHoehe=0;
-        if(geometrie.ausschnittart==='oberer Teil') {
+        if(geometrie.ausschnittart==='oberer Teil'&&!referenzGeometrie) {
           // Höhere Elemente nur oben aufnehmen: Bilder über den Viewport hinaus
           // verändern die Layoutbreite. Nach start Platz für Fokusrahmen und Rand lassen.
-          await wert(`(() => {const e=document.querySelector(${JSON.stringify(selector)});if(!e)return;e.scrollIntoView({block:'start',inline:'nearest',behavior:'instant'});scrollBy({top:Math.floor(e.getBoundingClientRect().top-${geometrie.abstand}),behavior:'instant'});})()`);
-          lage=geometrie.vorher=await wert(elementlageQuelle(selector));
-          if(lage)lage.dokumentgroesse=(await send('Page.getLayoutMetrics')).cssContentSize;
-          bestaetige(lage?.scrollruhe?.bestaetigt===true,'Scrollruhe vor dem Vergleichsbild nicht bestätigt.');
+          await wert(`(() => {const e=document.querySelector(${JSON.stringify(selector)});if(!e)return;e.scrollIntoView({block:'start',inline:'nearest',behavior:'instant'});scrollBy({top:Math.floor(e.getBoundingClientRect().top-${geometrie.abstand}),behavior:'instant'});})()`,undefined,restzeit());
+          lage=await ruhigeLage();
         }
         const ausschnitt=geometrie.ausschnittart==='oberer Teil'?obererElementClip(lage,lage.dokumentgroesse,geometrie.abstand)
           :elementClip(lage,lage.dokumentgroesse,rand,true);
         const {clip}=ausschnitt;geometrie.abgeschnitteneHoehe=ausschnitt.abgeschnitteneHoehe??0;
         geometrie.clip=clip;geometrie.dichte=lage.dichte;
-        beleg=await aufnahme(name,clip,lage.dichte,{captureBeyondViewport:false});
+        beleg=await aufnahme(aufnahmename,clip,lage.dichte,{captureBeyondViewport:false},true);
         Object.assign(beleg,{aufnahmeart:'Sichtbarer Viewport',rollstand:lage.rollstand,fenster:lage.fenster,geometrie});
       } catch(fehler) {aufnahmefehler=fehler;geometrie.fehler=fehler.message;}
       finally {
         try {
-          geometrie.nachher=await wert(elementlageQuelle(selector));
-          if(geometrie.nachher)geometrie.nachher.dokumentgroesse=(await send('Page.getLayoutMetrics')).cssContentSize;
+          // Auch eine ausbleibende Frame-Antwort darf den Fehlernachweis nicht blockieren.
+          geometrie.nachher=await wertMitWartezeit(elementlageQuelle(selector),1000,'Scrollruhe nach dem Vergleichsbild nicht bestätigt.');
+          if(geometrie.nachher)geometrie.nachher.dokumentgroesse=(await send('Page.getLayoutMetrics',{},1000)).cssContentSize;
         } catch(fehler) {geometrie.nachherFehler=fehler.message;aufnahmefehler??=fehler;}
       }
       if(aufnahmefehler)throw aufnahmefehler;
