@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { bildAufnehmen, dateiAblegen, elementClip, sichtbereichClip, bestaetigeSichtausschnitt } from './belege.mjs';
+import { bildAufnehmen, dateiAblegen, elementClip, obererElementClip, sichtbereichClip, bestaetigeSichtausschnitt } from './belege.mjs';
 import { bedienung, teilfallUebersicht } from './bedienung.mjs';
 import { kontrastMessen } from './darstellung.mjs';
 import { Abweichung } from './regeln.mjs';
@@ -152,8 +152,8 @@ function tastaturAufnahme(fehler) {
       if(q==='devicePixelRatio')return {result:{value:1}};
       if(q.includes('scrollIntoView')){scrollY=600;return {result:{value:null}};}
       return {result:{value:{kennung:'7',fokussiert:!(aufgenommen&&fehler==='fokus'),scrollruhe:{bestaetigt:true},
-        viewportRechteck:{links:50,oben:100,rechts:427.65625+(aufgenommen&&fehler==='lage'?5:0),unten:153,
-          breite:377.65625+(aufgenommen&&fehler==='lage'?5:0),hoehe:53},
+        viewportRechteck:{links:50,oben:100,rechts:427.65625+(aufgenommen&&fehler==='lage'?5:0),unten:fehler==='hoch'?2312:153,
+          breite:377.65625+(aufgenommen&&fehler==='lage'?5:0),hoehe:fehler==='hoch'?2212:53},
         rollstand:{x:0,y:scrollY},outline:3,offset:0,dichte:1,
         fenster:{innerWidth:1280,innerHeight:900,clientWidth:aufgenommen&&fehler==='viewport'||bilder>=2&&fehler==='uebersicht'?1280:1265,clientHeight:900}}}};
     }
@@ -197,6 +197,51 @@ test('Auch eine Geometrieänderung erst beim Übersichtsbild bleibt ungültig un
   const {b}=tastaturAufnahme('uebersicht'),nachweis={};
   await assert.rejects(()=>b.sichtbild('tastatur-uebersicht.png',{selectors:['#datum'],nativerFokus:nativ,nachweis}),/Viewport/);
   const l=nachweis.uebersichtlagen[0];assert.equal(l.vorher.fenster.clientWidth,1265);assert.equal(l.nachher.fenster.clientWidth,1280);assert.equal(l.bestaetigt,false);
+});
+
+test('Hohe Tastaturelemente erhalten weiterhin keinen Teilausschnitt',async()=>{
+  const {b,auf}=tastaturAufnahme('hoch');
+  await assert.rejects(()=>b.sichtbild('tastatur-hoch.png',{selectors:['#datum'],nativerFokus:nativ}),/nicht vollständig im Viewport/);
+  await assert.rejects(()=>b.bild('tastatur-hoch-fehler.png',{selector:'#datum'}),/nicht vollständig im Viewport/);
+  assert.ok(!auf.some(([m])=>m==='Page.captureScreenshot'));
+});
+
+test('Oberer Elementausschnitt behält die volle Breite und weist die unten abgeschnittene Höhe aus',()=>{
+  const lage={viewportRechteck:{links:33,oben:24,rechts:1232,unten:2236,breite:1199,hoehe:2212},
+    rollstand:{x:0,y:4807},outline:3,offset:0,fenster:{clientWidth:1265,clientHeight:900}},groesse={width:1265,height:8000};
+  const ausschnitt=obererElementClip(lage,groesse);
+  assert.deepEqual(ausschnitt.clip,{x:9,y:4807,width:1247,height:900,scale:1});
+  assert.equal(ausschnitt.abgeschnitteneHoehe,1360);
+  assert.throws(()=>elementClip(lage,groesse,24,true),/nicht vollständig im Viewport/);
+  assert.throws(()=>obererElementClip({...lage,outline:34},groesse),/Viewportbreite/);
+  assert.throws(()=>obererElementClip(lage,groesse,40),/Viewportbreite/);
+  const zuHoch={...lage,viewportRechteck:{...lage.viewportRechteck,oben:0,unten:2212}};
+  assert.throws(()=>obererElementClip(zuHoch,groesse),/Viewportanfang/);
+  const amDokumentanfang={...lage,rollstand:{x:0,y:0},viewportRechteck:{...lage.viewportRechteck,oben:10,unten:2222}};
+  assert.equal(obererElementClip(amDokumentanfang,groesse).clip.y,0);
+});
+
+test('Die Höhenbegrenzung berücksichtigt auch Rand und Fokusrahmen',async()=>{
+  for(const hoehe of [852,853]) {
+    const protokoll={},rollen=[],cdp={send:async(m,a)=>{
+      if(m==='Page.getLayoutMetrics')return {cssContentSize:{width:1265,height:3401}};
+      if(m==='Runtime.evaluate') {
+        if(a.expression.includes('scrollIntoView')){rollen.push(a.expression);return {result:{value:null}};}
+        return {result:{value:{viewportRechteck:{links:50,oben:24,rechts:150,unten:24+hoehe,breite:100,hoehe},
+          rollstand:{x:0,y:600},outline:3,offset:0,dichte:1,scrollruhe:{bestaetigt:true},
+          fenster:{innerWidth:1280,innerHeight:900,clientWidth:1265,clientHeight:900}}}};
+      }
+      if(m==='Page.captureScreenshot')return {data:bild(a.clip.width,a.clip.height,80).toString('base64')};
+      assert.fail(m);
+    }};
+    const b=bedienung({cdp,ausgabe:ausgabe(),protokoll});
+    assert.equal(await b.bild('fokus.png',{selector:'#ziel',imViewport:true,fokusvergleich:true}),'fokus.png');
+    const g=protokoll.bildbelege[0].geometrie;
+    assert.equal(g.ausschnittart,hoehe===852?'vollständig':'oberer Teil');
+    assert.equal(g.abgeschnitteneHoehe,hoehe===852?0:1);
+    assert.deepEqual(g.clip,{x:26,y:600,width:148,height:900,scale:1});
+    assert.equal(rollen.some(q=>q.includes("block:'start'")),hoehe===853);
+  }
 });
 test('Viewport-Clips werden an allen Rändern begrenzt; fehlender Fokusrahmen und unbekannte Maße scheitern geschlossen',()=>{
   const lage={viewportRechteck:{links:10,oben:10,rechts:110,unten:40,breite:100,hoehe:30},rollstand:{x:0,y:600},outline:3,offset:0,
