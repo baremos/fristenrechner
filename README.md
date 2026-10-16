@@ -10,7 +10,7 @@ Die Oberfläche der App und ihre Exporte sind deutsch. Der Fristenrechner folgt 
 
 ## Stand
 
-Das Repository ist im Aufbau. Es gibt noch keine Veröffentlichung.
+Das Repository ist im Aufbau. Die npm-Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` sind seit dem 2026-10-16 in Version 0.1.0 veröffentlicht. Die Android-App ist noch nicht veröffentlicht.
 
 | Teil | Stand |
 |---|---|

@@ -598,22 +598,22 @@ Statisch erkennbare relative Verweise werden gegen die Packliste geprüft. Der v
 
 Relative `.js`-Ziele in `.d.ts` müssen zur entsprechenden `.d.ts` führen. Bei endungslosen Importen der Oberfläche werden `.mjs`, `.js`, `.mts`, `.ts`, `.jsx`, `.tsx` und `.json` sowie entsprechende `index`-Dateien gesucht; `.astro` ist keine ergänzte Endung. Paketimporte werden nicht gegen Abhängigkeitsangaben oder die `exports` des Zielpakets aufgelöst. Die Prüfung ersetzt deshalb keinen Build im einbindenden Projekt. Beide Pakete müssen dieselbe Version tragen, und die Kern-Abhängigkeit der Oberfläche muss genau diese Version angeben. `bundled` in der Packliste muss leer sein; `bundleDependencies` und `bundledDependencies` im Manifest dürfen nur fehlen oder leere Listen sein.
 
-### Interner Ablauf für Stufe 3: spätere Veröffentlichung
+### Ablauf der Veröffentlichung
 
-Die Maintainer haben die Veröffentlichung am 2026-10-16 freigegeben; durchgeführt ist sie noch nicht. In beiden Paketen ist `private: true` entfernt, `publishConfig.access` steht auf `public`, und `homepage`, `author`, `repository` und `bugs` sind gesetzt. Öffentliches Repository und npm-Organisation folgen in Stufe 3.
+Die Maintainer haben die Veröffentlichung am 2026-10-16 freigegeben. Am selben Tag sind `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` in Version 0.1.0 durch das npm-Konto `baremos` im Namensraum `@baremos` veröffentlicht worden. Die Archive stammen nach den Schritten 1 bis 3 aus einem sauberen Linux-Checkout des öffentlichen Repositorys am Stand `541d0a3`. Die Archive in der Registry sind bytegleich zu den vorher geprüften (SHA-1 `0218127bd750466635eef2efa055362a350b580b` für den Kern, `20f44b9f3806e324f41e5cd3bdf74d21a258fe4e` für die Oberfläche). Eine Installation der Oberfläche aus der Registry in einem leeren Ordner bezog den Kern 0.1.0 aus der Registry. In beiden Paketen ist `private: true` entfernt, `publishConfig.access` steht auf `public`, und `homepage`, `author`, `repository` und `bugs` sind gesetzt. Für jede weitere Version gelten dieselben Schritte:
 
 1. Aus einem sauberen Linux-Checkout mit den festgelegten Werkzeugversionen arbeiten und die Versionen von Kern und Oberfläche im Gleichschritt halten.
 2. `packages/kern/dist` entfernen und den Kern ausdrücklich mit `npm run build --workspace packages/kern --offline` neu bauen. Der Kern hat kein `prepack`- oder `prepublishOnly`-Skript; außerdem schaltet `.npmrc` mit `ignore-scripts=true` Lebenszyklusskripte ab. `npm pack` und `npm publish` bauen den Kern daher nicht.
 3. `node scripts/npm-pakete.mjs --ausgabe scratchpad/npm-pakete-freigabe --ohne-cr` ausführen und Packliste, Prüfbericht sowie anschließend die tatsächlich erzeugten Archive prüfen. Die README-Pflicht des Kerns ist aktiviert.
-4. Nach gesonderter Veröffentlichungsfreigabe zuerst den Kern, danach die Oberfläche mit derselben Version veröffentlichen.
+4. Nach gesonderter Veröffentlichungsfreigabe zuerst den Kern, danach die Oberfläche mit derselben Version veröffentlichen. Die Oberfläche erst veröffentlichen, wenn die Registry den Kern mit der erwarteten Prüfsumme liefert.
 
 ### Verbleibende Arbeit
 
-Vor Stufe 3 bleiben:
+Offen bleiben:
 
 1. Die MIT-Ausnahme für `rgbcolor` spätestens zu ihrem Ablauf am 2027-09-29 erneut prüfen; bei Versions- oder Metadatenänderungen muss sie angepasst oder entfernt werden.
-2. Die Paketprüfung beim späteren Veröffentlichungsstand aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen.
-3. Vor Veröffentlichung die dann erzeugten `.tgz`-Archive sichten und die eigenen Hinweise der einbindenden Website prüfen; die Einbindung der Archive am eingefrorenen Paketstand ist durch die Verbraucherprobe vom 2026-10-16 bestätigt. Die Inhaltsprüfung des App-Web- und Android-Laufzeitbestands mit Originalhinweisen stammt vom 2026-10-05; die automatischen Bündel-, Hinweis- und Gradle-Modellabgleiche sind am 2026-10-15 erneuert. Nach Bündeländerungen ist die Inhaltsprüfung zu erneuern.
+2. Die Paketprüfung bei jeder neuen Paketversion aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen; für Version 0.1.0 erledigt am 2026-10-16.
+3. Vor jeder Veröffentlichung die erzeugten `.tgz`-Archive sichten (für Version 0.1.0 erledigt am 2026-10-16) und vor der Einbindung in eine Website deren eigene Hinweise prüfen; die Einbindung der Archive am eingefrorenen Paketstand ist durch die Verbraucherprobe vom 2026-10-16 bestätigt. Die Inhaltsprüfung des App-Web- und Android-Laufzeitbestands mit Originalhinweisen stammt vom 2026-10-05; die automatischen Bündel-, Hinweis- und Gradle-Modellabgleiche sind am 2026-10-15 erneuert. Nach Bündeländerungen ist die Inhaltsprüfung zu erneuern.
 4. Die im lokalen Endstandlauf belegte Behandlung des optionalen sharp-Baums und der weiteren vorgebauten Bestandteile bei Änderungen am Build-Baum erneut prüfen; Quelle und Grenzen: [F-Droid-Nachweis](fdroid-build.md).
 5. Android- und Gradle-Abhängigkeiten ergänzen; **teilweise erledigt am 2026-10-04 für `7fd6c90`**: [Laufzeitmodule mit POM-Lizenzangaben und APK-/SUSS-Abgleich](#android--und-gradle-abhängigkeiten) sind erfasst. Die [Gradle-Prüfsummen](toolchain.md#gradle-prüfsummen) sind seit dem 2026-10-05 umgesetzt. Die Hinweise Dritter einschließlich der eingebetteten Laufzeitanteile sind am 2026-10-05 ergänzt; Werkzeugliste und Werkzeug-Lizenzregel bleiben offen. Die npm-Liste erfasst diese Gradle-Abhängigkeiten weiterhin nicht.
 6. Entscheiden, ob zusätzlich zu `package-lock.json` eine erzeugte vollständige Abhängigkeitsliste mit Bereichen und Wegen eingecheckt wird, und ihren Aktualisierungsweg festlegen. Die Entscheidung ist offen; derzeit wird diese Liste mit `node scripts/check-licenses.mjs --json` erzeugt.

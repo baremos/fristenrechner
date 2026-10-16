@@ -1,6 +1,6 @@
 # Arbeitspakete
 
-Stand 2026-10-04 · geprüfter App-Endstand `c7b5230`, Nachweisstand `8987e69` · Go von Andreas Schmidt für Stufe 1 und Stufe 2 · Stufe 2 am 2026-10-04 abgenommen
+Stand 2026-10-16 · Stufe 2: geprüfter App-Endstand `c7b5230`, Nachweisstand `8987e69`, abgenommen am 2026-10-04 · Go von Andreas Schmidt für Stufe 1 bis 3
 
 ## Überblick
 
@@ -8,7 +8,7 @@ Stand 2026-10-04 · geprüfter App-Endstand `c7b5230`, Nachweisstand `8987e69` �
 |---|---|---|
 | 1 | Fachlicher Zuschnitt und Pflegekonzept | bestätigt am 2026-09-27 |
 | 2 | Technischer Nachweis: Android, F-Droid, Signierung | abgenommen am 2026-10-04 nach den Abschlussnachweisen vom 2026-10-03/04. Die Grenzen gelten als bekannte Einschränkungen, die Restpunkte stehen im [Bericht](stufe2-nachweis.md#restpunkte). |
-| 3 | Pakete veröffentlichen, Website bindet sie ein | kein Go |
+| 3 | Pakete veröffentlichen, Website bindet sie ein | Go am 2026-10-16; Repository und npm-Pakete 0.1.0 seit 2026-10-16 öffentlich, Website-Einbindung offen |
 | 4 | Google Play: Konto, Store-Material auf Deutsch und Englisch, Einreichung | kein Go |
 | 5 | F-Droid: Einreichung, Metadaten auf Deutsch und Englisch | kein Go |
 | 6 | iOS | zurückgestellt |
@@ -120,8 +120,8 @@ Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt e
 | Windows-Funktion „Windows-Hypervisor-Plattform" für den Emulator einschalten | Paket 2.1 |
 | Linux-Umgebung für die Werkzeuge von F-Droid freigeben (WSL 2 oder Container) | Paket 2.8, die frühe Probe folgt direkt auf Paket 2.2 |
 | Ein Android-Gerät für den Test bereitstellen | vor Stufe 4 |
-| Go für das öffentliche Repository `baremos/fristenrechner` auf GitHub | vor Stufe 3, für den lokalen F-Droid-Nachweis nicht nötig |
-| npm-Organisation `baremos` anlegen | vor Stufe 3 |
+| Go für das öffentliche Repository `baremos/fristenrechner` auf GitHub | erledigt am 2026-10-16, das Repository ist öffentlich |
+| npm-Konto für den Namensraum `@baremos` | erledigt am 2026-10-16: beide Pakete durch das npm-Konto `baremos` veröffentlicht |
 | Google-Play-Organisationskonto mit D-U-N-S, einmalig 25 USD | vor Stufe 4, Verifizierung kann dauern |
 
 ## Erste Sitzung im neuen Projekt
