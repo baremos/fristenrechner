@@ -57,6 +57,27 @@ export function browserKandidaten(browser, plattform = process.platform, env = p
   return [];
 }
 
+export function starteBrowserProzess(programm, argumente, protokoll, { env = process.env, starten = spawn } = {}) {
+  const umgebung = { ...env };
+  const entfernteUmgebungsvariablen = Object.keys(umgebung).filter(name => name.toUpperCase() === '__COMPAT_LAYER');
+  // Edge kann mit dieser geerbten Variable den eigenen Spawn-Prozess durch einen Neustart ersetzen.
+  for (const name of entfernteUmgebungsvariablen) delete umgebung[name];
+  protokoll.start = { argumente, programm, entfernteUmgebungsvariablen };
+  const child = starten(programm, argumente, { cwd: wurzel, env: umgebung, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], shell: false });
+  protokoll.start.prozessId = child.pid;
+  return child;
+}
+
+export function pruefeBrowserstart({ child, beendet, startFehler, signal }) {
+  if (startFehler) throw startFehler;
+  if (beendet || child.exitCode != null || child.signalCode != null) {
+    throw new Error(child.exitCode === 0
+      ? 'Browserprozess endete vor dem Start mit Code 0; möglicher Neustart des Browsers.'
+      : 'Browser vorzeitig beendet.');
+  }
+  if (signal?.aborted) throw new Error('Browser vorzeitig beendet.');
+}
+
 export function browserArgumente(profil, netlog, proxyPort) {
   // Primärquellverweise (offline nicht neu abgerufen):
   // [C] https://chromium.googlesource.com/chromium/src/+/main/chrome/common/chrome_switches.cc
@@ -192,9 +213,7 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
     const profil = join(ausgabe, 'profil');
     mkdirSync(profil);
     const args = browserArgumente(profil, netlogDatei, proxy.port);
-    protokoll.start = { argumente: args, programm };
-    child = spawn(programm, args, { cwd: wurzel, env: process.env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], shell: false });
-    protokoll.start.prozessId = child.pid;
+    child = starteBrowserProzess(programm, args, protokoll);
     child.on('error', e => { startFehler = e; });
     child.on('exit', () => { beendet = true; });
     beobachtung = beobachteBrowserProzess(child, { diagnose });
@@ -202,7 +221,7 @@ async function laufPhase({ browser, programm, phase, ausgabe, basisUrl, commit, 
     signal?.addEventListener('abort', abbruch, { once: true });
     const portDatei = join(profil, 'DevToolsActivePort');
     const zeilen = await warten(() => {
-      if (startFehler || beendet || signal?.aborted) throw startFehler ?? new Error('Browser vorzeitig beendet.');
+      pruefeBrowserstart({ child, beendet, startFehler, signal });
       if (!existsSync(portDatei)) return false;
       let z;
       try { z = readFileSync(portDatei, 'utf8').trim().split(/\r?\n/); }
