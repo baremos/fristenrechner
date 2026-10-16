@@ -13,7 +13,7 @@
       },
       {
         "zeile": 16,
-        "text": "2026-09-30 18:46:43,874 INFO: Getting source for revision f272140294ee270e82e2d549cf0c6765801b602c"
+        "text": "2026-09-30 18:46:43,874 INFO: Getting source for revision 5c43ced5d2dfff021fab14d451415bd9181b3114"
       },
       {
         "zeile": 17,
@@ -359,7 +359,7 @@
       },
       {
         "zeile": 16,
-        "text": "2026-09-30 18:49:48,199 INFO: Getting source for revision f272140294ee270e82e2d549cf0c6765801b602c"
+        "text": "2026-09-30 18:49:48,199 INFO: Getting source for revision 5c43ced5d2dfff021fab14d451415bd9181b3114"
       },
       {
         "zeile": 17,
@@ -1295,7 +1295,7 @@
       },
       {
         "zeile": 291,
-        "text": "2026-09-30 18:55:25,733 INFO: Successfully built version 0.1.0 of de.baremos.fristenrechner from f272140294ee270e82e2d549cf0c6765801b602c"
+        "text": "2026-09-30 18:55:25,733 INFO: Successfully built version 0.1.0 of de.baremos.fristenrechner from 5c43ced5d2dfff021fab14d451415bd9181b3114"
       },
       {
         "zeile": 294,
@@ -1321,7 +1321,7 @@
       },
       {
         "zeile": 16,
-        "text": "2026-09-30 18:55:29,141 INFO: Getting source for revision f272140294ee270e82e2d549cf0c6765801b602c"
+        "text": "2026-09-30 18:55:29,141 INFO: Getting source for revision 5c43ced5d2dfff021fab14d451415bd9181b3114"
       },
       {
         "zeile": 17,

@@ -1,6 +1,6 @@
 # Signierung
 
-Stand 2026-10-15 · eingefrorener App-Stand `286cdf4` · N1 mit der App, N4/N5 mit einer Testfassung erneut belegt · neue Probeschlüssel gelöscht, echter Schlüssel offen
+Stand 2026-10-15 · eingefrorener App-Stand `8b17927` · N1 mit der App, N4/N5 mit einer Testfassung erneut belegt · neue Probeschlüssel gelöscht, echter Schlüssel offen
 
 Dieses Dokument legt fest, wie die App signiert wird. Die Festlegungen S1 bis S12 hat der fachlich Verantwortliche am 2026-09-29 getroffen; S1 bleibt unter Vorbehalt.
 
@@ -136,7 +136,7 @@ Grenzen: Geprüft ist die Minimal-App im Emulator, nicht die App, kein echtes Ge
 
 Quelle für alle Ergebnisse und Zahlen dieses Abschnitts sind die Protokolle der Läufe vom 2026-10-03/04; sie liegen nicht im Repository.
 
-Die Testfassung beruht auf Nachweisstand `49dd420`, dessen App-Eingaben dem App-Endstand `5e6f230` entsprechen. In getrennten Probeklonen wurde nur die `applicationId` auf `de.baremos.fristenrechner.probe` geändert. Fassung F1 trägt `versionCode 100` und `versionName 0.1.0`; Fassung F2 zusätzlich `versionCode 101` und `versionName 0.1.1`. Diese Änderungen sind nur lokal in den Probeklonen eingecheckt. Die echte App-ID wurde mit keinem Probeschlüssel signiert.
+Die Testfassung beruht auf Nachweisstand `8987e69`, dessen App-Eingaben dem App-Endstand `c7b5230` entsprechen. In getrennten Probeklonen wurde nur die `applicationId` auf `de.baremos.fristenrechner.probe` geändert. Fassung F1 trägt `versionCode 100` und `versionName 0.1.0`; Fassung F2 zusätzlich `versionCode 101` und `versionName 0.1.1`. Diese Änderungen sind nur lokal in den Probeklonen eingecheckt. Die echte App-ID wurde mit keinem Probeschlüssel signiert.
 
 F1 und F2 wurden nach dem vollständigen App-Build im jeweiligen Klon über `scripts/android-build.mjs` nach `clean` als Release gebaut. F1 unter Windows (Node.js 22.23.2, JDK 21.0.8, ohne `--streng`) und unter Linux (OpenJDK 21.0.12.1, `--streng --ohne-testgruppe`) sind bytegleich: 7 760 765 Bytes, SHA-256 `ca5fef7e6ea31672a4612c56d81340b3047898007b71b3f16abc611f9cad2104`. F2 unter Windows hat dieselbe Größe und SHA-256 `e53c9bc49e0df1f4ac9d6f42411e5188892ae056c2742a427ff48345770de77b`.
 
@@ -144,7 +144,7 @@ Signiert wurde unter Windows mit `scripts/signing/apk-signieren.mjs` und `apksig
 
 ### Reproduzierbarer App-Build (N1)
 
-Die unsignierte Release-APK der App mit ihrer echten App-ID ist in den getrennten Builds bytegleich: Windows nach `clean` am Stand `5e6f230`, frische Windows-Kopie mit Node.js 22.23.2, zwei frische Linux-Klone mit `--streng --ohne-testgruppe` und der lokale F-Droid-Lauf am Nachweisstand `49dd420`. Ergebnis: 7 760 765 Bytes, SHA-256 `ab18ee072cf98f922ff16a139365be627ed18f5dd1d4876d54b4ef4fb3e4f1fa`. Einzelheiten stehen in den [App-Nachweisen](app.md) und im [F-Droid-Abschlusslauf](fdroid-build.md#lauf-am-endstand-vom-2026-10-04).
+Die unsignierte Release-APK der App mit ihrer echten App-ID ist in den getrennten Builds bytegleich: Windows nach `clean` am Stand `c7b5230`, frische Windows-Kopie mit Node.js 22.23.2, zwei frische Linux-Klone mit `--streng --ohne-testgruppe` und der lokale F-Droid-Lauf am Nachweisstand `8987e69`. Ergebnis: 7 760 765 Bytes, SHA-256 `ab18ee072cf98f922ff16a139365be627ed18f5dd1d4876d54b4ef4fb3e4f1fa`. Einzelheiten stehen in den [App-Nachweisen](app.md) und im [F-Droid-Abschlusslauf](fdroid-build.md#lauf-am-endstand-vom-2026-10-04).
 
 Grenzen: Alle Builds liefen auf einem Rechner, unter Windows und Debian 13.5 in WSL 2. Windows verwendete JDK 21.0.8 ohne `--streng`, Linux OpenJDK 21.0.12.1. Gradle lief mit Netz. Debug-APKs sind zwischen Arbeitskopien nicht bytegleich und gehören nicht zu N1.
 
@@ -173,7 +173,7 @@ Werkzeuge: `apksigner` aus den Build-Tools 35.0.0 (Versionsausgabe 0.9), `apksig
 
 ## Nachweise am eingefrorenen Stand vom 2026-10-15
 
-Die App-Eingaben entsprechen dem eingefrorenen Stand `286cdf4`. Die Testfassung hat die eigene App-ID `de.baremos.fristenrechner.probe`. F1 trägt `versionCode 100` und `versionName 0.1.0`, F2 `versionCode 101` und `versionName 0.1.1`. F1 wurde nach `clean` unter Windows am Stand `d5222a6` mit Node.js 22.23.2 und getrennt unter Linux am Stand `3e8ed9b` mit Node.js 24.21.0 gebaut; F2 unter Windows. Die beiden unsignierten F1 sind bytegleich.
+Die App-Eingaben entsprechen dem eingefrorenen Stand `8b17927`. Die Testfassung hat die eigene App-ID `de.baremos.fristenrechner.probe`. F1 trägt `versionCode 100` und `versionName 0.1.0`, F2 `versionCode 101` und `versionName 0.1.1`. F1 wurde nach `clean` unter Windows am Stand `6ce0c7c` mit Node.js 22.23.2 und getrennt unter Linux am Stand `97d07c2` mit Node.js 24.21.0 gebaut; F2 unter Windows. Die beiden unsignierten F1 sind bytegleich.
 
 Am 2026-10-15 wurden außerhalb des Repositorys neue Probeschlüssel „Probe App“ und „Probe Upload“ erzeugt: RSA mit 4096 Bit, PKCS12. Beide Zertifikate nennen „Probe“ im Namen.
 
@@ -196,7 +196,7 @@ Die neuen Probeschlüssel wurden am 2026-10-15 um 17:39 MESZ nach N5 und vor N4 
 
 ### Reproduzierbarer App-Build am eingefrorenen Stand (N1)
 
-Die unsignierte Release-APK mit der echten App-ID war am 2026-10-15 in den getrennten Builds bytegleich: Windows nach `clean`, frische Windows-Kopie, zwei Linux-Klone und lokaler F-Droid-Lauf. Ergebnis: 7 668 430 Bytes, SHA-256 `0645663f481f8eca7d49d6fa91ea758a4443df9712777285424c2673db6f2a02`. Der Windows-Build und der F-Droid-Lauf nach der Ergänzung der Gradle-Prüfsummen am Stand `28ce572` bestätigten dieselbe APK. Einzelheiten stehen im [Build-Nachweis](app.md#build-nachweis-am-eingefrorenen-stand-vom-2026-10-15) und im [F-Droid-Lauf](fdroid-build.md#lauf-am-eingefrorenen-stand-vom-2026-10-15).
+Die unsignierte Release-APK mit der echten App-ID war am 2026-10-15 in den getrennten Builds bytegleich: Windows nach `clean`, frische Windows-Kopie, zwei Linux-Klone und lokaler F-Droid-Lauf. Ergebnis: 7 668 430 Bytes, SHA-256 `0645663f481f8eca7d49d6fa91ea758a4443df9712777285424c2673db6f2a02`. Der Windows-Build und der F-Droid-Lauf nach der Ergänzung der Gradle-Prüfsummen am Stand `d3d432b` bestätigten dieselbe APK. Einzelheiten stehen im [Build-Nachweis](app.md#build-nachweis-am-eingefrorenen-stand-vom-2026-10-15) und im [F-Droid-Lauf](fdroid-build.md#lauf-am-eingefrorenen-stand-vom-2026-10-15).
 
 Grenzen: Alle Builds liefen auf einem Rechner, unter Windows und Debian 13.5 in WSL 2. Windows verwendete JDK 21.0.8 ohne `--streng`, Linux OpenJDK 21.0.12.1. Die beiden Linux-Klone bauten mit `--streng --ohne-testgruppe`. Gradle lief mit Netz; die Gegenprobe ohne Netz umfasste nur Web-Build und Android-Sync. Debug-APKs gehören nicht zu N1.
 

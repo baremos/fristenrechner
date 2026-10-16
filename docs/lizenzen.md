@@ -1,6 +1,6 @@
 # Lizenzen und Abhängigkeiten
 
-Stand der erneuerten Prüfungen: **2026-10-15/16**, eingefrorener App- und Paketstand `286cdf4`, ergänzte Gradle-Prüfsummen `28ce572`; Android-Laufzeitinventar weiterhin am Stand `9ae4cd9` vom 2026-10-04. Die npm-Bestandszahlen und einzeln gelesenen npm-Paketbelege unten stammen aus der Bestandsaufnahme vom **2026-09-29** mit Capacitor 8.5.2, dem npm-Lockfile im Format 3 und der damaligen Windows-Installation. Sie sind historische Angaben, keine neu erhobene npm-Bestandsliste. Dieses Dokument beschreibt Projektregeln und Paketbelege, keine Rechtsauskunft. Die [Android- und Gradle-Abhängigkeiten](#android--und-gradle-abhängigkeiten) sind unten gesondert erfasst; Werkzeugfestlegungen und Build-Nachweise behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
+Stand der erneuerten Prüfungen: **2026-10-15/16**, eingefrorener App- und Paketstand `8b17927`, ergänzte Gradle-Prüfsummen `d3d432b`; Android-Laufzeitinventar weiterhin am Stand `7fd6c90` vom 2026-10-04. Die npm-Bestandszahlen und einzeln gelesenen npm-Paketbelege unten stammen aus der Bestandsaufnahme vom **2026-09-29** mit Capacitor 8.5.2, dem npm-Lockfile im Format 3 und der damaligen Windows-Installation. Sie sind historische Angaben, keine neu erhobene npm-Bestandsliste. Dieses Dokument beschreibt Projektregeln und Paketbelege, keine Rechtsauskunft. Die [Android- und Gradle-Abhängigkeiten](#android--und-gradle-abhängigkeiten) sind unten gesondert erfasst; Werkzeugfestlegungen und Build-Nachweise behandeln [toolchain.md](toolchain.md) und [fdroid-build.md](fdroid-build.md).
 
 Das Projekt steht unter Apache-2.0. Der Wortlaut liegt in `LICENSE`, der Herausgeberhinweis in `NOTICE` in der Wurzel des Repositorys.
 
@@ -8,11 +8,11 @@ Das Projekt steht unter Apache-2.0. Der Wortlaut liegt in `LICENSE`, der Herausg
 
 Am 2026-10-03/04 bestand die npm-Lizenzprüfung in einer frischen Windows-Kopie mit Node 22.23.2 und npm 10.9.8 sowie unter Debian 13.5 mit Node 24.21.0 und npm 11.19.0, auch in der sauberen Kopie vor dem F-Droid-Lauf. Quelle sind die Abschlussprotokolle vom 2026-10-03/04, zusammengefasst in [app.md](app.md) und [fdroid-build.md](fdroid-build.md). Diese Ergebnisse erneuern den Nachweis der Metadatenprüfung; sie belegen weder vollständige Originalhinweise noch die Lizenzen aller eingebetteten und von Gradle geladenen Anteile.
 
-Der lokale F-Droid-Lauf am 2026-10-04 mit fdroidserver 2.4.2-1 am Nachweisstand `49dd420` bestand mit gezielter Bereinigung ohne `scandelete`, ohne Scannerfehler und ohne Beanstandung der Auswertung. Die Bereinigung und die Inventare sind in [fdroid-build.md](fdroid-build.md) belegt. Ein F-Droid-Buildserver war nicht beteiligt. Die unten beschriebenen Weitergabepflichten und offenen Prüfungen bleiben davon getrennt. Die Hinweise Dritter sind am 2026-10-05 für den damaligen Web- und Android-Laufzeitbestand ergänzt; dieser Nachtrag erneuert die früheren APK- und F-Droid-Nachweise nicht.
+Der lokale F-Droid-Lauf am 2026-10-04 mit fdroidserver 2.4.2-1 am Nachweisstand `8987e69` bestand mit gezielter Bereinigung ohne `scandelete`, ohne Scannerfehler und ohne Beanstandung der Auswertung. Die Bereinigung und die Inventare sind in [fdroid-build.md](fdroid-build.md) belegt. Ein F-Droid-Buildserver war nicht beteiligt. Die unten beschriebenen Weitergabepflichten und offenen Prüfungen bleiben davon getrennt. Die Hinweise Dritter sind am 2026-10-05 für den damaligen Web- und Android-Laufzeitbestand ergänzt; dieser Nachtrag erneuert die früheren APK- und F-Droid-Nachweise nicht.
 
 ## Lizenzprüfung am eingefrorenen Stand vom 2026-10-15
 
-Am App- und Paketstand `286cdf4` bestanden unter Windows mit Node 24.21.0 und npm 11.19.0 `npm run lizenzen`, der Bündelabgleich mit `node scripts/check-licenses.mjs --buendel app/.astro/module-client.json` und die Hinweisprüfung mit `node scripts/hinweise-dritter.mjs --pruefen`. Die Paketprüfung mit `scripts/npm-pakete.mjs --ohne-cr` bestand ebenfalls; ihre Werte stehen unter [Paketinhalt](#paketinhalt). Die Lizenzprüfung bestand auch in der frischen Windows-Kopie mit Node 22.23.2 und npm 10.9.8, im ersten Linux-Klon mit Node 24.21.0 und npm 11.19.0 sowie in der sauberen Kopie am Stand `28ce572` vor dem F-Droid-Lauf.
+Am App- und Paketstand `8b17927` bestanden unter Windows mit Node 24.21.0 und npm 11.19.0 `npm run lizenzen`, der Bündelabgleich mit `node scripts/check-licenses.mjs --buendel app/.astro/module-client.json` und die Hinweisprüfung mit `node scripts/hinweise-dritter.mjs --pruefen`. Die Paketprüfung mit `scripts/npm-pakete.mjs --ohne-cr` bestand ebenfalls; ihre Werte stehen unter [Paketinhalt](#paketinhalt). Die Lizenzprüfung bestand auch in der frischen Windows-Kopie mit Node 22.23.2 und npm 10.9.8, im ersten Linux-Klon mit Node 24.21.0 und npm 11.19.0 sowie in der sauberen Kopie am Stand `d3d432b` vor dem F-Droid-Lauf.
 
 Die Release-Builds bestanden K1 bis K5 einschließlich des Gradle-Modellabgleichs im App-Build. Die unsignierte Release-APK hatte 7 668 430 Bytes und SHA-256 `0645663f481f8eca7d49d6fa91ea758a4443df9712777285424c2673db6f2a02`; siehe [Build-Nachweis](app.md#build-nachweis-am-eingefrorenen-stand-vom-2026-10-15). Der [lokale F-Droid-Lauf](fdroid-build.md#lauf-am-eingefrorenen-stand-vom-2026-10-15) ergab dieselbe APK; nach Ergänzung der zwei Protokollmuster blieb die Auswertung ohne Beanstandung. Die Gradle-Prüfsummendatei umfasst nach der Ergänzung vom selben Tag 389 Komponenten und 675 Artefakte; Anlass und Gegenprüfung stehen unter [Gradle-Prüfsummen](toolchain.md#gradle-prüfsummen).
 
@@ -177,13 +177,13 @@ Die App nennt `@capacitor/core` und `@capacitor/android` 8.5.2 unter `dependenci
 
 Ausgeliefert sind neu nur `@capacitor/core`, `@capacitor/android` (beide MIT) und `tslib` (0BSD). Die Kommandozeile ist eine Entwicklungsabhängigkeit. Orte, die ihr Baum mit anderen Bäumen teilt, behalten den vorrangigen Bereich: Von den 95 neuen Orten sind 2 ausgeliefert (`@capacitor/core`, `@capacitor/android`), 91 für Test und Build und 2 bereitgestellt (`@types/node`, `undici-types`, zusätzlich über Astro erreichbar). `tslib` stand schon im Lockfile und ist jetzt ausgeliefert. Ohne die Kennungen 0BSD für die Auslieferung und Unlicense für Werkzeuge scheitert die Prüfung genau an `tslib`, `big-integer` und `stream-buffers`.
 
-Im npm-Lauf vom 2026-09-29 waren die Abhängigkeiten, die Gradle für `@capacitor/android` lädt, darunter AndroidX und das Cordova-Framework, nicht erfasst. Der [Laufzeitteil mit POM-Lizenzangaben und APK-Abgleich](#android--und-gradle-abhängigkeiten) ist am 2026-10-04 für `9ae4cd9` ergänzt; die Hinweise Dritter zum Laufzeitteil sind am 2026-10-05 ergänzt; der Gradle-Werkzeugteil bleibt offen.
+Im npm-Lauf vom 2026-09-29 waren die Abhängigkeiten, die Gradle für `@capacitor/android` lädt, darunter AndroidX und das Cordova-Framework, nicht erfasst. Der [Laufzeitteil mit POM-Lizenzangaben und APK-Abgleich](#android--und-gradle-abhängigkeiten) ist am 2026-10-04 für `7fd6c90` ergänzt; die Hinweise Dritter zum Laufzeitteil sind am 2026-10-05 ergänzt; der Gradle-Werkzeugteil bleibt offen.
 
 Damit gehörte das vorgebaute Browser-Bündel von ExcelJS nicht mehr zum npm-Bestand vom 2026-09-29. Seine frühere Auswertung ist kein Nachweis für den Inhalt eines neuen Website- oder App-Builds. Der eigene Excel-Schreiber und die vollständige Oberfläche wurden im damaligen Metadatenlauf nicht gebaut. Die späteren vollständigen App-Builds sind in [app.md](app.md) belegt. Die erzeugten Bündel und die Originalhinweise ihrer tatsächlich enthaltenen Fremdanteile bleiben vor der Auslieferung zu prüfen; das gilt auch für die übrigen Exportbibliotheken.
 
 ## Android- und Gradle-Abhängigkeiten
 
-Erhoben am **2026-10-04**, Stand **`9ae4cd9`**. Erfasst ist ausschließlich `:app:releaseRuntimeClasspath`, einschließlich transitiver Module und der beiden Projektmodule. Grundlage sind der gespeicherte Bericht dieses Laufs, eine Auswertung der POM-Dateien im Gradle-Cache und die Prüfprotokolle zur APK. Diese Belege werden gesondert aufbewahrt und sind nicht Teil des Repositorys. Der Offline-Lauf mit Gradle 8.14.5 und JDK 21.0.8 endete mit Rückgabewert 0 und `BUILD SUCCESSFUL in 13s`.
+Erhoben am **2026-10-04**, Stand **`7fd6c90`**. Erfasst ist ausschließlich `:app:releaseRuntimeClasspath`, einschließlich transitiver Module und der beiden Projektmodule. Grundlage sind der gespeicherte Bericht dieses Laufs, eine Auswertung der POM-Dateien im Gradle-Cache und die Prüfprotokolle zur APK. Diese Belege werden gesondert aufbewahrt und sind nicht Teil des Repositorys. Der Offline-Lauf mit Gradle 8.14.5 und JDK 21.0.8 endete mit Rückgabewert 0 und `BUILD SUCCESSFUL in 13s`.
 
 ### Aufgelöste Laufzeitmodule
 
@@ -285,7 +285,7 @@ Für alle 46 Laufzeitartefakte wurden die lokalen POMs und JAR-/AAR-Dateien samt
 
 ### Neuerzeugung und Abgrenzung der Build-Werkzeuge
 
-Der Bericht vom 2026-10-04 am Stand `9ae4cd9` wurde mit folgendem Aufruf erzeugt (`gradlew` bezeichnet den Projekt-Wrapper):
+Der Bericht vom 2026-10-04 am Stand `7fd6c90` wurde mit folgendem Aufruf erzeugt (`gradlew` bezeichnet den Projekt-Wrapper):
 
 ```text
 gradlew -p app/android :app:dependencies --configuration releaseRuntimeClasspath --offline
@@ -530,7 +530,7 @@ Beide Workspaces gehören in **einen** Aufruf. Die unveränderte Ausgabe enthäl
 npm pack --dry-run --json --offline --ignore-scripts --workspace packages/kern --workspace packages/oberflaeche
 ```
 
-Die Messungen vom **2026-10-04** ergaben unter Windows mit Node **22.23.2** und npm **10.9.8** sowie unter Debian **13.5** mit Node **24.21.0** und npm **11.19.0** dieselben Werte. Die Paketquellen sind in beiden Messungen gleich (unverändert seit `9ae4cd9`): unter Windows im Arbeitsstand auf Basis `9ae4cd9`, unter Debian in einem frischen Checkout von `bca6d2a`. Beide Messungen verwenden die Regeln aus `.gitattributes` einschließlich der LF-Festlegung für `packages/*/package.json` und `packages/*/README*.md`; die Paketdateien enthalten LF:
+Die Messungen vom **2026-10-04** ergaben unter Windows mit Node **22.23.2** und npm **10.9.8** sowie unter Debian **13.5** mit Node **24.21.0** und npm **11.19.0** dieselben Werte. Die Paketquellen sind in beiden Messungen gleich (unverändert seit `7fd6c90`): unter Windows im Arbeitsstand auf Basis `7fd6c90`, unter Debian in einem frischen Checkout von `4337bb2`. Beide Messungen verwenden die Regeln aus `.gitattributes` einschließlich der LF-Festlegung für `packages/*/package.json` und `packages/*/README*.md`; die Paketdateien enthalten LF:
 
 | Paket, Version | Dateien | `size` in Bytes | `unpackedSize` in Bytes | `shasum` | `bundled` |
 |---|---:|---:|---:|---|---|
@@ -541,14 +541,14 @@ Das sind die von npm im Trockenlauf gemeldeten Archivgrößen, entpackten Größ
 
 Am **2026-10-04** bestätigte der Offline-Gegencheck in einem frischen Linux-Checkout die Tabellenwerte, und die Offline-Verbraucherprobe nach dem README-Beispiel mit **Astro 7.3.3** bestand `astro build` und `astro check` ohne Fehler: Alle 16 Quellen im Bündel kamen aus den tatsächlich erzeugten npm-Archiven, keine aus dem Workspace.
 
-Am **2026-10-15** bestand `scripts/npm-pakete.mjs --ohne-cr` am Stand `286cdf4` unter Windows mit Node **24.21.0** und npm **11.19.0** mit folgenden Werten:
+Am **2026-10-15** bestand `scripts/npm-pakete.mjs --ohne-cr` am Stand `8b17927` unter Windows mit Node **24.21.0** und npm **11.19.0** mit folgenden Werten:
 
 | Paket, Version | Dateien | Gepackt in Bytes | Entpackt in Bytes | SHA-1 (`shasum`) | Gebündelte Abhängigkeiten |
 |---|---:|---:|---:|---|---|
 | `@baremos/fristenrechner-kern`, `0.1.0` | 14 | 43 103 | 178 680 | `6de117f02d02cf3713f04c88e12fc04e00403fad` | keine |
 | `@baremos/fristenrechner-ui`, `0.1.0` | 19 | 61 345 | 223 928 | `ed5c7417b693d6cbca0e30946223d2f171c9c2f3` | keine |
 
-Am **2026-10-16** wurden die beiden Archive aus dem seit `286cdf4` unveränderten Paketstand mit `npm pack --ignore-scripts` tatsächlich erzeugt; Dateizahlen, gepackte und entpackte Größen sowie SHA-1-Prüfsummen bestätigen die Tabellenwerte vom Vortag. Die SHA-256-Prüfsummen der Archive lauten:
+Am **2026-10-16** wurden die beiden Archive aus dem seit `8b17927` unveränderten Paketstand mit `npm pack --ignore-scripts` tatsächlich erzeugt; Dateizahlen, gepackte und entpackte Größen sowie SHA-1-Prüfsummen bestätigen die Tabellenwerte vom Vortag. Die SHA-256-Prüfsummen der Archive lauten:
 
 | Paket, Version | SHA-256 |
 |---|---|
@@ -615,7 +615,7 @@ Vor Stufe 3 bleiben:
 2. Die Paketprüfung beim späteren Veröffentlichungsstand aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen.
 3. Vor Veröffentlichung die dann erzeugten `.tgz`-Archive sichten und die eigenen Hinweise der einbindenden Website prüfen; die Einbindung der Archive am eingefrorenen Paketstand ist durch die Verbraucherprobe vom 2026-10-16 bestätigt. Die Inhaltsprüfung des App-Web- und Android-Laufzeitbestands mit Originalhinweisen stammt vom 2026-10-05; die automatischen Bündel-, Hinweis- und Gradle-Modellabgleiche sind am 2026-10-15 erneuert. Nach Bündeländerungen ist die Inhaltsprüfung zu erneuern.
 4. Die im lokalen Endstandlauf belegte Behandlung des optionalen sharp-Baums und der weiteren vorgebauten Bestandteile bei Änderungen am Build-Baum erneut prüfen; Quelle und Grenzen: [F-Droid-Nachweis](fdroid-build.md).
-5. Android- und Gradle-Abhängigkeiten ergänzen; **teilweise erledigt am 2026-10-04 für `9ae4cd9`**: [Laufzeitmodule mit POM-Lizenzangaben und APK-/SUSS-Abgleich](#android--und-gradle-abhängigkeiten) sind erfasst. Die [Gradle-Prüfsummen](toolchain.md#gradle-prüfsummen) sind seit dem 2026-10-05 umgesetzt. Die Hinweise Dritter einschließlich der eingebetteten Laufzeitanteile sind am 2026-10-05 ergänzt; Werkzeugliste und Werkzeug-Lizenzregel bleiben offen. Die npm-Liste erfasst diese Gradle-Abhängigkeiten weiterhin nicht.
+5. Android- und Gradle-Abhängigkeiten ergänzen; **teilweise erledigt am 2026-10-04 für `7fd6c90`**: [Laufzeitmodule mit POM-Lizenzangaben und APK-/SUSS-Abgleich](#android--und-gradle-abhängigkeiten) sind erfasst. Die [Gradle-Prüfsummen](toolchain.md#gradle-prüfsummen) sind seit dem 2026-10-05 umgesetzt. Die Hinweise Dritter einschließlich der eingebetteten Laufzeitanteile sind am 2026-10-05 ergänzt; Werkzeugliste und Werkzeug-Lizenzregel bleiben offen. Die npm-Liste erfasst diese Gradle-Abhängigkeiten weiterhin nicht.
 6. Entscheiden, ob zusätzlich zu `package-lock.json` eine erzeugte vollständige Abhängigkeitsliste mit Bereichen und Wegen eingecheckt wird, und ihren Aktualisierungsweg festlegen. Die Entscheidung ist offen; derzeit wird diese Liste mit `node scripts/check-licenses.mjs --json` erzeugt.
 
 Ein erfolgreicher Metadatenlauf belegt weder die Vollständigkeit fremder Lizenzangaben noch sämtliche Weitergabepflichten oder die F-Droid-Tauglichkeit. Proprietäre Dienste werden nicht anhand eines Lizenzfelds erkannt. Der tatsächliche Offline-Betrieb und das Android-Manifest gehören zur Abnahme der vollständigen App.

@@ -341,7 +341,7 @@ class AppAuswertung(unittest.TestCase):
         probleme = []
         bekannt, entfernt, ergebnis = A.PROTOKOLL.pruefen(
             A.BUILD, self.lauf, A.APPID, A.VERSION_NAME, str(A.VERSION_CODE),
-            "f272140294ee270e82e2d549cf0c6765801b602c", variante, probleme)
+            "5c43ced5d2dfff021fab14d451415bd9181b3114", variante, probleme)
         return probleme, bekannt, entfernt, ergebnis
 
     def test_drei_bereinigte_echte_protokolle(self):
@@ -475,7 +475,7 @@ class AppAuswertung(unittest.TestCase):
         self.assertTrue(any("ERROR: Unused scandelete path" in p for p in probleme), probleme)
 
     def test_scannerabbruch_hat_eigenen_befund_ohne_folgefehler(self):
-        self.meta.update(variante="gezielt-scandelete", scandeleteVersuch=True, commit="f272140294ee270e82e2d549cf0c6765801b602c")
+        self.meta.update(variante="gezielt-scandelete", scandeleteVersuch=True, commit="5c43ced5d2dfff021fab14d451415bd9181b3114")
         self.json("lauf.json", self.meta)
         (self.lauf / "build.log").write_text(self.app_fixture("gezielt-scandelete"), encoding="utf-8")
         for name in ("npm-vorgebaut-nach-scanner.json", "npm-dateien-nach-scanner.json"):
@@ -489,7 +489,7 @@ class AppAuswertung(unittest.TestCase):
         self.assertTrue(bericht["nichtGeprueft"])
 
     def test_scannerabbruch_mit_apk_ist_widerspruechlich(self):
-        self.meta.update(variante="gezielt-scandelete", scandeleteVersuch=True, commit="f272140294ee270e82e2d549cf0c6765801b602c")
+        self.meta.update(variante="gezielt-scandelete", scandeleteVersuch=True, commit="5c43ced5d2dfff021fab14d451415bd9181b3114")
         self.json("lauf.json", self.meta)
         (self.lauf / "build.log").write_text(self.app_fixture("gezielt-scandelete"), encoding="utf-8")
         self.befund("APK vorhanden trotz protokolliertem Scannerabbruch")

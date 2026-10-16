@@ -40,7 +40,7 @@ async function rendern(importBedienung?: ImportBedienung, importBeschriftung = w
 
 it('behält das vorgerenderte HTML mit den Web-Vorgaben vollständig bei', async () => {
   const html = await rendern();
-  // Referenz aus der unveränderten Komponente von main (427995a), mit demselben Renderer.
+  // Referenz aus der unveränderten Komponente von main (cad2a7d), mit demselben Renderer.
   expect(createHash('sha256').update(html).digest('hex')).toBe('e6465ae87407c4e1e53036ecae4f9f2ac7e1f90b90fb5362483436fab41e8898');
 });
 

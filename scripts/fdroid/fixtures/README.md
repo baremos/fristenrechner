@@ -23,7 +23,7 @@ für Android-Paketformat, Signatur oder Reproduzierbarkeit der echten APK.
 
 Die JSON-Datei app-laeufe-2026-09-30.json enthält gekürzte Auszüge von
 fdroidserver 2.4.2 unter Debian 13.5, Python 3.13.5, WSL 2, App-Version 0.1.0 (100),
-Stand f272140294ee270e82e2d549cf0c6765801b602c. Die ursprünglichen Zeilennummern
+Stand 5c43ced5d2dfff021fab14d451415bd9181b3114. Die ursprünglichen Zeilennummern
 stehen neben jeder übernommenen Zeile. Absolute Rechnerpfade wurden durch
 /lauf und /werkzeug ersetzt; der Git-Klonbefehl auf seinen Zweck und das
 neutrale Ziel gekürzt. Dateiinhalte, APKs und Zwischenspeicher sind nicht enthalten.
@@ -104,7 +104,7 @@ werden ausdrücklich als nicht geprüft ausgewiesen.
 
 Die JSON-Datei app-laeufe-2026-10-15.json enthält einen gekürzten Auszug aus
 lauf-4zdiuc_3-gezielt, App-Version 0.1.0 (100), Stand
-28ce57275d87a0020f82bcf17b8655fb0e77df3f; der Build ist gelungen.
+d3d432b87704cdb09e8b1eacb7c6108d777e0ca3; der Build ist gelungen.
 Die ursprünglichen Zeilennummern sind erhalten: Zeile 36 belegt den Kontext
 prebuild, Zeile 48 npm_kern_build mit Kern-Version 0.1.0 und Zeile 79
 hinweise_dritter_bestanden zwischen K3 (78) und K4 (80). Das Kern-Muster
