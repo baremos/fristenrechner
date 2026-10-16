@@ -10,7 +10,7 @@ The user interface of the app and its exports are in German. The calculator foll
 
 ## Status
 
-The repository is under construction. Nothing has been released yet.
+The repository is under construction. Version 0.1.0 of the npm packages `@baremos/fristenrechner-kern` and `@baremos/fristenrechner-ui` was published on 2026-10-16. The Android app has not been released yet.
 
 | Part | Status |
 |---|---|
