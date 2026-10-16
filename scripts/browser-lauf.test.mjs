@@ -1,11 +1,5 @@
 // Aufruf: node --test scripts/browser-lauf.test.mjs
 // Kein Browser; HTTP-Prüfungen ausschließlich über 127.0.0.1.
-import './browser/prozessende.test.mjs';
-import './browser/download.test.mjs';
-import './browser/webadapter.test.mjs';
-import './browser/netz-cdp.test.mjs';
-import './browser/netz-auswertung.test.mjs';
-import './browser/rahmen.test.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -13,7 +7,7 @@ import { request } from 'node:http';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { ausgabeVorbereiten, browserArgumente, browserKandidaten, lokalerServer } from './browser-lauf.mjs';
+import { ausgabeVorbereiten, browserArgumente, browserKandidaten, lokalerServer, verbindeFrischeSeite } from './browser-lauf.mjs';
 import {
   anfrageBewerten, argumente, auswerten, netlogAnfragen, netzErlaubt,
   neuesProtokoll, pruefung,
@@ -32,7 +26,7 @@ const protokoll = (daten = {}) => neuesProtokoll({
 });
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const testBasis = join(wurzel, 'scratchpad/tmp-v6a-r9');
+const testBasis = join(wurzel, 'scratchpad/test-browser');
 mkdirSync(testBasis, { recursive: true });
 const temp = realpathSync(testBasis);
 const arbeit = mkdtempSync(join(temp, 'browser-tests-'));
@@ -73,8 +67,8 @@ test('Pflichtargumente wählen genau eine Phase und beide Browser als Vorgabe', 
   });
 });
 
-test('Sammelphase bleibt auf V6a beschränkt und erhält einen Pfad mit Leerzeichen', () => {
-  const eingabe = ['--browser', 'chrome', '--ausgabe', 'scratchpad/Probe mit Leerzeichen', '--phase', 'alle-v6a'];
+test('Sammelphase bleibt auf Vertrag und Webadapter beschränkt und erhält einen Pfad mit Leerzeichen', () => {
+  const eingabe = ['--browser', 'chrome', '--ausgabe', 'scratchpad/Probe mit Leerzeichen', '--phase', 'grundlagen'];
   const vorher = [...eingabe];
   const ergebnis = argumente(eingabe);
   assert.deepEqual(ergebnis.phasen, ['vertrag', 'webadapter']);
@@ -104,8 +98,8 @@ for (const [name, eingabe, meldung] of [
   ['Doppelphase', [...basis, '--phase', 'webadapter'], /Argument doppelt.*--phase/],
   ['Doppelausgabe', [...basis, '--ausgabe', 'anders'], /Argument doppelt.*--ausgabe/],
   ['Doppelbrowser', [...basis, '--browser', 'edge', '--browser', 'chrome'], /Argument doppelt.*--browser/],
-  ['unbeauftragte Phase', ['--phase', 'tastatur', '--ausgabe', 'lauf'], /--phase muss/],
-  ['verkürzte Sammelphase', ['--phase', 'alle', '--ausgabe', 'lauf'], /--phase muss/],
+  ['unbekannte Phase', ['--phase', 'unbekannt', '--ausgabe', 'lauf'], /--phase muss/],
+  ['unbekannte Sammelphase', ['--phase', 'alle-unbekannt', '--ausgabe', 'lauf'], /--phase muss/],
   ['nicht automatisierter Browser', [...basis, '--browser', 'firefox'], /--browser muss/],
 ]) {
   test(`Argumente verwerfen ${name}`, () => assert.throws(() => argumente(eingabe), meldung));
@@ -169,21 +163,21 @@ test('Vollständig bestandene Ergebnisse mit lokalen Ressourcen ergeben Code 0',
   assert.deepEqual(auswerten({
     phase: 'vertrag', ergebnisse: ERGEBNISKATALOG.vertrag.map(id => ({ id, status: 'bestanden' })),
     netzanfragen: [{ url: 'http://127.0.0.1:41123/' }, { url: 'blob:http://127.0.0.1:41123/datei' }, { url: 'data:image/png;base64,AA==' }],
-  }), { status: 'bestanden', code: 0, bestanden: 14, fehler: 0, netzfehler: 0, katalogfehler: [] });
+  }), { status: 'bestanden', code: 0, bestanden: 14, grenzen:0, fehler: 0, netzfehler: 0, katalogfehler: [] });
 });
 
 test('Eine fremde Anfrage lässt auch sonst bestandene Prüfungen scheitern', () => {
   assert.deepEqual(auswerten({
     phase: 'vertrag', ergebnisse: ERGEBNISKATALOG.vertrag.map(id => ({ id, status: 'bestanden' })),
     netzanfragen: [{ url: 'http://127.0.0.1:4321/' }, { url: 'https://fremd.invalid/' }],
-  }), { status: 'nicht bestanden', code: 1, bestanden: 14, fehler: 0, netzfehler: 1, katalogfehler: [] });
+  }), { status: 'nicht bestanden', code: 1, bestanden: 14, grenzen:0, fehler: 0, netzfehler: 1, katalogfehler: [] });
 });
 
 test('Auswertung zählt fachliche Fehler und Netzfehler getrennt', () => {
   assert.deepEqual(auswerten({
     phase: 'vertrag', ergebnisse: ERGEBNISKATALOG.vertrag.map((id, i) => ({ id, status: i < 2 ? 'nicht bestanden' : 'bestanden' })),
     netzanfragen: [{ url: 'https://fremd.invalid/' }, { url: 'file:///probe.html' }],
-  }), { status: 'nicht bestanden', code: 1, bestanden: 12, fehler: 2, netzfehler: 2, katalogfehler: [] });
+  }), { status: 'nicht bestanden', code: 1, bestanden: 12, grenzen:0, fehler: 2, netzfehler: 2, katalogfehler: [] });
 });
 
 for (const ergebnisse of [undefined, [], [{ status: 'übersprungen' }], [{}]]) {
@@ -440,4 +434,46 @@ test('Auch eine nachträglich angehängte index.html darf nicht über einen Syml
     assert.equal(antwort.status, 403, pfad);
     assert.notEqual(await antwort.text(), 'außerhalb');
   }
+});
+
+test('Ersatzseite wird erst nach bestätigter Netzüberwachung verbunden; alte Messverbindung bleibt bei jedem Vorfehler erhalten',async()=>{
+  const machen=(art='ok')=>{
+    const auf=[],protokoll={netzTargets:[{targetId:'neu',messbereit:true}]},neu={send:async()=>({}),close:()=>auf.push('neu lösen')};
+    const offen=new Set(['alt']);
+    const o={protokoll,cdp:{targetId:'alt',close:()=>auf.push('alt lösen'),send:async(m,p)=>{
+      if(m==='Page.navigate'){auf.push('alt entladen');assert.equal(p.url,'about:blank');return art==='entladen'?{errorText:'Navigation fehlt'}:{};}
+      return {result:{value:art==='altes-dokument'?'alte Seite':'about:blank'}};
+    }},browserCdp:{send:async(m,p)=>{
+      auf.push(m);
+      if(m==='Target.createTarget'){assert.equal(p.url,'about:blank');offen.add('neu');return {targetId:art==='kennung'?'../fremd':'neu'};}
+      if(m==='Target.closeTarget'){if(p.targetId==='alt'&&art==='schliessen')return {success:false};offen.delete(p.targetId);return {success:true};}
+      if(m==='Target.getTargets')return {targetInfos:[...offen].map(targetId=>({targetId}))};
+      assert.fail(m);
+    }},
+      warten:async fn=>{auf.push('warten');if(art==='ueberwachung'&&auf.filter(v=>v==='warten').length===1)throw new Error('Überwachung fehlt');assert.equal(await fn(),true);},netzMonitor:{seiteAnmelden:async id=>{auf.push('sperren');if(art==='sperre')throw new Error('Sperre fehlt');return {targetId:id,bestaetigt:art!=='bestaetigung'};}},
+      verbinden:async id=>{assert.equal(id,'neu');auf.push('verbinden');if(art==='verbindung')throw new Error('Verbindung fehlt');return neu;}};
+    return {o,auf,neu,offen};
+  };
+  const {o,auf,neu}=machen();assert.equal(await verbindeFrischeSeite(o),neu);
+  assert.deepEqual(auf,['Target.createTarget','warten','sperren','verbinden','alt entladen','warten','Target.closeTarget','warten','Target.getTargets','alt lösen']);assert.equal(o.protokoll.frischeSeiten[0].targetId,'neu');
+  for(const art of ['kennung','ueberwachung','sperre','bestaetigung','verbindung','entladen','altes-dokument','schliessen']) {
+    const n=machen(art);await assert.rejects(()=>verbindeFrischeSeite(n.o));assert.ok(!n.auf.includes('alt lösen'));assert.equal(n.o.protokoll.frischeSeiten,undefined);
+    assert.equal(n.auf.includes('neu lösen'),['entladen','altes-dokument','schliessen'].includes(art));
+    if(art!=='kennung')assert.deepEqual([...n.offen],['alt'],'Fehlgeschlagene Ersatzseite muss geschlossen sein.');
+  }
+});
+
+test('Mehrfacher Seitenersatz lässt genau einen Tab offen; fehlender Schließnachweis bleibt ungültig',async()=>{
+  const offen=new Set(['seite-0']),p={netzTargets:[]};let nummer=0;
+  const verbinden=async targetId=>({targetId,close(){},send:async m=>m==='Runtime.evaluate'?{result:{value:'about:blank'}}:{}});
+  let cdp=await verbinden('seite-0');
+  const browserCdp={send:async(m,a)=>{
+    if(m==='Target.createTarget'){const targetId=`seite-${++nummer}`;offen.add(targetId);p.netzTargets.push({targetId,messbereit:true});return {targetId};}
+    if(m==='Target.closeTarget'){offen.delete(a.targetId);return {success:true};}
+    return {targetInfos:[...offen].map(targetId=>({targetId}))};
+  }};
+  const optionen={browserCdp,protokoll:p,verbinden,warten:async fn=>assert.equal(await fn(),true),netzMonitor:{seiteAnmelden:async targetId=>({targetId,bestaetigt:true})}};
+  for(let i=0;i<5;i++){cdp=await verbindeFrischeSeite({...optionen,cdp});assert.deepEqual([...offen],[cdp.targetId]);}
+  const senden=browserCdp.send;browserCdp.send=async(m,a)=>m==='Target.getTargets'?{}:senden(m,a);
+  await assert.rejects(()=>verbindeFrischeSeite({...optionen,cdp}),/Tab-Inventar/);
 });

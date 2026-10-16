@@ -14,7 +14,7 @@ Die App speichert den aktuellen Projektstand im lokalen Speicher ihrer WebView. 
 
 ## Sicherung und Gerätewechsel
 
-Die Android-Konfiguration der App schließt ihre Daten von der automatischen Cloud-Sicherung und der Übertragung auf ein anderes Gerät aus. Die Ausschlüsse sind in den gebauten APKs geprüft. Auf den Emulatoren mit Android 11 und Android 16 wurden keine App-Daten in die geprüfte Systemsicherung übernommen; der Gerätewechsel wurde auf Android 16 geprüft.
+Die Android-Konfiguration der App schließt ihre Daten von der automatischen Cloud-Sicherung und der Übertragung auf ein anderes Gerät aus. Die Ausschlüsse sind in den gebauten APKs geprüft. Auf den Emulatoren mit Android 11 und Android 16 wurden keine App-Daten in die geprüfte Systemsicherung übernommen; der Gerätewechsel wurde im Emulator mit Android 16 geprüft.
 
 Das belegt nicht das Verhalten jedes Herstellers, Geräts oder Übertragungsprogramms. Für die eigene Sicherung und den Gerätewechsel können Sie eine Projektdatei exportieren und auf dem Zielgerät importieren. Selbst gespeicherte oder geteilte Dateien unterliegen den Regeln des gewählten Speicheranbieters oder Empfängers.
 
@@ -28,7 +28,7 @@ Android kann Dateien über verschiedene Anbieter bereitstellen. Ein solcher Anbi
 
 ## Speichern unter
 
-Mit „Projekt exportieren“, „Excel exportieren“ oder „PDF exportieren“ öffnen Sie die Auswahl zum Speichern von Android. Sie bestimmen den Anbieter, den Speicherort und den Dateinamen. Die Projektdatei enthält die Eingaben sowie Angaben zum Speicherzeitpunkt und Regelstand; Excel und PDF enthalten den berechneten Terminplan mit Projektangaben und Regelstand.
+Mit „Projekt exportieren“, „Excel exportieren“ oder „PDF exportieren“ öffnen Sie die Auswahl zum Speichern von Android. Im Menü „Dateiaktionen“ heißen diese Aktionen „Projekt speichern unter“, „Excel speichern“ und „PDF speichern“. Sie bestimmen den Anbieter, den Speicherort und den Dateinamen. Die Projektdatei enthält die Eingaben sowie Angaben zum Speicherzeitpunkt und Regelstand; Excel und PDF enthalten den berechneten Terminplan mit Projektangaben und Regelstand.
 
 Die App meldet den Speichervorgang erst nach dem Schreiben und Schließen der Datei als erfolgreich. Bei einem Fehler kann am gewählten Speicherort eine unvollständige Datei verbleiben; die App weist darauf hin, wenn sie einen solchen Rest nicht entfernen konnte. Sie prüft nicht, ob der Anbieter die Datei anschließend synchronisiert oder weitere Kopien anlegt. Gespeicherte Dateien verwalten und löschen Sie beim gewählten Anbieter.
 
@@ -44,7 +44,7 @@ Eine Ziel-App kann eine eigene Kopie anlegen oder die Datei weitergeben. Ein Wid
 
 ## Zurücksetzen und Löschen
 
-„Zurücksetzen“ fragt nach Ihrer Bestätigung und legt anschließend ein neues, leeres Projekt mit den Vorgabewerten an. „Abbrechen“ und die Zurück-Taste erhalten das bisherige Projekt. Das Zurücksetzen löscht weder selbst gespeicherte Dateien noch Empfängerkopien und löst keine sofortige Löschung bereits zum Teilen bereitgestellter Cachedateien aus.
+„Neues Projekt“ fragt nach Ihrer Bestätigung und legt nach „Zurücksetzen“ ein neues, leeres Projekt mit den Vorgabewerten an. „Abbrechen“ und die Zurück-Taste erhalten das bisherige Projekt. Das Zurücksetzen löscht weder selbst gespeicherte Dateien noch Empfängerkopien und löst keine sofortige Löschung bereits zum Teilen bereitgestellter Cachedateien aus.
 
 Das Löschen der App-Daten in Android entfernt den lokalen Projektstand; dies wurde im Emulator geprüft. Auch eine Deinstallation ist kein Sicherungsweg: Exportieren Sie benötigte Projekte vorher. Dateien an selbst gewählten Speicherorten und Kopien bei Empfängern müssen Sie dort gesondert löschen. Die App bietet keine Funktion zur sicheren, unwiederbringlichen Löschung auf dem Speichermedium.
 
@@ -52,10 +52,10 @@ Das Löschen der App-Daten in Android entfernt den lokalen Projektstand; dies wu
 
 Die Angaben zum fehlenden Internetzugriff beziehen sich auf den Fristenrechner. Android, die System-WebView, Dokumentanbieter und gewählte Ziel-Apps sind davon zu unterscheiden. Deren Verarbeitung und Netzwerkverkehr werden durch die App nicht allgemein gesteuert. Durch die von Ihnen veranlasste Dateiauswahl, Speicherung oder Weitergabe können Daten auch außerhalb des Geräts verarbeitet werden.
 
-Die bisherigen Laufzeitprüfungen fanden auf Emulatoren mit Android 11 und Android 16 statt. Sie ersetzen keine Prüfung aller Herstellergeräte, Dokumentanbieter und Ziel-Apps. Insbesondere verzögertes Lesen durch Empfänger, voller Speicher sowie Schreib- und Schließfehler sind damit nicht für alle Umgebungen nachgewiesen.
+Die bisherigen Laufzeitprüfungen fanden auf Emulatoren mit Android 11 und Android 16 sowie auf einem Gerät mit Android 16 statt. Auf dem Gerät wurden der Start der App sowie Speichern, Teilen, Import und Zurücksetzen in einzelnen Abläufen geprüft. Netzwerkverkehr, Sicherung, Gerätewechsel und das Löschen der App-Daten wurden nur im Emulator geprüft. Diese Prüfungen ersetzen keine Prüfung aller Herstellergeräte, Dokumentanbieter und Ziel-Apps. Insbesondere verzögertes Lesen durch Empfänger, voller Speicher sowie Schreib- und Schließfehler sind damit nicht für alle Umgebungen nachgewiesen.
 
 ## Stand und Verantwortlichkeit
 
-Stand: 1. Oktober 2026, App-Version 0.1.0. Es gibt noch keine Veröffentlichung dieser App.
+Stand: 15. Oktober 2026, App-Version 0.1.0. Es gibt noch keine Veröffentlichung dieser App.
 
 Herausgeber: BAREMOS IT GmbH, Berlin. Verantwortlich: Andreas Schmidt.

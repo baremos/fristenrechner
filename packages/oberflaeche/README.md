@@ -1,8 +1,14 @@
 # @baremos/fristenrechner-ui
 
-Astro-Komponente, Bedienlogik und Dateiexporte des Fristenrechners Vergabe. Die Berechnung kommt aus `@baremos/fristenrechner-kern`. Das Paket liefert Astro- und TypeScript-Quellen; der Gastgeber bündelt sie mit Astro.
+Astro-Komponente, Bedienlogik und Dateiexporte des Fristenrechners Vergabe. Die Berechnung kommt aus `@baremos/fristenrechner-kern`.
 
 Die Bedienlogik erhält Speicher, Import, Dateiausgabe, Zeit und Bestätigung über eine `Plattform`. Der enthaltene Web-Adapter verwendet den Browser. Native Adapter gehören zum jeweiligen Gastgeber. Die Komponente wird ausdrücklich durch den Gastgeber initialisiert.
+
+> Der Fristenrechner ist eine unverbindliche Rechenhilfe. Er ersetzt keine Rechtsberatung. Alle Angaben erfolgen ohne Gewähr.
+
+## Voraussetzungen
+
+Das Paket enthält Astro- und TypeScript-Quellen und wird ohne eigenen Build-Schritt ausgeliefert. Der Gastgeber bündelt sie mit Astro und dessen Vite; relative Importe ohne Dateiendung und ein CSS-Import mit `?inline` setzen das voraus. Prüft der Gastgeber Typen, prüft TypeScript die mitgelieferten Quellen mit den Einstellungen des Gastgebers. `webTexte` und `webExportInhalt` enthalten die Texte und Exportangaben der Website der BAREMOS IT GmbH, darunter deren Datenschutzhinweis, Herausgeber, Adresse und Dateipräfix. Andere Gastgeber übergeben eigene Werte.
 
 ## Einbindung
 
@@ -82,17 +88,25 @@ Eingaben werden nach 350 ms gespeichert. Schreibvorgänge laufen der Reihe nach;
 
 `zustand()` liefert eine unveränderliche Momentaufnahme mit `geladen`, `beschaeftigt`, `hatErgebnis`, `kannTeilen` und `beendet`. `istErlaubt(aktion)` prüft die aktuelle Bedienbarkeit; jede Aktionsmethode prüft erneut. Die Fähigkeiten der Plattform werden für die Lebensdauer der Instanz bereitgestellt. `beobachten(fn)` liefert den Stand sofort, danach nur Änderungen; die Rückgabe meldet diesen Beobachter ab. Fehler eines Beobachters unterbrechen keine Dateiaktion. `dispose()` meldet einmal `beendet: true` und `beschaeftigt: false`, entfernt die Beobachter und nimmt keine weiteren an. Danach bleibt `zustand()` abrufbar, verspätete Dateiergebnisse verändern die Ansicht nicht. Der Gastgeber räumt seinen Plattformadapter gesondert auf.
 
-Beim Web-Dateifeld ruft der Klickpfad den Importadapter unmittelbar vor dem ersten `await` auf. Gesperrte Klicks werden mit `preventDefault()` abgefangen. Ein direkter API-Import darf genau den ersten synchronen Dateifeld-Klick aus `waehlen()` passieren lassen, ohne erneut einen Import zu starten; die Ausnahme endet schon mit dem synchronen Adapteraufruf. Die Bedienlogik löst selbst keinen Dateifeld-Klick aus.
+Beim Web-Dateifeld ruft der Klickpfad den Importadapter unmittelbar vor dem ersten `await` auf. Gesperrte Klicks werden mit `preventDefault()` abgefangen. Ein direkter API-Import innerhalb einer Nutzergeste darf genau den ersten synchronen Dateifeld-Klick aus `waehlen()` passieren lassen, ohne erneut einen Import zu starten; die Ausnahme endet schon mit dem synchronen Adapteraufruf. Die Bedienlogik löst selbst keinen Dateifeld-Klick aus.
+
+Der Web-Adapter prüft die transiente Nutzeraktivierung über `navigator.userActivation.isActive`. Ist die Schnittstelle beim Erzeugen des Adapters vorhanden, registriert er dabei nur den Capture-Listener am eigenen Dateifeld und keine Fenster-Listener. Ohne Aktivierung liefert er `{ status: 'abgebrochen' }`, ohne einen Dateifeld-Klick auszulösen. Ein laufender vertrauenswürdiger Klick auf das Dateifeld wird auch bei bereits verbrauchter Aktivierung übernommen; der Adapter löst dabei keinen zusätzlichen Klick aus. Der Schutz bleibt über Mikrotasks zwischen Ereignisbehandlern bestehen und endet mit dem Ereignis.
+
+Fehlt `navigator.userActivation` beim Erzeugen des Adapters, registriert er zusätzlich sechs Capture-Listener am Fenster. In diesem Rückfall erkennt er nur laufende vertrauenswürdige Ereignisse, die seine Capture-Listener am Fenster oder Dateifeld bereits erfasst haben. Dazu zählen Klick, `keydown` außer Escape, `mousedown`, `pointerdown` für die Maus, `pointerup` für andere Zeiger und `touchend`. Ein API-Aufruf nach Ende des Ereignisses oder aus einem früher registrierten Fenster-Capture-Listener wird in diesem Fall als Abbruch behandelt. Gastgeber können den API-Import synchron von einer Schaltfläche oder einem nach der Adapterinitialisierung registrierten Fenster-Listener aus aufrufen. `dispose()` entfernt die Fenster-Listener nur, wenn der Adapter sie registriert hat.
+
+`UserActivation` und `isActive` sind ab Chrome 72, Firefox 120 und Safari 16.4 vorhanden; die übrigen Einträge für Edge, WebView, Chrome für Android, Safari auf iOS und Firefox für Android sind als „mirror“ geführt und folgen ihrer Basis (Quelle: MDN browser-compat-data, `api/UserActivation.json`, gelesen am 2026-10-05).
 
 ## Texte, Inhalte und Darstellung
 
 `GastgeberTexte` enthält `datenschutzTitel`, `datenschutzText`, `speicherNichtVerfuegbar`, `exportErfolg` und `importBeschriftung`. `webTexte` erhält die bisherigen Browsertexte. Optional ergänzen `ausgabeErfolg[weg][format]` und `ausgabeFehler[weg][format]` getrennte Texte für `exportieren`/`teilen` und `projekt`/`excel`/`pdf`; `erzeugungsFehler[format]` gilt vor der Übergabe an den Adapter. Beim Export bleibt `exportErfolg` der Rückfall, beim Teilen meldet die Vorgabe nur die Bereitstellung. Nur wenn `plattform.ausgabe.teilen` vorhanden ist, ergänzt die Bedienlogik drei Teilen-Aktionen. Eine App übergibt passende Texte zur Verarbeitung auf dem Gerät und darf erfolgreiches Speichern erst nach bestätigtem Schreiben und Schließen melden.
 
+`bibliothekenHinweis` ersetzt optional den Satz zu den Exportbibliotheken. Ohne diesen Schlüssel bleibt der bisherige Satz erhalten. Die Einbindung in eine Website braucht eigene Hinweise des Gastgebers.
+
 `ExportInhalt` enthält `herausgeber`, `titel`, `dateiPraefix` und optional `adresse: { text, href }`. Für `href` ist nur HTTPS zulässig. `webExportInhalt` enthält die bisherigen BAREMOS-Werte. Das Dateipräfix betrifft Excel und PDF; Projektdateien behalten ihren aus Projektname oder Vergabenummer abgeleiteten Namen. Regelversion, Rechtsstand und der Hinweis auf die unverbindliche Rechenhilfe sind keine austauschbaren Gastgebertexte.
 
 Der optionale Slot `herausgeber` steht in der Fußzeile für ein vom Gastgeber bereitgestelltes Logo oder andere Herausgeberinhalte. `nach-hinweis` folgt auf den fachlichen Hinweis und kann Kontaktinhalte aufnehmen. Das Paket liefert kein Logo und keine festen Kontaktlinks. Die sichtbare Fußzeile nennt den Herausgeber und, sofern vorhanden, den Hostnamen der Exportadresse.
 
-Die Rechnerstile sind auf `.fristenrechner` begrenzt. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
+Die Rechnerstile sind auf `.fristenrechner` begrenzt. Die Komponente legt `box-sizing: border-box` für ihre Elemente selbst fest. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
 
 | CSS-Variable | Vorgabe |
 |---|---|
@@ -102,24 +116,11 @@ Die Rechnerstile sind auf `.fristenrechner` begrenzt. Das aktivierte Menü verwe
 | `--color-text` | `#343438` |
 | `--field-label-height` | `1.6rem`; das Bindefrist-Raster verwendet `2.9rem` |
 
-Das Paket lädt keine Schriftdatei. Seine Druckregeln gelten nur für die Komponente. Seitenränder mit `@page` sowie Regeln für Website-Kopf, Website-Fuß, Breadcrumbs und äußere Layoutflächen gehören zum Gastgeber. Der [Prüfplan zur Barrierefreiheit](../../docs/testmatrix.md) trennt automatische Prüfungen von ausstehenden Sicht- und Bedienprüfungen.
+Das Paket lädt keine Schriftdatei. Seine Druckregeln gelten nur für die Komponente. Seitenränder mit `@page` sowie Regeln für Website-Kopf, Website-Fuß, Breadcrumbs und äußere Layoutflächen gehören zum Gastgeber. Der Prüfplan zur Barrierefreiheit im Repository trennt automatische Prüfungen von ausstehenden Sicht- und Bedienprüfungen.
 
 ## Prüfungen
 
-Aus der Repository-Wurzel mit den bereits installierten Werkzeugen:
-
-```powershell
-node node_modules/vitest/vitest.mjs run --root packages/oberflaeche
-node scripts/astro.mjs check --root packages/oberflaeche
-```
-
-Die Typprüfung umfasst Astro, TypeScript und TypeScript-Tests. Der JavaScript-Testhelfer `test/struktur.mjs` verwendet Node-Bordmittel zum Prüfen der XLSX-Ausgabe; er wird nicht ausgeliefert. Es ist kein allgemeiner XML-Leser. Die Warnung über ein fehlendes `src/pages` ist bei diesem Komponentenpaket erwartbar; die Probeseite des Gastgebers prüft den Seiten-Build.
-
-Die Referenz unter `test/referenz` enthält SHA-256, die Liste der Teile und alle XML-Teile einer festen Beispieltabelle. Die Daten in `test/beispiel.ts` sind erfunden. Eine fehlende Referenz lässt den normalen Test scheitern. Nur nach bewusster Prüfung einer Änderung erneuern:
-
-```powershell
-node node_modules/vitest/vitest.mjs run --root packages/oberflaeche test/export-excel.test.ts --update
-```
+Tests, Referenzdaten und Prüfbefehle gehören zum Repository und sind nicht Teil dieses Pakets; siehe die Beitragsregeln im Repository.
 
 ## Exporte
 
@@ -135,4 +136,20 @@ Die drei Dateifunktionen liefern `{ name, mime, bytes }` ohne Download und ohne 
 
 Regelversion, Rechtsstand und Rechtsstanddatum kommen aus dem Kern-Ergebnis. Projektdateien erzeugt und liest der Kern. Die früheren Downloadfunktionen `exportScheduleExcel` und `exportSchedulePdf` entfallen; der Gastgeber übergibt die erzeugten Bytes an `plattform.ausgabe.exportieren`.
 
+PDF und Excel enthalten den festen Pakethinweis „Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.“ Er ist kein Gastgebertext und kann vom Gastgeber weder ersetzt noch weggelassen werden.
+
 Die Lizenzangaben der direkten Exportbibliotheken ersetzen keine Hinweise zu ihren mitgelieferten Abhängigkeiten. Ein Gastgeber muss die tatsächlich gebündelten Bibliotheken einschließlich optionaler Teile in seine Hinweise Dritter aufnehmen.
+
+jsPDF lädt `html2canvas`, `dompurify` und `canvg` nur für `html()` und `addSvgAsImage()`. Die Exporte dieses Pakets verwenden diese Funktionen nicht. Ein Gastgeber kann die drei Module beim Bündeln durch ein leeres Modul ersetzen.
+
+## English
+
+Astro component, user interface logic and file exports of Fristenrechner Vergabe. Calculations are provided by `@baremos/fristenrechner-kern`. The user interface logic receives storage, import, file output, time and confirmation through a `Plattform`. The included web adapter uses the browser; native adapters belong to the host.
+
+> Fristenrechner is a non-binding calculation aid. It does not replace legal advice. All information is provided without guarantee.
+
+The package contains Astro and TypeScript sources and is distributed without its own build step. The host bundles them with Astro and its Vite; relative imports without file extensions and a CSS import with `?inline` require this. If the host checks types, TypeScript checks the included sources using the host's settings. `webTexte` and `webExportInhalt` contain the texts and export details of the BAREMOS IT GmbH website, including its privacy notice, publisher, address and file prefix. Other hosts supply their own values.
+
+Use one component per page, pass `texte` and `exportInhalt` to it and explicitly initialize it with `initFristenrechner(root, optionen)` using the same values and a platform adapter. When removing the component, call the calculator's `dispose()` before the adapter's separate `dispose()`. The detailed interface documentation is in the German section.
+
+Texts and results are in German.

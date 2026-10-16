@@ -175,7 +175,7 @@ export async function menue(original) {
       await fall('M-1','schrift-' + font,async () => {
         await vorbereiten(font);
         const oben = await messen(key + '-oben',false,'menue-schrift-' + font + '-oben.png');
-        await s.c.evaluate('Array.from(document.querySelectorAll("details.app-abschnitt")).forEach(function(d){d.open=true});window.scrollTo(0,document.documentElement.scrollHeight);true');
+        await s.c.evaluate('Array.from(document.querySelectorAll("details.app-abschnitt")).forEach(function(d){d.open=true});if(!document.querySelector("#app-hinweise-dritter[open] pre"))throw Error("Hinweise Dritter nicht geöffnet.");window.scrollTo(0,document.documentElement.scrollHeight);true');
         const ende = await messen(key + '-ende',false,'menue-schrift-' + font + '-ende.png');
         await tipp('knopf');
         const offen = await messen(key + '-offen',false,'menue-schrift-' + font + '-offen.png');

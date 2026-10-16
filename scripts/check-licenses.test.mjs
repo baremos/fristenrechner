@@ -10,10 +10,11 @@ import { syncBuiltinESMExports } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { erzeugeHinweise } from './hinweise-dritter.mjs';
 import { menschenlesbar, pruefeAusdruck, pruefePackliste, pruefeProjekt as pruefeProjektMitVorgaben, vorgabe } from './check-licenses.mjs';
 
 const hier = dirname(fileURLToPath(import.meta.url));
-const scratchpad = resolve(hier, '../scratchpad');
+const scratchpad = resolve(hier, '../scratchpad/test-check-licenses');
 mkdirSync(scratchpad, { recursive: true });
 const arbeit = mkdtempSync(join(scratchpad, 'lizenzen-test-'));
 test.after(() => rmSync(arbeit, { recursive: true, force: true }));
@@ -21,7 +22,12 @@ test.after(() => rmSync(arbeit, { recursive: true, force: true }));
 // Synthetische Bäume haben eigene Ausnahmen. Die echte Projektfreigabe wird
 // getrennt am unveränderten Baum geprüft, auch mit festem Ablaufdatum.
 function pruefeProjekt(wurzel, optionen = {}) {
-  return pruefeProjektMitVorgaben(wurzel, { ausnahmen: [], ...optionen });
+  return pruefeProjektMitVorgaben(wurzel, {
+    ausnahmen: [],
+    // Diese Fälle prüfen den npm-Graph; der Inventarweg hat eigene Gegenproben.
+    inventarPruefung: () => ({ fehler: [], platzhalter: 0 }),
+    ...optionen,
+  });
 }
 
 function schreiben(datei, inhalt) {
@@ -86,6 +92,7 @@ const ausdruckFaelle = [
   ['MPL-2.0', 'bereitgestellt', true, ['MPL-2.0']],
   ['(MIT OR GPL-3.0-or-later)', 'ausgeliefert', true, ['MIT']],
   ['(MIT AND Zlib)', 'ausgeliefert', true, ['MIT', 'Zlib']],
+  ['(Apache-2.0 AND BSL-1.0)', 'ausgeliefert', true, ['Apache-2.0', 'BSL-1.0']],
   ['MPL-2.0', 'ausgeliefert', false, []],
   ['MPL-2.0 OR MIT', 'ausgeliefert', true, ['MIT']],
   ['MIT AND MPL-2.0', 'ausgeliefert', false, []],
@@ -111,6 +118,31 @@ for (const ausdruck of [undefined, null, '', ' ', { type: 'MIT' }, ['MIT'], 'UNL
   });
 }
 
+test('Lizenzwahl: verschachtelte Ausdrücke werden entdoppelt aufgezählt und bleiben schnell', () => {
+  assert.equal(pruefeAusdruck('(MIT OR Apache-2.0) AND (MIT OR ISC)', 'ausgeliefert', 'MIT AND ISC').zulaessig, true);
+  assert.equal(pruefeAusdruck('(MIT OR Apache-2.0) AND (MIT OR ISC)', 'ausgeliefert', 'ISC').zulaessig, false);
+  const paar = '(MIT OR ISC)';
+  const zwoelf = Array.from({ length: 6 }, () => paar).join(' AND ');
+  const beginn = Date.now();
+  assert.equal(pruefeAusdruck(zwoelf, 'ausgeliefert', 'MIT AND ISC').zulaessig, true);
+  assert.equal(pruefeAusdruck(zwoelf, 'ausgeliefert', 'MIT').zulaessig, true);
+  assert.ok(Date.now() - beginn < 2000, 'Aufzählung mit zwölf Kennungen dauert zu lange');
+});
+
+test('Lizenzwahl: mehr als zwölf Kennungen werden ohne Aufzählung zurückgewiesen', () => {
+  const genauZwoelf = Array.from({ length: 12 }, () => 'MIT').join(' AND ');
+  const genauDreizehn = Array.from({ length: 13 }, () => 'MIT').join(' AND ');
+  const neunzehn = Array.from({ length: 13 }, (_, i) => (i % 2 ? '(MIT OR ISC)' : 'MIT')).join(' AND ');
+  assert.equal(pruefeAusdruck(genauZwoelf, 'ausgeliefert', 'MIT').zulaessig, true);
+  const beginn = Date.now();
+  assert.throws(() => pruefeAusdruck(genauDreizehn, 'ausgeliefert', 'MIT'), /höchstens 12/);
+  assert.throws(() => pruefeAusdruck(neunzehn, 'ausgeliefert', 'MIT'), /höchstens 12/);
+  assert.ok(Date.now() - beginn < 2000);
+  // Ohne Lizenzwahl bleiben dieselben Ausdrücke auswertbar.
+  assert.equal(pruefeAusdruck(genauDreizehn, 'ausgeliefert').zulaessig, true);
+  assert.equal(pruefeAusdruck(neunzehn, 'ausgeliefert').zulaessig, true);
+});
+
 test('Umordnung und gleichartige Klammern ergeben dieselbe Lizenzangabe', () => {
   const a = pruefeAusdruck('MIT OR (Apache-2.0 OR ISC)', 'entwicklung');
   const b = pruefeAusdruck('(ISC OR MIT) OR Apache-2.0', 'entwicklung');
@@ -120,7 +152,7 @@ test('Umordnung und gleichartige Klammern ergeben dieselbe Lizenzangabe', () => 
 
 test('Alle Regeln sind zentral erfasst; Auslieferung ist eine echte Teilmenge', () => {
   assert.deepEqual(Object.entries(vorgabe.lizenzen).filter(([, b]) => b.includes('ausgeliefert')).map(([id]) => id).sort(),
-    ['0BSD', 'Apache-2.0', 'BSD-3-Clause', 'ISC', 'MIT', 'Zlib']);
+    ['0BSD', 'Apache-2.0', 'BSD-3-Clause', 'BSL-1.0', 'ISC', 'MIT', 'Zlib']);
   for (const b of Object.values(vorgabe.lizenzen)) assert.equal(b.includes('entwicklung'), b.includes('bereitgestellt'));
   assert.equal(vorgabe.einzelausnahmen.length, 1);
   assert.equal(vorgabe.einzelausnahmen[0].paket, 'rgbcolor');
@@ -184,6 +216,10 @@ test('Echte Ausnahme: Ablaufdatum ist eingeschlossen, der Folgetag scheitert', a
 });
 
 for (const bereich of ['ausgeliefert', 'bereitgestellt', 'entwicklung']) {
+  test(`BSL-1.0 ist in jedem Bereich zugelassen: ${bereich}`, () => {
+    assert.equal(pruefeAusdruck('BSL-1.0', bereich).zulaessig, true);
+    assert.deepEqual(pruefeAusdruck('bsl-1.0', bereich).auswahl, ['BSL-1.0']);
+  });
   test(`GPL bleibt auch mit bekannter Kennung unzulässig: ${bereich}`, () => {
     assert.equal(pruefeAusdruck('GPL-3.0-or-later', bereich).zulaessig, false);
     assert.deepEqual(pruefeAusdruck('GPL-3.0-or-later OR MIT', bereich).auswahl, ['MIT']);
@@ -806,9 +842,15 @@ function cli(f, args) {
   // Derselbe Skriptinhalt mit eigenen Prüfdaten für den synthetischen Baum.
   const skript = join(f.wurzel, 'scripts/check-licenses.mjs');
   schreiben(skript, readFileSync(join(hier, 'check-licenses.mjs'), 'utf8'));
+  schreiben(join(f.wurzel, 'scripts/hinweise-pruefung.mjs'),
+    `export { pruefeInventar } from '${new URL('hinweise-pruefung.mjs', import.meta.url).href}';\n`);
+  const i = { formatVersion: 2, apache: { datei: 'LICENSE', sha256: createHash('sha256').update(readFileSync(join(f.wurzel, 'LICENSE'))).digest('hex') },
+    npm: [], eingebettet: [], buildHilfscode: [], android: { projektmodule: [], maven: [] }, ausnahmen: [] };
+  schreiben(join(f.wurzel, 'scripts/hinweise-dritter.json'), i);
+  schreiben(join(f.wurzel, 'app/src/hinweise-dritter.txt'), erzeugeHinweise(f.wurzel, i).toString('utf8'));
   schreiben(join(f.wurzel, 'scripts/check-licenses.json'), { ...vorgabe, einzelausnahmen: [] });
   return spawnSync(process.execPath, [skript, '--wurzel', f.wurzel, ...args], {
-    encoding: 'utf8', cwd: arbeit, env: { ...process.env, TEMP: arbeit, TMP: arbeit },
+    encoding: 'utf8', cwd: arbeit, env: process.env,
   });
 }
 
@@ -901,9 +943,11 @@ for (const inhalt of [null, '{']) {
     const f = probe();
     const skript = join(f.wurzel, 'scripts/check-licenses.mjs');
     schreiben(skript, readFileSync(join(hier, 'check-licenses.mjs'), 'utf8'));
+    schreiben(join(f.wurzel, 'scripts/hinweise-pruefung.mjs'),
+      `export { pruefeInventar } from '${new URL('hinweise-pruefung.mjs', import.meta.url).href}';\n`);
     if (inhalt !== null) schreiben(join(f.wurzel, 'scripts/check-licenses.json'), inhalt);
     const lauf = spawnSync(process.execPath, [skript, '--json', '--wurzel', f.wurzel], {
-      encoding: 'utf8', cwd: arbeit, env: { ...process.env, TEMP: arbeit, TMP: arbeit },
+      encoding: 'utf8', cwd: arbeit, env: process.env,
     });
     assert.equal(lauf.status, 1);
     assert.equal(lauf.stderr, '');
@@ -923,7 +967,7 @@ test('Ungültiger absoluter CLI-Parameter wird nicht in der Meldung wiederholt',
   ohneAbsolutenPfad(b, f.wurzel);
 });
 
-test('CLI liefert sauberes JSON sowie deutsche Ausgabe und passende Exit-Codes', () => {
+test('CLI liefert sauberes JSON, stummen Erfolg und passende Exit-Codes', () => {
   const f = probe();
   const json = cli(f, ['--json']);
   assert.equal(json.status, 0, json.stderr);
@@ -931,8 +975,8 @@ test('CLI liefert sauberes JSON sowie deutsche Ausgabe und passende Exit-Codes',
   assert.equal(json.stderr, '');
   const text = cli(f, []);
   assert.equal(text.status, 0);
-  assert.match(text.stdout, /Lizenzprüfung: 1 Fremdpakete/);
-  assert.match(text.stdout, /ERGEBNIS: bestanden/);
+  assert.equal(text.stdout, '');
+  assert.equal(text.stderr, '');
   f.lock.packages['node_modules/werkzeug'].license = 'UNLICENSED';
   schreiben(join(f.wurzel, 'package-lock.json'), f.lock);
   const nein = cli(f, ['--json']);

@@ -47,6 +47,12 @@ const phaseColors: Record<Meilenstein['phase'], string> = {
   zuschlag: '#4d6b3c',
 };
 
+// Nur die kleine Phasenbeschriftung; Zeitschiene und Exportfarben bleiben gleich.
+const phaseOrderColors: Record<Meilenstein['phase'], string> = {
+  ...phaseColors,
+  teststellung: '#9a5f1f',
+};
+
 const typeLabels: Record<Meilenstein['fristTyp'], string> = {
   gesetzlich: 'Gesetzliche Frist',
   praxis: 'Praxiswert',
@@ -502,7 +508,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
     field<HTMLInputElement>(form, 'wartefristKT').disabled = !voProfil.wartepflicht;
 
     // Verhandlungsrunden gibt es nur im Verhandlungsverfahren — im offenen
-    // und nicht offenen Verfahren wird nicht verhandelt . Die Sperre steht VOR den Panel-Updates, damit ein beim
+    // und nicht offenen Verfahren wird nicht verhandelt. Die Sperre steht VOR den Panel-Updates, damit ein beim
     // Verfahrenswechsel entfernter Haken im selben Lauf auch Panels und
     // Zwischenbewertung nachzieht.
     const runde1Checkbox = field<HTMLInputElement>(form, 'verhandlungRunde1Aktiv');
@@ -601,7 +607,7 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
     // undefined ⇒ keine Wartepflicht (Unterschwelle) — Feld ist ausgeblendet
     field<HTMLInputElement>(form, 'wartefristKT').value = defaults.wartefristKT?.toString() ?? '';
     // Standard 10 KT für optimierte/finale Angebotsrunde im
-    // Verhandlungsverfahren ; außerhalb bleibt
+    // Verhandlungsverfahren; außerhalb bleibt
     // das Feld leer und ausgeblendet
     const negotiated = input.verfahrensart === 'verhandlung_ohne_tnw' || input.verfahrensart === 'verhandlung_mit_tnw';
     field<HTMLInputElement>(form, 'optimiertesAngebotKT').value = defaults.optimiertesAngebotKT?.toString() ?? (negotiated ? '10' : '');
@@ -633,9 +639,11 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
       item.className = 'timeline-phase';
       item.style.setProperty('--phase-color', phaseColors[phase.id]);
 
+      const order = makeTextElement('span', `Phase ${index + 1}`, 'timeline-phase-order');
+      order.style.color = phaseOrderColors[phase.id];
       const header = document.createElement('header');
       header.append(
-        makeTextElement('span', `Phase ${index + 1}`, 'timeline-phase-order'),
+        order,
         makeTextElement('strong', phase.label),
       );
       const range = document.createElement('span');

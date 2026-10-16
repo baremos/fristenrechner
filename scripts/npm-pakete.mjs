@@ -13,8 +13,8 @@ import ts from 'typescript';
 import { parse as parseAstro } from '@astrojs/compiler-rs';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-// Aktivieren, sobald der Kern eine README erhält, spätestens vor Veröffentlichung.
-export const KERN_README_PFLICHT = false;
+// Die README des Kerns ist in der Packliste erforderlich.
+export const KERN_README_PFLICHT = true;
 export const PACK_ARGUMENTE = ['pack', '--dry-run', '--json', '--offline', '--ignore-scripts',
   '--workspace', 'packages/kern', '--workspace', 'packages/oberflaeche'];
 const PAKETE = [

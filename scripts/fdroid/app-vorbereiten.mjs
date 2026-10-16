@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { androidQuellen } from '../app-bauen.mjs';
+import { androidQuellen, pruefeBuildHinweise } from '../app-bauen.mjs';
 import * as appPruefungen from '../app-pruefungen.mjs';
 
 const wurzelVorgabe = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -32,7 +32,7 @@ export function dateiManifest(ordner) {
 
 export function vorbereiten(argv, {
   wurzel = wurzelVorgabe, umgebung = process.env, spawn = spawnSync,
-  pruefungen = appPruefungen, quellen = androidQuellen, manifest = dateiManifest,
+  pruefungen = appPruefungen, hinweisePruefung = pruefeBuildHinweise, quellen = androidQuellen, manifest = dateiManifest,
   schreiben = writeFileSync, ausgabe = console.log, fehlerausgabe = console.error,
 } = {}) {
   try {
@@ -59,6 +59,7 @@ export function vorbereiten(argv, {
     aufruf([join(wurzel, 'node_modules/@capacitor/cli/bin/capacitor'), 'sync', 'android'], join(wurzel, 'app'));
     for (const [name, pruefen] of [
       ['K3 Sync', () => pruefungen.pruefeSync({ wurzel, vorher, umgebung: env })],
+      ['Hinweise Dritter', () => hinweisePruefung(wurzel, { nachAndroidSync: true })],
       ['K4 Gradle', () => pruefungen.pruefeGradle({ wurzel, umgebung: env })],
     ]) {
       const fehler = pruefen();

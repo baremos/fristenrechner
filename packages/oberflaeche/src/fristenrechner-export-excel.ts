@@ -2,6 +2,7 @@ import type { ScheduleInput, ScheduleResult } from '@baremos/fristenrechner-kern
 import type { AusgabeDatei, ExportInhalt, ExportZeit } from './plattform';
 import {
   exportFileSuffix,
+  exportHaftungshinweis,
   exportHinweis,
   formatExportDate,
   phaseLabels,
@@ -12,7 +13,7 @@ import {
   typeLabels,
   uniqueWarnings,
 } from './fristenrechner-export-data';
-import { adresse, FUSS, fussText, schreibeXlsx, type XlsxMappe, type XlsxWert, type XlsxStil, type XlsxZeile } from './xlsx-schreiber';
+import { adresse, FUSS, fussText, MAX_FUSSZEILE, schreibeXlsx, type XlsxMappe, type XlsxWert, type XlsxStil, type XlsxZeile } from './xlsx-schreiber';
 
 const AKZENT = 'FFA7303C';
 const AKZENT_HELL = 'FFF7EAEC';
@@ -133,6 +134,12 @@ export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, er
   verbinde(hinweiszeile, 1, SPALTEN, exportHinweis(inhalt), STIL.hinweis);
   if (inhalt.adresse) hyperlinks.push({ zelle: adresse(hinweiszeile, 1), ziel: inhalt.adresse.href });
 
+  const fussMitte = [inhalt.adresse?.text ?? '', exportHaftungshinweis].filter(Boolean).map(fussText).join('\n');
+  const fusszeile = `${FUSS.LINKS}${fussText(inhalt.herausgeber)}${FUSS.MITTE}${fussMitte}${FUSS.RECHTS}Seite ${FUSS.SEITE} von ${FUSS.SEITEN}`;
+  // Einschließlich Steuerzeichen und verdoppelter &; der feste Hinweis bleibt vollständig.
+  // Die rohe Länge einschließlich Steuerzeichen bleibt bewusst unter der Grenze des Schreibers.
+  if (fusszeile.length >= MAX_FUSSZEILE) throw new Error(`Die Excel-Fußzeile muss unter ${MAX_FUSSZEILE} Zeichen bleiben.`);
+
   return {
     eigenschaften: {
       ersteller: inhalt.herausgeber,
@@ -155,7 +162,7 @@ export function beschreibeMappe(input: ScheduleInput, result: ScheduleResult, er
         einpassen: { breite: 1, hoehe: 0 },
         raender: { links: 0.4, rechts: 0.4, oben: 0.55, unten: 0.55, kopf: 0.2, fuss: 0.2 },
       },
-      fusszeile: `${FUSS.LINKS}${fussText(inhalt.herausgeber)}${FUSS.MITTE}${fussText(inhalt.adresse?.text ?? '')}${FUSS.RECHTS}Seite ${FUSS.SEITE} von ${FUSS.SEITEN}`,
+      fusszeile,
     },
   };
 }

@@ -1,0 +1,1820 @@
+{
+  "formatVersion": 2,
+  "beschreibung": "Geprüfte Komponenten des Web-Bündels und des Android-Release-Modells vom 2026-10-05. Wortlaute aus gehashten Originalquellen; entschiedene Einschränkungen sind im Prüfcode geschlossen geführt.",
+  "apache": {
+    "datei": "LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "npm": [
+    {
+      "paket": "@babel/runtime",
+      "version": "7.29.7",
+      "lizenz": "MIT",
+      "ort": "node_modules/@babel/runtime",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+      },
+      "status": "vollstaendig"
+    },
+    {
+      "paket": "@capacitor/core",
+      "version": "8.5.2",
+      "lizenz": "MIT",
+      "ort": "node_modules/@capacitor/core",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd"
+      },
+      "status": "vollstaendig"
+    },
+    {
+      "paket": "fast-png",
+      "version": "6.4.0",
+      "lizenz": "MIT",
+      "ort": "node_modules/fast-png",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "47ec9747cf2c470a505fcb20f3ec2ff2e60ea4febaf2e1e7041a24fc369fac3c"
+      },
+      "status": "vollstaendig"
+    },
+    {
+      "paket": "fflate",
+      "version": "0.8.3",
+      "lizenz": "MIT",
+      "ort": "node_modules/fflate",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551"
+      },
+      "status": "vollstaendig",
+      "originale": [
+        {
+          "datei": "node_modules/fflate/esm/browser.js",
+          "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
+          "von": 277,
+          "bis": 497,
+          "auszugSha256": "2890cfc7c334b4e6c377bd1355efbfb504752fe350c1ba3d1e70e7f1a439de31"
+        }
+      ],
+      "wortlaut": "// Some of the following code is similar to that of UZIP.js:\n// https://github.com/photopea/UZIP.js\n// However, the vast majority of the codebase has diverged from UZIP.js to increase performance and reduce bundle size.\n",
+      "zusatzhinweise": [
+        {
+          "wortlaut": "// efficient algorithm from UZIP.js",
+          "originale": [
+            {
+              "datei": "node_modules/fflate/esm/browser.js",
+              "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
+              "von": 14893,
+              "bis": 14928,
+              "auszugSha256": "2fa7d6b89ecb498db88b5a62f53c1aff8c05b0fa188dfb5ac45f007f4e169c1d"
+            }
+          ]
+        },
+        {
+          "wortlaut": "// more algorithms from UZIP.js",
+          "originale": [
+            {
+              "datei": "node_modules/fflate/esm/browser.js",
+              "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
+              "von": 15660,
+              "bis": 15691,
+              "auszugSha256": "2e4e1412951fcb78adecae8ca73812ced30677550cc5cc4d2537dc956c1845da"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "paket": "iobuffer",
+      "version": "5.4.0",
+      "lizenz": "MIT",
+      "ort": "node_modules/iobuffer",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "1c22118fd112e8c394a5ec0598d2e2dfcdc19b3e1055ac3eaccdb2522b777335"
+      },
+      "status": "vollstaendig"
+    },
+    {
+      "paket": "jspdf",
+      "version": "4.2.1",
+      "lizenz": "MIT",
+      "ort": "node_modules/jspdf",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "dc388ec35ff463288cdde3588a36fd4ed12a45deff053243b37309acc9ef583b"
+      },
+      "status": "vollstaendig",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83",
+          "von": 0,
+          "bis": 2700,
+          "auszugSha256": "279d33644e3a566fc3701ee14de9f6073f5c0f558a93818c6add9d17958a81d6"
+        }
+      ],
+      "wortlaut": "/** @license\n *\n * jsPDF - PDF Document creation from JavaScript\n * Version 4.2.1 Built on 2026-03-17T11:11:27.057Z\n *                      CommitID 00000000\n *\n * Copyright (c) 2010-2025 James Hall <james@parall.ax>, https://github.com/MrRio/jsPDF\n *               2015-2025 yWorks GmbH, http://www.yworks.com\n *               2015-2025 Lukas Holländer <lukas.hollaender@yworks.com>, https://github.com/HackbrettXXX\n *               2016-2018 Aras Abbasi <aras.abbasi@gmail.com>\n *               2010 Aaron Spike, https://github.com/acspike\n *               2012 Willow Systems Corporation, https://github.com/willowsystems\n *               2012 Pablo Hess, https://github.com/pablohess\n *               2012 Florian Jenett, https://github.com/fjenett\n *               2013 Warren Weckesser, https://github.com/warrenweckesser\n *               2013 Youssef Beddad, https://github.com/lifof\n *               2013 Lee Driscoll, https://github.com/lsdriscoll\n *               2013 Stefan Slonevskiy, https://github.com/stefslon\n *               2013 Jeremy Morel, https://github.com/jmorel\n *               2013 Christoph Hartmann, https://github.com/chris-rock\n *               2014 Juan Pablo Gaviria, https://github.com/juanpgaviria\n *               2014 James Makes, https://github.com/dollaruw\n *               2014 Diego Casorran, https://github.com/diegocr\n *               2014 Steven Spungin, https://github.com/Flamenco\n *               2014 Kenneth Glassey, https://github.com/Gavvers\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n *\n * Contributor(s):\n *    siefkenj, ahwolf, rickygu, Midnith, saintclair, eaparango,\n *    kim3er, mfo, alnorth, Flamenco\n */"
+    },
+    {
+      "paket": "jspdf-autotable",
+      "version": "5.0.8",
+      "lizenz": "MIT",
+      "ort": "node_modules/jspdf-autotable",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE.txt",
+        "sha256": "99a374e0385cf714d2faae5f6e02ec79217c6bcecec39bdb9e102091471b960a"
+      },
+      "status": "vollstaendig",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs",
+          "sha256": "e75527c67984e642201d41fa2b11aa64e502cd3a38b5dc17461f4c204fabf144",
+          "von": 0,
+          "bis": 176,
+          "auszugSha256": "5d2a456354f6e12b3a9d1af23c056deac0818ac68106d769d6f869d1b8e9d7d9"
+        }
+      ],
+      "wortlaut": "/**\n * Improved text function with halign and valign support\n * Inspiration from: http://stackoverflow.com/questions/28327510/align-text-right-using-jspdf/28433113#28433113\n */"
+    },
+    {
+      "paket": "pako",
+      "version": "2.2.0",
+      "lizenz": "MIT AND Zlib",
+      "ort": "node_modules/pako",
+      "imBuendel": true,
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539"
+      },
+      "status": "vollstaendig"
+    }
+  ],
+  "eingebettet": [
+    {
+      "name": "src/libs/FileSaver.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/FileSaver.js",
+      "lizenz": "MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * @license\n * FileSaver.js\n * A saveAs() FileSaver implementation.\n *\n * By Eli Grey, http://eligrey.com\n *\n * License : https://github.com/eligrey/FileSaver.js/blob/master/LICENSE.md (MIT)\n * source  : http://purl.eligrey.com/github/FileSaver.js\n */\n\nThe MIT License\n\nCopyright © 2016 [Eli Grey][1].\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n  [1]: http://eligrey.com\n",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/FileSaver.js",
+          "von": 0,
+          "bis": 255,
+          "auszugSha256": "d00df80c2a3079a9f93356084c1b54a563826765ad750fc90753421de2d704ce"
+        },
+        {
+          "datei": "scripts/hinweistexte/filesaver-LICENSE.md",
+          "sha256": "2d1d7a93b46e4274355ac2904428707c4ee47ee8c6029fa394ebf405648d3f63",
+          "auszugSha256": "2d1d7a93b46e4274355ac2904428707c4ee47ee8c6029fa394ebf405648d3f63"
+        }
+      ]
+    },
+    {
+      "name": "src/libs/rgbcolor.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/rgbcolor.js",
+      "lizenz": "@license Use it if you like it",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * A class to parse color values\n * @author Stoyan Stefanov <sstoo@gmail.com>\n * {@link   http://www.phpied.com/rgb-color-parser-in-javascript/}\n * @license Use it if you like it\n */",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "entschiedeneAusnahme": {
+        "angabe": "@license Use it if you like it",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        },
+        "datum": "2026-10-04",
+        "entscheidung": "In jsPDF eingebettete Anteile ohne Lizenzangabe (md5 von Joseph Myers, BMPDecoder, ttffont) und mit Sonderwortlauten (RGBColor „Use it if you like it“, RC4 aus FPDF, Adobe-AFM-Bedingungen, WebM mit Patentzusage): Originalwortlaut wiedergeben und in docs/lizenzen.md als bekannte Einschränkung führen. Die Maintainer nehmen dazu keine eigene Einordnung vor. Keine Anfrage bei Dritten, kein Ersatz von jsPDF."
+      },
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/rgbcolor.js",
+          "von": 0,
+          "bis": 186,
+          "auszugSha256": "324183f1c9eb8c1f4fcf9e1c52ada76491c5e015b5457cfc09d314a04e103384"
+        }
+      ]
+    },
+    {
+      "name": "src/libs/md5.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/md5.js",
+      "lizenz": "Joseph Myers does not specify a particular license for his work.",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * @license\n * Joseph Myers does not specify a particular license for his work.\n *\n * Author: Joseph Myers\n * Accessed from: http://www.myersdaily.org/joseph/javascript/md5.js\n *\n * Modified by: Owen Leong\n */",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "ohneLizenzangabe": true,
+      "entschiedeneAusnahme": {
+        "angabe": "Joseph Myers does not specify a particular license for his work.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        },
+        "datum": "2026-10-04",
+        "entscheidung": "In jsPDF eingebettete Anteile ohne Lizenzangabe (md5 von Joseph Myers, BMPDecoder, ttffont) und mit Sonderwortlauten (RGBColor „Use it if you like it“, RC4 aus FPDF, Adobe-AFM-Bedingungen, WebM mit Patentzusage): Originalwortlaut wiedergeben und in docs/lizenzen.md als bekannte Einschränkung führen. Die Maintainer nehmen dazu keine eigene Einordnung vor. Keine Anfrage bei Dritten, kein Ersatz von jsPDF."
+      },
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/md5.js",
+          "von": 0,
+          "bis": 213,
+          "auszugSha256": "e2d41bceef00f4f9d91d4e8511ff763e58ce38cfe068a62b6997dd9712970395"
+        }
+      ]
+    },
+    {
+      "name": "src/libs/rc4.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/rc4.js",
+      "lizenz": "FPDF is released under a permissive license: there is no usage restriction.",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * @license\n * FPDF is released under a permissive license: there is no usage restriction.\n * You may embed it freely in your application (commercial or not), with or\n * without modifications.\n *\n * Reference: http://www.fpdf.org/en/script/script37.php\n */",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "entschiedeneAusnahme": {
+        "angabe": "FPDF is released under a permissive license: there is no usage restriction.",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        },
+        "datum": "2026-10-04",
+        "entscheidung": "In jsPDF eingebettete Anteile ohne Lizenzangabe (md5 von Joseph Myers, BMPDecoder, ttffont) und mit Sonderwortlauten (RGBColor „Use it if you like it“, RC4 aus FPDF, Adobe-AFM-Bedingungen, WebM mit Patentzusage): Originalwortlaut wiedergeben und in docs/lizenzen.md als bekannte Einschränkung führen. Die Maintainer nehmen dazu keine eigene Einordnung vor. Keine Anfrage bei Dritten, kein Ersatz von jsPDF."
+      },
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/rc4.js",
+          "von": 0,
+          "bis": 267,
+          "auszugSha256": "6067db68ebd7d39317a56b7245789c256347179cc414cc758e15a020e419470b"
+        }
+      ]
+    },
+    {
+      "name": "src/libs/pdfsecurity.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/pdfsecurity.js",
+      "lizenz": "MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * @license\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n * Author: Owen Leong (@owenl131)\n * Date: 15 Oct 2020\n * References:\n * https://www.cs.cmu.edu/~dst/Adobe/Gallery/anon21jul01-pdf-encryption.txt\n * https://github.com/foliojs/pdfkit/blob/master/lib/security.js\n * http://www.fpdf.org/en/script/script37.php\n */",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/pdfsecurity.js",
+          "von": 0,
+          "bis": 367,
+          "auszugSha256": "ea4aae0699b997330c4e863a266c70b60714f8d7c4b6ab6dd3eab845cde30ae1"
+        }
+      ]
+    },
+    {
+      "name": "src/libs/omggif.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/omggif.js",
+      "lizenz": "MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * @license\n * (c) Dean McNamee <dean@gmail.com>, 2013.\n *\n * https://github.com/deanm/omggif\n *\n * Permission is hereby granted, free of charge, to any person obtaining a copy\n * of this software and associated documentation files (the \"Software\"), to\n * deal in the Software without restriction, including without limitation the\n * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or\n * sell copies of the Software, and to permit persons to whom the Software is\n * furnished to do so, subject to the following conditions:\n *\n * The above copyright notice and this permission notice shall be included in\n * all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\n * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS\n * IN THE SOFTWARE.\n *\n * omggif is a JavaScript implementation of a GIF 89a encoder and decoder,\n * including animation and compression.  It does not rely on any specific\n * underlying system, so should run in the browser, Node, or Plask.\n */",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/omggif.js",
+          "von": 0,
+          "bis": 1396,
+          "auszugSha256": "5c6a1be203beaae375967de15cf1d9c357a6a39ef3df8b3172dfbce480c34b40"
+        }
+      ]
+    },
+    {
+      "name": "src/libs/JPEGEncoder.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/JPEGEncoder.js",
+      "lizenz": "BSD-3-Clause",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * @license\n  Copyright (c) 2008, Adobe Systems Incorporated\n  All rights reserved.\n\n  Redistribution and use in source and binary forms, with or without \n  modification, are permitted provided that the following conditions are\n  met:\n\n  * Redistributions of source code must retain the above copyright notice, \n    this list of conditions and the following disclaimer.\n  \n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the \n    documentation and/or other materials provided with the distribution.\n  \n  * Neither the name of Adobe Systems Incorporated nor the names of its \n    contributors may be used to endorse or promote products derived from \n    this software without specific prior written permission.\n\n  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS\n  IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,\n  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\n  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR \n  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\n  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\n  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\n  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\n  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\n  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\n  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n*/\n\n/*\nJPEG encoder ported to JavaScript and optimized by Andreas Ritter, www.bytestrom.eu, 11/2009\n\nBasic GUI blocking jpeg encoder\n*/",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/JPEGEncoder.js",
+          "von": 0,
+          "bis": 1585,
+          "auszugSha256": "b11919a00c60852a1a8eb4b9fa973aaafb0debb34d0e0e2a2c2b346c5ac86b4f"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/JPEGEncoder.js",
+          "von": 1586,
+          "bis": 1717,
+          "auszugSha256": "86b1c811f8ae7dd77e78188cece408af296970e1e26142da0d0c2e98fd96ed65"
+        }
+      ]
+    },
+    {
+      "name": "src/libs/WebPDecoder.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/WebPDecoder.js",
+      "lizenz": "WebM Software License Agreement + Additional IP Rights Grant; Port MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/** @license\n   * Copyright 2011 Google Inc.\n   *\n   * This code is licensed under the same terms as WebM:\n   *  Software License Agreement:  http://www.webmproject.org/license/software/\n   *  Additional IP Rights Grant:  http://www.webmproject.org/license/additional/\n   * -----------------------------------------------------------------------------\n   *\n   * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\n   * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\n   * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.\n   * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,\n   * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,\n   * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\n   * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY\n   * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\n   * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,\n   * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n   *\n   * -----------------------------------------------------------------------------\n   *\n   * Copyright 2011-2017 Dominik Homberger\n   * Libwebp Javascript / libwebpjs - the libwebp implementation in javascript (v0.6.0)\n   *\n   * Author: Dominik Homberger (dominik.homberger@gmail.com)\n   */\n\n/** @license\n   * Copyright (c) 2017 Dominik Homberger\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\nhttps://webpjs.appspot.com\nWebPRiffParser dominikhlbg@gmail.com\n*/\n\nCopyright (c) 2010, Google Inc. All rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n  * Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in\n    the documentation and/or other materials provided with the\n    distribution.\n\n  * Neither the name of Google nor the names of its contributors may\n    be used to endorse or promote products derived from this software\n    without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nHOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n\n\nAdditional IP Rights Grant (Patents)\n------------------------------------\n\n\"These implementations\" means the copyrightable works that implement the WebM\ncodecs distributed by Google as part of the WebM Project.\n\nGoogle hereby grants to you a perpetual, worldwide, non-exclusive, no-charge,\nroyalty-free, irrevocable (except as stated in this section) patent license to\nmake, have made, use, offer to sell, sell, import, transfer, and otherwise\nrun, modify and propagate the contents of these implementations of WebM, where\nsuch license applies only to those patent claims, both currently owned by\nGoogle and acquired in the future, licensable by Google that are necessarily\ninfringed by these implementations of WebM. This grant does not include claims\nthat would be infringed only as a consequence of further modification of these\nimplementations. If you or your agent or exclusive licensee institute or order\nor agree to the institution of patent litigation or any other patent\nenforcement activity against any entity (including a cross-claim or\ncounterclaim in a lawsuit) alleging that any of these implementations of WebM\nor any code incorporated within any of these implementations of WebM\nconstitute direct or contributory patent infringement, or inducement of\npatent infringement, then any patent rights granted to you under this License\nfor these implementations of WebM shall terminate as of the date such\nlitigation is filed.\n",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "entschiedeneAusnahme": {
+        "angabe": "WebM Software License Agreement + Additional IP Rights Grant; Port MIT",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        },
+        "datum": "2026-10-04",
+        "entscheidung": "In jsPDF eingebettete Anteile ohne Lizenzangabe (md5 von Joseph Myers, BMPDecoder, ttffont) und mit Sonderwortlauten (RGBColor „Use it if you like it“, RC4 aus FPDF, Adobe-AFM-Bedingungen, WebM mit Patentzusage): Originalwortlaut wiedergeben und in docs/lizenzen.md als bekannte Einschränkung führen. Die Maintainer nehmen dazu keine eigene Einordnung vor. Keine Anfrage bei Dritten, kein Ersatz von jsPDF."
+      },
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/WebPDecoder.js",
+          "von": 36,
+          "bis": 1494,
+          "auszugSha256": "d3dd03505fe43e54bcb5054ab53e9dcb56755f080ce1a27bfe2371eac5cbc303"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/WebPDecoder.js",
+          "von": 144026,
+          "bis": 145172,
+          "auszugSha256": "32b829b85cb3ab6cd448ed99a4dd256819acb5b19fbb1690f1e34d6c42317830"
+        },
+        {
+          "datei": "scripts/hinweistexte/libwebp-COPYING.txt",
+          "sha256": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf",
+          "auszugSha256": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf"
+        },
+        {
+          "datei": "scripts/hinweistexte/libwebp-PATENTS.txt",
+          "sha256": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
+          "auszugSha256": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c"
+        }
+      ]
+    },
+    {
+      "name": "src/modules/standard_fonts_metrics.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/modules/standard_fonts_metrics.js",
+      "lizenz": "MIT + Adobe-AFM-Bedingungen",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/** @license\n jsPDF standard_fonts_metrics plugin\n * Copyright (c) 2012 Willow Systems Corporation, https://github.com/willowsystems\n * MIT license.\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n * \n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n * \n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * This file adds the standard font metrics to jsPDF.\n *\n * Font metrics data is reprocessed derivative of contents of\n * \"Font Metrics for PDF Core 14 Fonts\" package, which exhibits the following copyright and license:\n *\n * Copyright (c) 1989, 1990, 1991, 1992, 1993, 1997 Adobe Systems Incorporated. All Rights Reserved.\n *\n * This file and the 14 PostScript(R) AFM files it accompanies may be used,\n * copied, and distributed for any purpose and without charge, with or without\n * modification, provided that all copyright notices are retained; that the AFM\n * files are not distributed without this file; that all modifications to this\n * file or any of the AFM files are prominently noted in the modified file(s);\n * and that this paragraph is not modified. Adobe Systems has no responsibility\n * or obligation to support the use of the AFM files.\n *\n * @name standard_fonts_metrics\n * @module\n */",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "belege": [
+        {
+          "datei": "scripts/hinweistexte/spdx-APAFML.txt",
+          "sha256": "708c77776f111da3d7aa6228b78d95e45fb1af359f6144b8655837abb8fc7993"
+        }
+      ],
+      "entschiedeneAusnahme": {
+        "angabe": "MIT + Adobe-AFM-Bedingungen",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        },
+        "datum": "2026-10-04",
+        "entscheidung": "In jsPDF eingebettete Anteile ohne Lizenzangabe (md5 von Joseph Myers, BMPDecoder, ttffont) und mit Sonderwortlauten (RGBColor „Use it if you like it“, RC4 aus FPDF, Adobe-AFM-Bedingungen, WebM mit Patentzusage): Originalwortlaut wiedergeben und in docs/lizenzen.md als bekannte Einschränkung führen. Die Maintainer nehmen dazu keine eigene Einordnung vor. Keine Anfrage bei Dritten, kein Ersatz von jsPDF."
+      },
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/standard_fonts_metrics.js",
+          "von": 0,
+          "bis": 1301,
+          "auszugSha256": "d4d7691cf00f9d646ce0f1c5bc92fc72a158b78557ab1f4849c2777c2188a21c"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/standard_fonts_metrics.js",
+          "von": 1341,
+          "bis": 2248,
+          "auszugSha256": "8e96832d1ad4cfb4c5d9789be259e3011cc1fc52b777da7730a29732e562c195"
+        }
+      ]
+    },
+    {
+      "name": "src/libs/bidiEngine.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/bidiEngine.js",
+      "lizenz": "MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * @license\n * Unicode Bidi Engine based on the work of Alex Shensis (@asthensis)\n * MIT License\n */\n\n/**\n   * Table of Unicode types.\n   *\n   * Generated by:\n   *\n   * var bidi = require(\"./bidi/index\");\n   * var bidi_accumulate = bidi.slice(0, 256).concat(bidi.slice(0x0500, 0x0500 + 256 * 3)).\n   * concat(bidi.slice(0x2000, 0x2000 + 256)).concat(bidi.slice(0xFB00, 0xFB00 + 256)).\n   * concat(bidi.slice(0xFE00, 0xFE00 + 2 * 256));\n   *\n   * for( var i = 0; i < bidi_accumulate.length; i++) {\n   * \tif(bidi_accumulate[i] === undefined || bidi_accumulate[i] === 'ON')\n   * \t\tbidi_accumulate[i] = 'N'; //mark as neutral to conserve space and substitute undefined\n   * }\n   * var bidiAccumulateStr = 'return [ \"' + bidi_accumulate.toString().replace(/,/g, '\", \"') + '\" ];';\n   * require(\"fs\").writeFile('unicode-types.js', bidiAccumulateStr);\n   *\n   * Based on:\n   * https://github.com/mathiasbynens/unicode-8.0.0\n   */",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/bidiEngine.js",
+          "von": 0,
+          "bis": 104,
+          "auszugSha256": "6298e3dbf661278c4d44d7cd8b7947b06aa67f495155fe44350d36b009cfcacc"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/bidiEngine.js",
+          "von": 181,
+          "bis": 1000,
+          "auszugSha256": "3f5d835b08127235d95500c62ed53cf9e69f49a66f67b54a0b7328d483816ab8"
+        }
+      ]
+    },
+    {
+      "name": "src/libs/BMPDecoder.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/BMPDecoder.js",
+      "lizenz": "keine Lizenzangabe in der Quelle",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * @author shaozilee\n *\n * Bmp format decoder,support 1bit 4bit 8bit 24bit bmp\n *\n */",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "ohneLizenzangabe": true,
+      "entschiedeneAusnahme": {
+        "angabe": "keine Lizenzangabe in der Quelle",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        },
+        "datum": "2026-10-04",
+        "entscheidung": "In jsPDF eingebettete Anteile ohne Lizenzangabe (md5 von Joseph Myers, BMPDecoder, ttffont) und mit Sonderwortlauten (RGBColor „Use it if you like it“, RC4 aus FPDF, Adobe-AFM-Bedingungen, WebM mit Patentzusage): Originalwortlaut wiedergeben und in docs/lizenzen.md als bekannte Einschränkung führen. Die Maintainer nehmen dazu keine eigene Einordnung vor. Keine Anfrage bei Dritten, kein Ersatz von jsPDF."
+      },
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/BMPDecoder.js",
+          "von": 0,
+          "bis": 89,
+          "auszugSha256": "67c7d1d9b19cbdcae751fe4d310febf3d57c10c0a40d151bfb8ebebe72f8f27c"
+        }
+      ],
+      "zusatzhinweise": [
+        {
+          "wortlaut": "/**\n * add 32bit decode func\n * @author soubok\n */",
+          "originale": [
+            {
+              "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+              "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+              "quellkarteQuelle": "../src/libs/BMPDecoder.js",
+              "von": 7573,
+              "bis": 7623,
+              "auszugSha256": "30a0da7d4951e335fb777aa0cc4cb8d673d0170ee90b63f341b9a245b3745d17"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "src/libs/ttffont.js",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/libs/ttffont.js",
+      "lizenz": "keine Lizenzangabe in der Quelle",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/************************************************\n * Title : custom font                          *\n * Start Data : 2017. 01. 22.                   *\n * Comment : TEXT API                           *\n ************************************************/\n\n/******************************\n * jsPDF extension API Design *\n * ****************************/",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "ohneLizenzangabe": true,
+      "entschiedeneAusnahme": {
+        "angabe": "keine Lizenzangabe in der Quelle",
+        "beleg": {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js",
+          "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+        },
+        "datum": "2026-10-04",
+        "entscheidung": "In jsPDF eingebettete Anteile ohne Lizenzangabe (md5 von Joseph Myers, BMPDecoder, ttffont) und mit Sonderwortlauten (RGBColor „Use it if you like it“, RC4 aus FPDF, Adobe-AFM-Bedingungen, WebM mit Patentzusage): Originalwortlaut wiedergeben und in docs/lizenzen.md als bekannte Einschränkung führen. Die Maintainer nehmen dazu keine eigene Einordnung vor. Keine Anfrage bei Dritten, kein Ersatz von jsPDF."
+      },
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/ttffont.js",
+          "von": 38,
+          "bis": 288,
+          "auszugSha256": "37acb39b0e646fc38df41e5f99f0718f44c20c70fc977b1bb4ee5df5f6cd5166"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/libs/ttffont.js",
+          "von": 290,
+          "bis": 386,
+          "auszugSha256": "a639782d645ebc6daf60e14e803780f84937e1c8e47e35129b7416e59c50b849"
+        }
+      ]
+    },
+    {
+      "name": "src/modules/*.js (acroform, addimage, annotations, arabic, autoprint, canvas, cell, split_text_to_size, png_support, xmp_metadata, context2d, filters, fileloading, html, javascript, outline, gif/bmp/webp_support, rgba_support, svg, total_pages, viewerpreferences, vfs, setlanguage, ttfsupport, jpeg_support)",
+      "paket": "jspdf",
+      "ort": "node_modules/jspdf",
+      "quelle": "src/modules/*.js (acroform, addimage, annotations, arabic, autoprint, canvas, cell, split_text_to_size, png_support, xmp_metadata, context2d, filters, fileloading, html, javascript, outline, gif/bmp/webp_support, rgba_support, svg, total_pages, viewerpreferences, vfs, setlanguage, ttfsupport, jpeg_support)",
+      "lizenz": "MIT",
+      "behaelter": {
+        "datei": "dist/jspdf.es.min.js",
+        "sha256": "761b3a84ae6acc087802bc60672a4092cd1d5b17c809621da37ea26c9224cb83"
+      },
+      "wortlaut": "/**\n * @license\n * Copyright (c) 2016 Alexander Weidt,\n * https://github.com/BiggA94\n *\n * Licensed under the MIT License. http://opensource.org/licenses/mit-license\n */\n\n/** @license\n * jsPDF addImage plugin\n * Copyright (c) 2012 Jason Siefken, https://github.com/siefkenj/\n *               2013 Chris Dowling, https://github.com/gingerchris\n *               2013 Trinh Ho, https://github.com/ineedfat\n *               2013 Edwin Alejandro Perez, https://github.com/eaparango\n *               2013 Norah Smith, https://github.com/burnburnrocket\n *               2014 Diego Casorran, https://github.com/diegocr\n *               2014 James Robb, https://github.com/jamesbrobb\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n */\n\n/**\n * @license\n * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2017 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/** @license\n * jsPDF Autoprint Plugin\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * ====================================================================\n * Copyright (c) 2013 Youssef Beddad, youssef.beddad@gmail.com\n *               2013 Eduardo Menezes de Morais, eduardo.morais@usp.br\n *               2013 Lee Driscoll, https://github.com/lsdriscoll\n *               2014 Juan Pablo Gaviria, https://github.com/juanpgaviria\n *               2014 James Hall, james@parall.ax\n *               2014 Diego Casorran, https://github.com/diegocr\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/** @license\n * MIT license.\n * Copyright (c) 2012 Willow Systems Corporation, https://github.com/willowsystems\n *               2014 Diego Casorran, https://github.com/diegocr\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n *\n * Copyright (c) 2014 James Robb, https://github.com/jamesbrobb\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/** ====================================================================\n * @license\n * jsPDF XMP metadata plugin\n * Copyright (c) 2016 Jussi Utunen, u-jussi@suomi24.fi\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * jsPDF Context2D PlugIn Copyright (c) 2014 Steven Spungin (TwelveTone LLC) steven@twelvetone.tv\n *\n * Licensed under the MIT License. http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * jsPDF filters PlugIn\n * Copyright (c) 2014 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * jsPDF fileloading PlugIn\n * Copyright (c) 2018 Aras Abbasi (aras.abbasi@gmail.com)\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2018 Erik Koopmans\n * Released under the MIT License.\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * ====================================================================\n * Copyright (c) 2013 Youssef Beddad, youssef.beddad@gmail.com\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2017 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2018 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Copyright (c) 2019 Aras Abbasi\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n *\n * Copyright (c) 2021 Antti Palola, https://github.com/Pantura\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/** @license\n * Copyright (c) 2012 Willow Systems Corporation, https://github.com/willowsystems\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * ====================================================================\n * Copyright (c) 2013 Eduardo Menezes de Morais, eduardo.morais@usp.br\n *\n * Permission is hereby granted, free of charge, to any person obtaining\n * a copy of this software and associated documentation files (the\n * \"Software\"), to deal in the Software without restriction, including\n * without limitation the rights to use, copy, modify, merge, publish,\n * distribute, sublicense, and/or sell copies of the Software, and to\n * permit persons to whom the Software is furnished to do so, subject to\n * the following conditions:\n *\n * The above copyright notice and this permission notice shall be\n * included in all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\n * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\n * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\n * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n * ====================================================================\n */\n\n/**\n * @license\n * jsPDF viewerPreferences Plugin\n * @author Aras Abbasi (github.com/arasabbasi)\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n/**\n * @license\n * jsPDF virtual FileSystem functionality\n *\n * Licensed under the MIT License.\n * http://opensource.org/licenses/mit-license\n */\n\n// Image functionality ported from pdf.js\n\n/**\n   * Cubic bezier approximation of a circular arc centered at the origin, from (radians) a1 to a2, where a2-a1 < pi/2. The arc's radius is r.\n   *\n   * Returns an object with four points, where x1,y1 and x4,y4 are the arc's end points and x2,y2 and x3,y3 are the cubic bezier's control points.\n   *\n   * This algorithm is based on the approach described in: A. Riškus, \"Approximation of a Cubic Bezier Curve by Circular Arcs and Vice Versa,\" Information Technology and Control, 35(4), 2006 pp. 371-378.\n   */",
+      "status": "vollstaendig",
+      "version": "4.2.1",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/acroform.js",
+          "von": 19,
+          "bis": 188,
+          "auszugSha256": "8a9d416d2b714393ea99caa5eee88c57e3694be8557a721da3203e152b536fe8"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/addimage.js",
+          "von": 0,
+          "bis": 1585,
+          "auszugSha256": "cd863ca160e769b949d7684fb9e756db6795fea4d6d0c8536bdcc97612195e08"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/annotations.js",
+          "von": 0,
+          "bis": 179,
+          "auszugSha256": "d3f97a981d14c49bee2d534c774dc77925c3bc789af69692b517e93d5210f754"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/arabic.js",
+          "von": 0,
+          "bis": 137,
+          "auszugSha256": "3a260ebde8318d8d9f321022b086c71b139c1580591040b8055bdfbdefbb6f57"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/autoprint.js",
+          "von": 0,
+          "bis": 126,
+          "auszugSha256": "219996b1d867edac79e7337b8c8f6e39150d48c675e75c7678b7d1f0e29aac01"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/canvas.js",
+          "von": 0,
+          "bis": 179,
+          "auszugSha256": "d3f97a981d14c49bee2d534c774dc77925c3bc789af69692b517e93d5210f754"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/cell.js",
+          "von": 0,
+          "bis": 1630,
+          "auszugSha256": "8767ed1f75cdcb4977cced9be83297aac2a49e0316922cbde428270dd385b780"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/split_text_to_size.js",
+          "von": 0,
+          "bis": 1354,
+          "auszugSha256": "d09abe7f5fd1e86608f5474c15cc9101c3b81e5ed99bf39b8aa765df442f3165"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/png_support.js",
+          "von": 0,
+          "bis": 1236,
+          "auszugSha256": "d4fdbc8413b5204c40ad6e73e4d80db071ca9cbb7ee5d3d8989865bdf91fdc66"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/xmp_metadata.js",
+          "von": 0,
+          "bis": 1322,
+          "auszugSha256": "11ffb5b38431bf9e174fadff483bf5af6b143dd1029c400feab049a174af5c22"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/context2d.js",
+          "von": 68,
+          "bis": 266,
+          "auszugSha256": "ac657b06acb8c419fb5a40512697c15b635c401e971b53f087b0bc68cce3c2e6"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/filters.js",
+          "von": 0,
+          "bis": 161,
+          "auszugSha256": "b50accd0af5ed25a574ceb13ff009b517d4474bc37d0d0b9d8bd942e0975e6fa"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/fileloading.js",
+          "von": 0,
+          "bis": 189,
+          "auszugSha256": "d730ee1801ac1afee997afa20422451caa25a454b55bdf77c3fe194ab846ed65"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/html.js",
+          "von": 0,
+          "bis": 174,
+          "auszugSha256": "e8b0563f135d7ced25c8b0183439b011ea6f98ccd61e3aa86018a10aa69cef79"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/javascript.js",
+          "von": 0,
+          "bis": 1304,
+          "auszugSha256": "7b26243cd1658c6f640c371132df3b747965ea5a820f2f5902da9a6b445ea142"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/outline.js",
+          "von": 0,
+          "bis": 179,
+          "auszugSha256": "d3f97a981d14c49bee2d534c774dc77925c3bc789af69692b517e93d5210f754"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/jpeg_support.js",
+          "von": 0,
+          "bis": 103,
+          "auszugSha256": "23850226d6dee3eb6bc0b68f6ba190f1e8e6e216d26320d302b96de06c48455e"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/gif_support.js",
+          "von": 0,
+          "bis": 137,
+          "auszugSha256": "3a260ebde8318d8d9f321022b086c71b139c1580591040b8055bdfbdefbb6f57"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/bmp_support.js",
+          "von": 144,
+          "bis": 281,
+          "auszugSha256": "4f3fb3c15c58c390154d971d7031993b01bad6065f5e5aa719e00058fc3974ce"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/webp_support.js",
+          "von": 0,
+          "bis": 137,
+          "auszugSha256": "44512e67f4d07a0ae5462b17fba076c68808042fa127ad8d08590d5dfcb8465a"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/rgba_support.js",
+          "von": 0,
+          "bis": 1235,
+          "auszugSha256": "879e76347b5896a815e3d9126505f0fd7acf9287606c2fa74e6ac0a0a63ed7dc"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/setlanguage.js",
+          "von": 0,
+          "bis": 100,
+          "auszugSha256": "b383308dcf60da44e79ba77b4992947a961b9d737442f8733d669a2d77a5cbbb"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/ttfsupport.js",
+          "von": 0,
+          "bis": 100,
+          "auszugSha256": "b383308dcf60da44e79ba77b4992947a961b9d737442f8733d669a2d77a5cbbb"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/svg.js",
+          "von": 0,
+          "bis": 1249,
+          "auszugSha256": "960e0980303991432f816ad0ee01f8fd0dd1391978c93b8387feea6c52f91c96"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/total_pages.js",
+          "von": 0,
+          "bis": 1312,
+          "auszugSha256": "4117b9bb9a41f06380b9d54012115ef6ae92938c3b54714f2d0df277364e5076"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/viewerpreferences.js",
+          "von": 0,
+          "bis": 181,
+          "auszugSha256": "e0c3bca0dc53b6965981b51c1bb78e69cea6d223a7ea8c68d8f414563a19b785"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/vfs.js",
+          "von": 0,
+          "bis": 145,
+          "auszugSha256": "50da9bcb6e50e0af2a93c1dafa695ccf4785073e3e5984eae10626930569ae11"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/addimage.js",
+          "von": 5840,
+          "bis": 5881,
+          "auszugSha256": "05894db0f9bee3b820a2a1553c0e226dd7002ccf129caeb39a58e40585c01190"
+        },
+        {
+          "datei": "node_modules/jspdf/dist/jspdf.es.min.js.map",
+          "sha256": "4b2825bce48b0eeaeed26c5db533512018b91c26d8d41acc1b0e682504c17517",
+          "quellkarteQuelle": "../src/modules/context2d.js",
+          "von": 76480,
+          "bis": 76993,
+          "auszugSha256": "b28a768adf486f59b9c693e757f19a33e4d9c57b3946f37ba33078ab382e4a2e"
+        }
+      ]
+    },
+    {
+      "name": "tslib in jsPDF-AutoTable",
+      "paket": "jspdf-autotable",
+      "ort": "node_modules/jspdf-autotable",
+      "quelle": "dist/jspdf.plugin.autotable.mjs",
+      "lizenz": "0BSD",
+      "behaelter": {
+        "datei": "dist/jspdf.plugin.autotable.mjs",
+        "sha256": "e75527c67984e642201d41fa2b11aa64e502cd3a38b5dc17461f4c204fabf144"
+      },
+      "wortlaut": "/******************************************************************************\nCopyright (c) Microsoft Corporation.\n\nPermission to use, copy, modify, and/or distribute this software for any\npurpose with or without fee is hereby granted.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH\nREGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY\nAND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,\nINDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM\nLOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR\nOTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR\nPERFORMANCE OF THIS SOFTWARE.\n***************************************************************************** */",
+      "status": "vollstaendig",
+      "version": "5.0.8",
+      "originale": [
+        {
+          "datei": "node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs",
+          "sha256": "e75527c67984e642201d41fa2b11aa64e502cd3a38b5dc17461f4c204fabf144",
+          "von": 8578,
+          "bis": 9396,
+          "auszugSha256": "7130b2f41c55bc4cf10d1000a4b74242135c8e8def9c9afe40009a9c79934483"
+        }
+      ]
+    },
+    {
+      "name": "Zlib-Hinweis in pako",
+      "paket": "pako",
+      "ort": "node_modules/pako",
+      "quelle": "lib/zlib/deflate.js:3-20",
+      "lizenz": "Zlib",
+      "behaelter": {
+        "datei": "lib/zlib/deflate.js",
+        "sha256": "54a36e5377a62ce36f4b5a2307f7e55962cc036d7dbc4a355f702f9de069e012"
+      },
+      "wortlaut": "// (C) 1995-2013 Jean-loup Gailly and Mark Adler\n// (C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin\n//\n// This software is provided 'as-is', without any express or implied\n// warranty. In no event will the authors be held liable for any damages\n// arising from the use of this software.\n//\n// Permission is granted to anyone to use this software for any purpose,\n// including commercial applications, and to alter it and redistribute it\n// freely, subject to the following restrictions:\n//\n// 1. The origin of this software must not be misrepresented; you must not\n//   claim that you wrote the original software. If you use this software\n//   in a product, an acknowledgment in the product documentation would be\n//   appreciated but is not required.\n// 2. Altered source versions must be plainly marked as such, and must not be\n//   misrepresented as being the original software.\n// 3. This notice may not be removed or altered from any source distribution.",
+      "status": "vollstaendig",
+      "version": "2.2.0",
+      "originale": [
+        {
+          "datei": "node_modules/pako/lib/zlib/deflate.js",
+          "sha256": "54a36e5377a62ce36f4b5a2307f7e55962cc036d7dbc4a355f702f9de069e012",
+          "von": 15,
+          "bis": 974,
+          "auszugSha256": "4125652cdbd6fdba9b60c839df6abeb3fc9da98fca00b4cab15157951e080804"
+        }
+      ],
+      "belege": [
+        {
+          "datei": "node_modules/pako/dist/pako.esm.mjs",
+          "sha256": "c704f219caa9c3ddbaa23b925c078cc4390ea8c7db105c3aed8acb18c5fb248a"
+        }
+      ]
+    }
+  ],
+  "buildHilfscode": [
+    {
+      "paket": "vite",
+      "version": "8.3.0",
+      "ort": "node_modules/vite",
+      "lizenz": "MIT",
+      "module": [
+        "virtuell:vite/preload-helper.js"
+      ],
+      "lizenzdatei": {
+        "datei": "LICENSE.md",
+        "sha256": "387dd7baa307083401a27c58c362c30832f5ba1dba84f10cc22c33401523f45c"
+      },
+      "wortlaut": "MIT License\n\nCopyright (c) 2019-present, VoidZero Inc. and Vite contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
+      "imBuendel": true,
+      "status": "vollstaendig",
+      "originale": [
+        {
+          "datei": "node_modules/vite/LICENSE.md",
+          "sha256": "387dd7baa307083401a27c58c362c30832f5ba1dba84f10cc22c33401523f45c",
+          "von": 61,
+          "bis": 1162,
+          "auszugSha256": "692057af3d664cbb79ac38293eb50aa3c4987f8182e2a440136e59e08f1b4a54"
+        }
+      ]
+    },
+    {
+      "paket": "rolldown",
+      "version": "1.2.9",
+      "ort": "node_modules/rolldown",
+      "lizenz": "MIT",
+      "module": [
+        "virtuell:rolldown/runtime.js"
+      ],
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734"
+      },
+      "wortlaut": "MIT License\n\nCopyright (c) 2024-present VoidZero Inc. & Contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n\nend of terms and conditions\n\nThe licenses of externally maintained libraries from which parts of the Software is derived are listed [here](https://github.com/rolldown/rolldown/blob/main/THIRD-PARTY-LICENSE).\n",
+      "imBuendel": false,
+      "status": "vollstaendig",
+      "anmerkung": "Am 2026-10-05 erneut am abgeschlossenen Client-Modulprotokoll geprüft: kein gerenderter Rolldown-Laufzeitcode; bleibt zur Bestandskontrolle erfasst.",
+      "originale": [
+        {
+          "datei": "node_modules/rolldown/LICENSE",
+          "sha256": "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734",
+          "auszugSha256": "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734"
+        }
+      ]
+    },
+    {
+      "paket": "@oxc-project/runtime",
+      "version": "0.150.0",
+      "ort": null,
+      "lizenz": "MIT",
+      "module": [
+        "virtuell:@oxc-project+runtime@0.150.0/helpers/esm/defineProperty.js",
+        "virtuell:@oxc-project+runtime@0.150.0/helpers/esm/toPrimitive.js",
+        "virtuell:@oxc-project+runtime@0.150.0/helpers/esm/toPropertyKey.js",
+        "virtuell:@oxc-project+runtime@0.150.0/helpers/esm/typeof.js"
+      ],
+      "wortlaut": "MIT License\n\nCopyright (c) 2014-present Sebastian McKenzie and other contributors\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n",
+      "imBuendel": true,
+      "status": "vollstaendig",
+      "versionsbeleg": {
+        "art": "oxc-modulkennung",
+        "datei": "node_modules/rolldown/dist/shared/bindingify-input-options-D4l624og.mjs",
+        "sha256": "c37e1b58aa8b7d0528d9a83de39b8109f0281756d88ca84efa160af248ab8d66"
+      },
+      "originale": [
+        {
+          "datei": "node_modules/@babel/runtime/LICENSE",
+          "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76",
+          "auszugSha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+        }
+      ],
+      "herkunft": "Die vier virtuellen Hilfen aus Rolldowns oxcRuntimePlugin sind bytegleich zu den entsprechenden MIT-lizenzierten Babel-Laufzeithilfen. Offline über moduleParsed am 2026-10-05 geprüft.",
+      "belege": [
+        {
+          "datei": "node_modules/@babel/runtime/helpers/esm/defineProperty.js",
+          "sha256": "2bad7c96ee851cf2cfe1320a54fd88dd5f769a7faf8bd92d60c9f2e6d1e381dd"
+        },
+        {
+          "datei": "node_modules/@babel/runtime/helpers/esm/toPrimitive.js",
+          "sha256": "9660291e71923cb5ff9aaaa1de354515c26e3220cba56ac5d21b806f23875545"
+        },
+        {
+          "datei": "node_modules/@babel/runtime/helpers/esm/toPropertyKey.js",
+          "sha256": "7f0000acc9c9cf7594b412095be66cdc59066b25458a16fe1434fd00cff478e7"
+        },
+        {
+          "datei": "node_modules/@babel/runtime/helpers/esm/typeof.js",
+          "sha256": "928bcbbdf74fe24ed7486e7f982c4389c1859886b3ed904ebd2677f22193b57a"
+        }
+      ]
+    }
+  ],
+  "android": {
+    "projektmodule": [
+      {
+        "name": "capacitor-android",
+        "paket": "@capacitor/android",
+        "ort": "node_modules/@capacitor/android",
+        "version": "8.5.2",
+        "lizenz": "MIT",
+        "lizenzdatei": {
+          "datei": "LICENSE",
+          "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd"
+        },
+        "status": "vollstaendig"
+      },
+      {
+        "name": "capacitor-cordova-android-plugins",
+        "version": "1.0",
+        "ort": null,
+        "lizenz": "MIT",
+        "wortlaut": "MIT License\n\nCopyright (c) 2017-present Drifty Co.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
+        "status": "vollstaendig",
+        "versionsbeleg": {
+          "art": "gradle-projekt",
+          "datei": "app/android/capacitor-cordova-android-plugins/build.gradle",
+          "sha256": "28e3fa281f4d1e388bf98abc7f5bb31e672516e385c165c719d201ed54b8236e",
+          "settings": {
+            "datei": "app/android/settings.gradle",
+            "sha256": "6ce098d15ebd69b44c4ecd786bca1bdc366340d2459b2af4d7bb0ab317aa9669"
+          }
+        },
+        "originale": [
+          {
+            "datei": "node_modules/@capacitor/cli/LICENSE",
+            "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd",
+            "auszugSha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd"
+          }
+        ],
+        "herkunft": "Von Capacitor CLI 8.5.2 aus dem mitgelieferten Archiv erzeugtes Gerüst; keine Plugin-Quellen enthalten.",
+        "belege": [
+          {
+            "datei": "node_modules/@capacitor/cli/assets/capacitor-cordova-android-plugins.tar.gz",
+            "sha256": "c9fa746751c74e786878e40b073fd3854c772b26716663cabbd8ebb874e39ba9"
+          }
+        ]
+      }
+    ],
+    "maven": [
+      {
+        "gruppe": "org.apache.cordova",
+        "name": "framework",
+        "version": "14.0.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": "Apache Cordova\nCopyright 2015-2020 The Apache Software Foundation\n\nThis product includes software developed at\nThe Apache Software Foundation (http://www.apache.org/).\n",
+        "status": "vollstaendig",
+        "originale": [
+          {
+            "datei": "scripts/hinweistexte/cordova-android-14.0.1-NOTICE",
+            "sha256": "e94707080ab2781d5ba4ceac999f31db2539d2477783287969c52580b9fa84b0",
+            "auszugSha256": "e94707080ab2781d5ba4ceac999f31db2539d2477783287969c52580b9fa84b0"
+          }
+        ]
+      },
+      {
+        "gruppe": "androidx.activity",
+        "name": "activity",
+        "version": "1.11.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.annotation",
+        "name": "annotation-experimental",
+        "version": "1.4.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.annotation",
+        "name": "annotation-jvm",
+        "version": "1.8.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.appcompat",
+        "name": "appcompat-resources",
+        "version": "1.7.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.appcompat",
+        "name": "appcompat",
+        "version": "1.7.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.arch.core",
+        "name": "core-common",
+        "version": "2.2.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.arch.core",
+        "name": "core-runtime",
+        "version": "2.2.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.collection",
+        "name": "collection-jvm",
+        "version": "1.4.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.concurrent",
+        "name": "concurrent-futures",
+        "version": "1.1.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.coordinatorlayout",
+        "name": "coordinatorlayout",
+        "version": "1.3.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.core",
+        "name": "core-ktx",
+        "version": "1.17.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.core",
+        "name": "core-splashscreen",
+        "version": "1.0.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.core",
+        "name": "core-viewtree",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.core",
+        "name": "core",
+        "version": "1.17.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.cursoradapter",
+        "name": "cursoradapter",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.customview",
+        "name": "customview",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.drawerlayout",
+        "name": "drawerlayout",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.emoji2",
+        "name": "emoji2-views-helper",
+        "version": "1.3.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.emoji2",
+        "name": "emoji2",
+        "version": "1.3.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig",
+        "bestandteile": [
+          {
+            "name": "FlatBuffers",
+            "lizenz": "Apache-2.0",
+            "version": null
+          }
+        ],
+        "herkunft": "FlatBuffers-Kopie in libs/repackaged.jar; ihre Version ist aus dem Artefakt nicht bestimmbar. Der Vergleichstext aus FlatBuffers v1.12.0 ist bytegleich zur gemeinsamen LICENSE."
+      },
+      {
+        "gruppe": "androidx.fragment",
+        "name": "fragment",
+        "version": "1.8.9",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.interpolator",
+        "name": "interpolator",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-common",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-livedata-core",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-livedata",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-process",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-runtime",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-viewmodel-savedstate",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.lifecycle",
+        "name": "lifecycle-viewmodel",
+        "version": "2.6.2",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.loader",
+        "name": "loader",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.profileinstaller",
+        "name": "profileinstaller",
+        "version": "1.4.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.resourceinspection",
+        "name": "resourceinspection-annotation",
+        "version": "1.0.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.savedstate",
+        "name": "savedstate",
+        "version": "1.2.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.startup",
+        "name": "startup-runtime",
+        "version": "1.1.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.tracing",
+        "name": "tracing",
+        "version": "1.2.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.vectordrawable",
+        "name": "vectordrawable-animated",
+        "version": "1.1.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.vectordrawable",
+        "name": "vectordrawable",
+        "version": "1.1.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.versionedparcelable",
+        "name": "versionedparcelable",
+        "version": "1.1.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.viewpager",
+        "name": "viewpager",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "androidx.webkit",
+        "name": "webkit",
+        "version": "1.14.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": "// Copyright 2018 The Chromium Authors\n// Use of this source code is governed by a BSD-style license that can be\n// found in the LICENSE file.\n\n// Copyright 2019 The Chromium Authors\n// Use of this source code is governed by a BSD-style license that can be\n// found in the LICENSE file.\n\n// Copyright 2020 The Chromium Authors\n// Use of this source code is governed by a BSD-style license that can be\n// found in the LICENSE file.\n\n// Copyright 2022 The Chromium Authors\n// Use of this source code is governed by a BSD-style license that can be\n// found in the LICENSE file.\n\n// Copyright 2023 The Chromium Authors\n// Use of this source code is governed by a BSD-style license that can be\n// found in the LICENSE file.\n\n// Copyright 2024 The Chromium Authors\n// Use of this source code is governed by a BSD-style license that can be\n// found in the LICENSE file.\n\n// Copyright 2025 The Chromium Authors\n// Use of this source code is governed by a BSD-style license that can be\n// found in the LICENSE file.\n\n\n// Copyright 2015 The Chromium Authors\n//\n// Redistribution and use in source and binary forms, with or without\n// modification, are permitted provided that the following conditions are\n// met:\n//\n//    * Redistributions of source code must retain the above copyright\n// notice, this list of conditions and the following disclaimer.\n//    * Redistributions in binary form must reproduce the above\n// copyright notice, this list of conditions and the following disclaimer\n// in the documentation and/or other materials provided with the\n// distribution.\n//    * Neither the name of Google LLC nor the names of its\n// contributors may be used to endorse or promote products derived from\n// this software without specific prior written permission.\n//\n// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n// \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\n// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\n// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\n// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\n// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\n// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\n// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\n// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+        "status": "vollstaendig",
+        "bestandteile": [
+          {
+            "name": "org.chromium.support_lib_boundary",
+            "lizenz": "BSD-3-Clause",
+            "version": null
+          }
+        ],
+        "originale": [
+          {
+            "datei": "scripts/hinweistexte/webkit-boundary-hinweise.txt",
+            "sha256": "18497b1a9f4fb66c870ea183c62c588a37ae4b9a0b0ccf2d19ffcd53333289bd",
+            "auszugSha256": "18497b1a9f4fb66c870ea183c62c588a37ae4b9a0b0ccf2d19ffcd53333289bd"
+          },
+          {
+            "datei": "scripts/hinweistexte/chromium-LICENSE",
+            "sha256": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+            "auszugSha256": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b"
+          }
+        ]
+      },
+      {
+        "gruppe": "com.google.guava",
+        "name": "listenablefuture",
+        "version": "1.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "org.jetbrains.kotlin",
+        "name": "kotlin-stdlib",
+        "version": "2.0.21",
+        "lizenz": "Apache-2.0",
+        "wortlaut": "   =========================================================================\n   ==  NOTICE file corresponding to the section 4 d of                    ==\n   ==  the Apache License, Version 2.0,                                   ==\n   ==  in this case for the Kotlin Compiler distribution.                 ==\n   =========================================================================\n\n   Kotlin Compiler\n   Copyright 2010-2024 JetBrains s.r.o and respective authors and developers\n",
+        "status": "vollstaendig",
+        "originale": [
+          {
+            "datei": "scripts/hinweistexte/kotlin-2.0.21-NOTICE.txt",
+            "sha256": "0b09a83d3ef7795c7dec65e815866597c066c53898f2852a76599b8f5552941a",
+            "auszugSha256": "0b09a83d3ef7795c7dec65e815866597c066c53898f2852a76599b8f5552941a"
+          }
+        ],
+        "bestandteile": [
+          {
+            "name": "GWT-Ableitung",
+            "lizenz": "Apache-2.0",
+            "quelle": "libraries/stdlib/src/kotlin/collections",
+            "wortlaut": "Derived from GWT, (C) 2007-08 Google Inc.",
+            "herkunftsbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/README.md",
+              "groesse": 18558,
+              "sha256": "8a82f8702ea943f008c84a61b8df7b053b7d36cfa293e3abd59f839b728a5999",
+              "zeile": 64,
+              "von": 4260,
+              "bis": 4301,
+              "auszugSha256": "52d5885aa15f3f1a7f193256bca9cf95ea5ab7736697c6964b2882f4f140edb0"
+            },
+            "lizenzbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/third_party/gwt_license.txt",
+              "groesse": 11358,
+              "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+            },
+            "artefaktbeleg": {
+              "jar": "kotlin-stdlib-2.0.21.jar",
+              "jarSha256": "f31cc53f105a7e48c093683bbd5437561d1233920513774b470805641bedbc09",
+              "klasse": "kotlin/collections/AbstractList.class",
+              "klasseSha256": "6cbad11321c59594d67106fba04f50be0ff258b1f4e969080c0941ef5cf881b6",
+              "sourceFile": "AbstractList.kt",
+              "apk": {
+                "datei": "app-release-unsigned.apk",
+                "bytes": 7666170,
+                "sha256": "714e1868ee00f9d2a6b946f7dec798ae4a495b77c38aba62f8b2190271cc6728"
+              },
+              "dex": [
+                {
+                  "datei": "classes.dex",
+                  "sha256": "9886ef92da16453e913cbbc46630d222b1651e85b79fbd4957d2b24bbab222c7"
+                }
+              ],
+              "klassendeskriptor": "Lkotlin/collections/AbstractList;",
+              "alsKlasseDefiniert": true,
+              "minifyEnabled": false
+            }
+          },
+          {
+            "name": "Guava-Ableitung",
+            "lizenz": "Apache-2.0",
+            "quelle": "libraries/stdlib/jvm/src/kotlin/util/UnsignedJVM.kt",
+            "wortlaut": "Derived from Guava's UnsignedLongs, (C) 2011 The Guava Authors",
+            "herkunftsbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/README.md",
+              "groesse": 18558,
+              "sha256": "8a82f8702ea943f008c84a61b8df7b053b7d36cfa293e3abd59f839b728a5999",
+              "zeile": 72,
+              "von": 4664,
+              "bis": 4726,
+              "auszugSha256": "0078015de8eb05b76c05f9e6d336eed66951fd6a0d8de23f6bd0762885be6764"
+            },
+            "lizenzbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/third_party/guava_license.txt",
+              "groesse": 11358,
+              "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+            },
+            "artefaktbeleg": {
+              "jar": "kotlin-stdlib-2.0.21.jar",
+              "jarSha256": "f31cc53f105a7e48c093683bbd5437561d1233920513774b470805641bedbc09",
+              "klasse": "kotlin/UnsignedKt.class",
+              "klasseSha256": "edc094d2e521adbc3f646d3724fe357e7f6f35446fd12b85f8c87b933b783775",
+              "sourceFile": "UnsignedJVM.kt",
+              "apk": {
+                "datei": "app-release-unsigned.apk",
+                "bytes": 7666170,
+                "sha256": "714e1868ee00f9d2a6b946f7dec798ae4a495b77c38aba62f8b2190271cc6728"
+              },
+              "dex": [
+                {
+                  "datei": "classes.dex",
+                  "sha256": "9886ef92da16453e913cbbc46630d222b1651e85b79fbd4957d2b24bbab222c7"
+                }
+              ],
+              "klassendeskriptor": "Lkotlin/UnsignedKt;",
+              "alsKlasseDefiniert": true,
+              "minifyEnabled": false
+            }
+          },
+          {
+            "name": "Boost-Ableitung",
+            "lizenz": "BSL-1.0",
+            "quelle": "libraries/stdlib/jvm/src/kotlin/util/MathJVM.kt",
+            "wortlaut": "Derived from boost special math functions, Copyright Eric Ford & Hubert Holin 2001.",
+            "herkunftsbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/README.md",
+              "groesse": 18558,
+              "sha256": "8a82f8702ea943f008c84a61b8df7b053b7d36cfa293e3abd59f839b728a5999",
+              "zeile": 80,
+              "von": 5115,
+              "bis": 5198,
+              "auszugSha256": "d40f1aa4be444e73ba61e59bbcbfc2b49d4ebede33ddde77d7b00878073bfcd3"
+            },
+            "lizenzbeleg": {
+              "quelle": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.0.21/license/third_party/boost_LICENSE.txt",
+              "groesse": 1337,
+              "sha256": "8d8291caf1cee26d23acf3eb67c9f9a2d58f1c681b16a4fbe8cbfb9e3c0b5a9b"
+            },
+            "artefaktbeleg": {
+              "jar": "kotlin-stdlib-2.0.21.jar",
+              "jarSha256": "f31cc53f105a7e48c093683bbd5437561d1233920513774b470805641bedbc09",
+              "klasse": "kotlin/math/MathKt__MathJVMKt.class",
+              "klasseSha256": "3a030ec3c6e3680c82cc5d13f2ef06d4829bfc275f1f810dcc9e914282ccf718",
+              "sourceFile": "MathJVM.kt",
+              "apk": {
+                "datei": "app-release-unsigned.apk",
+                "bytes": 7666170,
+                "sha256": "714e1868ee00f9d2a6b946f7dec798ae4a495b77c38aba62f8b2190271cc6728"
+              },
+              "dex": [
+                {
+                  "datei": "classes.dex",
+                  "sha256": "9886ef92da16453e913cbbc46630d222b1651e85b79fbd4957d2b24bbab222c7"
+                }
+              ],
+              "klassendeskriptor": "Lkotlin/math/MathKt__MathJVMKt;",
+              "alsKlasseDefiniert": true,
+              "minifyEnabled": false
+            },
+            "lizenztext": {
+              "datei": "scripts/hinweistexte/kotlin-2.0.21-third_party-boost_LICENSE.txt",
+              "sha256": "8d8291caf1cee26d23acf3eb67c9f9a2d58f1c681b16a4fbe8cbfb9e3c0b5a9b"
+            }
+          }
+        ]
+      },
+      {
+        "gruppe": "org.jetbrains.kotlinx",
+        "name": "kotlinx-coroutines-android",
+        "version": "1.8.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": "   Copyright 2000-2020 JetBrains s.r.o. and Kotlin Programming Language contributors.\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.\n",
+        "status": "vollstaendig",
+        "originale": [
+          {
+            "datei": "scripts/hinweistexte/kotlinx-coroutines-1.8.1-LICENSE.txt",
+            "sha256": "b1febe6399dffb10d19d35e7663ab16300c93cb0476a94115df1cc0097a8ffd8",
+            "von": 10760,
+            "bis": 11398,
+            "auszugSha256": "0fc11bee2cf115850f062c2bd5225b75240280f9ccb2a21e813df8dcc28e5fd4"
+          }
+        ]
+      },
+      {
+        "gruppe": "org.jetbrains.kotlinx",
+        "name": "kotlinx-coroutines-core-jvm",
+        "version": "1.8.1",
+        "lizenz": "Apache-2.0",
+        "wortlaut": "   Copyright 2000-2020 JetBrains s.r.o. and Kotlin Programming Language contributors.\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.\n",
+        "status": "vollstaendig",
+        "originale": [
+          {
+            "datei": "scripts/hinweistexte/kotlinx-coroutines-1.8.1-LICENSE.txt",
+            "sha256": "b1febe6399dffb10d19d35e7663ab16300c93cb0476a94115df1cc0097a8ffd8",
+            "von": 10760,
+            "bis": 11398,
+            "auszugSha256": "0fc11bee2cf115850f062c2bd5225b75240280f9ccb2a21e813df8dcc28e5fd4"
+          }
+        ]
+      },
+      {
+        "gruppe": "org.jetbrains",
+        "name": "annotations",
+        "version": "23.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      },
+      {
+        "gruppe": "org.jspecify",
+        "name": "jspecify",
+        "version": "1.0.0",
+        "lizenz": "Apache-2.0",
+        "wortlaut": null,
+        "status": "vollstaendig"
+      }
+    ]
+  },
+  "ausnahmen": [
+    {
+      "ort": "node_modules/@types/pako",
+      "paket": "@types/pako",
+      "version": "2.0.4",
+      "lizenz": "MIT",
+      "grund": "nur Typdeklarationen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      }
+    },
+    {
+      "ort": "node_modules/@types/raf",
+      "paket": "@types/raf",
+      "version": "3.4.3",
+      "lizenz": "MIT",
+      "grund": "nur Typdeklarationen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      }
+    },
+    {
+      "ort": "node_modules/@types/trusted-types",
+      "paket": "@types/trusted-types",
+      "version": "2.0.7",
+      "lizenz": "MIT",
+      "grund": "nur Typdeklarationen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      }
+    },
+    {
+      "ort": "node_modules/base64-arraybuffer",
+      "paket": "base64-arraybuffer",
+      "version": "1.0.2",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "f3eca6ff762533fa5a77caf954a143e48afa204668cf97dce758c45a9e006be3"
+      }
+    },
+    {
+      "ort": "node_modules/canvg",
+      "paket": "canvg",
+      "version": "3.0.11",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "86622ffc909487e6029235d31503263b796895679b0926f4a4d6f02d2623fde0"
+      }
+    },
+    {
+      "ort": "node_modules/core-js",
+      "paket": "core-js",
+      "version": "3.50.0",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "b87653fff2d44426ab5cd4723cee3b1364dc8d35a0acdf098c54689543123bf8"
+      }
+    },
+    {
+      "ort": "node_modules/css-line-break",
+      "paket": "css-line-break",
+      "version": "2.1.0",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "ce1ee0539f7fe1f7b75b76d121e674cb897c709c3e24ddba7f9a10fe2d0d88a5"
+      }
+    },
+    {
+      "ort": "node_modules/dompurify",
+      "paket": "dompurify",
+      "version": "3.4.16",
+      "lizenz": "Apache-2.0",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    },
+    {
+      "ort": "node_modules/html2canvas",
+      "paket": "html2canvas",
+      "version": "1.4.1",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "86200ce4e92d9a22c41c8647a55f7a5fddff304ff89b4d36ecc699ed8c123d2c"
+      }
+    },
+    {
+      "ort": "node_modules/performance-now",
+      "paket": "performance-now",
+      "version": "2.1.0",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "license.txt",
+        "sha256": "c3af1272f30870168177e888b184c1f802e5081e75a126c794670c0b562d3783"
+      }
+    },
+    {
+      "ort": "node_modules/raf",
+      "paket": "raf",
+      "version": "3.4.1",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "6b2194e178545b3dcde4a40a09b5f6c00bd9b5b695db0c826c14995c6c9b4ec5"
+      }
+    },
+    {
+      "ort": "node_modules/regenerator-runtime",
+      "paket": "regenerator-runtime",
+      "version": "0.13.11",
+      "lizenz": "MIT",
+      "grund": "nicht im Modulprotokoll",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "51887a3d47051ac2fce1210562e5b9fe0830a8a8fabeb272c2d586eeb18a05fd"
+      }
+    },
+    {
+      "ort": "node_modules/rgbcolor",
+      "paket": "rgbcolor",
+      "version": "1.0.1",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE.md",
+        "sha256": "86045408b01f66f9319a2fe7bc7f7e115f272956ac44d2d840fc00127124a78c"
+      }
+    },
+    {
+      "ort": "node_modules/stackblur-canvas",
+      "paket": "stackblur-canvas",
+      "version": "2.7.0",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE-MIT.txt",
+        "sha256": "609e3755e6e7a048b8ca85de25233cfc4f62ec7cb9afeea603269a03b73db197"
+      }
+    },
+    {
+      "ort": "node_modules/svg-pathdata",
+      "paket": "svg-pathdata",
+      "version": "6.0.3",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "cd05e8e2516f46a2cd79494bbabdea76f874e8d049dbc19a76b367534a4e013e"
+      }
+    },
+    {
+      "ort": "node_modules/text-segmentation",
+      "paket": "text-segmentation",
+      "version": "1.0.3",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "8b00952cd8d0f5cbbefb13576778e1185dc963943151353d90c4e14a5a4caf40"
+      }
+    },
+    {
+      "ort": "node_modules/tslib",
+      "paket": "tslib",
+      "version": "2.8.1",
+      "lizenz": "0BSD",
+      "grund": "kein eigenes Modul; Hilfen in jsPDF-AutoTable eingebettet",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE.txt",
+        "sha256": "210b19e543130388c68654b7497e967119ce17145f66ab7d85688fbd70f08751"
+      },
+      "belege": [
+        {
+          "datei": "node_modules/tslib/CopyrightNotice.txt",
+          "sha256": "da16ddb65f8ca390998fb99223d0112498b56b45784d00afd77ff8ce1ac4de8b"
+        }
+      ]
+    },
+    {
+      "ort": "node_modules/utrie",
+      "paket": "utrie",
+      "version": "1.0.2",
+      "lizenz": "MIT",
+      "grund": "im Bündel ersetzt, K2 prüft das Fehlen",
+      "status": "vollstaendig",
+      "lizenzdatei": {
+        "datei": "LICENSE",
+        "sha256": "8b00952cd8d0f5cbbefb13576778e1185dc963943151353d90c4e14a5a4caf40"
+      }
+    }
+  ]
+}

@@ -110,7 +110,7 @@
     },
     {
       "paket": "@img/sharp-libvips-linux-x64",
-      "version": "1.3.3",
+      "version": "1.3.4",
       "lizenz": "LGPL-3.0-or-later",
       "os": [
         "linux"
@@ -126,7 +126,7 @@
     },
     {
       "paket": "@img/sharp-linux-x64",
-      "version": "0.35.4",
+      "version": "0.35.5",
       "lizenz": "Apache-2.0",
       "os": [
         "linux"
@@ -142,7 +142,7 @@
     },
     {
       "paket": "@img/sharp-win32-x64",
-      "version": "0.35.4",
+      "version": "0.35.5",
       "lizenz": "Apache-2.0 AND LGPL-3.0-or-later",
       "os": [
         "win32"

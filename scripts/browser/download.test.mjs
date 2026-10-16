@@ -44,7 +44,7 @@ function probe({ ereignisse = [beginn(), fortschritt()], vorher = [], steuerungs
     if (method === 'Target.getBrowserContexts') return { browserContextIds: kontexte };
     if (steuerungsfehler) throw new Error('Richtlinie nicht bestätigt');
   } };
-  const kontext = { browserCdp, ausgabe: resolve('scratchpad/tmp-v6a-r9'), browserContextId: 'eigener-kontext', frameId: 'frame', endung: 'xlsx', nachweis,
+  const kontext = { browserCdp, ausgabe: resolve('scratchpad/test-browser'), browserContextId: 'eigener-kontext', frameId: 'frame', endung: 'xlsx', nachweis,
     aktivieren: async () => { aufrufe.push({ method: 'echte Aktivierung' }); browserCdp.events.push(...ereignisse); return { fokus: true }; } };
   return { kontext, nachweis, aufrufe, optionen: { jetzt: () => zeit, warten: async ms => { zeit += ms; }, fristMs: 100 } };
 }

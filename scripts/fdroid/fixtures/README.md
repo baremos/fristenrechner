@@ -99,3 +99,15 @@ Scannerphase am exakten Pfad app/android/gradle/wrapper/gradle-wrapper.jar.
 Jede weitere Entfernung bleibt ein Befund. Die Scannerfehler in (b) und (c)
 werden als benannter Abbruch geführt; fehlende Nachweise nach diesem Abbruch
 werden ausdrücklich als nicht geprüft ausgewiesen.
+
+## App-Lauf vom 2026-10-15
+
+Die JSON-Datei app-laeufe-2026-10-15.json enthält einen gekürzten Auszug aus
+lauf-4zdiuc_3-gezielt, App-Version 0.1.0 (100), Stand
+28ce57275d87a0020f82bcf17b8655fb0e77df3f; der Build ist gelungen.
+Die ursprünglichen Zeilennummern sind erhalten: Zeile 36 belegt den Kontext
+prebuild, Zeile 48 npm_kern_build mit Kern-Version 0.1.0 und Zeile 79
+hinweise_dritter_bestanden zwischen K3 (78) und K4 (80). Das Kern-Muster
+erlaubt genau 0.0.0 und 0.1.0, damit die bisherigen echten Belege gültig bleiben.
+Die übernommenen Zeilen enthalten keine absoluten Rechnerpfade, Benutzernamen
+oder Geheimnisse; Dateiinhalte, APKs und Zwischenspeicher sind nicht enthalten.

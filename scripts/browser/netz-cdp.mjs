@@ -146,7 +146,7 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
           target.oberflaechenVerworfen = true;
           fehler.push(`Browser-Oberfläche navigiert außerhalb 127.0.0.1: ${adresse}`);
         }
-      } else if (!leer(info.url) && target.leerseitenBeleg && !target.browserOberflaeche && !target.lokaleNavigation) {
+      } else if (!leer(info.url) && target.leerseitenBeleg && !target.seite && !target.browserOberflaeche && !target.lokaleNavigation) {
         target.leerseitenBeleg.navigiert = true;
         leerseiteVerwerfen(target, `Browser-Leerseite navigiert: ${info.url}`);
       }
@@ -307,7 +307,19 @@ export async function seitenNetzStarten(cdp, protokoll, seitenTargetId, basisUrl
     await bereit();
     if (![...targets.values()].some(t => t.targetId === seitenTargetId)) throw new Error('Seiten-Target wurde nicht vor Navigation an die Netzüberwachung gebunden.');
   } catch (e) { cdp.ws.removeEventListener('message', nachricht); cdp.ws.removeEventListener('close', verbindungEnde); throw e; }
-  return { bereit, endePlanen: async () => {
+  return { bereit, seiteAnmelden: async targetId => {
+    // Eine vom Läufer neu erstellte Seite muss vor ihrer ersten Navigation
+    // von der Leerseiten-Ausnahme in die vollständige Überwachung wechseln.
+    await bereit();
+    const t=[...targets.values()].find(t=>t.targetId===targetId);
+    if(!t?.browserLeerseite||!t.messbereit||t.beendet||t.leerseitenBeleg.navigiert||t.leerseitenBeleg.netzereignisse||t.leerseitenBeleg.verworfen)
+      throw new Messfehler('Frische Prüfseite ist nicht als unveränderte, überwachte Leerseite bestätigt.');
+    t.browserLeerseite=false;t.seite=true;t.leerseitenBeleg.vomLaeuferGeoeffnet=true;
+    for(const [method,params] of [['Network.enable',{}],['Page.enable',{}],['Fetch.enable',{patterns:[{urlPattern:'*',requestStage:'Request'}]}],['Target.setAutoAttach',autoAttach]])
+      await senden(method,params,t.sessionId);
+    t.frischeSeiteBestaetigt=true;
+    return {targetId,sessionId:t.sessionId,bestaetigt:true};
+  }, endePlanen: async () => {
     // Auch bei schon ungültiger Messung muss das eigene Browserende möglich sein.
     try { await bereit(); } finally { geplantesEnde = true; protokoll.netzMessende = new Date().toISOString(); }
   }, close: () => { cdp.ws.removeEventListener('message', nachricht); cdp.ws.removeEventListener('close', verbindungEnde); } };

@@ -3,10 +3,11 @@
 // --web: Kern, Astro, K1, K2. --android: zusätzlich Sync, K3, K4, Gradle, K5.
 // --android-quellen gibt die von Capacitor eingebundenen Quellordner aus.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as appPruefungen from './app-pruefungen.mjs';
+import { pruefeProjekt } from './check-licenses.mjs';
 
 const wurzelVorgabe = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const aufruf = 'Aufruf: node scripts/app-bauen.mjs --web | --check | --pruefen | --android [--aufgabe assembleDebug|assembleRelease] [--streng] [--ohne-testgruppe] | --android-quellen [--bericht]';
@@ -94,10 +95,17 @@ export function findeNpm(umgebung, node = process.execPath) {
   throw new Error('npm nicht gefunden. Aufruf über npm run build --workspace app oder npm neben Node installieren.');
 }
 
+// Builds prüfen einen festen Quellenstichtag unabhängig von der Systemuhr.
+// Die Pflegeprüfung (npm run lizenzen) behält den aktuellen UTC-Stichtag.
+export function pruefeBuildHinweise(wurzel, optionen) {
+  return pruefeProjekt(wurzel, { ...optionen, stichtag: '2026-10-15' }).fehler;
+}
+
 // Die ersetzbaren Funktionen erlauben Tests der gesamten Reihenfolge ohne Build.
 export function baue(argv, {
   wurzel = wurzelVorgabe, umgebung = process.env, node = process.execPath,
   spawn = spawnSync, pruefungen = appPruefungen, ausgabe = console.log, fehlerausgabe = console.error,
+  hinweisePruefung = pruefeBuildHinweise,
 } = {}) {
   let werte;
   try {
@@ -139,11 +147,20 @@ export function baue(argv, {
       return 0;
     }
     if (werte.modus === 'check') return lauf('Typprüfung der App', [join(wurzel, 'scripts', 'astro.mjs'), 'check'], app) ? 0 : 1;
-    if (werte.modus === 'pruefen') return pruefeWeb() ? 0 : 1;
+    // Keine neue Erfolgszeile im F-Droid-prebuild-Protokoll. Nur Fehler ausgeben.
+    function hinweise(optionen) {
+      const fehler = hinweisePruefung(wurzel, optionen);
+      for (const f of fehler) fehlerausgabe(`Fehler: ${f}`);
+      return fehler.length === 0;
+    }
+    const buendel = join(app, '.astro/module-client.json');
+    if (werte.modus === 'pruefen') return pruefeWeb() && hinweise({ buendel }) ? 0 : 1;
+    rmSync(buendel, { force: true });
+    rmSync(buendel + '.tmp', { force: true });
     const npm = findeNpm(umgebung, node);
     if (!lauf('Rechenkern bauen', [npm, 'run', 'build', '--workspace', 'packages/kern'], wurzel)
       || !lauf('Seite der App bauen', [join(wurzel, 'scripts', 'astro.mjs'), 'build'], app)
-      || !pruefeWeb()) return 1;
+      || !pruefeWeb() || !hinweise({ buendel })) return 1;
     if (werte.modus === 'web') return 0;
     const vorher = pruefungen.leseAndroidZustand({ wurzel, umgebung: env });
     if (vorher.status.length) {
@@ -155,6 +172,7 @@ export function baue(argv, {
     }
     if (!lauf('Android synchronisieren', [join(wurzel, 'node_modules', '@capacitor', 'cli', 'bin', 'capacitor'), 'sync', 'android'], app)
       || !pruefung('K3 Sync', pruefungen.pruefeSync({ wurzel, umgebung: env, ...(werte.streng ? {} : { vorher }) }))
+      || !hinweise({ nachAndroidSync: true })
       || !pruefung('K4 Gradle', pruefungen.pruefeGradle({ wurzel, umgebung: env }))) return 1;
     const args = [join(wurzel, 'scripts', 'android-build.mjs'), '--projekt', 'app/android', '--aufgabe', werte.aufgabe];
     if (werte.streng) args.push('--streng');
@@ -162,6 +180,7 @@ export function baue(argv, {
     if (!lauf('Android bauen', args, wurzel)) return 1;
     const debug = werte.aufgabe.endsWith('Debug');
     const apk = join(app, 'android', 'app', 'build', 'outputs', 'apk', debug ? 'debug' : 'release', debug ? 'app-debug.apk' : 'app-release-unsigned.apk');
+    if (!debug && !hinweise({ nachAndroidSync: true, gradleModell: join(app, 'android/app/build/intermediates/lint_vital_report_lint_model/release/generateReleaseLintVitalReportModel/release-artifact-dependencies.xml') })) return 1;
     if (!existsSync(apk) || !statSync(apk).isFile()) throw new Error(`Erzeugte APK fehlt: ${relative(wurzel, apk)}`);
     ausgabe(`APK: ${relative(wurzel, apk).split(sep).join('/')}`);
     return pruefung('K5 APK', pruefungen.pruefeApk(apk, { wurzel, debug, umgebung: env })) ? 0 : 1;

@@ -142,7 +142,7 @@ const bundeslaender = [
         <label class="check-card">
           <input type="checkbox" name="dringlichkeit" />
           {/* Hilfetext je Verfahrensart: nicht jede Ordnung kennt
-              Dringlichkeitsfristen  */}
+              Dringlichkeitsfristen */}
           <span><strong>Begründete Dringlichkeit</strong><small data-dringlichkeit-hinweis>Verkürzte Mindestfristen prüfen</small></span>
         </label>
         <label class="check-card">
@@ -163,7 +163,7 @@ const bundeslaender = [
         </label>
       </div>
 
-      {/* Einzeilig: Beschreibung links, Auswahl rechts  */}
+      {/* Einzeilig: Beschreibung links, Auswahl rechts */}
       {/* Nur bei Wartepflicht (§ 134 GWB, Oberschwelle) — im
           Unterschwellenbereich blendet die UI die Zeile aus (Kern 1.6.0) */}
       <div class="option-fields" data-bieterinfo-field>
@@ -239,7 +239,7 @@ const bundeslaender = [
         AT = Arbeitstage (Montag bis Freitag ohne Feiertage des gewählten Bundeslands), KT = Kalendertage.
       </p>
       {/* Zeilenliste: Beschreibung links, Eingabe rechts, Reihenfolge =
-          Verfahrensablauf : TNA-Bewertung → Bewertung vor Präsentation/Verhandlung →
+          Verfahrensablauf: TNA-Bewertung → Bewertung vor Präsentation/Verhandlung →
           Angebotsbewertung → Aufklärung → interner Zuschlag → Versand der
           Bieterinformation. Sichtbar sind nur die Zeiten, die sich aus der
           gewählten Vergabeart und den Optionen ergeben. */}
@@ -461,8 +461,7 @@ const bundeslaender = [
     <p>
       Der Fristenrechner Vergabe &amp; Terminplanung ist eine unverbindliche Rechenhilfe und ersetzt keine Rechtsberatung. Alle Angaben erfolgen
       ohne Gewähr. Maßgeblich sind die anwendbaren Rechtsvorschriften und die konkreten Vergabeunterlagen.
-      Der PDF- und Excel-Export nutzt die Open-Source-Bibliotheken jsPDF, jsPDF-AutoTable und fflate (MIT-Lizenz).
-    </p>
+      {'      ' + (texte.bibliothekenHinweis ?? 'Der PDF- und Excel-Export nutzt die Open-Source-Bibliotheken jsPDF, jsPDF-AutoTable und fflate (MIT-Lizenz).') + '\n'}</p>
   </section>{hinweisPosition === 'unten' && <div class="privacy-note privacy-note-unten">
     <strong>{texte.datenschutzTitel}</strong>
     {texte.datenschutzText}
@@ -472,6 +471,28 @@ const bundeslaender = [
 </div>
 
 <style is:global>
+  /* Nur eigene Teilbäume: Logo und Kontaktinhalte aus den Slots behalten
+     die Größenberechnung des Gastgebers. */
+  .fristenrechner,
+  .fristenrechner > .privacy-note:first-child,
+  .fristenrechner > .privacy-note:first-child *,
+  .fristenrechner > #project-file-meta:first-child ~ #schedule-results + .legal-note + .privacy-note,
+  .fristenrechner > #project-file-meta:first-child ~ #schedule-results + .legal-note + .privacy-note *,
+  .fristenrechner > #project-file-meta,
+  .fristenrechner > #project-file-meta + noscript,
+  .fristenrechner > #project-file-meta + noscript *,
+  .fristenrechner > #schedule-form,
+  .fristenrechner > #schedule-form *,
+  .fristenrechner > #schedule-results,
+  .fristenrechner > #schedule-results > :not(.print-footer),
+  .fristenrechner > #schedule-results > :not(.print-footer) *,
+  .fristenrechner > #schedule-results > .print-footer,
+  .fristenrechner > #schedule-results > .print-footer > p:last-child,
+  .fristenrechner > #schedule-results + .legal-note,
+  .fristenrechner > #schedule-results + .legal-note * {
+    box-sizing: border-box;
+  }
+
   .fristenrechner {
     --phase-einholung: #a7303c;
     --phase-teilnahme: #76528f;
@@ -633,7 +654,7 @@ const bundeslaender = [
   }
 
   /* Interne Bearbeitungszeiten als Zeilenliste: Beschreibung links,
-     Eingabe rechts  */
+     Eingabe rechts */
   .fristenrechner .zeiten-liste {
     display: flex;
     flex-direction: column;
@@ -704,7 +725,7 @@ const bundeslaender = [
     padding: 0.55rem 0.65rem;
     color: var(--color-text, #343438);
     background: #fff;
-    border: 1px solid #99999d;
+    border: 1px solid #8a8a8e;
     border-radius: 3px;
   }
 
@@ -748,7 +769,7 @@ const bundeslaender = [
   }
 
   /* Options-Panels: einheitliche Label-Höhe, damit Dauer- und Termin-Kästen
-     auf gleicher Höhe sitzen  */
+     auf gleicher Höhe sitzen */
   .fristenrechner .option-panel-grid {
     --field-label-height: 1.6rem;
   }
@@ -888,7 +909,7 @@ const bundeslaender = [
     justify-content: center;
     color: var(--color-text, #343438);
     background: #fff;
-    border: 1px solid #96969a;
+    border: 1px solid #8f8f93;
     border-radius: 3px;
     font-weight: 700;
     line-height: 1.2;
@@ -1127,7 +1148,7 @@ const bundeslaender = [
   }
 
   .fristenrechner .table-scroll {
-    border: 1px solid #d7d7d3;
+    border: 1px solid #878783;
     border-radius: 4px;
   }
 

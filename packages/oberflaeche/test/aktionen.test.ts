@@ -251,16 +251,37 @@ describe('Zustandsbeobachtung und Lebensdauer', () => {
 });
 
 describe('Unmittelbare Aktivierung des Web-Dateifelds', () => {
+  function nutzergeste<T>(env: ReturnType<typeof vorbereiten>, aufruf: () => T): T {
+    let ergebnis!: T;
+    const event = new Event('click');
+    Object.defineProperties(event, {
+      isTrusted: { value: true }, eventPhase: { value: Event.AT_TARGET, configurable: true },
+    });
+    env.fenster.addEventListener('click', () => { ergebnis = aufruf(); }, { once: true });
+    try { env.fenster.dispatchEvent(event); }
+    finally { Object.defineProperty(event, 'eventPhase', { value: Event.NONE }); }
+    return ergebnis;
+  }
+
   it.each(['ui', 'api'])('%s verwendet den echten Web-Adapter ohne rekursiven Import und mit genau einer Auswahl', async weg => {
     const env = vorbereiten(false);
     const feld = Object.assign(env.el('open-json'), { files: [] as { name: string; size: number; text(): Promise<string> }[], click: vi.fn() });
+    const dispatch = feld.dispatchEvent.bind(feld);
+    vi.spyOn(feld, 'dispatchEvent').mockImplementation(event => {
+      // Der Node-Ersatz setzt die Phase schon nach dem Capture-Listener zurück.
+      Object.defineProperty(event, 'eventPhase', { value: Event.AT_TARGET, configurable: true });
+      try { return dispatch(event); }
+      finally { Object.defineProperty(event, 'eventPhase', { value: Event.NONE }); }
+    });
     const aktivierungen: boolean[] = [];
     feld.click.mockImplementation(() => { aktivierungen.push(env.click('open-json')); });
     const web = erzeugeWebPlattform(env.root as unknown as HTMLElement); aufraeumen.push(() => web.dispose());
     const waehlen = vi.spyOn(web.import, 'waehlen'); env.plattform.import = web.import;
     const { aktionen } = env.start(); await warten();
-    if (weg === 'ui') { expect(env.click('open-json')).toBe(true); expect(feld.click).not.toHaveBeenCalled(); }
-    else { void aktionen.projektImportieren(); expect(feld.click).toHaveBeenCalledTimes(1); expect(aktivierungen).toEqual([true]); }
+    nutzergeste(env, () => {
+      if (weg === 'ui') { expect(env.click('open-json')).toBe(true); expect(feld.click).not.toHaveBeenCalled(); }
+      else { void aktionen.projektImportieren(); expect(feld.click).toHaveBeenCalledTimes(1); expect(aktivierungen).toEqual([true]); }
+    });
     // Diese Prüfungen laufen noch im selben Stapel, bevor ein Promise fortsetzt.
     expect(waehlen).toHaveBeenCalledTimes(1); expect(aktionen.zustand().beschaeftigt).toBe(true);
     expect(env.click('open-json')).toBe(false); await warten(); expect(env.click('open-json')).toBe(false);
@@ -269,6 +290,53 @@ describe('Unmittelbare Aktivierung des Web-Dateifelds', () => {
     expect(waehlen).toHaveBeenCalledTimes(1); expect(env.feld('projektname').value).toBe('Aus dem Dateifeld');
     expect(aktionen.zustand().beschaeftigt).toBe(false);
     web.dispose();
+  });
+
+  it('behält den Aktivierungsschutz über einen Mikrotask zwischen Feldlistener und UI-Listener', async () => {
+    const env = vorbereiten(false);
+    const feld = Object.assign(env.el('open-json'), { files: [], click: vi.fn() });
+    const listener: EventListenerOrEventListenerObject[] = [];
+    const hinzufuegen = feld.addEventListener.bind(feld);
+    vi.spyOn(feld, 'addEventListener').mockImplementation((typ, handler, optionen) => {
+      if (typ === 'click' && handler) listener.push(handler);
+      hinzufuegen(typ, handler, optionen);
+    });
+    const web = erzeugeWebPlattform(env.root as unknown as HTMLElement); aufraeumen.push(() => web.dispose());
+    const waehlen = vi.spyOn(web.import, 'waehlen'); env.plattform.import = web.import;
+    const { aktionen } = env.start(); await warten();
+    expect(listener).toHaveLength(2);
+    const event = new Event('click');
+    Object.defineProperties(event, {
+      isTrusted: { value: true }, eventPhase: { value: Event.AT_TARGET, configurable: true },
+    });
+    // Der Node-DOM-Ersatz hat diese Prüfpunkte nicht; sie werden ausdrücklich eingefügt.
+    for (const handler of listener) {
+      if (typeof handler === 'function') handler.call(feld, event); else handler.handleEvent(event);
+      await Promise.resolve();
+    }
+    Object.defineProperty(event, 'eventPhase', { value: Event.NONE });
+    expect(waehlen).toHaveBeenCalledTimes(1);
+    expect(feld.click).not.toHaveBeenCalled();
+    expect(aktionen.zustand().beschaeftigt).toBe(true);
+    env.senden(feld, 'cancel'); await warten();
+    expect(aktionen.zustand().beschaeftigt).toBe(false);
+    expect(env.el('import-message').textContent).toBe('');
+  });
+
+  it('beendet den API-Import ohne Nutzergeste als Abbruch und stellt die vorherige Meldung wieder her', async () => {
+    const env = vorbereiten(false);
+    const feld = Object.assign(env.el('open-json'), { files: [], click: vi.fn() });
+    const web = erzeugeWebPlattform(env.root as unknown as HTMLElement); aufraeumen.push(() => web.dispose());
+    env.plattform.import = web.import;
+    const { aktionen } = env.start(); await warten();
+    env.el('import-message').textContent = 'Vorher';
+    nutzergeste(env, () => {});
+    await aktionen.projektImportieren();
+    expect(feld.click).not.toHaveBeenCalled();
+    expect(aktionen.zustand().beschaeftigt).toBe(false);
+    expect(env.el('import-message').textContent).toBe('Vorher');
+    expect(env.feld('projektname').value).toBe('Vorher');
+    expect(env.schreiben).not.toHaveBeenCalled();
   });
 
   it('erlaubt höchstens einen synchronen Adapterklick und keinen späteren, auch bei synchronem Fehler', async () => {

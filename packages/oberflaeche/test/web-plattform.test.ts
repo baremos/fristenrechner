@@ -18,9 +18,33 @@ class Ziel extends EventTarget {
     super.removeEventListener(typ, handler, optionen);
   }
   anzahl(typ: string): number { return this.handlers.get(typ)?.size ?? 0; }
+  override dispatchEvent(event: Event): boolean {
+    // Node setzt die Phase schon zwischen Capture- und weiteren Listenern zurück.
+    // Das DOM behält sie bis zum Ende der Auslieferung bei.
+    Object.defineProperty(event, 'eventPhase', { value: Event.AT_TARGET, configurable: true });
+    try { return super.dispatchEvent(event); }
+    finally { Object.defineProperty(event, 'eventPhase', { value: Event.NONE, configurable: true }); }
+  }
+  async dispatchMitMikrotasks(event: Event): Promise<void> {
+    // Node fügt zwischen Listenern keine Browser-Mikrotask-Prüfpunkte ein.
+    Object.defineProperty(event, 'eventPhase', { value: Event.AT_TARGET, configurable: true });
+    try {
+      for (const handler of this.handlers.get(event.type) ?? []) {
+        if (typeof handler === 'function') handler.call(this, event); else handler.handleEvent(event);
+        await Promise.resolve();
+      }
+    } finally { Object.defineProperty(event, 'eventPhase', { value: Event.NONE }); }
+  }
 }
 
-function umgebung() {
+function nutzerEreignis(typ = 'click', eigenschaften: Record<string, unknown> = {}): Event {
+  const event = new Event(typ);
+  Object.defineProperty(event, 'isTrusted', { value: true, configurable: true });
+  Object.assign(event, eigenschaften);
+  return event;
+}
+
+function umgebung(vorAdapter?: (fenster: Ziel) => void) {
   let wert = '';
   const feld = Object.assign(new Ziel(), {
     files: [] as { name: string; size: number; text(): Promise<string> }[],
@@ -46,6 +70,7 @@ function umgebung() {
   const link = { href: '', download: '', hidden: false, click: vi.fn(), remove: vi.fn() };
   const dokument = { defaultView: fenster, createElement: vi.fn(() => link) };
   const root = { ownerDocument: dokument, querySelector: vi.fn(() => feld), append: vi.fn() };
+  vorAdapter?.(fenster);
   const adapter = erzeugeWebPlattform(root as unknown as HTMLElement);
   return { adapter, feld, fenster, localStorage, werte, root, dokument, link };
 }
@@ -55,6 +80,15 @@ function datei(text = '{}', name = 'projekt.json', size = new TextEncoder().enco
 }
 const vorgabe = { mime: 'application/json' as const, endungen: ['.json'] as const, maxBytes: MAX_PROJEKT_BYTES };
 type Umgebung = ReturnType<typeof umgebung>;
+function mitNutzergeste<T>(env: Umgebung, aufruf: () => T, event = nutzerEreignis()): T {
+  let ergebnis!: T;
+  env.fenster.addEventListener(event.type, () => { ergebnis = aufruf(); }, { once: true });
+  env.fenster.dispatchEvent(event);
+  return ergebnis;
+}
+function waehlenMitNutzergeste(env: Umgebung, optionen = vorgabe) {
+  return mitNutzergeste(env, () => env.adapter.import.waehlen(optionen));
+}
 function aufgeraeumt(env: Umgebung): void {
   expect(env.feld.anzahl('change')).toBe(0);
   expect(env.feld.anzahl('cancel')).toBe(0);
@@ -121,7 +155,7 @@ describe('Web-Import', () => {
 
   it('liefert Dateiname und unveränderten Text und räumt die Handler auf', async () => {
     const env = umgebung();
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     expect(env.feld.click).toHaveBeenCalledTimes(1);
     expect(env.feld.accept).toBe('application/json,.json');
     const probe = datei(' { "name": "Geräte" }\n', 'Änderung.json');
@@ -134,24 +168,167 @@ describe('Web-Import', () => {
     env.adapter.dispose();
   });
 
-  it('öffnet bei einem direkten Klick auf das sichtbare Dateifeld keinen zweiten Dialog', async () => {
-    const env = umgebung();
+  it.each([false, true])('öffnet bei einem direkten Feldklick mit Mikrotask-Prüfpunkten=%s keinen zweiten Dialog', async mikrotasks => {
+    const env = umgebung(fenster => {
+      Object.assign(fenster, { navigator: { userActivation: { isActive: false } } });
+    });
     let lauf!: Promise<Auswahl<{ name: string; text: string }>>;
     const ausloesen = () => { lauf = env.adapter.import.waehlen(vorgabe); };
     env.feld.addEventListener('click', ausloesen);
-    env.feld.click();
-    expect(env.feld.click).toHaveBeenCalledTimes(1);
+    if (mikrotasks) await env.feld.dispatchMitMikrotasks(nutzerEreignis());
+    else env.feld.dispatchEvent(nutzerEreignis());
+    expect(env.feld.click).not.toHaveBeenCalled();
+    expect(env.feld.anzahl('cancel')).toBe(1);
     env.feld.dispatchEvent(new Event('cancel'));
     await expect(lauf).resolves.toEqual({ status: 'abgebrochen' });
     env.feld.removeEventListener('click', ausloesen);
     env.adapter.dispose();
   });
 
+  it('bricht ohne Nutzergeste ab, ohne Feld, Handler oder Vorgaben zu verändern', async () => {
+    const env = umgebung();
+    env.feld.files = [datei()];
+    await expect(env.adapter.import.waehlen(vorgabe)).resolves.toEqual({ status: 'abgebrochen' });
+    expect(env.feld.click).not.toHaveBeenCalled();
+    expect(env.feld.files).toHaveLength(1);
+    expect(env.feld.accept).toBe('');
+    expect(env.feld.anzahl('change')).toBe(0);
+    expect(env.feld.anzahl('cancel')).toBe(0);
+    expect(env.fenster.anzahl('focus')).toBe(0);
+    env.adapter.dispose();
+  });
+
+  it('beachtet die Browseraktivierung auch in einem früher registrierten Fenster-Capture-Listener', async () => {
+    let env!: Umgebung; let lauf!: ReturnType<typeof env.adapter.import.waehlen>;
+    env = umgebung(fenster => {
+      Object.assign(fenster, { navigator: { userActivation: { isActive: true } } });
+      fenster.addEventListener('click', () => { lauf = env.adapter.import.waehlen(vorgabe); }, true);
+    });
+    env.fenster.dispatchEvent(nutzerEreignis());
+    expect(env.feld.click).toHaveBeenCalledTimes(1);
+    env.feld.dispatchEvent(new Event('cancel'));
+    await expect(lauf).resolves.toEqual({ status: 'abgebrochen' });
+    env.adapter.dispose();
+  });
+
+  it('bricht bei erloschener Browseraktivierung auch während eines laufenden Nutzerereignisses ab', async () => {
+    const env = umgebung(fenster => {
+      Object.assign(fenster, { navigator: { userActivation: { isActive: false } } });
+    });
+    await expect(mitNutzergeste(env, () => env.adapter.import.waehlen(vorgabe))).resolves.toEqual({ status: 'abgebrochen' });
+    expect(env.feld.click).not.toHaveBeenCalled();
+    aufgeraeumt(env);
+    env.adapter.dispose();
+  });
+
+  it('nutzt bei navigator ohne userActivation die laufende erfasste Nutzergeste', async () => {
+    const env = umgebung(fenster => { Object.assign(fenster, { navigator: {} }); });
+    const lauf = waehlenMitNutzergeste(env);
+    expect(env.feld.click).toHaveBeenCalledTimes(1);
+    env.feld.dispatchEvent(new Event('cancel'));
+    await expect(lauf).resolves.toEqual({ status: 'abgebrochen' });
+    await expect(env.adapter.import.waehlen(vorgabe)).resolves.toEqual({ status: 'abgebrochen' });
+    expect(env.feld.click).toHaveBeenCalledTimes(1);
+    env.adapter.dispose();
+  });
+
+  it('bricht ohne userActivation im früher registrierten Fenster-Capture-Listener ohne Klick ab', async () => {
+    let env!: Umgebung; let lauf!: ReturnType<typeof env.adapter.import.waehlen>;
+    env = umgebung(fenster => {
+      Object.assign(fenster, { navigator: {} });
+      fenster.addEventListener('click', () => { lauf = env.adapter.import.waehlen(vorgabe); }, true);
+    });
+    env.fenster.dispatchEvent(nutzerEreignis());
+    await expect(lauf).resolves.toEqual({ status: 'abgebrochen' });
+    expect(env.feld.click).not.toHaveBeenCalled();
+    env.adapter.dispose();
+  });
+
+  it('wertet einen synthetischen Feldklick ohne Nutzergeste als Abbruch', async () => {
+    const env = umgebung();
+    let lauf!: ReturnType<typeof env.adapter.import.waehlen>;
+    env.feld.addEventListener('click', () => { lauf = env.adapter.import.waehlen(vorgabe); });
+    env.feld.click();
+    await expect(lauf).resolves.toEqual({ status: 'abgebrochen' });
+    expect(env.feld.click).toHaveBeenCalledTimes(1);
+    expect(env.feld.anzahl('cancel')).toBe(0);
+    env.adapter.dispose();
+  });
+
+  it.each([
+    ['click', {}], ['mousedown', {}], ['keydown', { key: 'Enter' }], ['keydown', { key: ' ' }],
+    ['keydown', { key: 'Enter', ctrlKey: true }], ['keydown', { key: 'Enter', altKey: true }],
+    ['keydown', { key: 'Enter', metaKey: true }],
+    ['pointerdown', { pointerType: 'mouse' }], ['pointerup', { pointerType: 'touch' }], ['touchend', {}],
+  ] as const)('erlaubt während %s den synchronen Gastgeberimport ohne userActivation', async (typ, eigenschaften) => {
+    const env = umgebung();
+    expect(Reflect.get(env.fenster, 'navigator')).toBeUndefined();
+    const lauf = mitNutzergeste(env, () => env.adapter.import.waehlen(vorgabe), nutzerEreignis(typ, eigenschaften));
+    expect(env.feld.click).toHaveBeenCalledTimes(1);
+    env.feld.dispatchEvent(new Event('cancel'));
+    await expect(lauf).resolves.toEqual({ status: 'abgebrochen' });
+    env.adapter.dispose();
+  });
+
+  it.each([
+    new Event('click'), nutzerEreignis('keydown', { key: 'Escape' }),
+    nutzerEreignis('pointerdown', { pointerType: 'touch' }),
+    nutzerEreignis('pointerup', { pointerType: 'mouse' }),
+  ])('öffnet für das nicht aktivierende Ereignis %# keine Auswahl', async event => {
+    const env = umgebung();
+    await expect(mitNutzergeste(env, () => env.adapter.import.waehlen(vorgabe), event)).resolves.toEqual({ status: 'abgebrochen' });
+    expect(env.feld.click).not.toHaveBeenCalled();
+    aufgeraeumt(env);
+    env.adapter.dispose();
+  });
+
+  it('lässt nach Ende der Nutzergeste auch vor dem nächsten Timer keine Aktivierung bestehen', async () => {
+    const env = umgebung();
+    mitNutzergeste(env, () => {});
+    await Promise.resolve();
+    await expect(env.adapter.import.waehlen(vorgabe)).resolves.toEqual({ status: 'abgebrochen' });
+    expect(env.feld.click).not.toHaveBeenCalled();
+    env.adapter.dispose();
+  });
+
+  it('erkennt eine synthetische erneute Auslieferung eines früheren Nutzerereignisses nicht als Nutzergeste', async () => {
+    const env = umgebung(); const event = nutzerEreignis();
+    mitNutzergeste(env, () => {}, event);
+    // dispatchEvent setzt isTrusted bei erneuter Auslieferung im Browser zurück.
+    Object.defineProperty(event, 'isTrusted', { value: false });
+    await expect(mitNutzergeste(env, () => env.adapter.import.waehlen(vorgabe), event)).resolves.toEqual({ status: 'abgebrochen' });
+    expect(env.feld.click).not.toHaveBeenCalled();
+    env.adapter.dispose();
+  });
+
+  it.each([false, true])('registriert mit userActivation und isActive=%s beim Erzeugen und dispose keine Fenster-Listener', isActive => {
+    const registrieren = vi.fn(); const entfernen = vi.fn();
+    const env = umgebung(fenster => {
+      Object.assign(fenster, { navigator: { userActivation: { isActive } } });
+      vi.spyOn(fenster, 'addEventListener').mockImplementation(registrieren);
+      vi.spyOn(fenster, 'removeEventListener').mockImplementation(entfernen);
+    });
+    expect(registrieren).toHaveBeenCalledTimes(0);
+    expect(env.feld.anzahl('click')).toBe(1);
+    env.adapter.dispose(); env.adapter.dispose();
+    expect(registrieren).toHaveBeenCalledTimes(0);
+    expect(entfernen).toHaveBeenCalledTimes(0);
+    expect(env.feld.anzahl('click')).toBe(0);
+  });
+
+  it('räumt ohne userActivation die Aktivierungslistener beim dispose auf', () => {
+    const env = umgebung();
+    const typen = ['click', 'keydown', 'mousedown', 'pointerdown', 'pointerup', 'touchend'];
+    for (const typ of typen) expect(env.fenster.anzahl(typ)).toBe(1);
+    env.adapter.dispose(); env.adapter.dispose();
+    for (const typ of typen) expect(env.fenster.anzahl(typ)).toBe(0);
+  });
+
   it('akzeptiert dieselbe Datei nach Abschluss erneut', async () => {
     const env = umgebung();
     const probe = datei();
     for (let nr = 0; nr < 2; nr += 1) {
-      const lauf = env.adapter.import.waehlen(vorgabe);
+      const lauf = waehlenMitNutzergeste(env);
       expect(env.feld.files).toEqual([]);
       env.feld.files = [probe];
       env.feld.dispatchEvent(new Event('change'));
@@ -164,7 +341,7 @@ describe('Web-Import', () => {
 
   it.each(['cancel', 'change'])('behandelt %s ohne Datei als Abbruch', async typ => {
     const env = umgebung();
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     env.feld.dispatchEvent(new Event(typ));
     await expect(lauf).resolves.toEqual({ status: 'abgebrochen' });
     aufgeraeumt(env);
@@ -174,7 +351,7 @@ describe('Web-Import', () => {
   it('erkennt einen Abbruch über den focus-Fallback für Chromium 83', async () => {
     vi.useFakeTimers();
     const env = umgebung();
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     env.fenster.dispatchEvent(new Event('focus'));
     await vi.advanceTimersByTimeAsync(300);
     await expect(lauf).resolves.toEqual({ status: 'abgebrochen' });
@@ -186,7 +363,7 @@ describe('Web-Import', () => {
   it('liest im focus-Fallback eine gewählte Datei auch ohne change-Ereignis', async () => {
     vi.useFakeTimers();
     const env = umgebung();
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     env.feld.files = [datei()];
     env.fenster.dispatchEvent(new Event('focus'));
     await vi.advanceTimersByTimeAsync(300);
@@ -201,7 +378,7 @@ describe('Web-Import', () => {
     let fertig!: (text: string) => void;
     const probe = datei();
     probe.text.mockImplementation(() => new Promise<string>(resolve => { fertig = resolve; }));
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     env.feld.files = [probe];
     env.feld.dispatchEvent(new Event('change'));
     env.feld.dispatchEvent(new Event('change'));
@@ -216,7 +393,7 @@ describe('Web-Import', () => {
 
   it('prüft die Dateigröße vor File.text und begrenzt auch großzügigere Vorgaben auf 1 MiB', async () => {
     const env = umgebung();
-    const lauf = env.adapter.import.waehlen({ ...vorgabe, maxBytes: MAX_PROJEKT_BYTES * 2 });
+    const lauf = waehlenMitNutzergeste(env, { ...vorgabe, maxBytes: MAX_PROJEKT_BYTES * 2 });
     const erwartet = expect(lauf).rejects.toMatchObject({ code: 'zu-gross' });
     const probe = datei('{}', 'groß.json', MAX_PROJEKT_BYTES + 1);
     env.feld.files = [probe];
@@ -229,7 +406,7 @@ describe('Web-Import', () => {
 
   it('prüft nach dem Lesen erneut die UTF-8-Größe vor Übergabe an die Oberfläche', async () => {
     const env = umgebung();
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     const erwartet = expect(lauf).rejects.toMatchObject({ code: 'zu-gross' });
     const probe = datei('ä'.repeat(MAX_PROJEKT_BYTES / 2) + 'a', 'falsche-groesse.json', 2);
     env.feld.files = [probe];
@@ -243,11 +420,11 @@ describe('Web-Import', () => {
   it('akzeptiert eine Datei genau an der Grenze und berücksichtigt kleinere Vorgaben', async () => {
     const env = umgebung();
     const text = 'a'.repeat(MAX_PROJEKT_BYTES);
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     env.feld.files = [datei(text)];
     env.feld.dispatchEvent(new Event('change'));
     await expect(lauf).resolves.toMatchObject({ status: 'ok', wert: { text } });
-    const klein = env.adapter.import.waehlen({ ...vorgabe, maxBytes: 1 });
+    const klein = waehlenMitNutzergeste(env, { ...vorgabe, maxBytes: 1 });
     const erwartet = expect(klein).rejects.toMatchObject({ code: 'zu-gross' });
     const probe = datei('{}');
     env.feld.files = [probe];
@@ -259,7 +436,7 @@ describe('Web-Import', () => {
 
   it('meldet Lesefehler, räumt auf und erlaubt eine weitere Auswahl', async () => {
     const env = umgebung();
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     const erwartet = expect(lauf).rejects.toMatchObject({ code: 'lesen' });
     const probe = datei();
     probe.text.mockRejectedValue(new Error('Probe'));
@@ -267,7 +444,7 @@ describe('Web-Import', () => {
     env.feld.dispatchEvent(new Event('change'));
     await erwartet;
     aufgeraeumt(env);
-    const danach = env.adapter.import.waehlen(vorgabe);
+    const danach = waehlenMitNutzergeste(env);
     env.feld.dispatchEvent(new Event('cancel'));
     expect((await danach).status).toBe('abgebrochen');
     env.adapter.dispose();
@@ -275,8 +452,8 @@ describe('Web-Import', () => {
 
   it('weist eine gleichzeitige Auswahl zurück und lässt die erste bestehen', async () => {
     const env = umgebung();
-    const erster = env.adapter.import.waehlen(vorgabe);
-    await expect(env.adapter.import.waehlen(vorgabe)).rejects.toMatchObject({ code: 'lesen' });
+    const erster = waehlenMitNutzergeste(env);
+    await expect(waehlenMitNutzergeste(env)).rejects.toMatchObject({ code: 'lesen' });
     expect(env.feld.click).toHaveBeenCalledTimes(1);
     env.feld.files = [datei()];
     env.feld.dispatchEvent(new Event('change'));
@@ -287,14 +464,14 @@ describe('Web-Import', () => {
   it('räumt bei dispose die offene Auswahl, Handler und Fallback-Timer auf', async () => {
     vi.useFakeTimers();
     const env = umgebung();
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     env.fenster.dispatchEvent(new Event('focus'));
     env.adapter.dispose();
     await expect(lauf).resolves.toEqual({ status: 'abgebrochen' });
     aufgeraeumt(env);
     expect(env.feld.anzahl('click')).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
-    await expect(env.adapter.import.waehlen(vorgabe)).resolves.toEqual({ status: 'abgebrochen' });
+    await expect(waehlenMitNutzergeste(env)).resolves.toEqual({ status: 'abgebrochen' });
     expect(env.feld.click).toHaveBeenCalledTimes(1);
     env.adapter.dispose();
   });
@@ -304,7 +481,7 @@ describe('Web-Import', () => {
     let fertig!: (text: string) => void;
     const probe = datei();
     probe.text.mockImplementation(() => new Promise<string>(resolve => { fertig = resolve; }));
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     env.feld.files = [probe];
     env.feld.dispatchEvent(new Event('change'));
     env.adapter.dispose();
@@ -317,7 +494,7 @@ describe('Web-Import', () => {
   it('hinterlässt auch nach mehrfacher Fokusrückkehr beim dispose keinen Timer', async () => {
     vi.useFakeTimers();
     const env = umgebung();
-    const lauf = env.adapter.import.waehlen(vorgabe);
+    const lauf = waehlenMitNutzergeste(env);
     env.fenster.dispatchEvent(new Event('focus'));
     env.fenster.dispatchEvent(new Event('focus'));
     env.adapter.dispose();

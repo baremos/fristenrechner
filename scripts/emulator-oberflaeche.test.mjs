@@ -10,7 +10,7 @@ import { runInNewContext } from 'node:vm';
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cdpFehler = JSON.parse(readFileSync(join(wurzel, 'scripts/emulator/fixtures/cdp-fehler-2026-09-30.json'), 'utf8'));
 const axZeitgrenze = cdpFehler.api36.find(e => e.meldung.startsWith('A10:')).meldung.split(' – ')[1];
-const tmp = process.env.TMP ?? join(wurzel, 'scratchpad/paket-2.6/tmp');
+const tmp = join(wurzel, 'scratchpad/test-emulator-oberflaeche');
 mkdirSync(tmp, { recursive: true });
 const arbeit = mkdtempSync(join(tmp, 'oberflaeche-test-'));
 // Der Ordner entsteht ausschließlich unter der bekannten Testwurzel.
@@ -78,6 +78,13 @@ for (const [titel, datei, ersetzen, durch] of [
   ['Fokusklasse der Leiste fehlt', quelldateien[11], "leiste.classList.toggle('fr-menue-tastatur', aktiv)", "leiste.classList.toggle('anders', aktiv)"],
   ['Fokusklasse des Sheet fehlt', quelldateien[11], "overlay.classList.toggle('fr-menue-tastatur', aktiv)", "overlay.classList.toggle('anders', aktiv)"],
   ['App-Wortumbruch fehlt', quelldateien[1], 'overflow-wrap: anywhere;', 'overflow-wrap: normal;'],
+  ['Hinweistitel geändert', quelldateien[1], '<summary>Hinweise zu Komponenten Dritter</summary>', '<summary>Andere Hinweise</summary>'],
+  ['Lizenzanker fehlt', quelldateien[1], '<summary>Lizenzen</summary>', '<summary>Andere Texte</summary>'],
+  ['Hinweiseinleitung geändert', quelldateien[1], 'Diese App enthält Komponenten Dritter.', 'Diese App enthält andere Komponenten.'],
+  ['Hinweisquelle fehlt', quelldateien[1], "../hinweise-dritter.txt?raw", '../anderer-text.txt?raw'],
+  ['Hinweisausgabe fehlt', quelldateien[1], '<pre>{hinweiseDritter}</pre>', '<pre>anderer Text</pre>'],
+  ['Hinweisabschnitt ohne vereinbarte Klasse', quelldateien[1], 'class="app-abschnitt" id="app-hinweise-dritter"', 'class="anderer-abschnitt" id="app-hinweise-dritter"'],
+  ['Bibliothekssatz geändert', quelldateien[1], 'Ihre Lizenzhinweise stehen im Abschnitt', 'Ihre Lizenzhinweise finden Sie im Abschnitt'],
   ['App-Silbentrennung fehlt', quelldateien[1], 'hyphens: auto;', 'hyphens: none;'],
   ['App-Außenabstand unbegrenzt', quelldateien[1], 'padding: min(1rem, 4vw)', 'padding: 1rem'],
   ['Sheet nicht aktiviert', quelldateien[1], "menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }}", 'menue="aus"'],

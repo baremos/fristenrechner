@@ -423,7 +423,7 @@
     "kontexte": [
       "prebuild"
     ],
-    "muster": ">\\ @baremos/fristenrechner\\-kern@0\\.0\\.0\\ build",
+    "muster": ">\\ @baremos/fristenrechner\\-kern@(?:0\\.0\\.0|0\\.1\\.0)\\ build",
     "maximal_pro_lauf": 1,
     "belege": [
       {
@@ -440,6 +440,12 @@
       },
       {
         "lauf": "lauf-zhqctq16-gezielt-scandelete",
+        "zeilen": [
+          48
+        ]
+      },
+      {
+        "lauf": "lauf-4zdiuc_3-gezielt",
         "zeilen": [
           48
         ]
@@ -554,6 +560,22 @@
         "lauf": "lauf-zhqctq16-gezielt-scandelete",
         "zeilen": [
           78
+        ]
+      }
+    ]
+  },
+  {
+    "art": "hinweise_dritter_bestanden",
+    "kontexte": [
+      "prebuild"
+    ],
+    "muster": "Hinweise\\ Dritter:\\ bestanden",
+    "maximal_pro_lauf": 1,
+    "belege": [
+      {
+        "lauf": "lauf-4zdiuc_3-gezielt",
+        "zeilen": [
+          79
         ]
       }
     ]

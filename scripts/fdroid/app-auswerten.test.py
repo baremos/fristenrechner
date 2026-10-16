@@ -355,7 +355,9 @@ class AppAuswertung(unittest.TestCase):
                 self.assertTrue(entfernt[0]["erwartet"])
 
     def test_jedes_muster_hat_passende_originalzeilen(self):
-        daten = json.loads((HIER / "fixtures/app-laeufe-2026-09-30.json").read_text(encoding="utf-8"))["laeufe"]
+        daten = {}
+        for pfad in sorted((HIER / "fixtures").glob("app-laeufe-*.json")):
+            daten.update(json.loads(pfad.read_text(encoding="utf-8"))["laeufe"])
         nach_nummer = {name: {e["zeile"]: e["text"] for e in zeilen} for name, zeilen in daten.items()}
         for eintrag, regex in A.PROTOKOLL.muster_laden(A.BUILD):
             with self.subTest(art=eintrag["art"]):
@@ -368,9 +370,40 @@ class AppAuswertung(unittest.TestCase):
                         self.assertIsNotNone(regex.fullmatch(A.BUILD.ANSI_SGR.sub("", text)), (beleg, nr))
 
     def test_app_fixtures_ohne_rechnerpfade(self):
-        text = (HIER / "fixtures/app-laeufe-2026-09-30.json").read_text(encoding="utf-8")
-        self.assertNotIn("/home/", text)
-        self.assertNotRegex(text, r"[A-Za-z]:\\\\")
+        for pfad in sorted((HIER / "fixtures").glob("app-laeufe-*.json")):
+            with self.subTest(datei=pfad.name):
+                text = pfad.read_text(encoding="utf-8")
+                self.assertNotIn("/home/", text)
+                self.assertNotRegex(text, r"[A-Za-z]:\\\\")
+
+    def test_neue_prebuild_zeilen_bleiben_eng_begrenzt(self):
+        daten = json.loads((HIER / "fixtures/app-laeufe-2026-10-15.json").read_text(encoding="utf-8"))["laeufe"]
+        zeilen = {e["zeile"]: e["text"] for e in daten["lauf-4zdiuc_3-gezielt"]}
+        log = self.app_fixture().replace("> @baremos/fristenrechner-kern@0.0.0 build", zeilen[48])
+        log = log.replace(zeilen[78], zeilen[78] + "\n" + zeilen[79])
+        probleme, bekannt, *_ = self.protokoll(log)
+        self.assertEqual(probleme, [])
+        for art, zeile in (("npm_kern_build", zeilen[48]), ("hinweise_dritter_bestanden", zeilen[79])):
+            with self.subTest(art=art):
+                self.assertEqual(sum(e["art"] == art for e in bekannt), 1)
+                doppelt, *_ = self.protokoll(log.replace(zeile, zeile + "\n" + zeile))
+                self.assertEqual(len(doppelt), 1, doppelt)
+                self.assertIn(f"Bekannte Meldung {art}: 2 Vorkommen", doppelt[0])
+                falscher_kontext, *_ = self.protokoll(log.replace(zeile + "\n", "").replace(
+                    "BUILD SUCCESSFUL in 1m 52s", "BUILD SUCCESSFUL in 1m 52s\n" + zeile))
+                self.assertEqual(len(falscher_kontext), 1, falscher_kontext)
+                self.assertIn("Zeile ohne Kopf", falscher_kontext[0])
+        for original, ersatz in (
+            *((zeilen[48], zeilen[48].replace("0.1.0", version))
+              for version in ("0.0.1", "0.2.0", "1.1.0", "0.1.0-beta", "0x1x0")),
+            (zeilen[48], zeilen[48] + " Zusatz"),
+            (zeilen[79], zeilen[79] + " Zusatz"),
+            (zeilen[79], "Hinweise Dritter: nicht bestanden"),
+        ):
+            with self.subTest(ersatz=ersatz):
+                probleme, *_ = self.protokoll(log.replace(original, ersatz))
+                self.assertEqual(len(probleme), 1, probleme)
+                self.assertIn("Zeile ohne Kopf", probleme[0])
 
     def test_unbekannte_folgezeile_in_jedem_kontext(self):
         log = self.app_fixture()

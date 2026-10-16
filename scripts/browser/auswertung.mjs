@@ -1,9 +1,10 @@
 // Reine Auswertung: keine Browser-, Datei- oder Prozesszugriffe beim Import.
-import { ERGEBNISKATALOG, RAHMENFEHLER } from './ergebniskatalog.mjs';
+import { ERGEBNISKATALOG, RAHMENFEHLER, ERGEBNISRANG } from './ergebniskatalog.mjs';
 import { Messfehler } from './fehler.mjs';
+import { sichtstatusBestaetigt, grenzstatusBestaetigt } from './sichtpruefung.mjs';
 export const PHASEN = Object.keys(ERGEBNISKATALOG);
-// Die benannte Gruppe bleibt auch nach Ergänzung späterer Phasen auf V6a begrenzt.
-export const PHASENGRUPPEN = { 'alle-v6a': ['vertrag', 'webadapter'] };
+// Die benannte Gruppe bleibt auch nach Ergänzung späterer Phasen auf Vertrag und Webadapter begrenzt.
+export const PHASENGRUPPEN = { 'grundlagen': ['vertrag', 'webadapter'], alle: [...PHASEN] };
 export const HTML_HASH = 'e6465ae87407c4e1e53036ecae4f9f2ac7e1f90b90fb5362483436fab41e8898';
 
 export function argumente(argv) {
@@ -55,13 +56,18 @@ export function auswerten(protokoll) {
     ...ergebnisse.filter(e => !pflicht?.includes(e.id) && !(RAHMENFEHLER.includes(e.id) && e.status === 'ungültig'))
       .map(e => `Unbekannte Prüfkennung oder unzulässiger Rahmenstatus: ${e.id}`),
     ...ids.filter((id, i) => ids.indexOf(id) !== i).map(id => `Prüfkennung doppelt: ${id}`),
+    ...ergebnisse.filter(e=>e.status==='Sichtprüfung ausstehend' && !sichtstatusBestaetigt(protokoll,e))
+      .map(e=>`Sichtprüfung ohne bestätigte automatische Teilfälle und Bildbelege: ${e.id}`),
+    ...ergebnisse.filter(e=>e.status==='dokumentierte Grenze'&&!grenzstatusBestaetigt(protokoll,e))
+      .map(e=>`Grenze ohne Kataloggrund, Ersatzmessung oder bestätigte Teilfälle: ${e.id}`),
   ];
-  const ungueltig = katalogfehler.length > 0 || ergebnisse.some(e => !['bestanden', 'nicht bestanden'].includes(e.status));
+  const ungueltig = katalogfehler.length > 0 || ergebnisse.some(e => !['bestanden', 'nicht bestanden', 'Sichtprüfung ausstehend','dokumentierte Grenze'].includes(e.status));
   const fehler = ergebnisse.filter(e => e.status === 'nicht bestanden').length;
   const netzfehler = (protokoll.netzanfragen ?? []).filter(e => !anfrageBewerten(e.url).erlaubt).length;
-  const code = ungueltig ? 2 : fehler || netzfehler ? 1 : 0;
-  return { status: code === 2 ? 'ungültig' : code === 1 ? 'nicht bestanden' : 'bestanden', code,
-    bestanden: ergebnisse.filter(e => e.status === 'bestanden').length, fehler, netzfehler, katalogfehler };
+  const code = ungueltig ? 2 : fehler || netzfehler ? 1 : ergebnisse.some(e => e.status === 'Sichtprüfung ausstehend') ? 4
+    : ergebnisse.some(e=>e.status==='dokumentierte Grenze')?3:0;
+  return { status: statusFuerCode(code), code,
+    bestanden: ergebnisse.filter(e => e.status === 'bestanden').length, grenzen:ergebnisse.filter(e=>e.status==='dokumentierte Grenze').length,fehler, netzfehler, katalogfehler };
 }
 
 export function gesamtAuswerten({ optionen, laeufe = [], nichtInstalliert = [], fehler, aufraeumfehler }) {
@@ -74,10 +80,12 @@ export function gesamtAuswerten({ optionen, laeufe = [], nichtInstalliert = [], 
     ...vorhanden.filter((k, i) => !erwartet.includes(k) || vorhanden.indexOf(k) !== i).map(k => `Unbekannte oder doppelte Browser/Phase: ${k}`),
   ];
   const rahmenfehler = [fehler, aufraeumfehler].filter(Boolean);
-  const code = rahmenfehler.length || kombinationsfehler.length || laeufe.some(l => ![0, 1].includes(l.code)) ? 2
-    : laeufe.some(l => l.code === 1) ? 1 : 0;
-  return { code, status: code === 2 ? 'ungültig' : code === 1 ? 'nicht bestanden' : 'bestanden', kombinationsfehler, rahmenfehler };
+  const code = rahmenfehler.length || kombinationsfehler.length || laeufe.some(l => !ERGEBNISRANG.includes(l.code)) ? 2
+    : ERGEBNISRANG.find(c=>laeufe.some(l=>l.code===c))??0;
+  return { code, status: statusFuerCode(code), kombinationsfehler, rahmenfehler };
 }
+
+export const statusFuerCode = code => ({ 0: 'bestanden', 1: 'nicht bestanden', 2: 'ungültig',3:'dokumentierte Grenze', 4: 'Sichtprüfung ausstehend' })[code];
 
 export async function pruefung(protokoll, id, beschreibung, fn) {
   if (protokoll.ergebnisse.some(e => e.id === id)) throw new Messfehler(`Prüfkennung doppelt: ${id}`);

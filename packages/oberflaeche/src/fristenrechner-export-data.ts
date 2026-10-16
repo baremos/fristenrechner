@@ -8,6 +8,9 @@ import type {
 import { VERGABEORDNUNGEN } from '@baremos/fristenrechner-kern';
 import type { ExportInhalt } from './plattform';
 
+/** Fester Pakethinweis für PDF und Excel; kein austauschbarer Gastgebertext. */
+export const exportHaftungshinweis = 'Unverbindliche Rechenhilfe. Ersetzt keine Rechtsberatung. Alle Angaben ohne Gewähr.';
+
 /** Exportadressen sind optional und verwenden ausschließlich HTTPS. */
 export function pruefeExportInhalt(inhalt: ExportInhalt): void {
   if (inhalt.adresse && new URL(inhalt.adresse.href).protocol !== 'https:') {
@@ -84,7 +87,7 @@ export function formatExportDate(value: string): string {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
-/** Erstellungsdatum im Export-Kopf — zweistellig wie alle Termindaten . */
+/** Erstellungsdatum im Export-Kopf — zweistellig wie alle Termindaten. */
 export function formatCreatedDate(value: Date): string {
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',

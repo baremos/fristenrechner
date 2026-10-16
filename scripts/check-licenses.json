@@ -6,6 +6,7 @@
     "BSD-3-Clause": ["ausgeliefert", "bereitgestellt", "entwicklung"],
     "MPL-2.0": ["bereitgestellt", "entwicklung"],
     "Zlib": ["ausgeliefert", "bereitgestellt", "entwicklung"],
+    "BSL-1.0": ["ausgeliefert", "bereitgestellt", "entwicklung"],
     "GPL-3.0-or-later": [],
     "BSD-2-Clause": ["bereitgestellt", "entwicklung"],
     "0BSD": ["ausgeliefert", "bereitgestellt", "entwicklung"],

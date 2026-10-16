@@ -3,7 +3,7 @@ import type { ScheduleInput, ScheduleResult } from '@baremos/fristenrechner-kern
 import type { AusgabeDatei, ExportInhalt, ExportZeit } from './plattform';
 import {
   exportFileSuffix,
-  exportHinweis,
+  exportHaftungshinweis,
   formatExportDate,
   phaseLabels,
   procedureLabel,
@@ -42,65 +42,114 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
   ]);
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   pdf.setCreationDate(new Date(zeit.zeitpunkt));
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const lineHeight = (): number => pdf.getFontSize() * pdf.getLineHeightFactor() / pdf.internal.scaleFactor;
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(8);
+  const footerLines = inhalt.adresse ? [inhalt.adresse.text, exportHaftungshinweis] : [exportHaftungshinweis];
+  const footerLineHeight = lineHeight();
+  const footerBlockHeight = (footerLines.length - 1) * footerLineHeight;
+  // Unterste Grundlinie: bisherige erste Fußzeile (13,5 mm Rand) plus eine
+  // 8-pt-Zeile. Ohne Adresse entfällt die obere Zeile. Die bisherigen Abstände
+  // von 4,5 mm zur Trennlinie und 5 mm zum Inhalt bleiben erhalten.
+  const footerLastY = pageHeight - 13.5 + footerLineHeight;
+  const footerFirstY = footerLastY - footerBlockHeight;
+  const footerMiddleY = footerFirstY + footerBlockHeight / 2;
+  const footerDividerY = footerFirstY - 4.5;
+  const bottomLimit = footerDividerY - 5;
+  const tableMarginBottom = pageHeight - bottomLimit;
+  // Der mittige Block bleibt fest; seitliche Texte dürfen im vorhandenen
+  // Fußbereich umbrechen, ohne Trennlinie oder Inhaltsgrenze zu verschieben.
+  const footerCenterWidth = Math.max(...footerLines.map(text => pdf.getTextWidth(text)));
+  const footerSideWidth = (pageWidth - footerCenterWidth) / 2 - 12;
+  if (footerLines.some(text => /[\r\n]/.test(text)) || /[\r\n]/.test(inhalt.herausgeber)
+    || !Number.isFinite(bottomLimit) || bottomLimit <= 0
+    || footerSideWidth <= 0) {
+    throw new Error('Der PDF-Fußzeilenblock passt nicht auf die Seite.');
+  }
+  const footerSideLines = (text: string): string[] => {
+    const lines: string[] = pdf.getTextWidth(text) < footerSideWidth ? [text] : pdf.splitTextToSize(text, footerSideWidth);
+    const halfHeight = (lines.length - 1) * footerLineHeight / 2;
+    const fontHeight = pdf.getFontSize() / pdf.internal.scaleFactor;
+    if (footerMiddleY - halfHeight - fontHeight <= footerDividerY
+      || footerMiddleY + halfHeight + fontHeight >= pageHeight
+      || lines.some(line => pdf.getTextWidth(line) >= footerSideWidth)) {
+      throw new Error('Der PDF-Fußzeilenblock passt nicht auf die Seite.');
+    }
+    return lines;
+  };
+  const publisherLines = footerSideLines(inhalt.herausgeber);
+  const headerLines: string[] = pdf.splitTextToSize(projectHeader(input), pageWidth - 24);
+  // Bis zwei Kopfzeilen gelten die bisherigen Positionen; jede weitere zählt voll.
+  const headerOffset = Math.max(0, headerLines.length - 2) * lineHeight();
+  const pageStartY = 25 + headerOffset;
+  const tableMarginTop = 21 + headerOffset;
 
-  const drawPageChrome = (pageDocument: JsPdfDocument): void => {
+  const drawPageChrome = (pageDocument: JsPdfDocument, pageNumber: number, totalPages: number): void => {
     const pageWidth = pageDocument.internal.pageSize.getWidth();
-    const pageHeight = pageDocument.internal.pageSize.getHeight();
     pageDocument.setFont('helvetica', 'normal');
     pageDocument.setTextColor(...DARK);
     pageDocument.setFontSize(8);
-    const headerLines = pageDocument.splitTextToSize(projectHeader(input), pageWidth - 24).slice(0, 2);
     pageDocument.text(headerLines, 12, 9.5);
     pageDocument.setDrawColor(184, 184, 181);
     pageDocument.setLineWidth(0.25);
-    pageDocument.line(12, 17, pageWidth - 12, 17);
+    pageDocument.line(12, 17 + headerOffset, pageWidth - 12, 17 + headerOffset);
 
-    pageDocument.line(12, pageHeight - 18, pageWidth - 12, pageHeight - 18);
-    pageDocument.setFontSize(6.8);
+    pageDocument.line(12, footerDividerY, pageWidth - 12, footerDividerY);
     pageDocument.setTextColor(...MUTED);
-    pageDocument.text(
-      exportHinweis(inhalt),
-      pageWidth / 2,
-      pageHeight - 13.5,
-      { align: 'center', maxWidth: pageWidth - 24 },
-    );
-    pageDocument.setFontSize(8);
-    pageDocument.text(inhalt.herausgeber, 12, pageHeight - 8.5);
+    const pageLabel = `Seite ${pageNumber} von ${totalPages}`;
+    const pageLines = footerSideLines(pageLabel);
+    pageDocument.text(publisherLines.length === 1 ? inhalt.herausgeber : publisherLines, 12,
+      footerMiddleY - (publisherLines.length - 1) * footerLineHeight / 2);
+    pageDocument.text(footerLines, pageWidth / 2, footerFirstY, { align: 'center' });
+    pageDocument.text(pageLines.length === 1 ? pageLabel : pageLines, pageWidth - 12,
+      footerMiddleY - (pageLines.length - 1) * footerLineHeight / 2, { align: 'right' });
+  };
+
+  let headerY = pageStartY;
+  // Die längere der beiden Spalten bestimmt den Zeilenversatz der nächsten Reihe.
+  const drawHeaderRow = (leftText: string, width: number, rightText?: string): void => {
+    const leftLines: string[] = pdf.splitTextToSize(leftText, width);
+    const rightLines: string[] = rightText === undefined ? [] : pdf.splitTextToSize(rightText, 90);
+    const extraHeight = (Math.max(leftLines.length, rightLines.length) - 1) * lineHeight();
+    if (!Number.isFinite(headerY + extraHeight) || headerY + extraHeight >= bottomLimit) {
+      throw new Error('Der PDF-Kopfblock passt nicht auf die erste Seite.');
+    }
+    pdf.text(leftLines, 12, headerY);
+    if (rightText !== undefined) pdf.text(rightLines, 108, headerY);
+    headerY += 7 + extraHeight;
   };
 
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(...ACCENT);
   pdf.setFontSize(15);
-  pdf.text(inhalt.titel, 12, 25);
+  drawHeaderRow(inhalt.titel, 186);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(...DARK);
   pdf.setFontSize(8.5);
-  pdf.text(
+  drawHeaderRow(
     `Verfahrensart: ${regimeShortLabel(input)} · ${procedureLabel(input)}`,
-    12,
-    32,
-    { maxWidth: 91 },
+    91,
+    `Bundesland: ${stateLabels[input.bundesland]}`,
   );
-  pdf.text(`Bundesland: ${stateLabels[input.bundesland]}`, 108, 32, { maxWidth: 90 });
-  pdf.text(`Erstellungsdatum: ${formatExportDate(zeit.kalendertag)}`, 12, 39, { maxWidth: 91 });
-  pdf.text(`Rechtsstand: ${result.rechtsstand}`, 108, 39, { maxWidth: 90 });
-  pdf.text(regelstandText(result), 12, 46, { maxWidth: 186 });
-  const tableStartY = result.bindefrist ? 62 : 55;
+  drawHeaderRow(`Erstellungsdatum: ${formatExportDate(zeit.kalendertag)}`, 91, `Rechtsstand: ${result.rechtsstand}`);
+  drawHeaderRow(regelstandText(result), 186);
   if (result.bindefrist) {
     pdf.setFont('helvetica', 'bold');
-    pdf.text(
+    drawHeaderRow(
       `Bindefrist: Endtermin ${formatExportDate(result.bindefrist.termin)} · Dauer ${result.bindefrist.tage} KT ab Angebotsabgabe ${formatExportDate(result.bindefrist.basis)}`,
-      12,
-      53,
-      { maxWidth: 186 },
+      186,
     );
     pdf.setFont('helvetica', 'normal');
   }
+  const tableStartY = headerY + 2;
+  if (tableStartY >= bottomLimit) throw new Error('Unter dem PDF-Kopfblock bleibt kein Platz für die Tabelle.');
 
   const phaseNames = new Map(result.phasen.map((phase) => [phase.id, phase.label]));
   autoTable(pdf, {
     startY: tableStartY,
-    margin: { top: 21, right: 12, bottom: 23, left: 12 },
+    margin: { top: tableMarginTop, right: 12, bottom: tableMarginBottom, left: 12 },
     head: [['Datum / Zeitraum', 'Termin', 'Phase', 'Rechtsgrundlage / Fristtyp']],
     body: result.meilensteine.map((milestone) => [
       milestone.bis !== undefined && milestone.dauerAT !== undefined
@@ -142,7 +191,7 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
     const finalY = (pdf as PdfWithLastTable).lastAutoTable?.finalY ?? tableStartY;
     autoTable(pdf, {
       startY: finalY + 7,
-      margin: { top: 21, right: 12, bottom: 23, left: 12 },
+      margin: { top: tableMarginTop, right: 12, bottom: tableMarginBottom, left: 12 },
       head: [['Warnungen']],
       body: warnings.map((warning) => [warning]),
       theme: 'grid',
@@ -166,16 +215,15 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
   }
 
   // Zeitschiene mit den Phasenblöcken auf eigener Seite nach der
-  // Tabellenübersicht  — Darstellung wie die
+  // Tabellenübersicht — Darstellung wie die
   // Web-Zeitschiene: farbiger Phasenkopf, Zeitraum, Meilensteinliste.
   if (result.phasen.length > 0) {
     const milestonesById = new Map(result.meilensteine.map((milestone) => [milestone.id, milestone]));
     const pageWidth = pdf.internal.pageSize.getWidth();
-    const bottomLimit = pdf.internal.pageSize.getHeight() - 23;
     const left = 12;
     const width = pageWidth - 24;
     pdf.addPage();
-    let y = 25;
+    let y = pageStartY;
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(...ACCENT);
     pdf.setFontSize(12);
@@ -196,9 +244,12 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
       pdf.setFontSize(8.5);
       const umgebrochen = zeilen.flatMap((zeile) => pdf.splitTextToSize(zeile, width - 6) as string[]);
       const blockHoehe = 6.5 + 4.5 + umgebrochen.length * 4 + 4;
+      if (pageStartY + blockHoehe > bottomLimit) {
+        throw new Error('Der PDF-Zeitschienenblock passt nicht auf eine Seite.');
+      }
       if (y + blockHoehe > bottomLimit) {
         pdf.addPage();
-        y = 25;
+        y = pageStartY;
       }
 
       const farbe = PHASE_RGB[phase.id] ?? ACCENT;
@@ -228,13 +279,7 @@ async function createSchedulePdf(input: ScheduleInput, result: ScheduleResult, z
   const totalPages = pdf.getNumberOfPages();
   for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
     pdf.setPage(pageNumber);
-    drawPageChrome(pdf);
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(8);
-    pdf.setTextColor(...MUTED);
-    pdf.text(`Seite ${pageNumber} von ${totalPages}`, pageWidth - 12, pageHeight - 8.5, { align: 'right' });
+    drawPageChrome(pdf, pageNumber, totalPages);
   }
   return pdf;
 }

@@ -4,7 +4,9 @@
 // K2: der gebaute Ordner dist: Pflichtdateien, keine Source-Maps, keine Syntax und
 //     keine Laufzeitfunktionen über der Mindestversion der WebView, kein eval und
 //     kein Function-Konstruktor ohne Eintrag, jede Adresse in Skripten mit Eintrag
-//     in app-pruefungen.json, keine Verweise nach außen in HTML und CSS.
+//     in app-pruefungen.json, keine Verweise nach außen in HTML und CSS,
+//     keine optionalen jsPDF-Chunks oder deren Kennzeichen und keine nackten
+//     Modulnamen in import().
 // K2 ist eine statische Prüfung. Sie sieht keine berechneten Namen (a[x + y]),
 // keinen Code, der erst zur Laufzeit entsteht, keinen Alias oder Reflexionszugriff
 // auf den Function-Konstruktor und keine Adressen, die aus Teilen zusammengesetzt
@@ -101,7 +103,7 @@ function alleDateien(ordner, basis = ordner) {
 
 /** Dateistamm ohne den Hash von Vite: "_astro/jspdf.es.min.DrSiKu-u.js" ergibt "jspdf.es.min". */
 export function dateistamm(datei) {
-  return basename(datei).replace(/\.[A-Za-z0-9_-]{8}\.js$/, '').replace(/\.js$/, '');
+  return basename(datei).replace(/\.[A-Za-z0-9_-]{8}\.m?js$/, '').replace(/\.m?js$/, '');
 }
 
 const FUNKTIONEN = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression', 'ObjectMethod', 'ClassMethod', 'ClassPrivateMethod']);
@@ -124,6 +126,16 @@ function konstanterText(k) {
   if (k?.type === 'StringLiteral') return k.value;
   if (k?.type === 'TemplateLiteral' && k.expressions.length === 0) return k.quasis[0].value.cooked ?? null;
   return null;
+}
+
+function pruefeModulpfad(knoten, fehler) {
+  const text = konstanterText(knoten);
+  // Lokal heißt: relativ (./, ../) oder wurzelbezogen mit genau einem Schrägstrich.
+  // „//host/…“ wäre eine protokollrelative Adresse; Rückstriche normalisiert der Browser dazu,
+  // Tabulator, Zeilenumbruch und andere Steuerzeichen entfernt der URL-Parser vor der Auflösung.
+  if (text !== null && (!/^(?:\.{1,2}\/|\/(?!\/))/.test(text) || text.includes('\\') || /[\s\p{Cc}]/u.test(text))) {
+    fehler.push(`import(${JSON.stringify(text)}): kein lokaler Modulpfad; nackte Modulnamen und fremde Adressen sind im App-Bündel nicht erlaubt.`);
+  }
 }
 
 /** Name der Eigenschaft bei a.b, a["b"] und a[`b`], sonst null. */
@@ -303,11 +315,13 @@ export function analysiereSkript(quelltext, art, { laufzeitNamen = VORGABE.laufz
         break;
       case 'ImportExpression':
         if (k.options) zaehle('syntax', 'Import-Attribute');
+        pruefeModulpfad(k.source, ergebnis.fehler);
         break;
       case 'CallExpression':
       case 'OptionalCallExpression':
       case 'NewExpression': {
         if (k.callee?.type === 'Import' && k.arguments.length > 1) zaehle('syntax', 'Import-Attribute');
+        if (k.callee?.type === 'Import') pruefeModulpfad(k.arguments[0], ergebnis.fehler);
         // Code aus Zeichenketten: Function, setTimeout und setInterval mit Text. eval
         // zählt schon jede Erwähnung (unten), auch als Alias oder in (0, eval)(…).
         let c = k.callee;
@@ -486,6 +500,7 @@ function pruefeHtml(html, datei, fehler, werteSkriptAus, zaehleAdresse) {
         if (inhalt.trim()) fehler.push(`${ort}: Skript mit src und Inhalt.`);
         continue;
       }
+      if (art === 'module') fehler.push(`${ort}: Eingebettetes Modulskript ohne Herkunftsbeleg ist nicht erlaubt.`);
       if (inhalt.trim()) werteSkriptAus(inhalt, art, datei, ort);
     } else if (m[4] !== undefined) {
       pruefeTag('style', attributeVon(m[4]), datei, fehler);
@@ -524,6 +539,12 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
       }
     }
   }
+  for (const feld of ['dateistaemme', 'kennzeichen']) {
+    const liste = vorgabe.jspdfZusatzmodule?.[feld];
+    if (!Array.isArray(liste) || !liste.length || !liste.every(w => typeof w === 'string' && w.trim() !== '')) {
+      fehler.push(`app-pruefungen.json: jspdfZusatzmodule.${feld} muss eine nicht leere Liste von Texten sein.`);
+    }
+  }
   if (fehler.length) return { fehler, bericht };
   if (!existsSync(distOrdner) || !statSync(distOrdner).isDirectory()) return { fehler: [`Der Ordner ${distOrdner} fehlt.`], bericht };
   const dateien = alleDateien(distOrdner);
@@ -549,14 +570,24 @@ export function pruefeDist(distOrdner, { fehlerseite = 'startfehler.html', vorga
     const pfad = join(distOrdner, ...datei.split('/'));
     const endung = extname(datei).toLowerCase();
     if (endung === '.map') { fehler.push(`${datei}: Source-Maps gehören nicht in die App.`); continue; }
+    const inhalt = ['.js', '.mjs', '.css', '.html'].includes(endung) ? readFileSync(pfad) : null;
+    const text = inhalt?.toString('utf8') ?? null;
+    if (text !== null) {
+      // Optionale jsPDF-Module auch ohne Referenz und in HTML/CSS ablehnen.
+      if (vorgabe.jspdfZusatzmodule.dateistaemme.includes(dateistamm(datei))) {
+        fehler.push(`${datei}: optionaler jsPDF-Chunk ist im App-Bündel nicht erlaubt.`);
+      }
+      for (const kennzeichen of vorgabe.jspdfZusatzmodule.kennzeichen) {
+        if (text.includes(kennzeichen)) fehler.push(`${datei}: Kennzeichen eines optionalen jsPDF-Moduls ist im App-Bündel nicht erlaubt: ${kennzeichen}`);
+      }
+    }
     if (endung === '.js' || endung === '.mjs') {
-      const inhalt = readFileSync(pfad);
       bericht.skriptBytes[datei] = inhalt.length;
-      werteSkriptAus(inhalt.toString('utf8'), 'module', dateistamm(datei), datei);
+      werteSkriptAus(text, 'module', dateistamm(datei), datei);
     } else if (endung === '.css') {
-      pruefeCss(readFileSync(pfad, 'utf8'), datei, fehler);
+      pruefeCss(text, datei, fehler);
     } else if (endung === '.html') {
-      const html = readFileSync(pfad, 'utf8');
+      const html = text;
       if (!/<head[\s>]/i.test(html)) fehler.push(`${datei}: <head> fehlt; Capacitor fügt seine Brücke dort ein.`);
       if (datei === fehlerseite && /<script\b/i.test(html)) fehler.push(`${datei}: Die Fehlerseite darf kein Skript enthalten.`);
       pruefeHtml(html, datei, fehler, werteSkriptAus, (adresse) => zaehle('adressen', datei, adresse, 1));
