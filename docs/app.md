@@ -1,6 +1,6 @@
 # Android-App
 
-Stand 2026-10-04, App-Version 0.1.0, geprüfter App-Endstand `5e6f230`, Nachweisstand `49dd420`. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
+Stand 2026-10-15, App-Version 0.1.0, eingefrorener App-Stand `286cdf4`, Build-Nachweise bis `28ce572`. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
 
 ## Aufbau
 
@@ -136,12 +136,14 @@ Platzhalter sind hier noch zugelassen. `app-bauen.mjs --streng` behält seine
 bisherige Bedeutung für Werkzeuge und Android-Arbeitskopie; für ein Inventar ohne
 Platzhalter ist gesondert `node scripts/check-licenses.mjs --streng` erforderlich.
 
-Die neuen Prüfungen bleiben im Erfolgsfall ohne Ausgabe. Nur Fehler erscheinen
-und brechen den Build ab. Das gilt auch für den F-Droid-prebuild, der `--web`
-aufruft: Die Auswertung behandelt unbekannte Protokollzeilen als Beanstandungen.
-Eine neue Erfolgszeile hätte ein Muster mit einer Belegzeile aus einem echten Lauf
-nötig gemacht. Deshalb bleiben `scripts/fdroid/app-meldungen.json` und dessen
-Fixtures unverändert. Ein neuer F-Droid-Lauf ist damit nicht vorweggenommen.
+Inventar- und Bündelabgleich bleiben im Erfolgsfall ohne Ausgabe; Fehler brechen
+den Build ab. Die gesonderte Hinweisprüfung im F-Droid-prebuild meldet nach dem
+Sync dagegen „Hinweise Dritter: bestanden“. Der F-Droid-Lauf vom 2026-10-15
+belegt diese Zeile und den Kern-Build mit Version 0.1.0. Die beiden Muster in
+`scripts/fdroid/app-meldungen.json` und
+die zugehörige Prüfdatei wurden mit `776b7e7` ergänzt. Die Neuauswertung desselben
+Laufs ergab danach keine Beanstandung; siehe den
+[F-Droid-Nachweis](fdroid-build.md#lauf-am-eingefrorenen-stand-vom-2026-10-15).
 
 Der Bündelabgleich bestätigt Paketorte mit gerenderten Modulen und die erfassten
 virtuellen Hilfen in beiden Richtungen. Er entdeckt keine zusätzlichen Fremdteile
@@ -150,7 +152,8 @@ Projektmodule des `package`-Abschnitts des Release-Modells in beiden Richtungen;
 er prüft weder den Wortlaut noch die Vollständigkeit von Lizenz- und
 Urheberhinweisen in den Artefakten. Das Inventar und der Generator sind in
 [lizenzen.md](lizenzen.md#werkzeuge-für-die-hinweise-der-app) beschrieben.
-Stand: Werkzeuge vorhanden, Inhalte mit Platzhaltern, Einbindung in die App folgt.
+Am 2026-10-15 bestanden Lizenzprüfung, Bündelabgleich und Hinweisprüfung; die
+Android-Builds bestanden einschließlich Gradle-Abgleich und K1 bis K5.
 
 Unter Linux ist das Projekt-SDK nur mit der Gruppe „Build" eingerichtet. Der Release-Build mit strenger Prüfung startet dort so:
 
@@ -190,7 +193,38 @@ K5 erlaubt genau `de.baremos.fristenrechner.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMIS
 
 Ohne Git scheitern K3 und K4 mit einem ausdrücklichen Fehler. K4 prüft den Modus im Index, weil er das Ausführungsrecht in einem frischen Linux-Klon bestimmt; der lokale Dateimodus allein belegt das nicht. Für ein Quellarchiv wäre ein vom Herausgeber bereitgestelltes, vertrauenswürdig abgesichertes Dateimanifest mit relativen Pfaden, Dateimodi und Inhaltsprüfsummen als Referenz erforderlich; ein erst nach dem Sync aus demselben Archiv erzeugtes Manifest würde dessen Unverändertheit nicht belegen. Dieser alternative Prüfweg ist nicht eingerichtet. Bis dahin setzt der vollständige Android-Build eine Git-Arbeitskopie voraus.
 
+## Build-Nachweis am eingefrorenen Stand vom 2026-10-15
+
+Die App-Eingaben entsprechen `286cdf4`. Die frische Windows-Kopie und die beiden Linux-Klone wurden zunächst am Stand `3e8ed9b` geprüft; dieser ergänzt nur die F-Droid-Referenz und ihre Dokumentation. `d5222a6` korrigiert die Reihenfolge in `npm test`, `28ce572` ergänzt zwei Gradle-Prüfsummen. Diese Änderungen verändern die App-Eingaben nicht. Alle folgenden Zeiten sind MESZ.
+
+| Lauf | Werkzeuge und Ablauf | Beobachtetes Ergebnis |
+|---|---|---|
+| Windows, Neubau nach `clean`, 2026-10-15, 16:14 bis 16:16 | Node 24.21.0, npm 11.19.0, JDK 21.0.8, Gradle 8.14.5 `bin`, Build-Tools 35.0.0; ohne `--streng`. Zuerst `node scripts/android-build.mjs --projekt app/android --aufgabe clean`, danach `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` und `node scripts/app-bauen.mjs --android`. | Release und Debug mit K1 bis K5 bestanden; Release unsigniert 7 668 430 Bytes, Debug 9 409 175 Bytes. Arbeitsbaum danach sauber. |
+| Windows, frische Kopie aus einem Bundle außerhalb des Repositorys, 2026-10-15, 16:24 bis 16:43 | Rechnerweites Node 22.23.2, npm 10.9.8, `core.autocrlf=true`, JDK 21.0.8; ohne `--streng`. `npm ci` in 101 Sekunden, `npm run check`, `npm run build`, `npm run lizenzen` und `node scripts/app-bauen.mjs --android --aufgabe assembleRelease`. | Genannte Prüfungen und K1 bis K5 bestanden; Release 7 668 430 Bytes und bytegleich zum Windows-Neubau. Arbeitsbaum danach sauber. `npm test` scheiterte zunächst an einem Testfall; Korrektur und Wiederholung siehe unten. |
+| Linux, zwei frische Klone, 2026-10-15, 16:24 bis 16:39 | Debian 13.5 in WSL 2, Node 24.21.0, npm 11.19.0, OpenJDK 21.0.12.1, Projekt-SDK nur Gruppe „Build“, Gradle 8.14.5 `bin`. Je `npm ci` und `node scripts/app-bauen.mjs --android --aufgabe assembleRelease --streng --ohne-testgruppe`. | K1 bis K5 in beiden Klonen bestanden. Beide Release-APKs 7 668 430 Bytes, untereinander und zum Windows-Neubau bytegleich; beide Arbeitsbäume danach sauber. |
+
+| Datei aus dem Windows-Neubau | SHA-256 |
+|---|---|
+| Release, unsigniert | `0645663f481f8eca7d49d6fa91ea758a4443df9712777285424c2673db6f2a02` |
+| Debug | `aecc556fa382846737a38fe0f1e0f0477673e1076efd13d511872308c5af69f6` |
+
+Die Release-Prüfsumme gilt für alle vier Builds. Nach der Ergänzung der Gradle-Prüfsummen bestand am Stand `28ce572` ein weiterer Windows-Release-Build mit K1 bis K5. Er lief inkrementell; Gradle schrieb die APK nicht neu, sie blieb bei derselben Prüfsumme. Die Release-APK enthält `META-INF/version-control-info.textproto` mit `NO_SUPPORTED_VCS_FOUND` (46 Bytes), `assets/dexopt/baseline.prof` mit 2 499 Bytes und `baseline.profm` mit 233 Bytes; diese Dateien sind Teil des Vergleichs.
+
+| Tests mit `npm test` | Skripte insgesamt | Bestanden | Übersprungen | Fehlgeschlagen | Kern / Oberfläche / App (Vitest, bestanden) |
+|---|---|---|---|---|---|
+| Windows, Gesamtprüfung mit Node 24.21.0 | 3 107 | 3 100 | 7 | 0 | 134 / 466 / 258 |
+| Frische Windows-Kopie mit Node 22.23.2, Wiederholung am Stand `d5222a6` ohne vorhandenes `packages/kern/dist` | 3 107 | 3 100 | 7 | 0 | 134 / 466 / 258 |
+| Erster Linux-Klon mit Node 24.21.0, Kern bereits gebaut | 3 107 | 3 027 | 80 | 0 | 134 / 466 / 258 |
+
+In der frischen Windows-Kopie scheiterte zunächst genau ein Testfall: `scripts/browser/belege.test.mjs` importiert den gebauten Rechenkern, die Skripttests liefen aber vor dessen Build. Ein vorhandenes `packages/kern/dist` verdeckte den Fehler in vorbereiteten Arbeitskopien. Seit `d5222a6` baut `npm test` den Kern zuerst. Die Wiederholung in derselben frischen Kopie ohne `packages/kern/dist` bestand mit den Zahlen der Tabelle. Im ersten Linux-Klon war der Kern vor `npm test` bereits gebaut; auch die Lizenzprüfung bestand dort.
+
+Ohne Netzwerkzugriff unter `unshare -r -n` bestanden im ersten Linux-Klon Web-Build und Android-Sync mit Rückgabewert 0. Die Gegenprobe im selben Netzwerk-Namensraum scheiterte bei der Namensauflösung mit `EAI_AGAIN`. Im zweiten Klon brach die Gegenprobe ohne Ausführungsrecht für `gradlew` mit `EACCES` und Rückgabewert 1 ab. Nach Rücknahme der Änderung war der Arbeitsbaum wieder sauber. Die Netzprobe betrifft die vorbereitete Umgebung; Gradle lief mit Netz.
+
+N1 ist damit für die unsignierte Release-APK auf diesem Rechner erneut belegt. Der [lokale F-Droid-Lauf vom 2026-10-15](fdroid-build.md#lauf-am-eingefrorenen-stand-vom-2026-10-15) lieferte am Stand `28ce572` dieselbe Release-APK. Grenzen bleiben: Windows und Debian unter WSL auf einem Rechner, Windows ohne `--streng` mit JDK 21.0.8 statt der für Release-Builds festgelegten 21.0.12, Gradle mit Netz. Die Debug-Prüfsumme bezeichnet nur den Windows-Neubau; Debug-APKs gehören nicht zu N1. Ein Build auf dem F-Droid-Buildserver ist nicht belegt.
+
 ## Build-Nachweis am Endstand vom 2026-10-03/04
+
+Dieser historische Abschnitt bleibt als Nachweis des damaligen Stands erhalten; der [Build-Nachweis am eingefrorenen Stand vom 2026-10-15](#build-nachweis-am-eingefrorenen-stand-vom-2026-10-15) steht oben.
 
 Quelle sind die Protokolle der Läufe vom 2026-10-03/04; sie liegen nicht im Repository. Der Windows-Neubau nach `clean` prüfte `5e6f230`, die frische Windows-Kopie und die beiden Linux-Klone prüften `49dd420`. Dieser Nachweisstand ergänzt nur die F-Droid-Referenz und ihre Dokumentation; die App-Eingaben sind gleich und entsprechen `1fdcf8b`.
 
@@ -220,7 +254,7 @@ N1 ist damit für die unsignierte Release-APK auf diesem Rechner belegt. Der [lo
 
 ## Build vom 2026-09-30
 
-Dieser historische Abschnitt beschreibt den damaligen Stand; der [Build-Nachweis am Endstand](#build-nachweis-am-endstand-vom-2026-10-0304) steht oben.
+Dieser historische Abschnitt beschreibt den damaligen Stand; der [Build-Nachweis am eingefrorenen Stand vom 2026-10-15](#build-nachweis-am-eingefrorenen-stand-vom-2026-10-15) steht oben.
 
 Der Android-Quellstand `b8b01c6`, Version 0.1.0, wurde am 2026-09-30 unter Windows gebaut: Node 24.21.0, npm 11.19.0, JDK 21.0.8, Capacitor 8.5.2, Android-Gradle-Plugin 8.13.0, Gradle 8.14.5 als `bin`-Verteilung und Build-Tools 35.0.0.
 
@@ -270,7 +304,7 @@ Der Rauchtest belegt Start und Anzeige dieses älteren Builds. Es gab keinen Net
 
 ## Linux-Nachweis vom 2026-09-30
 
-Dieser historische Abschnitt bleibt als Nachweis der damaligen Quellstände erhalten. Den App-Endstand beschreibt der [Build-Nachweis vom 2026-10-03/04](#build-nachweis-am-endstand-vom-2026-10-0304).
+Dieser historische Abschnitt bleibt als Nachweis der damaligen Quellstände erhalten. Den eingefrorenen App-Stand beschreibt der [Build-Nachweis vom 2026-10-15](#build-nachweis-am-eingefrorenen-stand-vom-2026-10-15).
 
 Der Quellstand `c7a0cd8` wurde unter Debian 13.5 in WSL 2 aus einem Git-Bundle in zwei getrennte Ordner geklont. Jeder Klon hatte sein eigenes `node_modules`. Verwendet wurden Node.js 24.21.0, npm 11.19.0, OpenJDK 21.0.12.1, Gradle 8.14.5 als `bin`-Verteilung und Build-Tools 35.0.0. Das Projekt-SDK enthielt nur die Gruppe „Build“. Die bereits vorhandene und geprüfte Gradle-Verteilung wurde in den Cache des Wrappers kopiert; der Wrapper prüfte ihre Prüfsumme erneut. Bei diesem Lauf wurde die Verteilung nicht neu geladen.
 
@@ -378,6 +412,8 @@ Auch nach einem Fehler räumt der Lauf auf: App und Gegenprobe deinstallieren, g
 
 ### Menüphase auf API 30 und 36
 
+**Ergebnis am eingefrorenen Stand (2026-10-15):** Geprüft wurden Debug `aecc556f…69f6` und Release `0645663f…2a02` aus dem Windows-Neubau. Nach Sichtprüfung der je 15 Bilder am 2026-10-16 ergab API 36 (17:13 bis 17:30 MESZ) 18 bestandene Befunde und 4 dokumentierte Grenzen, Rückgabewert 3. API 30 (17:30 bis 17:44 MESZ) ergab 16 bestandene Befunde, 4 dokumentierte Grenzen und einen ungültigen Fall, Rückgabewert 2. Die Grenzen betreffen M-4 teilen, M-5 bei beiden Schriftgrößen sowie `input swipe` und TalkBack. Auf API 30 blieb M-2 geste nach dem Umschalten auf Gestennavigation mit Neuerstellung der Activity ungültig. Ein vollständiger Gestenfall mit offenem Menü auf API 30 ist damit weiterhin nicht belegt.
+
 **Ergebnis vom 2026-10-02** (Debug `e3fdd301…fcdf`, Release `2e95b5ac…2bb0`, Stand `018720b`): **API 36 (WebView 133.0.6943.137):** 18 Befunde bestanden, 4 dokumentierte Grenzen, keiner nicht bestanden oder ungültig. Die Grenzen: M-4 teilen (das System öffnet einen Empfänger direkt oder hat keinen, die Teilen-Auswahl ist nicht sichtbar), M-5 bei beiden Schriftgrößen (Sperre nur im Hintergrund-DOM belegt, die Android-Auswahl verdeckt die App) und die allgemeine Grenze zu `input swipe` und TalkBack. 15 Bilder von Claude gesichtet; Neuauswertung mit Sichtprüfung Rückgabewert 3. **API 30 (WebView 83.0.4103.120):** 16 Befunde bestanden, 4 dokumentierte Grenzen wie auf API 36, 1 ungültig: M-2 geste blieb in zwei Läufen ungültig. Beobachtet wurde: Nach dem Umschalten auf Gestennavigation meldet der Beleg eine neue Activity bei unveränderter Seitenkennung, danach bestätigte die Probe die Menüöffnung nicht in der Messfrist; die Wischgeste wurde deshalb nicht ausgeführt. Die genaue Ursache ist nicht geklärt. Als Teilnachweis belegen die Zurück-Probe (F5, mit dem älteren Debug-Build `35fe571d…f9c1`) die Randgeste mit genau einem Callback und M-2 zurueck mit dem aktuellen Build das Schließen des Menüs über denselben Callback; ein vollständiger Gestenfall mit offenem Menü auf API 30 ist damit nicht belegt. Auf API 36 besteht M-2 geste. 15 Bilder gesichtet, Neuauswertung Rückgabewert 2. Laufzeit aus Beginn und Ende der Läufe: API 30 15:10 und 14:34 Minuten, API 36 18:09 Minuten. Am Endstand `b9dec34` (Debug `5ad312d5…6b50`, Release `3007fa7c…7d09`) wurde die Phase auf API 36 wiederholt: 18 bestanden, 4 dokumentierte Grenzen, 15 Bilder gesichtet, Neuauswertung Rückgabewert 3. Die Änderung zwischen beiden Ständen betrifft nur die Folgenzählung des Zurück-Adapters bei einer zweiten Instanz im selben Dokument und die Doku. Erste Läufe derselben Phase am Stand vor `ef94c08` und `018720b` fanden zwei echte Befunde: Export-Schaltflächen liefen im Querformat bei Schrift 2,0 über (korrigiert in `ef94c08`), und WebView 83 meldete den Menüknopf wegen `aria-haspopup` als Auswahlliste (korrigiert in `018720b`). Am 2026-10-03 sind mit dem Debug-Build auf einem Gerät mit Android 16 die abgebrochene Randgeste (je einmal bei offenem und geschlossenem Sheet) und TalkBack für Menüleiste, Sheet und einzelne Einträge geprüft; die Teilen-Auswahl erschien dort einmal aus dem Sheet (siehe [Prüfung auf einem Gerät](#prüfung-auf-einem-gerät)). Die Nachprobe N1 bis N4 am 03.10.2026 mit Debug `99bf031d…59b7` (Stand `5b59dde`) auf dem Galaxy A17 ist im Geräteabschnitt belegt. Am Stand `1fdcf8b` (M5 und M5b; Debug `8d89775c…54df`, Release `ab18ee07…f1fa`) wurde die Phase am 2026-10-03 auf beiden Abbildern wiederholt. **API 36:** 17 bestanden, 4 dokumentierte Grenzen wie oben, keiner nicht bestanden oder ungültig; dieselben Menüfälle wie am Endstand vom 2026-10-02, dort kam ein bestandener Befund zum geschlossenen Systemdialog hinzu. 15 Bilder gesichtet, Neuauswertung Rückgabewert 3, Laufzeit 15:47 Minuten. Auf dem Bild vor dem Öffnen im Tastaturfall (`menue-tastatur-vor.png`) ist die Bildschirmtastatur nicht gezeichnet; die Messung desselben Schritts meldet sie sichtbar und gezeichnet, Rollstand und Feldlage gleichen dem Lauf vom 2026-10-02, auf dessen Bild das Feld oberhalb der Tastatur liegt. **API 30:** 16 bestanden, 4 dokumentierte Grenzen wie auf API 36, M-2 geste ungültig mit demselben Ablauf wie am 2026-10-02; 15 Bilder gesichtet, auf dem Tastaturbild liegt das Feld oberhalb der sichtbaren Tastatur; Neuauswertung Rückgabewert 2, Laufzeit 12:59 Minuten. Offen bleiben der Release-Build am Gerät, die Grenze M-5 und der Gestenfall mit offenem Menü auf API 30.
 
 Ein Aufruf prüft zuerst den Debug-Build und danach die vorhandene Release-APK. Die Release-Kopie wird mit dem eingerichteten Android-Debugschlüssel wie in Ablauf B signiert; die Eingabe-APK bleibt unverändert. Für `menue` allein werden keine Testvarianten gebaut und keine zusätzlichen Pakete installiert. Erforderlich sind die vorhandenen APKs desselben Quellstands, das eingerichtete SDK, JDK und der Debugschlüssel. Es darf kein anderer Emulator laufen.
@@ -412,6 +448,8 @@ Die Neuauswertung prüft Vollständigkeit, API, Fallkopien und unveränderte Bel
 Gemessen am 2026-10-02: 14:34 und 15:10 Minuten auf API 30, 18:09 Minuten auf API 36 je Lauf, zuzüglich Sichtung und gegebenenfalls Wiederholung ungültiger Fälle. Langsame uiautomator-Abzüge oder Systemdialoge können den Lauf verlängern. Die beiden Abbilder dürfen wegen des gemeinsamen Emulatorports nicht parallel laufen.
 
 ### Dateiphase auf API 30 und 36
+
+**Ergebnis am eingefrorenen Stand (2026-10-15):** Die Dateiphase auf API 36 lief von 17:45 bis 18:31 MESZ mit Debug `aecc556f…69f6` und Release `0645663f…2a02`. Das Ergebnis umfasst 51 bestandene Befunde einschließlich des geschlossenen Systemdialogs und eine dokumentierte Grenze, keine fehlgeschlagenen oder ungültigen Befunde; Rückgabewert 3. Ein Fehler ausschließlich beim Schließen des Zielstreams ließ sich weiterhin nicht zuverlässig auslösen. Die Sicherungsprüfung mit `standard` und die Prüfung des Gerätewechsels bestanden. [[OFFEN: Dateiphase API 30 am eingefrorenen Stand]]
 
 Die Phase `dateien` ist am 2026-10-01 auf beiden Abbildern gelaufen, mit der
 Debug-APK `9dd552d0…690d` und der unveränderten Release-APK `06dadbca…b64e`:
