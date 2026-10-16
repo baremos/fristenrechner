@@ -600,7 +600,7 @@ Relative `.js`-Ziele in `.d.ts` müssen zur entsprechenden `.d.ts` führen. Bei 
 
 ### Interner Ablauf für Stufe 3: spätere Veröffentlichung
 
-Dieser Ablauf ist vorbereitet, aber **nicht durchgeführt oder freigegeben**. `private: true` bleibt bestehen. Veröffentlichung, öffentliches Repository und npm-Organisation gehören zu Stufe 3 und benötigen eine gesonderte Freigabe.
+Die Maintainer haben die Veröffentlichung am 2026-10-16 freigegeben; durchgeführt ist sie noch nicht. In beiden Paketen ist `private: true` entfernt, `publishConfig.access` steht auf `public`, und `homepage`, `author`, `repository` und `bugs` sind gesetzt. Öffentliches Repository und npm-Organisation folgen in Stufe 3.
 
 1. Aus einem sauberen Linux-Checkout mit den festgelegten Werkzeugversionen arbeiten und die Versionen von Kern und Oberfläche im Gleichschritt halten.
 2. `packages/kern/dist` entfernen und den Kern ausdrücklich mit `npm run build --workspace packages/kern --offline` neu bauen. Der Kern hat kein `prepack`- oder `prepublishOnly`-Skript; außerdem schaltet `.npmrc` mit `ignore-scripts=true` Lebenszyklusskripte ab. `npm pack` und `npm publish` bauen den Kern daher nicht.

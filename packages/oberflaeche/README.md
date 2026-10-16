@@ -2,6 +2,8 @@
 
 Astro-Komponente, Bedienlogik und Dateiexporte des Fristenrechners Vergabe. Die Berechnung kommt aus `@baremos/fristenrechner-kern`.
 
+Online nutzbar: [Fristenrechner Vergabe auf baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/)
+
 Die Bedienlogik erhält Speicher, Import, Dateiausgabe, Zeit und Bestätigung über eine `Plattform`. Der enthaltene Web-Adapter verwendet den Browser. Native Adapter gehören zum jeweiligen Gastgeber. Die Komponente wird ausdrücklich durch den Gastgeber initialisiert.
 
 > Der Fristenrechner ist eine unverbindliche Rechenhilfe. Er ersetzt keine Rechtsberatung. Alle Angaben erfolgen ohne Gewähr.
@@ -145,6 +147,8 @@ jsPDF lädt `html2canvas`, `dompurify` und `canvg` nur für `html()` und `addSvg
 ## English
 
 Astro component, user interface logic and file exports of Fristenrechner Vergabe. Calculations are provided by `@baremos/fristenrechner-kern`. The user interface logic receives storage, import, file output, time and confirmation through a `Plattform`. The included web adapter uses the browser; native adapters belong to the host.
+
+Available online: [Fristenrechner Vergabe on baremos.de](https://www.baremos.de/de/vergabe/fristenrechner/)
 
 > Fristenrechner is a non-binding calculation aid. It does not replace legal advice. All information is provided without guarantee.
 
