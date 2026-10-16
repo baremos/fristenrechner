@@ -2,7 +2,7 @@ import { browserErgebnis, Messfehler, messbefehl, Produktabweichung } from './fe
 import { sperrpruefungQuelle } from './bedienelement.mjs';
 import { echterMausklick } from './download.mjs';
 import { Abweichung, bestaetige, verlange } from './regeln.mjs';
-import { bildAufnehmen, freierBildname, elementClip, sichtbereichClip, bestaetigeSichtausschnitt, bestaetigeElementlage } from './belege.mjs';
+import { bildAufnehmen, freierBildname, elementClip, obererElementClip, sichtbereichClip, bestaetigeSichtausschnitt, bestaetigeElementlage } from './belege.mjs';
 import { scrollruheQuelle } from './emulation.mjs';
 import { grenzenBestaetigt } from './ergebniskatalog.mjs';
 
@@ -189,16 +189,32 @@ export function bedienung({ cdp, basisUrl, navigieren, ausgabe, protokoll }) {
     }
     bestaetige(false,'Aufnahmekanal verändert weiterhin die Ausgangsgeometrie.');
   }
-  async function bild(name, { selector, rand = 24, imViewport = protokoll?.phase==='tastatur', geometrie={} } = {}) {
+  async function bild(name, { selector, rand = 24, imViewport = protokoll?.phase==='tastatur', geometrie={}, fokusvergleich=false, referenzGeometrie } = {}) {
     if(imViewport&&selector) {
       Object.assign(geometrie,{bild:name,selector,imViewport:true,captureBeyondViewport:false,vorher:null,nachher:null,bestaetigt:false});
       let beleg,aufnahmefehler;
       try {
         await wert(`(() => {const e=document.querySelector(${JSON.stringify(selector)});e?.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});})()`);
-        const lage=geometrie.vorher=await wert(elementlageQuelle(selector));
+        let lage=geometrie.vorher=await wert(elementlageQuelle(selector));
         if(lage)lage.dokumentgroesse=(await send('Page.getLayoutMetrics')).cssContentSize;
         bestaetige(lage?.scrollruhe?.bestaetigt===true,'Scrollruhe vor dem Vergleichsbild nicht bestätigt.');
-        const {clip}=elementClip(lage,lage.dokumentgroesse,rand,true);
+        const vollstaendig=elementClip(lage,lage.dokumentgroesse,rand);
+        geometrie.ausschnittart=fokusvergleich?(referenzGeometrie?.ausschnittart
+          ??(vollstaendig.clip.height>lage.fenster.clientHeight?'oberer Teil':'vollständig')):'vollständig';
+        bestaetige(['vollständig','oberer Teil'].includes(geometrie.ausschnittart),'Ausschnittart für Vergleichsbild nicht bestätigt.');
+        geometrie.abstand=Math.max(rand,lage.outline+Math.abs(lage.offset)+2,referenzGeometrie?.abstand??0);
+        geometrie.abgeschnitteneHoehe=0;
+        if(geometrie.ausschnittart==='oberer Teil') {
+          // Höhere Elemente nur oben aufnehmen: Bilder über den Viewport hinaus
+          // verändern die Layoutbreite. Nach start Platz für Fokusrahmen und Rand lassen.
+          await wert(`(() => {const e=document.querySelector(${JSON.stringify(selector)});if(!e)return;e.scrollIntoView({block:'start',inline:'nearest',behavior:'instant'});scrollBy({top:Math.floor(e.getBoundingClientRect().top-${geometrie.abstand}),behavior:'instant'});})()`);
+          lage=geometrie.vorher=await wert(elementlageQuelle(selector));
+          if(lage)lage.dokumentgroesse=(await send('Page.getLayoutMetrics')).cssContentSize;
+          bestaetige(lage?.scrollruhe?.bestaetigt===true,'Scrollruhe vor dem Vergleichsbild nicht bestätigt.');
+        }
+        const ausschnitt=geometrie.ausschnittart==='oberer Teil'?obererElementClip(lage,lage.dokumentgroesse,geometrie.abstand)
+          :elementClip(lage,lage.dokumentgroesse,rand,true);
+        const {clip}=ausschnitt;geometrie.abgeschnitteneHoehe=ausschnitt.abgeschnitteneHoehe??0;
         geometrie.clip=clip;geometrie.dichte=lage.dichte;
         beleg=await aufnahme(name,clip,lage.dichte,{captureBeyondViewport:false});
         Object.assign(beleg,{aufnahmeart:'Sichtbarer Viewport',rollstand:lage.rollstand,fenster:lage.fenster,geometrie});

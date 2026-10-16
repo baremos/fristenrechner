@@ -22,6 +22,9 @@ export function bestaetigeBildwechsel(normal,zustand,nachweis={}) {
       'Geometrie vor und nach dem Vergleichsbild im sichtbaren Viewport nicht bestätigt.');
     bestaetigeElementlage(b.geometrie);
   }
+  bestaetige(['vollständig','oberer Teil'].includes(normal.geometrie.ausschnittart)
+    &&normal.geometrie.ausschnittart===zustand.geometrie.ausschnittart,
+    'Normal- und Zustandsbild haben keine bestätigte gemeinsame Ausschnittart.');
   const v=normal.geometrie.vorher,n=zustand.geometrie.vorher;
   bestaetige(['innerWidth','clientWidth'].every(k=>v.fenster[k]===n.fenster[k])&&v.dokumentgroesse.width===n.dokumentgroesse.width,
     'Geänderte Layoutbreite zwischen Normal- und Zustandsbild (Fenster, Viewport oder Dokument).');
@@ -93,6 +96,16 @@ export function elementClip(lage,groesse,rand=24,imViewport=false) {
     clip.width=rechts-clip.x;clip.height=unten-clip.y;
   }
   return {viewportRechteck:r,rollstand:s,dokumentRechteck,clip};
+}
+export function obererElementClip(lage,groesse,rand=24) {
+  const ausschnitt=elementClip(lage,groesse,rand),bereich=sichtbereichClip(lage,groesse);
+  const {dokumentRechteck:r,clip}=ausschnitt,ring=lage.outline+Math.abs(lage.offset),abstand=Math.max(rand,ring+2),unten=bereich.y+bereich.height;
+  bestaetige(r.links-ring>=bereich.x&&r.rechts+ring<=bereich.x+bereich.width
+    &&r.links-abstand>=bereich.x&&r.rechts+abstand<=bereich.x+bereich.width,
+    'Sichtelement mit Fokusrahmen und Rand passt nicht vollständig in die Viewportbreite.');
+  bestaetige(r.oben-ring>=bereich.y&&clip.y>=bereich.y&&clip.y<unten&&clip.height>bereich.height,
+    'Oberer Teilausschnitt mit Fokusrahmen liegt nicht bestätigt am Viewportanfang.');
+  return {...ausschnitt,clip:{...clip,height:unten-clip.y},abgeschnitteneHoehe:clip.y+clip.height-unten};
 }
 export function bestaetigeSichtausschnitt(a) {
   const e=a?.element;

@@ -65,7 +65,7 @@ export async function fokusKontrastMessen(b,fall,{selector,pseudo,bedienelement,
   const wechsel=nachweis.bildwechsel={normal:`b9-normal-${kennung}.png`,zustand:`b9-${fall.name}.png`,
     normalGeometrie:{},zustandGeometrie:{},bestaetigt:false};
   const beleg=name=>b.protokoll.bildbelege?.find(b=>b.datei===name);
-  await b.bild(wechsel.normal,{selector,imViewport:true,geometrie:wechsel.normalGeometrie});
+  await b.bild(wechsel.normal,{selector,imViewport:true,fokusvergleich:true,geometrie:wechsel.normalGeometrie});
   let messung;
   try {messung=await pseudoMessung(b,selector,pseudo,nachweis);}
   catch(fehler) {verwerfen();throw fehler;}
@@ -76,7 +76,7 @@ export async function fokusKontrastMessen(b,fall,{selector,pseudo,bedienelement,
       // Auch bei einem Fehler nach dem Schreiben keine zweite Aufnahme unter
       // demselben Namen: Sie würde die Geometrieursache mit EEXIST verdecken.
       fall.bild=wechsel.zustand;
-      await b.bild(fall.bild,{selector,imViewport:true,geometrie:wechsel.zustandGeometrie});
+      await b.bild(fall.bild,{selector,imViewport:true,fokusvergleich:true,geometrie:wechsel.zustandGeometrie,referenzGeometrie:wechsel.normalGeometrie});
       bestaetigeBildwechsel(beleg(wechsel.normal),beleg(fall.bild),wechsel);
       await kontrastfall(fall);
     });
