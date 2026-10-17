@@ -4,7 +4,7 @@ Dieses Repository ist **zur Veröffentlichung vorgesehen**. Es gelten dieselben 
 
 ## Kurzfassung
 
-- Fristenrechner für Vergabeverfahren als quelloffene Android-App und als npm-Pakete. Herausgeber BAREMOS IT GmbH, Lizenz Apache-2.0.
+- Fristenrechner für Vergabeverfahren als quelloffene Android-App und als npm-Pakete. Herausgeber BAREMOS IT Dienstleistungs GmbH, Lizenz Apache-2.0.
 - Nur Fristenberechnung. Keine Erinnerungen, kein Tracking, kein Netzwerkzugriff im Betrieb, keine Google-Dienste, keine Beträge der EU-Schwellenwerte.
 - Die Vergabeordnung wird ausdrücklich gewählt.
 - F-Droid-Tauglichkeit ist Pflicht: nur frei lizenzierte Abhängigkeiten.

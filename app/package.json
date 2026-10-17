@@ -4,7 +4,7 @@
   "private": true,
   "description": "Android-App Fristenrechner Vergabe",
   "license": "Apache-2.0",
-  "author": "BAREMOS IT GmbH",
+  "author": "BAREMOS IT Dienstleistungs GmbH",
   "type": "module",
   "engines": {
     "node": "^22.23.2 || ^24.18.1"
