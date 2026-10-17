@@ -2,7 +2,7 @@
 
 Stand 2026-10-15 · eingefrorener App-Stand `8b17927` · N1 mit der App, N4/N5 mit einer Testfassung erneut belegt · neue Probeschlüssel gelöscht, echter Schlüssel offen
 
-Dieses Dokument legt fest, wie die App signiert wird. Die Festlegungen S1 bis S12 hat der fachlich Verantwortliche am 2026-09-29 getroffen; S1 bleibt unter Vorbehalt.
+Dieses Dokument legt fest, wie die App signiert wird. Die Festlegungen S1 bis S12 hat der fachlich Verantwortliche am 2026-09-29 getroffen; S1 bleibt unter Vorbehalt. S4 wurde am 2026-10-17 auf den eingetragenen Namen der Gesellschaft angepasst.
 
 ## Warum das früh feststehen muss
 
@@ -72,7 +72,7 @@ Getroffen am 2026-09-29.
 | S1 | Zahl der Schlüssel | ein klassischer App-Signierschlüssel für alle Vertriebswege, dazu ein getrennter Upload-Schlüssel für Google Play. **Unter Vorbehalt:** Die Festlegung gilt erst, wenn der Nachweis N6 erbracht ist. | siehe Ziel. Geht der Upload-Schlüssel verloren, lässt er sich ersetzen, ohne dass sich die Signatur der App ändert. |
 | S2 | Verfahren und Länge | RSA mit 4096 Bit, für beide selbst erzeugten Schlüssel | Google Play verlangt für eigene Schlüssel und für den Upload-Schlüssel RSA mit mindestens 2048 Bit. Die klassischen Schlüssel, die Google erzeugt, haben 4096 Bit. |
 | S3 | Gültigkeit des Zertifikats | 30 Jahre. Das Enddatum wird nach dem Erzeugen geprüft. | Die Dokumentation von Android empfiehlt mindestens 25 Jahre. Google Play verlangt ein Ende nach dem 22. Oktober 2033. |
-| S4 | Angaben im Zertifikat | `CN=BAREMOS IT GmbH, O=BAREMOS IT GmbH, L=Berlin, C=DE` | Name und Ort des Herausgebers, nur Angaben, die ohnehin öffentlich sind. Das Zertifikat ist öffentlich und soll über die Lebenszeit der App dasselbe bleiben. |
+| S4 | Angaben im Zertifikat | `CN=BAREMOS IT Dienstleistungs GmbH, O=BAREMOS IT Dienstleistungs GmbH, L=Berlin, C=DE` | Name und Ort des Herausgebers, nur Angaben, die ohnehin öffentlich sind. Das Zertifikat ist öffentlich und soll über die Lebenszeit der App dasselbe bleiben. Am 2026-10-17 wurde der eingetragene Name der Gesellschaft festgelegt, wie ihn Impressum und Datenschutzerklärung der Website nennen; der Schlüssel war noch nicht erzeugt. |
 | S5 | Format der Schlüsseldatei | PKCS12, je Schlüssel eine eigene Datei. Der Typ wird beim Erzeugen und bei jeder Verwendung ausdrücklich angegeben. | PKCS12 ist die Voreinstellung von `keytool` seit Java 9. Das Skript verlässt sich nicht auf Voreinstellungen. Getrennte Dateien erlauben getrennte Ablage. |
 | S6 | Signaturverfahren der APK | APK Signature Scheme v2 und v3, ausdrücklich eingestellt: v1 aus, v2 an, v3 an, v4 aus | v2 gibt es seit Android 7.0, v3 seit Android 9. Die Mindestversion der App ist Android 11 (API 30), das ältere Verfahren v1 ist dafür nicht nötig. Das gilt für die klassische Signatur des Herausgebers, nicht für hybride Signaturen von Google Play. |
 | S7 | Ort des Signierens | außerhalb des Gradle-Builds. Die APK für F-Droid signiert `apksigner` aus den Build-Tools, das AAB für Google Play `jarsigner` aus dem JDK mit dem Upload-Schlüssel. | Der Build erzeugt unsignierte Dateien. Die Konfiguration des Builds enthält weder Pfad noch Kennwort. F-Droid empfiehlt `apksigner`, weil die Übertragung der Signatur dessen Verhalten nachbildet. `apksigner` signiert keine AAB-Dateien. |

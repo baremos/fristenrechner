@@ -13,7 +13,7 @@ Website und App teilen denselben Rechenkern und dieselbe Oberfläche. Es gibt ei
 
 ## Herausgeber und Haftung
 
-- Herausgeber: BAREMOS IT GmbH, Berlin. Fachlich verantwortlich: Andreas Schmidt.
+- Herausgeber: BAREMOS IT Dienstleistungs GmbH, Berlin. Fachlich verantwortlich: Andreas Schmidt.
 - Der Fristenrechner ist eine unverbindliche Rechenhilfe. Er ersetzt keine Rechtsberatung. Alle Angaben erfolgen ohne Gewähr.
 - Lizenz: Apache-2.0.
 
