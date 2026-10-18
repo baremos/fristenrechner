@@ -235,7 +235,7 @@ Schritt 2 ist belegt: Die exportierten Zertifikate liegen unter `docs/zertifikat
 | App-Signierschlüssel | `docs/zertifikate/app-signierschluessel.cer` | `ae5d4d7ec4d3ee63763e128a3fb00721c7d164206f066dc26e8e968ff9a92e68` | `AE:5D:4D:7E:C4:D3:EE:63:76:3E:12:8A:3F:B0:07:21:C7:D1:64:20:6F:06:6D:C2:6E:8E:96:8F:F9:A9:2E:68` |
 | Upload-Schlüssel, nur für Google Play | `docs/zertifikate/upload-schluessel.cer` | `8d99b272edbe6a375560a05cc3ddc7c48dc9b5e378a8685e7f9b13a09386920a` | `8D:99:B2:72:ED:BE:6A:37:55:60:A0:5C:C3:DD:C7:C4:8D:C9:B5:E3:78:A8:68:5E:7F:9B:13:A0:93:86:92:0A` |
 
-Der Fingerabdruck des App-Signierschlüssels ist der Wert für `AllowedAPKSigningKeys` im Rezept für F-Droid, für `--fingerabdruck` beim Signieren mit `scripts/signing/apk-signieren.mjs` und für die Registrierung des Zertifikats bei der Developer Verification von Android. Der Upload-Schlüssel signiert nur das App-Bundle für Google Play. Die Sicherung nach S10 und der Nachweis N3 stehen aus und werden vor der ersten Veröffentlichung erbracht.
+Der Fingerabdruck des App-Signierschlüssels ist der Wert für `AllowedAPKSigningKeys` im Rezept für F-Droid, für `--fingerabdruck` beim Signieren mit `scripts/signing/apk-signieren.mjs` und für die Registrierung des Zertifikats bei der Developer Verification von Android. Der Upload-Schlüssel signiert nur das App-Bundle für Google Play. Die Sicherung nach S10 hat der fachlich Verantwortliche am 2026-10-18 angelegt; der Nachweis N3, die Wiederherstellung aus der Sicherung mit einer Probesignatur, steht aus und wird vor der ersten Veröffentlichung erbracht.
 
 ## Geplanter Ablauf
 
@@ -303,7 +303,7 @@ Für den Ablauf folgt daraus: Die Prüfsumme aus der Meldung des Skripts wird fe
 | N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | am 2026-10-15 mit der Testfassung erneut bestanden, einschließlich Gegenprobe: Build-Tools 35.0.0 (`apksigner` 0.9), `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1; siehe [N5 am eingefrorenen Stand](#übertragung-der-signatur-am-eingefrorenen-stand-n5). |
 | N6 | Wechsel zwischen den Vertriebswegen | Zertifikate und Folge der Schlüssel in den Dateien, die Google Play tatsächlich ausliefert, mit der Fassung für F-Droid vergleichen. Updates mit steigendem Versionscode in beiden Richtungen, ohne Datenverlust, auch auf Android 17. | offen, erst mit einem Konto bei Google Play möglich, vor der ersten Veröffentlichung |
 
-N1 bis N5 gehören zu Stufe 2: N1 prüft die unsignierte App; N2 und N3 sind nur für die Probeschlüssel belegt, N4 und N5 für die Testfassung mit eigener App-ID. Der echte Schlüssel ist seit dem 2026-10-18 erzeugt und N2 dafür belegt; N3 bleibt vor der ersten Veröffentlichung offen. N6 gehört zu Stufe 4.
+N1 bis N5 gehören zu Stufe 2: N1 prüft die unsignierte App; N2 und N3 waren in Stufe 2 nur für die Probeschlüssel belegt, N4 und N5 für die Testfassung mit eigener App-ID. Der echte Schlüssel ist seit dem 2026-10-18 erzeugt und N2 dafür belegt; N3 bleibt vor der ersten Veröffentlichung offen. N6 gehört zu Stufe 4.
 
 ## Verlust und Missbrauch
 
@@ -350,3 +350,4 @@ Gelesen am 2026-09-29.
 | `keytool` im JDK 21 | https://docs.oracle.com/en/java/javase/21/docs/specs/man/keytool.html |
 | Reproduzierbare Builds bei F-Droid | https://f-droid.org/docs/Reproducible_Builds/ |
 | Felder `Binaries` und `AllowedAPKSigningKeys` | https://f-droid.org/docs/Build_Metadata_Reference/ |
+| Developer Verification von Android (Registrierung des Zertifikats des App-Signierschlüssels), gelesen am 2026-10-16 als Zusammenfassung | https://developer.android.com/developer-verification |
