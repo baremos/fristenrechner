@@ -188,7 +188,7 @@ export async function layoutruhe(c, selector, { streng = false } = {}) {
       anker:{x:r.x,y:r.y,breite:r.width,hoehe:r.height},bodyTop:document.body.style.top,
       menueUnterkante:document.querySelector('.fr-menue-leiste').getBoundingClientRect().bottom,
       innereRollstaende:[...document.querySelectorAll('.table-scroll,.fr-menue-liste')].map(e=>({x:e.scrollLeft,y:e.scrollTop}))};})()`;
-  const proben = [], start = Date.now(); let letzte, stabil = 0, letzterMangel;
+  const proben = [], start = Date.now(); let letzte, stabil = 0, letzterMangel, referenzScroll;
   await c.evaluate('document.fonts.ready.then(()=>true)');
   while (Date.now() - start < 5000) {
     const scroll = await c.evaluate(scrollruheQuelle, 4000), lage = await c.evaluate(messung);
@@ -198,10 +198,19 @@ export async function layoutruhe(c, selector, { streng = false } = {}) {
       && lage.breite > 0 && lage.hoehe > 0 && lage.anker.breite > 0 && lage.anker.hoehe > 0
       && lage.anker.y >= lage.menueUnterkante - 1 && lage.anker.y < lage.hoehe;
     // Streng: Auch eine Bewegung, die wieder zur Ausgangslage zurückkehrt, verwirft die Aufnahme.
-    // Die Scrollruhe-Messung liefert ihre Einzelbilder mit; jede Abweichung darin oder zwischen
-    // zwei Lageproben ist dann ein Fehler, nicht nur eine ungültige Endlage.
-    const bewegt = streng && (!Array.isArray(scroll?.proben) || scroll.proben.some(q => q.offen !== 0 || ['x', 'y', 'breite', 'hoehe'].some(k => q[k] !== scroll.proben[0][k]))
-      || (letzte !== undefined && !gleich(letzte, lage)));
+    // Maßstab ist das erste Einzelbild der ersten Scrollruhe-Messung: jedes spätere Einzelbild
+    // jeder Messung, jede Lageprobe und der Rollstand der Lageprobe müssen damit übereinstimmen;
+    // so bleibt auch eine Bewegung zwischen zwei Messungen nicht unbemerkt. Leere Messungen zählen als Fehler.
+    let bewegt = false;
+    if (streng) {
+      if (!Array.isArray(scroll?.proben) || scroll.proben.length === 0) bewegt = true;
+      else {
+        referenzScroll ??= scroll.proben[0];
+        bewegt = scroll.proben.some(q => q.offen !== 0 || ['x', 'y', 'breite', 'hoehe'].some(k => q[k] !== referenzScroll[k]))
+          || lage.x !== referenzScroll.x || lage.y !== referenzScroll.y
+          || (letzte !== undefined && !gleich(letzte, lage));
+      }
+    }
     if (!gueltig || bewegt) {
       letzterMangel = { lage, scroll }; letzte = undefined; stabil = 0; proben.push({ lage, scroll, stabil, ungueltig: true });
       if (streng) {

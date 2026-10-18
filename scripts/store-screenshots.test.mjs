@@ -242,9 +242,9 @@ test('Neuauswertung bindet die Sichtentscheidung an unveränderte PNG- und Demo-
 });
 
 function laufProbe({ screenshotFehler = false, appVorhanden = false, avd = 'fr-api36', dumpCode = 0, signalBeiUhr = false,
-  nachherVerdeckt = false, nachherBewegt = false, pfadAntwort, apkFremd = false } = {}) {
+  nachherVerdeckt = false, nachherBewegt = false, nachherVersetzt = false, pfadAntwort, apkFremd = false } = {}) {
   const ausgabe = mkdtempSync(join(arbeit, 'emulator-')), calls = [], urls = [], cdpCalls = [];
-  let screencaps = 0, verdecktGeliefert = false, bewegtGeliefert = false;
+  let screencaps = 0, verdecktGeliefert = false, bewegtGeliefert = false, nachherScrollAufrufe = 0;
   const settings = new Map([['system font_scale', '1.3'], ['system accelerometer_rotation', '1'], ['system user_rotation', '1'], ['system time_12_24', 'null'],
     ['global sysui_demo_allowed', 'null'], ['global sysui_tuner_demo_on', '0']]);
   let installiert = appVorhanden, geschlossen = false, nacht = 'yes';
@@ -296,8 +296,11 @@ function laufProbe({ screenshotFehler = false, appVorhanden = false, avd = 'fr-a
     if (expression === MESSUNG) return { hidden: false, sheet: { width: 360, height: 600 }, anzahl: 8, liste: { scrollTop: 0 } };
     if (expression === scrollruheQuelle) {
       const ruhig = { x: 0, y: 100, breite: 393, hoehe: 5000, zeit: 1, offen: 0 };
+      if (screencaps === 1) nachherScrollAufrufe++;
       // Genau einmal nach der ersten Aufnahme: Bewegung, die zur Ausgangslage zurückkehrt.
       if (nachherBewegt && screencaps === 1 && !bewegtGeliefert) { bewegtGeliefert = true; return { bestaetigt: true, proben: [{ ...ruhig, y: 90 }, { ...ruhig, y: 95 }, ...Array(7).fill(ruhig)] }; }
+      // Bewegung zwischen zwei Messungen: die zweite Messung nach der Aufnahme ist in sich ruhig, aber versetzt.
+      if (nachherVersetzt && screencaps === 1 && nachherScrollAufrufe === 2) return { bestaetigt: true, proben: Array(7).fill({ ...ruhig, y: 90 }) };
       return { bestaetigt: true, proben: Array(7).fill(ruhig) };
     }
     if (expression.includes('window.scrollTo(')) return 100;
@@ -356,6 +359,7 @@ test('Signalabbruch lässt Demo- und Einstellungs-Restore ohne abgebrochenes Pro
 for (const [name, o, muster] of [
   ['verdeckter Anker', { nachherVerdeckt: true }, /ungültig oder Anker verdeckt/],
   ['Bewegung mit Rückkehr zur Ausgangslage', { nachherBewegt: true }, /Bewegung nach der Aufnahme/],
+  ['Versatz zwischen zwei Messungen', { nachherVersetzt: true }, /Bewegung nach der Aufnahme/],
 ]) test(`Nachprobe direkt nach der Aufnahme verwirft das Bild bei ${name}`, async () => {
   const p = laufProbe(o), e = await p.start(); assert.equal(e.rueckgabewert, 2, JSON.stringify(e));
   const prot = JSON.parse(readFileSync(join(p.ausgabe, 'protokoll.json'), 'utf8'));
@@ -381,8 +385,9 @@ const ruhigeScrollprobe = { x: 0, y: 100, breite: 393, hoehe: 5000, zeit: 1, off
 function layoutProbe(lagen, { scroll = { bestaetigt: true, proben: Array(7).fill(ruhigeScrollprobe) } } = {}) {
   const grund = { x: 0, y: 100, breite: 393, hoehe: 850, dichte: 2.75, dokumentHoehe: 5000, anker: { x: 0, y: 60, breite: 380, hoehe: 100 }, bodyTop: '', menueUnterkante: 56, innereRollstaende: [] };
   const warteschlange = lagen.map(l => (typeof l === 'function' ? l(grund) : { ...grund, ...l }));
+  let scrollAufrufe = 0;
   return { evaluate: async expression => {
-    if (expression === scrollruheQuelle) return scroll;
+    if (expression === scrollruheQuelle) return typeof scroll === 'function' ? scroll(++scrollAufrufe) : scroll;
     if (typeof expression === 'string' && expression.includes('innereRollstaende:')) { assert.ok(warteschlange.length, 'Keine Probe mehr vorgesehen'); return warteschlange.shift(); }
     return true;
   } };
@@ -406,6 +411,12 @@ test('Layoutruhe nach der Aufnahme verwirft jede ungültige Probe und jede beoba
   const offen = { bestaetigt: true, proben: [{ ...ruhigeScrollprobe, offen: 1 }, ...Array(7).fill(ruhigeScrollprobe)] };
   await assert.rejects(layoutruhe(layoutProbe([{}, {}, {}], { scroll: offen }), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
   await assert.rejects(layoutruhe(layoutProbe([{}, {}, {}], { scroll: { bestaetigt: true } }), '#schedule-form', { streng: true }), /nach der Aufnahme/);
+  await assert.rejects(layoutruhe(layoutProbe([{}, {}, {}], { scroll: { bestaetigt: true, proben: [] } }), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
+  // Bewegung zwischen zwei in sich ruhigen Messungen (100, 90, 100) bei unveränderter Lageprobe.
+  const versetzt = n => ({ bestaetigt: true, proben: Array(7).fill({ ...ruhigeScrollprobe, y: n === 2 ? 90 : 100 }) });
+  await assert.rejects(layoutruhe(layoutProbe([{}, {}, {}], { scroll: versetzt }), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
+  // Lageprobe und Scrollmessung widersprechen sich im Rollstand.
+  await assert.rejects(layoutruhe(layoutProbe([{ y: 100 }, {}, {}], { scroll: { bestaetigt: true, proben: Array(7).fill({ ...ruhigeScrollprobe, y: 90 }) } }), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
   // Vor der Aufnahme bleiben dieselben Folgen zulässig, sobald sie zur Ruhe kommen.
   assert.equal((await layoutruhe(layoutProbe([{ y: 90 }, {}, {}, {}]), '#schedule-form')).bestaetigt, true);
   const r = await layoutruhe(layoutProbe([{}, {}, {}]), '#schedule-form', { streng: true }); assert.equal(r.proben.length, 3);
