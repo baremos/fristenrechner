@@ -1,0 +1,36 @@
+Fristenrechner Vergabe ist eine Rechenhilfe für Termine und Fristen in Vergabeverfahren (Ausschreibungen) nach deutschem Recht: VgV, VOB/A-EU, SektVO, VSVgV, KonzVgV, UVgO und VOB/A.
+
+Der Fristenrechner ist eine unverbindliche Rechenhilfe. Er ersetzt keine Rechtsberatung. Alle Angaben erfolgen ohne Gewähr.
+
+Was die App rechnet
+
+Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren. Sie wählen die Vergabeordnung und die Verfahrensart selbst, zum Beispiel offenes Verfahren, nicht offenes Verfahren oder Verhandlungsverfahren mit Teilnahmewettbewerb nach der VgV, öffentliche oder beschränkte Ausschreibung nach der VOB/A oder Verhandlungsvergabe nach der UVgO. Die App berechnet daraus die Termine des Verfahrens, zeigt zu jedem Termin den Rechenweg und stellt den Ablauf als Zeitschiene dar. Gesetzliche Feiertage je Bundesland sind enthalten und werden ohne Netzwerkzugriff berechnet.
+
+Jede Berechnung und jeder Export nennt Regelversion und Rechtsstand. Ist der Rechtsstand älter als zwölf Monate, zeigt die App einen Hinweis.
+
+Dateien
+
+Den Terminplan speichern Sie als PDF oder Excel-Datei, das Projekt als Projektdatei zum späteren Weiterbearbeiten. Speichern und Teilen laufen über die Android-Auswahl: Sie wählen Name, Speicherort oder Ziel-App selbst. Eine Projektdatei lässt sich über dieselbe Auswahl wieder öffnen.
+
+Datenschutz
+
+Die App verarbeitet Ihre Eingaben auf diesem Gerät. Sie hat keine Internetberechtigung; gewählte Dokumentanbieter und Ziel-Apps können selbst Daten übertragen. Der aktuelle Projektstand bleibt im lokalen Speicher der App. Der vollständige Datenschutztext ist in der App im Abschnitt „Datenschutz“ offline lesbar.
+
+Was die App nicht tut
+
+- Sie erinnert nicht an Termine und sendet keine Benachrichtigungen.
+- Sie wählt die Vergabeordnung nicht selbst aus dem Auftragswert.
+- Sie enthält keine Beträge der EU-Schwellenwerte.
+- Sie kennt keine Konten, keine Anmeldung und keine Synchronisation.
+- Sie enthält kein Tracking, keine Werbung und keine Analyse.
+- Sie greift im Betrieb nicht auf das Netzwerk zu.
+
+Sprache
+
+Die Oberfläche der App und ihre Exporte sind deutsch. Der Fristenrechner folgt dem deutschen Vergaberecht, seine Fachbegriffe sind deutsch.
+
+Quelloffen
+
+Rechenkern, Oberfläche und App sind quelloffen unter der Apache-2.0-Lizenz. Quellcode und Fehlermeldungen: https://github.com/baremos/fristenrechner
+
+Herausgeber: BAREMOS IT Dienstleistungs GmbH, Berlin.
