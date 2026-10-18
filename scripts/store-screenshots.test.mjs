@@ -417,7 +417,7 @@ test('Layoutruhe nach der Aufnahme verwirft jede ungültige Probe und jede beoba
   await assert.rejects(layoutruhe(layoutProbe([{}, {}, {}], { scroll: versetzt }), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
   // Lageprobe und Scrollmessung widersprechen sich im Rollstand oder in der Dokumenthöhe.
   await assert.rejects(layoutruhe(layoutProbe([{ y: 100 }, {}, {}], { scroll: { bestaetigt: true, proben: Array(7).fill({ ...ruhigeScrollprobe, y: 90 }) } }), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
-  await assert.rejects(layoutruhe(layoutProbe([{ dokumentHoehe: 4990 }, {}, {}]), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
+  await assert.rejects(layoutruhe(layoutProbe([{ dokumentHoehe: 4990 }, { dokumentHoehe: 4990 }, { dokumentHoehe: 4990 }]), '#schedule-form', { streng: true }), e => { assert.match(e.message, /Bewegung nach der Aufnahme/); assert.equal(e.proben.length, 1); return true; });
   await assert.rejects(layoutruhe(layoutProbe([{}, {}, {}], { scroll: { bestaetigt: true, proben: Array(7).fill({ ...ruhigeScrollprobe, hoehe: 4990 }) } }), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
   // Vor der Aufnahme bleiben dieselben Folgen zulässig, sobald sie zur Ruhe kommen.
   assert.equal((await layoutruhe(layoutProbe([{ y: 90 }, {}, {}, {}]), '#schedule-form')).bestaetigt, true);
