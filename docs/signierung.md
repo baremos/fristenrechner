@@ -1,6 +1,6 @@
 # Signierung
 
-Stand 2026-10-15 · eingefrorener App-Stand `8b17927` · N1 mit der App, N4/N5 mit einer Testfassung erneut belegt · neue Probeschlüssel gelöscht, echter Schlüssel offen
+Stand 2026-10-18 · eingefrorener App-Stand `8b17927` · N1 mit der App, N4/N5 mit einer Testfassung erneut belegt · Probeschlüssel gelöscht · echter Schlüssel am 2026-10-18 erzeugt, N2 belegt, N3 offen
 
 Dieses Dokument legt fest, wie die App signiert wird. Die Festlegungen S1 bis S12 hat der fachlich Verantwortliche am 2026-09-29 getroffen; S1 bleibt unter Vorbehalt. S4 wurde am 2026-10-17 auf den eingetragenen Namen der Gesellschaft angepasst.
 
@@ -224,6 +224,19 @@ Die Gegenprobe mit genau einem zusätzlichen APK-Eintrag wurde abgelehnt. Eine u
 
 Grenzen: Geprüft sind die Testfassung und die lokale Werkzeugkombination, kein Buildserver von F-Droid und kein Wechsel zwischen Vertriebswegen. N6 bleibt offen.
 
+## Echter Schlüssel
+
+Der fachlich Verantwortliche hat am 2026-10-18 beide Schlüssel nach Schritt 1 des Ablaufs erzeugt: `keytool` aus dem JDK 21, Typ PKCS12 ausdrücklich angegeben, RSA mit 4096 Bit, Signatur des Zertifikats SHA384withRSA, Gültigkeit 10958 Tage, Angaben nach S4. Die Kennwörter wurden im Dialog eingegeben; sie stehen in keiner Datei und in keinem Protokoll. Die Schlüsseldateien liegen außerhalb des Arbeitsordners (S8).
+
+Schritt 2 ist belegt: Die exportierten Zertifikate liegen unter `docs/zertifikate/` und wurden mit `keytool -printcert` gelesen. Beide nennen Eigentümer und Aussteller `CN=BAREMOS IT Dienstleistungs GmbH, O=BAREMOS IT Dienstleistungs GmbH, L=Berlin, C=DE`, RSA mit 4096 Bit, SHA384withRSA, gültig vom 2026-10-18 bis zum 2056-10-18, also über den 22. Oktober 2033 hinaus, wie Google Play verlangt.
+
+| Zertifikat | Datei | SHA-256 in kleinen Hexadezimalziffern (Form für `AllowedAPKSigningKeys` und `--fingerabdruck`) | SHA-256 nach `keytool` |
+|---|---|---|---|
+| App-Signierschlüssel | `docs/zertifikate/app-signierschluessel.cer` | `ae5d4d7ec4d3ee63763e128a3fb00721c7d164206f066dc26e8e968ff9a92e68` | `AE:5D:4D:7E:C4:D3:EE:63:76:3E:12:8A:3F:B0:07:21:C7:D1:64:20:6F:06:6D:C2:6E:8E:96:8F:F9:A9:2E:68` |
+| Upload-Schlüssel, nur für Google Play | `docs/zertifikate/upload-schluessel.cer` | `8d99b272edbe6a375560a05cc3ddc7c48dc9b5e378a8685e7f9b13a09386920a` | `8D:99:B2:72:ED:BE:6A:37:55:60:A0:5C:C3:DD:C7:C4:8D:C9:B5:E3:78:A8:68:5E:7F:9B:13:A0:93:86:92:0A` |
+
+Der Fingerabdruck des App-Signierschlüssels ist der Wert für `AllowedAPKSigningKeys` im Rezept für F-Droid, für `--fingerabdruck` beim Signieren mit `scripts/signing/apk-signieren.mjs` und für die Registrierung des Zertifikats bei der Developer Verification von Android. Der Upload-Schlüssel signiert nur das App-Bundle für Google Play. Die Sicherung nach S10 und der Nachweis N3 stehen aus und werden vor der ersten Veröffentlichung erbracht.
+
 ## Geplanter Ablauf
 
 | Schritt | Werkzeug | Wer |
@@ -284,13 +297,13 @@ Für den Ablauf folgt daraus: Die Prüfsumme aus der Meldung des Skripts wird fe
 | Nr. | Nachweis | Wie | Stand |
 |---|---|---|---|
 | N1 | APK reproduzierbar gebaut | zwei Builds desselben Stands in getrennten Ordnern, danach derselbe Stand unter Windows und unter Linux. Verglichen werden die unsignierten Dateien Byte für Byte. | für die App am 2026-10-15 erneut belegt: Windows nach `clean`, frische Windows-Kopie mit Node.js 22, zwei Linux-Klone und lokaler F-Droid-Lauf; Grenzen siehe [Nachweis am eingefrorenen Stand](#reproduzierbarer-app-build-am-eingefrorenen-stand-n1). |
-| N2 | Zertifikat geprüft | Verfahren, Länge, Gültigkeit mit Enddatum und Angaben gegen dieses Dokument | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
+| N2 | Zertifikat geprüft | Verfahren, Länge, Gültigkeit mit Enddatum und Angaben gegen dieses Dokument | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel am 2026-10-18 belegt, siehe [Echter Schlüssel](#echter-schlüssel). |
 | N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
 | N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, Projekt über die App im `localStorage` speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist unverändert vorhanden. Gegenproben: andere Signatur und Rückschritt werden abgelehnt. | am 2026-10-15 mit der Testfassung mit eigener App-ID auf API 30 und 36 erneut bestanden, einschließlich beider Gegenproben und Aufräumen; siehe [N4 am eingefrorenen Stand](#update-des-gespeicherten-projekts-am-eingefrorenen-stand-n4). |
 | N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | am 2026-10-15 mit der Testfassung erneut bestanden, einschließlich Gegenprobe: Build-Tools 35.0.0 (`apksigner` 0.9), `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1; siehe [N5 am eingefrorenen Stand](#übertragung-der-signatur-am-eingefrorenen-stand-n5). |
 | N6 | Wechsel zwischen den Vertriebswegen | Zertifikate und Folge der Schlüssel in den Dateien, die Google Play tatsächlich ausliefert, mit der Fassung für F-Droid vergleichen. Updates mit steigendem Versionscode in beiden Richtungen, ohne Datenverlust, auch auf Android 17. | offen, erst mit einem Konto bei Google Play möglich, vor der ersten Veröffentlichung |
 
-N1 bis N5 gehören zu Stufe 2: N1 prüft die unsignierte App; N2 und N3 sind nur für die Probeschlüssel belegt, N4 und N5 für die Testfassung mit eigener App-ID. Der echte Schlüssel sowie dessen N2 und N3 bleiben vor der ersten Veröffentlichung offen. N6 gehört zu Stufe 4.
+N1 bis N5 gehören zu Stufe 2: N1 prüft die unsignierte App; N2 und N3 sind nur für die Probeschlüssel belegt, N4 und N5 für die Testfassung mit eigener App-ID. Der echte Schlüssel ist seit dem 2026-10-18 erzeugt und N2 dafür belegt; N3 bleibt vor der ersten Veröffentlichung offen. N6 gehört zu Stufe 4.
 
 ## Verlust und Missbrauch
 
@@ -312,14 +325,14 @@ Der Wechsel eines Schlüssels ist ein Notfall und kein Teil des gewöhnlichen Ab
    - die signierte Datei aus der Play Console als Datei des Herausgebers für F-Droid.
    - Bleiben nur Signaturen, die nicht zueinander passen, entfällt Ziel 1. Dann nehmen Nutzer ihre Daten über den Export und den Import der Projektdatei mit. Dieser Weg wäre eigens zu beschreiben und zu prüfen.
 4. Prüfen, mit welcher Version der Build-Tools `apksigner` das Verfahren v3.2 kennt.
-5. Der echte Schlüssel ist noch nicht erzeugt. N2 und N3 sind mit ihm vor der ersten Veröffentlichung zu erbringen.
+5. Der echte Schlüssel ist am 2026-10-18 erzeugt, N2 ist belegt. N3 ist mit ihm vor der ersten Veröffentlichung zu erbringen.
 6. N1 belegt Gleichheit nur für die genannten Eingaben und Umgebungen. Bei Änderungen bleiben mögliche Ursachen abweichender Builds zu prüfen: Werkzeugversionen, Zeitangaben in Archiven, Bildverarbeitung, Zeilenenden und Zahl der Prozessorkerne.
 
 ## Was nicht ins Repository gehört
 
 Schlüsseldateien, Kennwörter, Pfade zu Schlüsseldateien, Dateien mit Zugangsdaten. `.gitignore` schließt `*.jks`, `*.keystore`, `*.p12`, `*.pem`, `keystore.properties` und `signing.properties` aus. Das ist eine zweite Sicherung, keine Ablage: Die Dateien liegen nicht im Arbeitsordner.
 
-Ins Repository gehören das Zertifikat und sein Fingerabdruck. Beide sind öffentlich.
+Ins Repository gehören das Zertifikat und sein Fingerabdruck. Beide sind öffentlich; sie liegen unter `docs/zertifikate/` und im Abschnitt [Echter Schlüssel](#echter-schlüssel).
 
 ## Quellen
 
