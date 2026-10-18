@@ -12,7 +12,7 @@ import { APP, innen } from './emulator/rahmen.mjs';
 import { MESSUNG } from './emulator/menue-ui.mjs';
 import { scrollruheQuelle } from './browser/emulation.mjs';
 import { argumente, PROBEDATEN, BILDER, DEMO_BEFEHLE, Grenze, demoModus, aufloesung, pngPruefen, formularQuelle,
-  sichtvorlage, auswertung, nachauswerten, lauf, main } from './store-screenshots.mjs';
+  sichtvorlage, auswertung, nachauswerten, lauf, main, layoutruhe } from './store-screenshots.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const basis = join(repo, 'scratchpad', 'store-screenshots-tests');
@@ -241,8 +241,10 @@ test('Neuauswertung bindet die Sichtentscheidung an unveränderte PNG- und Demo-
   assert.throws(() => nachauswerten(ordner), /Demo-Beleg verändert/);
 });
 
-function laufProbe({ screenshotFehler = false, appVorhanden = false, avd = 'fr-api36', dumpCode = 0, signalBeiUhr = false } = {}) {
+function laufProbe({ screenshotFehler = false, appVorhanden = false, avd = 'fr-api36', dumpCode = 0, signalBeiUhr = false,
+  nachherVerdeckt = false, pfadAntwort, apkFremd = false } = {}) {
   const ausgabe = mkdtempSync(join(arbeit, 'emulator-')), calls = [], urls = [], cdpCalls = [];
+  let screencaps = 0, verdecktGeliefert = false;
   const settings = new Map([['system font_scale', '1.3'], ['system accelerometer_rotation', '1'], ['system user_rotation', '1'], ['system time_12_24', 'null'],
     ['global sysui_demo_allowed', 'null'], ['global sysui_tuner_demo_on', '0']]);
   let installiert = appVorhanden, geschlossen = false, nacht = 'yes';
@@ -259,8 +261,9 @@ function laufProbe({ screenshotFehler = false, appVorhanden = false, avd = 'fr-a
     if (a[0] === 'uninstall') { installiert = false; return ok('Success'); }
     if (a[0] === 'forward') return ok(a[1] === '--remove' ? '' : '32123');
     if (a[0] === 'exec-out') {
-      if (a[1] === 'cat') return ok(readFileSync(debug));
+      if (a[1] === 'cat') return ok(apkFremd ? Buffer.from('Fremde Bytes, nicht die eigene APK.') : readFileSync(debug));
       assert.deepEqual(a, ['exec-out', 'screencap', '-p']); assert.equal(options.binary, true);
+      screencaps++;
       return screenshotFehler ? { code: 1, out: Buffer.alloc(0), err: 'Nachgestellter Aufnahmefehler' } : ok(bildBytes);
     }
     assert.equal(a[0], 'shell'); const command = a[1];
@@ -276,7 +279,7 @@ function laufProbe({ screenshotFehler = false, appVorhanden = false, avd = 'fr-a
     if (command.startsWith('am start ')) return ok('Status: ok');
     if (command === `pm list packages ${APP}`) return ok(installiert ? `package:${APP}` : '');
     // Pfadform von Android 11 und neuer, mit Tilden und Gleichheitszeichen wie im Emulator fr-api36 beobachtet.
-    if (command === `pm path ${APP}`) return ok(installiert ? `package:/data/app/~~Probe0123456789ABCDEFGHIJ==/${APP}-ProbeKLMNOPQRSTUVWXYZ0123==/base.apk` : '');
+    if (command === `pm path ${APP}`) return ok(installiert ? (pfadAntwort ?? `package:/data/app/~~Probe0123456789ABCDEFGHIJ==/${APP}-ProbeKLMNOPQRSTUVWXYZ0123==/base.apk`) : '');
     if (command === `pidof ${APP}`) return ok('1234');
     if (command === 'cat /proc/net/unix') return ok('Num RefCount Protocol Flags Type St Inode Path\n0 2 0 10000 1 01 42 @webview_devtools_remote_1234');
     if (command.startsWith('uiautomator dump ')) return { code: dumpCode, out: '', err: dumpCode === 137 ? 'Killed' : '' };
@@ -292,8 +295,14 @@ function laufProbe({ screenshotFehler = false, appVorhanden = false, avd = 'fr-a
     cdpCalls.push(expression);
     if (expression === MESSUNG) return { hidden: false, sheet: { width: 360, height: 600 }, anzahl: 8, liste: { scrollTop: 0 } };
     if (expression === scrollruheQuelle) return { bestaetigt: true, proben: [] };
-    if (expression.includes('innereRollstaende:')) return { x: 0, y: 100, breite: 393, hoehe: 850, dichte: 2.75, dokumentHoehe: 5000,
-      anker: { x: 0, y: 60, breite: 380, hoehe: 100 }, bodyTop: '', menueUnterkante: 56, innereRollstaende: [{ x: 0, y: 0 }] };
+    if (expression.includes('window.scrollTo(')) return 100;
+    if (expression.includes('innereRollstaende:')) {
+      const lage = { x: 0, y: 100, breite: 393, hoehe: 850, dichte: 2.75, dokumentHoehe: 5000,
+        anker: { x: 0, y: 60, breite: 380, hoehe: 100 }, bodyTop: '', menueUnterkante: 56, innereRollstaende: [{ x: 0, y: 0 }] };
+      // Genau eine verdeckte Probe direkt nach der ersten Aufnahme; danach wieder ruhig.
+      if (nachherVerdeckt && screencaps === 1 && !verdecktGeliefert) { verdecktGeliefert = true; return { ...lage, anker: { ...lage.anker, y: 0 } }; }
+      return lage;
+    }
     if (expression.includes('stoerungen=')) return { werte: Object.fromEntries(Object.entries(PROBEDATEN).map(([k, v]) => [k, typeof v === 'boolean' ? v : String(v)])),
       stoerungen: [], ergebnisSichtbar: true, zeilen: 11, meldung: 'Terminplan aktualisiert.', speicher: 'Zuletzt automatisch gespeichert: gerade eben.' };
     return true;
@@ -339,6 +348,59 @@ test('Signalabbruch lässt Demo- und Einstellungs-Restore ohne abgebrochenes Pro
   const beleg = JSON.parse(readFileSync(join(p.ausgabe, 'demo-modus.json'), 'utf8'));
   assert.equal(beleg.wiederhergestellt, true);
 });
+test('Ungültige Nachprobe direkt nach der Aufnahme verwirft das Bild und beendet den Lauf ungültig', async () => {
+  const p = laufProbe({ nachherVerdeckt: true }), e = await p.start(); assert.equal(e.rueckgabewert, 2, JSON.stringify(e));
+  const prot = JSON.parse(readFileSync(join(p.ausgabe, 'protokoll.json'), 'utf8'));
+  assert.equal(prot.bilder.length, 0); assert.match(prot.abbruch.grund, /nach der Aufnahme/);
+  assert.equal(existsSync(join(p.ausgabe, BILDER[0].bild)), false);
+  assert.equal(p.installiert, false); assert.ok(prot.aufraeumen.every(s => s.ok));
+});
+for (const [name, o] of [
+  ['Elternpfad', { pfadAntwort: 'package:/data/app/../fremd/base.apk' }],
+  ['Leerzeichen', { pfadAntwort: 'package:/data/app/mit Leerzeichen/base.apk' }],
+  ['mehreren Pfaden', { pfadAntwort: 'package:/data/app/a/base.apk\npackage:/data/app/b/base.apk' }],
+  ['fremder Prüfsumme', { apkFremd: true }],
+]) test(`Aufräumen deinstalliert nicht bei ${name}`, async () => {
+  const p = laufProbe(o), e = await p.start(); assert.equal(e.rueckgabewert, 2, JSON.stringify(e));
+  assert.equal(p.installiert, true); assert.equal(p.calls.some(c => c.argv.includes('uninstall')), false);
+  const prot = JSON.parse(readFileSync(join(p.ausgabe, 'protokoll.json'), 'utf8'));
+  assert.equal(prot.bilder.length, 4);
+  assert.ok(prot.aufraeumen.some(s => s.name === 'Eigene Debug-Installation entfernen' && !s.ok));
+});
+
+function layoutProbe(lagen, { scroll = { bestaetigt: true, proben: [] } } = {}) {
+  const grund = { x: 0, y: 100, breite: 393, hoehe: 850, dichte: 2.75, dokumentHoehe: 5000, anker: { x: 0, y: 60, breite: 380, hoehe: 100 }, bodyTop: '', menueUnterkante: 56, innereRollstaende: [] };
+  const warteschlange = lagen.map(l => (typeof l === 'function' ? l(grund) : { ...grund, ...l }));
+  return { evaluate: async expression => {
+    if (expression === scrollruheQuelle) return scroll;
+    if (typeof expression === 'string' && expression.includes('innereRollstaende:')) { assert.ok(warteschlange.length, 'Keine Probe mehr vorgesehen'); return warteschlange.shift(); }
+    return true;
+  } };
+}
+const verdeckt = g => ({ ...g, anker: { ...g.anker, y: 0 } });
+test('Layoutruhe vor der Aufnahme übergeht Zwischenproben und bestätigt erst drei gleiche gültige in Folge', async () => {
+  const r = await layoutruhe(layoutProbe([verdeckt, {}, {}, {}]), '#schedule-form');
+  assert.equal(r.bestaetigt, true); assert.equal(r.proben.length, 4); assert.equal(r.proben[0].ungueltig, true); assert.equal(r.lage.anker.y, 60);
+  const r2 = await layoutruhe(layoutProbe([{}, {}, verdeckt, {}, {}, {}]), '#schedule-form');
+  assert.deepEqual(r2.proben.map(p => p.stabil), [1, 2, 0, 1, 2, 3]);
+  const r3 = await layoutruhe(layoutProbe([{ y: 90 }, {}, {}, {}]), '#schedule-form');
+  assert.deepEqual(r3.proben.map(p => p.stabil), [1, 1, 2, 3]); assert.equal(r3.lage.y, 100);
+});
+test('Layoutruhe nach der Aufnahme verwirft jede ungültige Probe sofort', async () => {
+  await assert.rejects(layoutruhe(layoutProbe([verdeckt, {}, {}, {}]), '#schedule-form', { streng: true }), /nach der Aufnahme/);
+  const r = await layoutruhe(layoutProbe([{}, {}, {}]), '#schedule-form', { streng: true }); assert.equal(r.proben.length, 3);
+});
+test('Layoutruhe meldet dauerhafte Mängel mit der abgelehnten Messung und speichert die Proben', async t => {
+  let jetzt = 0; t.mock.method(Date, 'now', () => (jetzt += 1000));
+  await assert.rejects(layoutruhe(layoutProbe(Array(12).fill(verdeckt)), '#schedule-form'), e => {
+    assert.match(e.message, /ungültig oder Anker verdeckt/); assert.match(e.message, /"menueUnterkante":56/);
+    assert.ok(e.proben.length >= 1 && e.proben.every(p => p.ungueltig === true)); return true;
+  });
+  await assert.rejects(layoutruhe(layoutProbe(Array(12).fill(0).map((_, i) => ({ y: 100 + i }))), '#schedule-form'), /nicht zur Ruhe/);
+  await assert.rejects(layoutruhe(layoutProbe(Array(12).fill({}), { scroll: { bestaetigt: false } }), '#schedule-form'), /ungültig/);
+  await assert.rejects(layoutruhe(layoutProbe(Array(12).fill(g => ({ ...g, anker: { ...g.anker, y: NaN } }))), '#schedule-form'), /ungültig/);
+});
+
 for (const o of [{ appVorhanden: true }, { avd: 'fremder-avd' }]) test(`Lauf verändert unpassende Umgebung nicht: ${JSON.stringify(o)}`, async () => {
   const p = laufProbe(o); assert.equal((await p.start()).rueckgabewert, 2);
   assert.equal(p.calls.some(c => ['install', 'uninstall'].some(a => c.argv.includes(a))), false);

@@ -180,7 +180,9 @@ function formularPruefen(m) {
   muss(Object.entries(PROBEDATEN).every(([k, v]) => m.werte?.[k] === (typeof v === 'boolean' ? v : String(v))), 'Formular weicht von den festen Probedaten ab.');
 }
 
-export async function layoutruhe(c, selector) {
+// streng: jede ungültige Probe ist ein Fehler (Nachprüfung nach der Aufnahme).
+// Sonst setzt eine ungültige Probe nur die Zählung zurück (Stabilisierung vor der Aufnahme).
+export async function layoutruhe(c, selector, { streng = false } = {}) {
   const messung = `(() => {const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('Anker fehlt');const r=e.getBoundingClientRect();
     return {x:scrollX,y:scrollY,breite:innerWidth,hoehe:innerHeight,dichte:devicePixelRatio,dokumentHoehe:document.documentElement.scrollHeight,
       anker:{x:r.x,y:r.y,breite:r.width,hoehe:r.height},bodyTop:document.body.style.top,
@@ -195,8 +197,10 @@ export async function layoutruhe(c, selector) {
     const gueltig = scroll?.bestaetigt && [lage.x, lage.y, lage.breite, lage.hoehe, lage.dichte, lage.dokumentHoehe, ...Object.values(lage.anker)].every(Number.isFinite)
       && lage.breite > 0 && lage.hoehe > 0 && lage.anker.breite > 0 && lage.anker.hoehe > 0
       && lage.anker.y >= lage.menueUnterkante - 1 && lage.anker.y < lage.hoehe;
-    if (!gueltig) { letzterMangel = { lage, scroll }; letzte = undefined; stabil = 0; proben.push({ lage, scroll, stabil, ungueltig: true }); }
-    else {
+    if (!gueltig) {
+      letzterMangel = { lage, scroll }; letzte = undefined; stabil = 0; proben.push({ lage, scroll, stabil, ungueltig: true });
+      if (streng) throw new Error(`Scroll-/Layoutmessung nach der Aufnahme ungültig oder Anker verdeckt: ${JSON.stringify({ lage, scroll })}`);
+    } else {
       stabil = gleich(letzte, lage) ? stabil + 1 : 1;
       proben.push({ lage, scroll, stabil });
       if (stabil >= 3) return { bestaetigt: true, erforderlicheProben: 3, pauseMs: 50, dauerMs: Date.now() - start, lage, proben };
@@ -204,9 +208,10 @@ export async function layoutruhe(c, selector) {
     }
     await c.evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(r,50))))');
   }
-  throw new Error(letzterMangel
-    ? `Scroll-/Layoutmessung ungültig oder Anker verdeckt: ${JSON.stringify({ anker: letzterMangel.lage?.anker, menueUnterkante: letzterMangel.lage?.menueUnterkante, y: letzterMangel.lage?.y, hoehe: letzterMangel.lage?.hoehe, scroll: letzterMangel.scroll })}`
-    : 'Layout nicht zur Ruhe gekommen.');
+  const fehler = new Error(letzterMangel
+    ? `Scroll-/Layoutmessung ungültig oder Anker verdeckt: ${JSON.stringify(letzterMangel)}`
+    : `Layout nicht zur Ruhe gekommen: ${JSON.stringify(proben.slice(-3))}`);
+  fehler.proben = proben; throw fehler;
 }
 
 export function sichtvorlage(bilder) {
@@ -373,6 +378,13 @@ export async function lauf(o, { run = prozess, connect = url => Cdp.connect(url)
       for (const bild of BILDER) {
         const beginn = Date.now();
         await c.evaluate(`(() => { document.activeElement?.blur();document.querySelector(${JSON.stringify(bild.anker)}).scrollIntoView({block:'start',inline:'nearest',behavior:'instant'});document.querySelectorAll('.table-scroll').forEach(e=>e.scrollLeft=0);return true;})()`);
+        // scrollIntoView allein landete zwischen zwei Läufen um neun Gerätepixel verschieden. Der Rollstand wird deshalb
+        // aus Ankerlage und Leistenunterkante fest abgeleitet (Anker 12 CSS-Pixel unter der Leiste) und auf Gerätepixel gerundet.
+        await c.evaluate(scrollruheQuelle, 4000);
+        const rollziel = await c.evaluate(`(() => { const e=document.querySelector(${JSON.stringify(bild.anker)}); const unten=document.querySelector('.fr-menue-leiste').getBoundingClientRect().bottom;
+          const ziel=Math.max(0, Math.round((e.getBoundingClientRect().top + window.scrollY - unten - 12) * devicePixelRatio) / devicePixelRatio);
+          window.scrollTo({ top: ziel, left: 0, behavior: 'instant' }); return ziel; })()`);
+        muss(Number.isFinite(rollziel) && rollziel >= 0, 'Rollziel nicht bestimmbar.');
         if (bild.id === 'dateiaktionen') {
           await layoutruhe(c, bild.anker);
           await c.evaluate(`document.querySelector(${JSON.stringify(MENUE_ZIELE.knopf)}).click()`);
@@ -396,9 +408,9 @@ export async function lauf(o, { run = prozess, connect = url => Cdp.connect(url)
         formularPruefen(await c.evaluate(WARNFREI));
         const r = await ctx.adb(['exec-out', 'screencap', '-p'], { binary: true }), masse = pngPruefen(r.out);
         await fensterPruefen('nachher');
-        const nach = await layoutruhe(c, selector); muss(gleich(vor.lage, nach.lage), 'Layout während der Aufnahme verändert.');
+        const nach = await layoutruhe(c, selector, { streng: true }); muss(gleich(vor.lage, nach.lage), 'Layout während der Aufnahme verändert.');
         save(bild.bild, r.out);
-        p.bilder.push({ ...bild, ...masse, sha256: hash(r.out), rollstand: vor, nachher: nach, dauerMs: Date.now() - beginn }); save('protokoll.json', p);
+        p.bilder.push({ ...bild, ...masse, sha256: hash(r.out), rollziel, rollstand: vor, nachher: nach, dauerMs: Date.now() - beginn }); save('protokoll.json', p);
       }
       save('sichtpruefung.json', sichtvorlage(p.bilder));
     });
