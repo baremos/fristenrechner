@@ -10,7 +10,7 @@ Jede Berechnung und jeder Export nennt Regelversion und Rechtsstand. Ist der Rec
 
 Dateien
 
-Den Terminplan speichern Sie als PDF oder Excel-Datei, das Projekt als Projektdatei zum späteren Weiterbearbeiten. Speichern und Teilen laufen über die Android-Auswahl: Sie wählen Name, Speicherort oder Ziel-App selbst. Eine Projektdatei lässt sich über dieselbe Auswahl wieder öffnen.
+Den Terminplan speichern Sie als PDF oder Excel-Datei, das Projekt als Projektdatei zum späteren Weiterbearbeiten. Speichern und Teilen laufen über die Android-Auswahl: Sie wählen Name, Speicherort oder Ziel-App selbst. Eine Projektdatei (JSON, bis 1 MiB) lässt sich über dieselbe Auswahl wieder öffnen.
 
 Datenschutz
 

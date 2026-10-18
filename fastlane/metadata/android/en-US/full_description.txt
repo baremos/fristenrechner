@@ -10,7 +10,7 @@ Every calculation and every export states the rule version and the date of the l
 
 Files
 
-You save the schedule as a PDF or Excel file, and the project as a project file for later editing. Saving and sharing use the Android picker: you choose the name, the location or the target app yourself. A project file can be opened again through the same picker.
+You save the schedule as a PDF or Excel file, and the project as a project file for later editing. Saving and sharing use the Android picker: you choose the name, the location or the target app yourself. A project file (JSON, up to 1 MiB) can be opened again through the same picker.
 
 Privacy
 
