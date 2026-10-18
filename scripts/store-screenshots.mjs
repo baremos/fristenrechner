@@ -197,9 +197,17 @@ export async function layoutruhe(c, selector, { streng = false } = {}) {
     const gueltig = scroll?.bestaetigt && [lage.x, lage.y, lage.breite, lage.hoehe, lage.dichte, lage.dokumentHoehe, ...Object.values(lage.anker)].every(Number.isFinite)
       && lage.breite > 0 && lage.hoehe > 0 && lage.anker.breite > 0 && lage.anker.hoehe > 0
       && lage.anker.y >= lage.menueUnterkante - 1 && lage.anker.y < lage.hoehe;
-    if (!gueltig) {
+    // Streng: Auch eine Bewegung, die wieder zur Ausgangslage zurückkehrt, verwirft die Aufnahme.
+    // Die Scrollruhe-Messung liefert ihre Einzelbilder mit; jede Abweichung darin oder zwischen
+    // zwei Lageproben ist dann ein Fehler, nicht nur eine ungültige Endlage.
+    const bewegt = streng && (!Array.isArray(scroll?.proben) || scroll.proben.some(q => q.offen !== 0 || ['x', 'y', 'breite', 'hoehe'].some(k => q[k] !== scroll.proben[0][k]))
+      || (letzte !== undefined && !gleich(letzte, lage)));
+    if (!gueltig || bewegt) {
       letzterMangel = { lage, scroll }; letzte = undefined; stabil = 0; proben.push({ lage, scroll, stabil, ungueltig: true });
-      if (streng) throw new Error(`Scroll-/Layoutmessung nach der Aufnahme ungültig oder Anker verdeckt: ${JSON.stringify({ lage, scroll })}`);
+      if (streng) {
+        const fehler = new Error(`${bewegt && gueltig ? 'Bewegung nach der Aufnahme beobachtet' : 'Scroll-/Layoutmessung nach der Aufnahme ungültig oder Anker verdeckt'}: ${JSON.stringify({ lage, scroll })}`);
+        fehler.proben = proben; throw fehler;
+      }
     } else {
       stabil = gleich(letzte, lage) ? stabil + 1 : 1;
       proben.push({ lage, scroll, stabil });
@@ -380,7 +388,7 @@ export async function lauf(o, { run = prozess, connect = url => Cdp.connect(url)
         await c.evaluate(`(() => { document.activeElement?.blur();document.querySelector(${JSON.stringify(bild.anker)}).scrollIntoView({block:'start',inline:'nearest',behavior:'instant'});document.querySelectorAll('.table-scroll').forEach(e=>e.scrollLeft=0);return true;})()`);
         // scrollIntoView allein landete zwischen zwei Läufen um neun Gerätepixel verschieden. Der Rollstand wird deshalb
         // aus Ankerlage und Leistenunterkante fest abgeleitet (Anker 12 CSS-Pixel unter der Leiste) und auf Gerätepixel gerundet.
-        await c.evaluate(scrollruheQuelle, 4000);
+        const ruhe = await c.evaluate(scrollruheQuelle, 4000); muss(ruhe?.bestaetigt === true, 'Scrollruhe vor dem Rollziel nicht bestätigt.');
         const rollziel = await c.evaluate(`(() => { const e=document.querySelector(${JSON.stringify(bild.anker)}); const unten=document.querySelector('.fr-menue-leiste').getBoundingClientRect().bottom;
           const ziel=Math.max(0, Math.round((e.getBoundingClientRect().top + window.scrollY - unten - 12) * devicePixelRatio) / devicePixelRatio);
           window.scrollTo({ top: ziel, left: 0, behavior: 'instant' }); return ziel; })()`);
@@ -414,7 +422,10 @@ export async function lauf(o, { run = prozess, connect = url => Cdp.connect(url)
       }
       save('sichtpruefung.json', sichtvorlage(p.bilder));
     });
-  } catch (e) { p.abbruch = befund(e instanceof Grenze ? 'dokumentierte Grenze' : 'ungültig', e.message); }
+  } catch (e) {
+    p.abbruch = befund(e instanceof Grenze ? 'dokumentierte Grenze' : 'ungültig', e.message);
+    if (Array.isArray(e.proben)) p.abbruchProben = e.proben;
+  }
   finally {
     cleaning = true;
     await cleanup('CDP schließen', async () => { c?.close(); });

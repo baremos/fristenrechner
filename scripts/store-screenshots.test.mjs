@@ -242,9 +242,9 @@ test('Neuauswertung bindet die Sichtentscheidung an unveränderte PNG- und Demo-
 });
 
 function laufProbe({ screenshotFehler = false, appVorhanden = false, avd = 'fr-api36', dumpCode = 0, signalBeiUhr = false,
-  nachherVerdeckt = false, pfadAntwort, apkFremd = false } = {}) {
+  nachherVerdeckt = false, nachherBewegt = false, pfadAntwort, apkFremd = false } = {}) {
   const ausgabe = mkdtempSync(join(arbeit, 'emulator-')), calls = [], urls = [], cdpCalls = [];
-  let screencaps = 0, verdecktGeliefert = false;
+  let screencaps = 0, verdecktGeliefert = false, bewegtGeliefert = false;
   const settings = new Map([['system font_scale', '1.3'], ['system accelerometer_rotation', '1'], ['system user_rotation', '1'], ['system time_12_24', 'null'],
     ['global sysui_demo_allowed', 'null'], ['global sysui_tuner_demo_on', '0']]);
   let installiert = appVorhanden, geschlossen = false, nacht = 'yes';
@@ -294,7 +294,12 @@ function laufProbe({ screenshotFehler = false, appVorhanden = false, avd = 'fr-a
   const c = { close: () => { geschlossen = true; }, send: async method => { cdpCalls.push(method); assert.equal(method, 'Runtime.enable'); }, evaluate: async expression => {
     cdpCalls.push(expression);
     if (expression === MESSUNG) return { hidden: false, sheet: { width: 360, height: 600 }, anzahl: 8, liste: { scrollTop: 0 } };
-    if (expression === scrollruheQuelle) return { bestaetigt: true, proben: [] };
+    if (expression === scrollruheQuelle) {
+      const ruhig = { x: 0, y: 100, breite: 393, hoehe: 5000, zeit: 1, offen: 0 };
+      // Genau einmal nach der ersten Aufnahme: Bewegung, die zur Ausgangslage zurückkehrt.
+      if (nachherBewegt && screencaps === 1 && !bewegtGeliefert) { bewegtGeliefert = true; return { bestaetigt: true, proben: [{ ...ruhig, y: 90 }, { ...ruhig, y: 95 }, ...Array(7).fill(ruhig)] }; }
+      return { bestaetigt: true, proben: Array(7).fill(ruhig) };
+    }
     if (expression.includes('window.scrollTo(')) return 100;
     if (expression.includes('innereRollstaende:')) {
       const lage = { x: 0, y: 100, breite: 393, hoehe: 850, dichte: 2.75, dokumentHoehe: 5000,
@@ -348,10 +353,14 @@ test('Signalabbruch lässt Demo- und Einstellungs-Restore ohne abgebrochenes Pro
   const beleg = JSON.parse(readFileSync(join(p.ausgabe, 'demo-modus.json'), 'utf8'));
   assert.equal(beleg.wiederhergestellt, true);
 });
-test('Ungültige Nachprobe direkt nach der Aufnahme verwirft das Bild und beendet den Lauf ungültig', async () => {
-  const p = laufProbe({ nachherVerdeckt: true }), e = await p.start(); assert.equal(e.rueckgabewert, 2, JSON.stringify(e));
+for (const [name, o, muster] of [
+  ['verdeckter Anker', { nachherVerdeckt: true }, /ungültig oder Anker verdeckt/],
+  ['Bewegung mit Rückkehr zur Ausgangslage', { nachherBewegt: true }, /Bewegung nach der Aufnahme/],
+]) test(`Nachprobe direkt nach der Aufnahme verwirft das Bild bei ${name}`, async () => {
+  const p = laufProbe(o), e = await p.start(); assert.equal(e.rueckgabewert, 2, JSON.stringify(e));
   const prot = JSON.parse(readFileSync(join(p.ausgabe, 'protokoll.json'), 'utf8'));
-  assert.equal(prot.bilder.length, 0); assert.match(prot.abbruch.grund, /nach der Aufnahme/);
+  assert.equal(prot.bilder.length, 0); assert.match(prot.abbruch.grund, muster); assert.match(prot.abbruch.grund, /nach der Aufnahme/);
+  assert.ok(Array.isArray(prot.abbruchProben) && prot.abbruchProben.length >= 1 && prot.abbruchProben.at(-1).ungueltig === true);
   assert.equal(existsSync(join(p.ausgabe, BILDER[0].bild)), false);
   assert.equal(p.installiert, false); assert.ok(prot.aufraeumen.every(s => s.ok));
 });
@@ -368,7 +377,8 @@ for (const [name, o] of [
   assert.ok(prot.aufraeumen.some(s => s.name === 'Eigene Debug-Installation entfernen' && !s.ok));
 });
 
-function layoutProbe(lagen, { scroll = { bestaetigt: true, proben: [] } } = {}) {
+const ruhigeScrollprobe = { x: 0, y: 100, breite: 393, hoehe: 5000, zeit: 1, offen: 0 };
+function layoutProbe(lagen, { scroll = { bestaetigt: true, proben: Array(7).fill(ruhigeScrollprobe) } } = {}) {
   const grund = { x: 0, y: 100, breite: 393, hoehe: 850, dichte: 2.75, dokumentHoehe: 5000, anker: { x: 0, y: 60, breite: 380, hoehe: 100 }, bodyTop: '', menueUnterkante: 56, innereRollstaende: [] };
   const warteschlange = lagen.map(l => (typeof l === 'function' ? l(grund) : { ...grund, ...l }));
   return { evaluate: async expression => {
@@ -386,8 +396,18 @@ test('Layoutruhe vor der Aufnahme übergeht Zwischenproben und bestätigt erst d
   const r3 = await layoutruhe(layoutProbe([{ y: 90 }, {}, {}, {}]), '#schedule-form');
   assert.deepEqual(r3.proben.map(p => p.stabil), [1, 1, 2, 3]); assert.equal(r3.lage.y, 100);
 });
-test('Layoutruhe nach der Aufnahme verwirft jede ungültige Probe sofort', async () => {
-  await assert.rejects(layoutruhe(layoutProbe([verdeckt, {}, {}, {}]), '#schedule-form', { streng: true }), /nach der Aufnahme/);
+test('Layoutruhe nach der Aufnahme verwirft jede ungültige Probe und jede beobachtete Bewegung sofort', async () => {
+  await assert.rejects(layoutruhe(layoutProbe([verdeckt, {}, {}, {}]), '#schedule-form', { streng: true }), e => { assert.match(e.message, /nach der Aufnahme/); assert.equal(e.proben.length, 1); return true; });
+  // Gültige äußere Zwischenlage, die zur Ausgangslage zurückkehrt.
+  await assert.rejects(layoutruhe(layoutProbe([{ y: 90 }, {}, {}, {}]), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
+  // Bewegung nur innerhalb der Scrollruhe-Einzelbilder, Endlage unverändert.
+  const bewegt = { bestaetigt: true, proben: [{ ...ruhigeScrollprobe, y: 90 }, { ...ruhigeScrollprobe, y: 95 }, ...Array(7).fill(ruhigeScrollprobe)] };
+  await assert.rejects(layoutruhe(layoutProbe([{}, {}, {}], { scroll: bewegt }), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
+  const offen = { bestaetigt: true, proben: [{ ...ruhigeScrollprobe, offen: 1 }, ...Array(7).fill(ruhigeScrollprobe)] };
+  await assert.rejects(layoutruhe(layoutProbe([{}, {}, {}], { scroll: offen }), '#schedule-form', { streng: true }), /Bewegung nach der Aufnahme/);
+  await assert.rejects(layoutruhe(layoutProbe([{}, {}, {}], { scroll: { bestaetigt: true } }), '#schedule-form', { streng: true }), /nach der Aufnahme/);
+  // Vor der Aufnahme bleiben dieselben Folgen zulässig, sobald sie zur Ruhe kommen.
+  assert.equal((await layoutruhe(layoutProbe([{ y: 90 }, {}, {}, {}]), '#schedule-form')).bestaetigt, true);
   const r = await layoutruhe(layoutProbe([{}, {}, {}]), '#schedule-form', { streng: true }); assert.equal(r.proben.length, 3);
 });
 test('Layoutruhe meldet dauerhafte Mängel mit der abgelehnten Messung und speichert die Proben', async t => {
