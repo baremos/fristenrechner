@@ -20,6 +20,17 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const gleich = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 export class Grenze extends Error {}
 
+export const PROFILE = Object.freeze({
+  telefon: Object.freeze({ breite: 1080, hoehe: 2400, dichte: null }),
+  'tablet-7': Object.freeze({ breite: 1080, hoehe: 1920, dichte: 320 }),
+  'tablet-10': Object.freeze({ breite: 1080, hoehe: 1920, dichte: 240 }),
+});
+function profilWerte(profil) {
+  muss(typeof profil === 'string' && Object.hasOwn(PROFILE, profil), 'Unbekanntes oder fehlendes Profil.');
+  return PROFILE[profil];
+}
+const bildmasse = profil => { const { breite, hoehe } = profilWerte(profil); return { breite, hoehe }; };
+
 // Ausschließlich erfundene Organisations-/Sachangaben; keine Personendaten.
 // Reihenfolge: Verordnung, Verfahren, Optionen, danach die festen Fristen.
 export const PROBEDATEN = Object.freeze({
@@ -48,7 +59,7 @@ export function argumente(argv, basis = wurzel) {
   const o = {}, flags = ['--nur-argumente', '--auswerten'];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    muss([...flags, '--api', '--apk-debug', '--ausgabe'].includes(a), `Unbekanntes Argument: ${a}`);
+    muss([...flags, '--api', '--apk-debug', '--ausgabe', '--profil'].includes(a), `Unbekanntes Argument: ${a}`);
     muss(!Object.hasOwn(o, a), `Argument doppelt: ${a}`);
     if (flags.includes(a)) o[a] = true;
     else { muss(argv[i + 1] && !argv[i + 1].startsWith('--'), `Wert fehlt: ${a}`); o[a] = argv[++i]; }
@@ -57,14 +68,15 @@ export function argumente(argv, basis = wurzel) {
   const scratch = echterPfad(join(basis, 'scratchpad')), ausgabe = echterPfad(resolve(basis, o['--ausgabe']));
   muss(innen(echterPfad(basis), scratch) && innen(scratch, ausgabe) && ausgabe !== scratch, 'Ausgabe muss unter scratchpad/ dieses Worktrees liegen.');
   if (o['--auswerten']) {
-    muss(!o['--api'] && !o['--apk-debug'] && !o['--nur-argumente'], '--auswerten ist nur mit --ausgabe kombinierbar.');
+    muss(!o['--api'] && !o['--apk-debug'] && !o['--nur-argumente'] && !o['--profil'], '--auswerten ist nur mit --ausgabe kombinierbar.');
     return { ausgabe, auswerten: true };
   }
   muss(o['--api'] === '36', '--api muss 36 sein.');
   muss(o['--apk-debug'], 'Pflichtargument fehlt: --apk-debug');
   const debug = echterPfad(resolve(basis, o['--apk-debug']));
   muss(innen(echterPfad(basis), debug) && /\.apk$/i.test(debug), 'Debug-APK muss als .apk in diesem Worktree liegen.');
-  return { api: 36, debug, ausgabe, nurArgumente: o['--nur-argumente'] === true, auswerten: false };
+  const profil = o['--profil'] ?? 'telefon'; profilWerte(profil);
+  return { api: 36, debug, ausgabe, profil, nurArgumente: o['--nur-argumente'] === true, auswerten: false };
 }
 
 const einstellungZurueck = (ctx, table, key, wert) => stelleEinstellungZurueck({ ...ctx, sleep: ctx.sleep ?? (async () => {}) }, table, key, wert);
@@ -117,17 +129,47 @@ export async function demoModus(ctx, arbeit) {
   return ergebnis;
 }
 
-export function aufloesung(text) {
-  const physical = /^Physical size: (\d+)x(\d+)\s*$/m.exec(text), override = /^Override size: (\d+)x(\d+)\s*$/m.exec(text);
-  muss(physical, 'Physische Auflösung nicht lesbar.');
-  const nativ = { breite: Number(physical[1]), hoehe: Number(physical[2]) };
-  const wirksam = override ? { breite: Number(override[1]), hoehe: Number(override[2]) } : nativ;
-  muss(nativ.breite === 1080 && nativ.hoehe === 2400 && gleich(nativ, wirksam), 'Erwartet wird die native Auflösung 1080 × 2400 ohne abweichende Übersteuerung.');
+export function aufloesung(text, profil = 'telefon') {
+  const erwartet = bildmasse(profil);
+  const treffer = typeof text === 'string' && /^Physical size: ([1-9]\d*)x([1-9]\d*)(?:\r?\nOverride size: ([1-9]\d*)x([1-9]\d*))?(?:\r?\n)?$/.exec(text);
+  muss(treffer && treffer[0] === text, 'Auflösung nicht eindeutig lesbar.');
+  const nativ = { breite: Number(treffer[1]), hoehe: Number(treffer[2]) };
+  const override = treffer[3] !== undefined;
+  const wirksam = override ? { breite: Number(treffer[3]), hoehe: Number(treffer[4]) } : nativ;
+  muss(gleich(nativ, bildmasse('telefon')) && override === (profil !== 'telefon') && gleich(wirksam, erwartet), `Auflösung oder Übersteuerung passt nicht zum Profil ${profil}.`);
   return { roh: text, nativ, wirksam };
 }
 
+export function dichte(text, profil = 'telefon') {
+  const erwartet = profilWerte(profil).dichte;
+  const treffer = typeof text === 'string' && /^Physical density: ([1-9]\d*)(?:\r?\nOverride density: ([1-9]\d*))?(?:\r?\n)?$/.exec(text);
+  muss(treffer && treffer[0] === text, 'Dichte nicht eindeutig lesbar.');
+  const nativ = Number(treffer[1]), override = treffer[2] !== undefined, wirksam = override ? Number(treffer[2]) : nativ;
+  muss(Number.isSafeInteger(nativ) && nativ > 0 && override === (profil !== 'telefon') && (erwartet === null || wirksam === erwartet), `Dichte oder Übersteuerung passt nicht zum Profil ${profil}.`);
+  return { roh: text, nativ, wirksam };
+}
+
+async function anzeigeBereit(ctx, profil, vorher) {
+  const erwartet = bildmasse(profil), proben = []; let stabil = 0;
+  for (let i = 0; i < 20; i++) {
+    const groesse = aufloesung(await ctx.shell('wm size'), profil), dpi = dichte(await ctx.shell('wm density'), profil);
+    muss(dpi.nativ === vorher.dichte.nativ, 'Native Dichte während der Umstellung verändert.');
+    const fenster = await ctx.shell('dumpsys window');
+    // Nur die eindeutige Geometrie unmittelbar unter Display 0 zählt; andere Displays sind kein Beleg.
+    const displays = [...fenster.matchAll(/^[ \t]*Display: mDisplayId=0(?:[ \t][^\r\n]*)?\r?\n([^\r\n]*)/gm)];
+    const aktuell = displays.length === 1 ? [...displays[0][1].matchAll(/\bcur=(\d+)x(\d+)(?=[ \t]|$)/g)] : [];
+    const passend = aktuell.length === 1 && aktuell[0][1] === String(erwartet.breite) && aktuell[0][2] === String(erwartet.hoehe);
+    stabil = passend ? stabil + 1 : 0;
+    proben.push({ aufloesung: groesse, dichte: dpi, groesseBestaetigt: passend, stabil });
+    if (stabil === 3) return { bestaetigt: true, proben };
+    if (i < 19) await ctx.sleep(200);
+  }
+  throw new Error('Anzeigeumstellung auf Display 0 nicht durch drei aufeinanderfolgende Proben bestätigt.');
+}
+
 // Keine Bildbearbeitung: Container, Maße und entpackbare Scanlines prüfen.
-export function pngPruefen(bytes) {
+export function pngPruefen(bytes, erwartet = bildmasse('telefon')) {
+  muss(erwartet && Object.values(PROFILE).some(p => p.breite === erwartet.breite && p.hoehe === erwartet.hoehe), 'Erwartete PNG-Maße ungültig.');
   muss(Buffer.isBuffer(bytes) && bytes.length > 33 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), 'Kein PNG.');
   let kopf, ende = false, pos = 8; const idat = [];
   while (pos + 12 <= bytes.length) {
@@ -138,7 +180,7 @@ export function pngPruefen(bytes) {
     if (typ === 'IHDR') {
       muss(!kopf && n === 13 && d[8] === 8 && [2, 6].includes(d[9]) && d[10] === 0 && d[11] === 0 && d[12] === 0, 'PNG-Kodierung nicht unterstützt.');
       kopf = { breite: d.readUInt32BE(0), hoehe: d.readUInt32BE(4), kanaele: d[9] === 6 ? 4 : 3 };
-      muss(kopf.breite === 1080 && kopf.hoehe === 2400, 'PNG ist nicht 1080 × 2400 im Hochformat.');
+      muss(kopf.breite === erwartet.breite && kopf.hoehe === erwartet.hoehe, `PNG ist nicht ${erwartet.breite} × ${erwartet.hoehe} im Hochformat.`);
     }
     if (typ === 'IDAT') idat.push(d);
     pos += n + 12;
@@ -244,17 +286,32 @@ export function auswertung(p, sicht) {
   try {
     muss(p?.schema === 1 && p.art === 'store-screenshots' && Array.isArray(p.befund), 'Protokollform ungültig.');
     befunde = [...p.befund];
+    const erwartet = bildmasse(p.profil);
+    // Auch Teilaufnahmen eines abgebrochenen Laufs dürfen dem Profil nicht widersprechen.
+    if (p.bilder !== undefined) muss(Array.isArray(p.bilder) && p.bilder.length <= BILDER.length
+      && p.bilder.every((b, i) => b.bild === BILDER[i].bild && b.breite === erwartet.breite && b.hoehe === erwartet.hoehe), 'Bildbelege passen nicht zum Profil.');
+    if (!p.abbruch || p.bilder?.length) {
+      muss(gleich(p.erwarteteBildmasse, erwartet)
+        && gleich(p.aufloesung, aufloesung(p.aufloesung?.roh, p.profil))
+        && gleich(p.dichte, dichte(p.dichte?.roh, p.profil)), 'Profil, Auflösung, Dichte oder erwartete Bildmaße widersprüchlich.');
+    }
     if (p.abbruch) {
       muss(['ungültig', 'dokumentierte Grenze'].includes(p.abbruch.status), 'Abbruchstatus ungültig.');
       befunde.push(p.abbruch);
     } else {
-      muss(p.api === 36 && p.avd === 'fr-api36' && p.aufloesung?.wirksam?.breite === 1080 && p.aufloesung?.wirksam?.hoehe === 2400
+      if (p.profil !== 'telefon') {
+        muss(gleich(p.ruecksetzung?.aufloesung, aufloesung(p.ruecksetzung?.aufloesung?.roh, 'telefon'))
+          && gleich(p.ruecksetzung?.dichte, dichte(p.ruecksetzung?.dichte?.roh, 'telefon'))
+          && gleich(p.ruecksetzung.aufloesung.nativ, p.aufloesung.nativ)
+          && p.ruecksetzung.dichte.nativ === p.dichte.nativ, 'Anzeige nicht vollständig auf die nativen Werte zurückgesetzt.');
+      }
+      muss(p.api === 36 && p.avd === 'fr-api36'
         && /^[a-f0-9]{64}$/.test(p.apk?.sha256 ?? '') && ['node', 'adb', 'emulator'].every(k => typeof p.werkzeuge?.[k] === 'string' && p.werkzeuge[k].trim())
         && gleich(p.probedaten, PROBEDATEN) && Number.isFinite(p.dauerMs) && p.dauerMs >= 0 && p.demo?.wiederhergestellt === true, 'Protokoll unvollständig.');
       muss(Array.isArray(p.bilder) && p.bilder.length === BILDER.length, 'Vier Bildbelege fehlen.');
       for (const [i, b] of p.bilder.entries()) {
         muss(Object.entries(BILDER[i]).every(([k, v]) => b[k] === v) && /^[a-f0-9]{64}$/.test(b.sha256 ?? '')
-          && b.breite === 1080 && b.hoehe === 2400 && b.rollstand?.bestaetigt === true
+          && b.breite === erwartet.breite && b.hoehe === erwartet.hoehe && b.rollstand?.bestaetigt === true
           && Number.isFinite(b.rollstand.lage?.x) && Number.isFinite(b.rollstand.lage?.y) && Number.isFinite(b.dauerMs) && b.dauerMs >= 0, 'Bildprotokoll ungültig.');
       }
       const original = sichtvorlage(p.bilder);
@@ -281,8 +338,11 @@ export function nachauswerten(ordner) {
     return readFileSync(pfad);
   };
   const p = JSON.parse(lesen('protokoll.json'));
+  const erwartet = bildmasse(p.profil);
+  // Auch ein Abbruch entbindet vorhandene oder protokollierte Teilbilder nicht von der Prüfung.
+  const bilder = p.abbruch ? BILDER.filter(b => p.bilder?.some(x => x.bild === b.bild) || existsSync(join(ordner, b.bild))) : BILDER;
+  for (const b of bilder) { const bytes = lesen(b.bild); pngPruefen(bytes, erwartet); muss(p.bilder?.find(x => x.bild === b.bild)?.sha256 === hash(bytes), 'Bildprüfsumme verändert.'); }
   if (!p.abbruch) {
-    for (const b of BILDER) { const bytes = lesen(b.bild); pngPruefen(bytes); muss(p.bilder?.find(x => x.bild === b.bild)?.sha256 === hash(bytes), 'Bildprüfsumme verändert.'); }
     muss(gleich(p.demo, JSON.parse(lesen('demo-modus.json'))), 'Demo-Beleg verändert.');
   }
   const ergebnis = auswertung(p, p.abbruch ? undefined : JSON.parse(lesen('sichtpruefung.json')));
@@ -318,6 +378,7 @@ async function verbinden(ctx, connect, getJson, forwards) {
 export async function lauf(o, { run = prozess, connect = url => Cdp.connect(url), sleep = pause,
   getJson = async url => { const r = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(3000) }); muss(r.ok, 'CDP-Zielliste fehlt.'); return r.json(); },
 } = {}) {
+  const profil = o.profil ?? 'telefon', erwartet = bildmasse(profil);
   muss(!existsSync(o.ausgabe) || readdirSync(o.ausgabe).length === 0, 'Ausgabeordner ist nicht leer.');
   mkdirSync(o.ausgabe, { recursive: true });
   const save = schreiber(o.ausgabe), tmp = join(o.ausgabe, 'tmp'); mkdirSync(tmp);
@@ -327,6 +388,7 @@ export async function lauf(o, { run = prozess, connect = url => Cdp.connect(url)
   const buildTools = JSON.parse(readFileSync(join(wurzel, 'scripts/toolchain.json'), 'utf8')).android.buildTools;
   const aapt = join(sdk, 'build-tools', buildTools, 'aapt2.exe');
   const start = Date.now(), p = { schema: 1, art: 'store-screenshots', beginn: new Date().toISOString(), api: o.api, seriennummer: SERIAL,
+    profil, erwarteteBildmasse: erwartet,
     werkzeuge: { node: process.version }, probedaten: PROBEDATEN, bilder: [], befund: [], aufraeumen: [], befehle: [],
     grenzen: ['Die Sichtprüfung beurteilt Bildinhalt und bereinigte Systemleisten. Broadcast-Erfolg allein belegt keine Pixel.',
       'Bytegleichheit ist erst durch Wiederholung prüfbar. WebView, Systemabbild, Dichte, Navigation, Sprach-/Zeiteinstellungen und Rasterung können Pixel ändern; Versionen und Geometrie werden festgehalten.',
@@ -362,9 +424,12 @@ export async function lauf(o, { run = prozess, connect = url => Cdp.connect(url)
     p.avd = avdName((await ctx.adb(['emu', 'avd', 'name'])).out);
     muss(p.avd === 'fr-api36' && await ctx.shell('getprop ro.kernel.qemu') === '1' && await ctx.shell('getprop ro.build.version.sdk') === '36'
       && await ctx.shell('getprop sys.boot_completed') === '1', 'Nur der vollständig gestartete Emulator fr-api36 mit API 36 ist zulässig.');
-    p.aufloesung = aufloesung(await ctx.shell('wm size'));
-    p.umgebung = {};
-    for (const [name, befehl] of Object.entries({ dichte: 'wm density', fingerprint: 'getprop ro.build.fingerprint', webview: 'dumpsys webviewupdate', sprache: 'getprop persist.sys.locale', zeitzone: 'getprop persist.sys.timezone', zeit: 'date', navigation: 'settings get secure navigation_mode' })) p.umgebung[name] = await ctx.shell(befehl);
+    const groesseVorher = await ctx.shell('wm size'), dichteVorher = await ctx.shell('wm density');
+    if (/^Override size:/m.test(groesseVorher) || /^Override density:/m.test(dichteVorher)) throw new Grenze('Fremde Anzeigeübersteuerung vor dem Lauf; nichts geändert.');
+    p.aufloesung = aufloesung(groesseVorher, 'telefon'); p.dichte = dichte(dichteVorher, 'telefon');
+    p.anzeigeVorher = { aufloesung: p.aufloesung, dichte: p.dichte };
+    p.umgebung = { dichte: dichteVorher };
+    for (const [name, befehl] of Object.entries({ fingerprint: 'getprop ro.build.fingerprint', webview: 'dumpsys webviewupdate', sprache: 'getprop persist.sys.locale', zeitzone: 'getprop persist.sys.timezone', zeit: 'date', navigation: 'settings get secure navigation_mode' })) p.umgebung[name] = await ctx.shell(befehl);
     muss((await ctx.command(aapt, ['dump', 'packagename', o.debug])).out.trim() === APP, 'APK gehört nicht zum erwarteten Paket.');
     muss(/application-debuggable/.test((await ctx.command(aapt, ['dump', 'badging', o.debug])).out), 'APK ist kein Debug-Build.');
     muss(!(await ctx.shell(`pm list packages ${APP}`)).split('\n').includes(`package:${APP}`), 'App ist bereits installiert. Für bereinigte Probedaten wird ein Emulator ohne vorhandene App-Installation benötigt; nichts überschrieben.');
@@ -382,6 +447,24 @@ export async function lauf(o, { run = prozess, connect = url => Cdp.connect(url)
     muss(nacht, 'Nachtmodus nicht lesbar.'); p.umgebung.nacht = nacht;
     restores.push(['Nachtmodus', async () => { await ctx.shell(`cmd uimode night ${nacht}`); muss(new RegExp(`Night mode: ${nacht}\\b`, 'i').test(await ctx.shell('cmd uimode night')), 'Nachtmodus nicht wiederhergestellt.'); }]);
     await ctx.shell('cmd uimode night no');
+    if (profil !== 'telefon') {
+      p.ruecksetzung = {};
+      // Vor jedem Setzversuch registrieren: auch ein abgebrochener Befehl kann die Anzeige bereits verändert haben.
+      for (const [art, wert, pruefen, feld] of [
+        ['size', '1080x1920', aufloesung, 'aufloesung'], ['density', String(profilWerte(profil).dichte), dichte, 'dichte'],
+      ]) {
+        restores.push([`wm ${art} reset`, async () => {
+          await ctx.shell(`wm ${art} reset`);
+          const nachher = pruefen(await ctx.shell(`wm ${art}`), 'telefon');
+          muss(gleich(nachher.nativ, p.anzeigeVorher[feld].nativ), `Native ${feld === 'dichte' ? 'Dichte' : 'Auflösung'} nach Reset verändert.`);
+          p.ruecksetzung[feld] = nachher;
+        }]);
+        await ctx.shell(`wm ${art} ${wert}`);
+      }
+      p.aufloesung = aufloesung(await ctx.shell('wm size'), profil);
+      p.dichte = dichte(await ctx.shell('wm density'), profil);
+      p.anzeige = await anzeigeBereit(ctx, profil, p.anzeigeVorher);
+    }
     await demoModus(ctx, async () => {
       installBegonnen = true;
       const install = await ctx.adb(['install', o.debug], { timeoutMs: 180000 }); muss(/^Success\s*$/m.test(install.out), 'Installation nicht bestätigt.');
@@ -424,7 +507,7 @@ export async function lauf(o, { run = prozess, connect = url => Cdp.connect(url)
         await fensterPruefen('vorher');
         const vor = await layoutruhe(c, selector);
         formularPruefen(await c.evaluate(WARNFREI));
-        const r = await ctx.adb(['exec-out', 'screencap', '-p'], { binary: true }), masse = pngPruefen(r.out);
+        const r = await ctx.adb(['exec-out', 'screencap', '-p'], { binary: true }), masse = pngPruefen(r.out, erwartet);
         await fensterPruefen('nachher');
         const nach = await layoutruhe(c, selector, { streng: true }); muss(gleich(vor.lage, nach.lage), 'Layout während der Aufnahme verändert.');
         save(bild.bild, r.out);
