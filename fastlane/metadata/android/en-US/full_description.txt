@@ -1,0 +1,36 @@
+Fristenrechner Vergabe ("Procurement Deadline Calculator (Germany)") is a calculation aid for dates and deadlines in public procurement procedures (tenders) under German law: VgV, VOB/A-EU, SektVO, VSVgV, KonzVgV, UVgO and VOB/A.
+
+The calculator is a non-binding calculation aid. It does not replace legal advice. All information is provided without guarantee.
+
+What the app calculates
+
+From the data entered, the app produces a schedule of dates and deadlines for a procurement procedure. You select the procurement regulation and the type of procedure yourself, for example an open procedure, a restricted procedure or a negotiated procedure with a call for competition under the VgV, a public or restricted invitation to tender under the VOB/A, or a negotiated award under the UVgO. The app calculates the dates of the procedure, shows the calculation path for each date and presents the sequence as a timeline. Statutory public holidays per German federal state are included and are calculated without network access.
+
+Every calculation and every export states the rule version and the date of the legal status. If the legal status is older than twelve months, the app shows a notice.
+
+Files
+
+You save the schedule as a PDF or Excel file, and the project as a project file for later editing. Saving and sharing use the Android picker: you choose the name, the location or the target app yourself. A project file (JSON, up to 1 MiB) can be opened again through the same picker.
+
+Privacy
+
+The app processes your entries on this device. It has no internet permission; selected document providers and target apps may transfer data themselves. The current project stays in the local storage of the app. The complete privacy text is available offline in the app under "Datenschutz".
+
+What the app does not do
+
+- It does not remind of dates and sends no notifications.
+- It does not select the procurement regulation from the contract value.
+- It contains no amounts of the EU thresholds.
+- It has no accounts, no login and no synchronisation.
+- It contains no tracking, no advertising and no analytics.
+- It does not access the network during operation.
+
+Language
+
+The user interface of the app and its exports are in German. The calculator follows German procurement law, and its technical terms are German.
+
+Open source
+
+The calculation core, the user interface and the app are open source under the Apache-2.0 license. Source code and issue tracker: https://github.com/baremos/fristenrechner
+
+Publisher: BAREMOS IT Dienstleistungs GmbH, Berlin, Germany.

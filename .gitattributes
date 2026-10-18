@@ -54,3 +54,7 @@ packages/*/README*.md text eol=lf
 *.xlsx binary
 *.ttf binary
 *.woff2 binary
+
+# Store-Texte im fastlane-Format gehen unverändert an Google Play und F-Droid.
+# Nur die Textdateien; Bilder darunter bleiben binär (Regeln oben).
+fastlane/metadata/**/*.txt text eol=lf
