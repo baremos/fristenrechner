@@ -206,8 +206,9 @@ export async function layoutruhe(c, selector, { streng = false } = {}) {
       if (!Array.isArray(scroll?.proben) || scroll.proben.length === 0) bewegt = true;
       else {
         referenzScroll ??= scroll.proben[0];
+        // Lageprobe und Scrollmessung erfassen Rollstand und Dokumenthöhe getrennt; beide müssen dem Maßstab entsprechen.
         bewegt = scroll.proben.some(q => q.offen !== 0 || ['x', 'y', 'breite', 'hoehe'].some(k => q[k] !== referenzScroll[k]))
-          || lage.x !== referenzScroll.x || lage.y !== referenzScroll.y
+          || lage.x !== referenzScroll.x || lage.y !== referenzScroll.y || lage.dokumentHoehe !== referenzScroll.hoehe
           || (letzte !== undefined && !gleich(letzte, lage));
       }
     }
