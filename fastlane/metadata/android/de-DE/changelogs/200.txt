@@ -1,0 +1,1 @@
+Erste Fassung für den Test. Berechnung von Terminen und Fristen für Vergabeverfahren nach VgV, VOB/A-EU, SektVO, VSVgV, KonzVgV, UVgO und VOB/A mit Rechenweg und Zeitschiene. Export als PDF, Excel und Projektdatei über die Android-Auswahl, Import von Projektdateien. Betrieb ohne Netzwerkzugriff. Regelversion 1.9.0, Rechtsstand Juli 2026.
