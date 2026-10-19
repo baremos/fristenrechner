@@ -54,8 +54,10 @@ Die Angaben zum fehlenden Internetzugriff beziehen sich auf den Fristenrechner. 
 
 Die bisherigen Laufzeitprüfungen fanden auf Emulatoren mit Android 11 und Android 16 sowie auf einem Gerät mit Android 16 statt. Auf dem Gerät wurden der Start der App sowie Speichern, Teilen, Import und Zurücksetzen in einzelnen Abläufen geprüft. Netzwerkverkehr, Sicherung, Gerätewechsel und das Löschen der App-Daten wurden nur im Emulator geprüft. Diese Prüfungen ersetzen keine Prüfung aller Herstellergeräte, Dokumentanbieter und Ziel-Apps. Insbesondere verzögertes Lesen durch Empfänger, voller Speicher sowie Schreib- und Schließfehler sind damit nicht für alle Umgebungen nachgewiesen.
 
-## Stand und Verantwortlichkeit
+## Stand, Verantwortlichkeit und Kontakt
 
-Stand: 15. Oktober 2026, App-Version 0.1.0. Es gibt noch keine Veröffentlichung dieser App.
+Stand: 19. Oktober 2026, App-Version 0.2.0.
 
-Herausgeber: BAREMOS IT GmbH, Berlin. Verantwortlich: Andreas Schmidt.
+Herausgeber: BAREMOS IT Dienstleistungs GmbH, Berlin. Verantwortlich: Andreas Schmidt.
+
+Fragen zum Datenschutz richten Sie an `datenschutz@baremos.de`. Die Anschrift der verantwortlichen Stelle und Ihre Rechte als betroffene Person stehen in der Datenschutzerklärung der BAREMOS IT Dienstleistungs GmbH unter baremos.de/de/unternehmen/datenschutz/ in den Abschnitten „Verantwortliche Stelle“ und „Ihre Rechte im Überblick“; der Abschnitt „Fristenrechner“ dort beschreibt Website und App. Die hier genannten Adressen stehen als Text und sind nicht verlinkt.
