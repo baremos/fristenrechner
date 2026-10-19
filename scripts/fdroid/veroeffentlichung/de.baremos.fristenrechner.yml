@@ -1,0 +1,56 @@
+Categories:
+  - Calculator
+License: Apache-2.0
+AuthorName: BAREMOS IT Dienstleistungs GmbH
+AuthorWebSite: https://www.baremos.de
+WebSite: https://www.baremos.de/de/vergabe/fristenrechner/
+SourceCode: https://github.com/baremos/fristenrechner
+IssueTracker: https://github.com/baremos/fristenrechner/issues
+Changelog: https://github.com/baremos/fristenrechner/releases
+
+RepoType: git
+Repo: https://github.com/baremos/fristenrechner.git
+Binaries: https://github.com/baremos/fristenrechner/releases/download/v%v/de.baremos.fristenrechner_%v_%c.apk
+AllowedAPKSigningKeys:
+  - ae5d4d7ec4d3ee63763e128a3fb00721c7d164206f066dc26e8e968ff9a92e68
+
+Builds:
+  - versionName: 0.2.0
+    versionCode: 200
+    commit: v0.2.0
+    subdir: app/android/app
+    gradle:
+      - yes
+    prebuild:
+      - set -eu
+      - cd ../../..
+      - mkdir -p "$HOME/.cache/fristenrechner-fdroid"
+      - curl --fail --location --proto '=https' --proto-redir '=https' --output "$HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64.tar.gz" https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.gz
+      - echo "6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff  $HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64.tar.gz" | sha256sum --check --strict
+      - tar -xzf "$HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64.tar.gz" -C "$HOME/.cache/fristenrechner-fdroid"
+      - export PATH="$HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64/bin:$PATH"
+      - export ASTRO_TELEMETRY_DISABLED=1 CI=1
+      - npm ci --ignore-scripts --no-audit --no-fund
+      - node scripts/app-bauen.mjs --web
+      - |-
+        node --input-type=module -e '
+        import { spawnSync } from "node:child_process";
+        import { leseAndroidZustand, pruefeSync, pruefeGradle } from "./scripts/app-pruefungen.mjs";
+        import { pruefeBuildHinweise } from "./scripts/app-bauen.mjs";
+        const wurzel = process.cwd();
+        const vorher = leseAndroidZustand({ wurzel });
+        const sync = spawnSync(process.execPath, ["../node_modules/@capacitor/cli/bin/capacitor", "sync", "android"], { cwd: "app", stdio: "inherit" });
+        if (sync.error || sync.status !== 0) throw new Error("Android-Sync gescheitert");
+        const fehler = [...pruefeSync({ wurzel, vorher }), ...pruefeBuildHinweise(wurzel, { nachAndroidSync: true }), ...pruefeGradle({ wurzel })];
+        if (fehler.length) throw new Error(fehler.join("\n"));
+        '
+      - python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe fdroid-bereinigung.json
+    build:
+      - export PATH="$HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64/bin:$PATH"
+      - cd ../../..
+      - node scripts/fdroid/app-vorbereiten.mjs --nach-scanner
+
+AutoUpdateMode: Version
+UpdateCheckMode: 'Tags ^v[0-9]+\.[0-9]+\.[0-9]+$'
+CurrentVersion: 0.2.0
+CurrentVersionCode: 200
