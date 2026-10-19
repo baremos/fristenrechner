@@ -195,7 +195,7 @@ Ohne Git scheitern K3 und K4 mit einem ausdrücklichen Fehler. K4 prüft den Mod
 
 ## Build-Nachweis zur Fassung 0.2.0 vom 2026-10-19
 
-Die Fassung 0.2.0 (`versionCode` 200) ist die erste für den internen Test bei Google Play vorgesehene Fassung. Der Release-Stand `1f6d39f` ändert gegenüber dem eingefrorenen Stand `8b17927` an den App-Eingaben nur Version und `versionCode`, die Herausgeber-Zeile der App-Seite und den Schlussabschnitt von `docs/datenschutz.md`. Alle folgenden Zeiten sind MESZ.
+Die Fassung 0.2.0 (`versionCode` 200) ist die erste für den internen Test bei Google Play vorgesehene Fassung. Gegenüber dem eingefrorenen Stand `8b17927` haben sich am Release-Stand `1f6d39f` an den ausgelieferten App-Inhalten Version und `versionCode`, die Herausgeber-Zeile der App-Seite, der Schlussabschnitt von `docs/datenschutz.md` und die in der App angezeigte `NOTICE` (Rechtsname des Herausgebers seit `57024e0`) geändert. Ohne Wirkung auf die APK sind die Paketmanifeste und READMEs der npm-Pakete (Angaben für die Veröffentlichung, Rechtsname), die Gradle-Prüfsummendatei (`d3d432b`, zwei Einträge für einen Build mit leerem Gradle-Home), `.gitattributes` und die Skripte außerhalb des Builds. Alle folgenden Zeiten sind MESZ.
 
 | Lauf | Werkzeuge und Ablauf | Beobachtetes Ergebnis |
 |---|---|---|
