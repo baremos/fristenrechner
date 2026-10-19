@@ -255,6 +255,8 @@ Nachtrag 2026-10-19: Das [Veröffentlichungsrezept für F-Droid](../scripts/fdro
 
 Schritt 4 übernimmt `scripts/android-build.mjs`, die Schritte 5 bis 7 `scripts/signing/apk-signieren.mjs`. Das Skript nimmt den Ort der Schlüsseldatei als Angabe entgegen, speichert ihn nicht und nennt ihn in keiner eigenen Meldung. Für Meldungen von `apksigner` gilt die Zeile „Meldungen der Werkzeuge“ in der Tabelle.
 
+Nachtrag 2026-10-19: Für die Fassung 0.2.0 (`versionCode` 200) ist das unsignierte App-Bundle am Stand `b066d5e` mit `node scripts/android-build.mjs --projekt app/android --aufgabe bundleRelease` erzeugt (3 010 617 Bytes, SHA-256 `937657868f973901b24d8cb1b885b1713c570ee32f90ab51a96897805d515031`); die Release-APK aus demselben Arbeitsbaum blieb dabei unverändert (siehe [app.md](app.md#build-nachweis-zur-fassung-020-vom-2026-10-19)). Schritt 8 führt der fachlich Verantwortliche mit `jarsigner` aus dem JDK 21 und dem Upload-Schlüssel aus (`-sigalg SHA256withRSA -digestalg SHA-256`, Kennwort im Dialog), gefolgt von `jarsigner -verify` und dem Vergleich des Zertifikats mit dem Fingerabdruck oben; Prüfsumme und Prüfergebnis der signierten Datei werden hier nachgetragen, bevor die Datei für den internen Test hochgeladen wird.
+
 ```text
 node scripts/signing/apk-signieren.mjs --apk <unsignierte.apk> --aus <signierte.apk> --schluessel <Datei.p12> --alias <Alias> --fingerabdruck <SHA-256 des Zertifikats>
 ```
