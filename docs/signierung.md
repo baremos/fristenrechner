@@ -237,6 +237,8 @@ Schritt 2 ist belegt: Die exportierten Zertifikate liegen unter `docs/zertifikat
 
 Der Fingerabdruck des App-Signierschlüssels ist der Wert für `AllowedAPKSigningKeys` im Rezept für F-Droid, für `--fingerabdruck` beim Signieren mit `scripts/signing/apk-signieren.mjs` und für die Registrierung des Zertifikats bei der Developer Verification von Android. Der Upload-Schlüssel signiert nur das App-Bundle für Google Play. Die Sicherung nach S10 hat der fachlich Verantwortliche am 2026-10-18 angelegt; der Nachweis N3, die Wiederherstellung aus der Sicherung mit einer Probesignatur, steht aus und wird vor der ersten Veröffentlichung erbracht.
 
+Nachtrag 2026-10-19: Das [Veröffentlichungsrezept für F-Droid](../scripts/fdroid/veroeffentlichung/de.baremos.fristenrechner.yml) verwendet den Fingerabdruck des App-Signierzertifikats in `AllowedAPKSigningKeys`; ein Test vergleicht den Eintrag mit dem berechneten SHA-256 der DER-kodierten Zertifikatsdatei.
+
 ## Geplanter Ablauf
 
 | Schritt | Werkzeug | Wer |
