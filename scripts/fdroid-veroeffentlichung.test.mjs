@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash, X509Certificate } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { Script } from 'node:vm';
 import { parseDocument, stringify } from 'yaml';
 
 const lesen = (pfad) => readFileSync(new URL(pfad, import.meta.url), 'utf8');
@@ -49,6 +50,84 @@ function tagMuster(rezept) {
     assert.ok(!ausdruck.test(tag), `Fremder Tag darf nicht passen: ${tag}`);
   }
   return ausdruck;
+}
+
+function androidVorbereitungPruefen(befehl) {
+  // Nur das tatsächlich geladene Node-Fragment ausführen. Seine Importe werden
+  // durch isolierte Doubles ersetzt; weder Capacitor noch ein Build wird gestartet.
+  const treffer = /^node --input-type=module -e '\s*([\s\S]*?)\s*'$/.exec(befehl);
+  assert.ok(treffer, 'Android-Vorbereitung als eingebettetes Node-Modul');
+  const importe = [];
+  const code = treffer[1].replace(/^\s*import\s+\{([^}]+)\}\s+from\s+"([^"]+)";\s*$/gm, (_, namen, pfad) => {
+    importe.push([pfad, namen.split(',').map((name) => name.trim()).sort()]);
+    return '';
+  });
+  assert.deepEqual(importe, [
+    ['node:child_process', ['spawnSync']],
+    ['./scripts/app-pruefungen.mjs', ['leseAndroidZustand', 'pruefeGradle', 'pruefeSync']],
+    ['./scripts/app-bauen.mjs', ['pruefeBuildHinweise']],
+  ], 'Android-Vorbereitung verwendet die echten Prüfmodule');
+  const programm = new Script(code);
+  const wurzel = '/fdroid-rezept-test';
+  const vorher = Object.freeze({ zustand: 'vor-sync' });
+  function ausfuehren(sync = { status: 0 }, fehlerBei) {
+    const aufrufe = [];
+    const pruefung = (name) => {
+      aufrufe.push(name);
+      return name === fehlerBei ? [`Testfehler aus ${name}`] : [];
+    };
+    const kontext = {
+      process: Object.freeze({ cwd: () => wurzel, execPath: '/test-node' }),
+      leseAndroidZustand(optionen) {
+        assert.equal(optionen.wurzel, wurzel);
+        aufrufe.push('leseAndroidZustand');
+        return vorher;
+      },
+      spawnSync(programm, args, optionen) {
+        assert.equal(programm, '/test-node');
+        assert.deepEqual([...args], ['../node_modules/@capacitor/cli/bin/capacitor', 'sync', 'android']);
+        assert.equal(optionen.cwd, 'app');
+        assert.equal(optionen.stdio, 'inherit');
+        aufrufe.push('capacitor sync android');
+        return sync;
+      },
+      pruefeSync(optionen) {
+        assert.equal(optionen.wurzel, wurzel);
+        assert.equal(optionen.vorher, vorher);
+        return pruefung('pruefeSync');
+      },
+      pruefeBuildHinweise(basis, optionen) {
+        assert.equal(basis, wurzel);
+        assert.equal(optionen.nachAndroidSync, true);
+        return pruefung('pruefeBuildHinweise');
+      },
+      pruefeGradle(optionen) {
+        assert.equal(optionen.wurzel, wurzel);
+        return pruefung('pruefeGradle');
+      },
+    };
+    let fehler;
+    try {
+      programm.runInNewContext(kontext, { timeout: 1_000 });
+    } catch (error) {
+      fehler = error;
+    }
+    return { aufrufe, fehler };
+  }
+  const erfolgreich = ausfuehren();
+  assert.equal(erfolgreich.fehler, undefined, 'Android-Vorbereitung muss ohne Fehler ausführbar sein');
+  assert.deepEqual(erfolgreich.aufrufe, [
+    'leseAndroidZustand', 'capacitor sync android', 'pruefeSync', 'pruefeBuildHinweise', 'pruefeGradle',
+  ], 'Android-Vorbereitung führt alle Schritte in der vorgesehenen Reihenfolge aus');
+  for (const name of ['pruefeSync', 'pruefeBuildHinweise', 'pruefeGradle']) {
+    const ergebnis = ausfuehren({ status: 0 }, name);
+    assert.ok(ergebnis.fehler?.message.includes(`Testfehler aus ${name}`), `Fehler aus ${name} müssen geworfen werden`);
+  }
+  for (const sync of [{ status: 23 }, { status: null }, { status: 0, error: new Error('Start fehlgeschlagen') }]) {
+    const ergebnis = ausfuehren(sync);
+    assert.match(ergebnis.fehler?.message ?? '', /Android-Sync gescheitert/, 'Sync-Fehler müssen geworfen werden');
+    assert.deepEqual(ergebnis.aufrufe, ['leseAndroidZustand', 'capacitor sync android'], 'Nach Sync-Fehlern darf keine Prüfung weiterlaufen');
+  }
 }
 
 function rezeptPruefen(text) {
@@ -97,6 +176,12 @@ function rezeptPruefen(text) {
   assert.ok(pruefung > vorbereitung.indexOf(nodeAdresse) && entpacken > pruefung, 'Download, Hashprüfung und Entpacken in dieser Reihenfolge');
   assert.match(vorbereitung, /\bnpm\s+ci\s+[^\n]*--ignore-scripts\b/, 'npm ci ohne Installationsskripte');
   assert.match(vorbereitung, /npm-bereinigen\.py\b/, 'Gezielte Bereinigung');
+  const web = build.prebuild.indexOf('node scripts/app-bauen.mjs --web');
+  assert.ok(web >= 0, 'Web-Build muss im prebuild ausgeführt werden');
+  const android = build.prebuild.findIndex((befehl) => befehl.startsWith('node --input-type=module -e '));
+  assert.ok(android > web, 'Android-Vorbereitung muss nach dem Web-Build ausgeführt werden');
+  androidVorbereitungPruefen(build.prebuild[android]);
+  assert.ok(build.build.includes('node scripts/fdroid/app-vorbereiten.mjs --nach-scanner'), 'Nach-Scanner-Prüfung muss im build ausgeführt werden');
   return rezept;
 }
 
@@ -106,6 +191,15 @@ function gegenprobe(name, aendern, fehler) {
     aendern(rezept);
     assert.throws(() => rezeptPruefen(stringify(rezept)), fehler);
   });
+}
+
+function schrittAendern(rezept, phase, muster, ersatz) {
+  let anzahl = 0;
+  rezept.Builds[0][phase] = rezept.Builds[0][phase].map((befehl) => befehl.replace(muster, () => {
+    anzahl += 1;
+    return ersatz;
+  })).filter((befehl) => befehl.trim());
+  assert.equal(anzahl, 1, 'Die Gegenprobe muss genau einen Schritt des geladenen Rezepts verändern');
 }
 
 function shellPruefen(befehle) {
@@ -199,6 +293,36 @@ gegenprobe('npm darf Installationsskripte starten', (r) => {
 gegenprobe('fehlende gezielte Bereinigung', (r) => {
   r.Builds[0].prebuild = r.Builds[0].prebuild.filter((s) => !s.includes('npm-bereinigen.py'));
 }, /Gezielte Bereinigung/);
+for (const [phase, name, muster, fehler] of [
+  ['prebuild', 'Web-Build', /^node scripts\/app-bauen\.mjs --web$/, /Web-Build/],
+  ['build', 'Nach-Scanner-Prüfung', /^node scripts\/fdroid\/app-vorbereiten\.mjs --nach-scanner$/, /Nach-Scanner-Prüfung/],
+]) {
+  for (const ersatz of ['', 'true']) {
+    gegenprobe(`${name} ${ersatz ? 'durch true ersetzt' : 'entfernt'}`, (r) => {
+      schrittAendern(r, phase, muster, ersatz);
+    }, fehler);
+  }
+}
+gegenprobe('Android-Sync entfernt', (r) => {
+  schrittAendern(r, 'prebuild', /^\s*const sync = spawnSync\([^\n]+\);$/m, '');
+}, /Android-Vorbereitung muss ohne Fehler/);
+gegenprobe('Android-Sync durch true ersetzt', (r) => {
+  schrittAendern(r, 'prebuild', /spawnSync\(process\.execPath, \[[^\n]+\], \{[^\n]+\}\)/, 'true');
+}, /Android-Vorbereitung muss ohne Fehler/);
+for (const name of ['pruefeSync', 'pruefeBuildHinweise', 'pruefeGradle']) {
+  gegenprobe(`${name} entfernt, Import bleibt stehen`, (r) => {
+    schrittAendern(r, 'prebuild', new RegExp(`\\.\\.\\.${name}\\([^\\n]*?\\)(?:, )?`), '');
+  }, /Android-Vorbereitung führt alle Schritte/);
+}
+gegenprobe('throw bei Prüffehlern durch true ersetzt', (r) => {
+  schrittAendern(r, 'prebuild', /if \(fehler\.length\) throw new Error\([^\n]+\);/, 'true;');
+}, /Fehler aus pruefeSync müssen geworfen werden/);
+gegenprobe('Weitergabe eines fehlerhaften Sync-Status entfernt', (r) => {
+  schrittAendern(r, 'prebuild', / \|\| sync\.status !== 0/, '');
+}, /Sync-Fehler müssen geworfen werden/);
+gegenprobe('Weitergabe eines Sync-Startfehlers entfernt', (r) => {
+  schrittAendern(r, 'prebuild', /sync\.error \|\| /, '');
+}, /Sync-Fehler müssen geworfen werden/);
 for (const muster of ['^v.*$', '^v[0-9]+.[0-9]+.[0-9]+$', '^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-rc1)?$', 'v[0-9]+\\.[0-9]+\\.[0-9]+']) {
   gegenprobe(`zu weites Tag-Muster ${muster}`, (r) => { r.UpdateCheckMode = `Tags ${muster}`; }, /Tag-Muster|Fremder Tag/);
 }

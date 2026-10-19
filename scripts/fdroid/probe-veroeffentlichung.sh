@@ -84,7 +84,8 @@ def main():
         if not shutil.which(name, path=SYSTEMPFAD):
             raise ValueError("Voraussetzung fehlt im Systempfad: " + name)
     from fdroidserver._yaml import yaml
-    with Path(args.rezept).open(encoding="utf-8") as quelle:
+    rezept_datei = pfad(args.rezept)
+    with rezept_datei.open(encoding="utf-8") as quelle:
         rezept = yaml.load(quelle)
     builds = rezept.get("Builds", [])
     if len(builds) != 1 or builds[0].get("commit") != TAG or builds[0].get("versionCode") != 200 or str(builds[0].get("versionName")) != "0.2.0":
@@ -119,7 +120,7 @@ def main():
             raise ValueError("Die SDK-Kopie darf keinen Verweis außerhalb der Kopie erhalten: " + str(datei))
     # Nie ein SDK in sich selbst kopieren; Ausgaben dürfen keine Eingaben überlagern.
     for basis in (arbeit, ausgabe):
-        for eingabe in (sdk, starter, jdk, referenz, Path(args.rezept).resolve()):
+        for eingabe in (sdk, starter, jdk, referenz, rezept_datei):
             if basis == eingabe or basis.is_relative_to(eingabe):
                 raise ValueError("Arbeits-/Ausgabeordner darf nicht innerhalb einer Eingabe liegen.")
     arbeit.mkdir(parents=True, exist_ok=True)
@@ -129,7 +130,7 @@ def main():
     if sicherung.exists():
         raise ValueError("Der Ausgabeordner existiert bereits: " + str(sicherung))
     protokoll = (lauf / "probe.log").open("x", encoding="utf-8")
-    ergebnis = {"bestanden": False, "fdroidBuild": None, "referenzApk": vergleich,
+    ergebnis = {"bestanden": False, "fdroidBuild": None, "commitNachBuild": None, "referenzApk": vergleich,
                 "beginn": datetime.now(timezone.utc).isoformat(), "sudoSchritte": len(sudo),
                 "uid": os.getuid(), "euid": os.geteuid()}
     abweichungen = ["Lokaler Build mit fdroidserver 2.4.2 unter Debian 13; kein echter Buildserver.",
@@ -177,7 +178,7 @@ def main():
                "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null", "GIT_TERMINAL_PROMPT": "0"}
         json_schreiben(lauf / "umgebung.json", env)
         json_schreiben(lauf / "toolchain.json", vorgabe)
-        shutil.copyfile(args.rezept, lauf / "rezept-original.yml")
+        shutil.copyfile(rezept_datei, lauf / "rezept-original.yml")
         shutil.copyfile(HIER / "app-referenz.json", lauf / "app-referenz.json")
         melden("Vor dem Rezept: kein node/nodejs/npm/npx im Systempfad; HOME ist neu und leer.")
         melden("Die Probe übernimmt keine Benutzerpfade oder Node-Caches aus der aufrufenden Sitzung.")
@@ -233,6 +234,13 @@ def main():
         code, _ = ausfuehren(["fdroid", "build", "--verbose", APPID + ":200"], cwd=lauf / "fdroid",
                              protokolldatei="build.log", pruefen=False)
         ergebnis["fdroidBuild"] = code
+        # fdroidserver holt den Tag erneut und checkt ihn während des Builds aus.
+        # Deshalb muss auch der anschließend gebaute Stand dem Release entsprechen.
+        _, commit_nach_build = ausfuehren(["git", "-C", klon, "rev-parse", "HEAD"], protokolldatei="quelle.log")
+        ergebnis["commitNachBuild"] = commit_nach_build.strip()
+        if ergebnis["commitNachBuild"] != COMMIT:
+            raise ValueError("HEAD nach fdroid build weicht vom erwarteten Release-Commit ab: "
+                             + ergebnis["commitNachBuild"] + " statt " + COMMIT)
         node_kandidaten = list((lauf / "home").glob(".cache/fristenrechner-fdroid/node-*/bin/node"))
         if len(node_kandidaten) != 1:
             raise ValueError("Genau ein vom Rezept bereitgestelltes Node im neuen HOME erwartet.")

@@ -132,9 +132,12 @@ original = {"RepoType": "git", "Repo": REPO, "Binaries": "https://example.org/v%
 rezept_datei = basis / "original.yml"
 json_schreiben(rezept_datei, original)
 aufrufe = []
+abweichender_commit = "5843a92" + "0" * 33
+klon_commit = abweichender_commit if modus == "tag-fehler" else COMMIT
 
 class Prozess:
     def __init__(self, befehl, cwd, env, **kwargs):
+        global klon_commit
         self.code = 0
         cwd = Path(cwd)
         aufrufe.append({"befehl": befehl, "cwd": str(cwd), "env": env})
@@ -157,7 +160,9 @@ class Prozess:
             ziel.mkdir()
             (ziel / ".git").mkdir()
         elif name == "git" and "rev-parse" in befehl:
-            text = ("5843a92" + "0" * 33 if modus == "tag-fehler" else "5843a92bcc362e4169dc3b3804159006acefc8ac") + "\n"
+            assert Path(befehl[2]) == cwd / "fdroid/build" / APPID
+            assert befehl[-1] in ("HEAD", TAG + "^{commit}")
+            text = klon_commit + "\n"
         elif name == "git" and "log" in befehl:
             text = "1790000000\n"
         elif name == "fdroid":
@@ -182,6 +187,10 @@ class Prozess:
             (cwd / "logs").mkdir()
             (cwd / "logs/build-metadata.json").write_text("{}")
             self.code = 1 if modus == "build-fehler" else 0
+            if modus == "tag-nach-build":
+                # Der erste Klon war korrekt. Erst fdroidservers erneuter
+                # Fetch/Checkout während des Builds übernimmt den verschobenen Tag.
+                klon_commit = abweichender_commit
             text = "Nachgestellter fdroid-Build\n"
         elif name == "node":
             text = "v24.21.0\n"
@@ -199,17 +208,37 @@ sys.argv = ["probe", str(HIER), "--arbeitsordner", str(basis / "arbeit"), "--aus
             "--jdk", str(basis / "jdk"), "--rezept", str(rezept_datei)]
 if modus == "ersatz":
     sys.argv.extend(["--quelle", str(quellenersatz)])
+if modus == "rezept-standard":
+    standard = HIER / "veroeffentlichung" / (APPID + ".yml")
+    standard.parent.mkdir()
+    shutil.copyfile(rezept_datei, standard)
+    sys.argv = sys.argv[:-2]
+if modus == "rezept-relativ":
+    os.chdir(basis)
+    sys.argv[-1] = "original.yml"
+if modus == "rezept-elternpfad":
+    (basis / "unterordner").mkdir()
+    sys.argv[-1] = str(basis / "unterordner" / ".." / "original.yml")
+if modus == "rezept-verweis":
+    # Windows benötigt für echte Dateisymlinks häufig Sonderrechte. Nur die
+    # Auflösung dieses einen vorhandenen Eingabepfads wird nachgestellt.
+    original_aufloesen = Path.resolve
+    def aufloesen(self, *args, **kwargs):
+        if self == rezept_datei:
+            return basis / "verweisziel.yml"
+        return original_aufloesen(self, *args, **kwargs)
+    Path.resolve = aufloesen
 code = main()
 json_schreiben(basis / "aufrufe.json", aufrufe)
 sys.exit(code)
 `;
 
-for (const modus of ['erfolg', 'ersatz', 'root', 'apk-fehler', 'build-fehler']) {
+for (const modus of ['erfolg', 'ersatz', 'root', 'rezept-standard', 'apk-fehler', 'build-fehler']) {
   test(`Vollständiger Ablauf mit nachgestellten Prozessen: ${modus}`, { skip: !python }, () => {
     const basis = join(arbeit, modus);
     mkdirSync(basis);
     const lauf = auswerten(prozessNachstellung, [basis, modus]);
-    const bestanden = ['erfolg', 'ersatz', 'root'].includes(modus);
+    const bestanden = ['erfolg', 'ersatz', 'root', 'rezept-standard'].includes(modus);
     assert.equal(lauf.status, bestanden ? 0 : 1, lauf.stdout + lauf.stderr);
     assert.match(lauf.stdout, bestanden ? /ERGEBNIS: bestanden/ : /ERGEBNIS: Nacharbeit nötig/);
     const sicherung = join(basis, 'ausgabe', readdirSync(join(basis, 'ausgabe'))[0]);
@@ -218,6 +247,7 @@ for (const modus of ['erfolg', 'ersatz', 'root', 'apk-fehler', 'build-fehler']) 
     assert.equal(ergebnis.uid, modus === 'root' ? 0 : 1000);
     assert.equal(ergebnis.euid, modus === 'root' ? 0 : 1000);
     assert.equal(ergebnis.fdroidBuild, modus === 'build-fehler' ? 1 : 0);
+    assert.equal(ergebnis.commitNachBuild, ergebnis.commit);
     assert.match(readFileSync(join(sicherung, 'build.log'), 'utf8'), /Nachgestellter fdroid-Build/);
     assert.ok(existsSync(join(sicherung, 'logs/build-metadata.json')));
     const original = JSON.parse(readFileSync(join(sicherung, 'rezept-original.yml'), 'utf8'));
@@ -245,7 +275,49 @@ test('Abweichender Commit mit gleichem Kurzpräfix bricht vor fdroid build ab un
   const ergebnis = JSON.parse(readFileSync(join(sicherung, 'ergebnis.json'), 'utf8'));
   assert.equal(ergebnis.bestanden, false);
   assert.equal(ergebnis.fdroidBuild, null);
+  assert.equal(ergebnis.commitNachBuild, null);
   assert.match(readFileSync(join(sicherung, 'probe.log'), 'utf8'), /erwarteten Stand/);
   const aufrufe = JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8'));
   assert.equal(aufrufe.some((x) => x.befehl[0] === 'fdroid' && x.befehl[1] === 'build'), false);
 });
+
+test('Erneuter Checkout eines verschobenen Tags während fdroid build scheitert trotz bytegleicher APK und sichert den Commit', { skip: !python }, () => {
+  const basis = join(arbeit, 'tag-nach-build');
+  mkdirSync(basis);
+  const lauf = auswerten(prozessNachstellung, [basis, 'tag-nach-build']);
+  assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
+  assert.match(lauf.stdout, /ERGEBNIS: Nacharbeit nötig.*HEAD nach fdroid build/);
+  const sicherung = join(basis, 'ausgabe', readdirSync(join(basis, 'ausgabe'))[0]);
+  const ergebnis = JSON.parse(readFileSync(join(sicherung, 'ergebnis.json'), 'utf8'));
+  assert.equal(ergebnis.bestanden, false);
+  assert.equal(ergebnis.fdroidBuild, 0, 'Der nachgestellte Build selbst war erfolgreich');
+  assert.equal(ergebnis.commit, '5843a92bcc362e4169dc3b3804159006acefc8ac');
+  assert.equal(ergebnis.commitNachBuild, '5843a92' + '0'.repeat(33));
+  assert.match(ergebnis.fehler, /HEAD nach fdroid build.*5843a92/);
+  assert.deepEqual(readFileSync(join(sicherung, 'unsigned/de.baremos.fristenrechner_200.apk')),
+    readFileSync(join(basis, 'referenz.apk')), 'Selbst eine bytegleiche APK darf den falschen Commit nicht verdecken');
+  const aufrufe = JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8'));
+  const buildIndex = aufrufe.findIndex((x) => x.befehl[0] === 'fdroid' && x.befehl[1] === 'build');
+  assert.ok(buildIndex >= 0);
+  const commitPruefungen = aufrufe.filter((x) => x.befehl[0] === 'git' && x.befehl.includes('rev-parse'));
+  assert.deepEqual(commitPruefungen.map((x) => x.befehl.at(-1)), ['HEAD', 'v0.2.0^{commit}', 'HEAD']);
+  assert.equal(aufrufe[buildIndex + 1], commitPruefungen[2], 'HEAD wird unmittelbar nach fdroid build erneut geprüft');
+  assert.equal(commitPruefungen[2].befehl[2], commitPruefungen[0].befehl[2], 'Beide Prüfungen verwenden denselben Klon');
+  assert.match(readFileSync(join(sicherung, 'quelle.log'), 'utf8'), new RegExp(ergebnis.commitNachBuild));
+});
+
+for (const [modus, fehler] of [
+  ['rezept-relativ', /Bitte absolute Linux-Pfade verwenden/],
+  ['rezept-elternpfad', /Pfad enthält einen Verweis oder '\.\.'/],
+  ['rezept-verweis', /Pfad enthält einen Verweis oder '\.\.'/],
+]) {
+  test(`Rezeptpfad wird vor dem Lesen geprüft: ${modus}`, { skip: !python }, () => {
+    const basis = join(arbeit, modus);
+    mkdirSync(basis);
+    const lauf = auswerten(prozessNachstellung, [basis, modus]);
+    assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
+    assert.match(lauf.stderr, fehler);
+    assert.equal(existsSync(join(basis, 'arbeit')), false, 'Kein Laufordner für einen unzulässigen Rezeptpfad');
+    assert.equal(existsSync(join(basis, 'ausgabe')), false, 'Keine Ausgabe für einen unzulässigen Rezeptpfad');
+  });
+}
