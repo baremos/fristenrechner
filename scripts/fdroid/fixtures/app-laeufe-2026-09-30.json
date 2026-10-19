@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "fassung": { "versionName": "0.1.0", "versionCode": 100 },
   "format": "Gekürzte App-Protokolle vom 2026-09-30; Zeilennummern aus ursprünglichem build.log. Absolute Rechnerpfade durch /lauf und /werkzeug ersetzt. Keine APK enthalten.",
   "laeufe": {
     "lauf-bms4awvc-ohne": [

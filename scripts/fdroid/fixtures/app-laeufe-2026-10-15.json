@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "fassung": { "versionName": "0.1.0", "versionCode": 100 },
   "format": "Gekürztes App-Protokoll vom 2026-10-15; Zeilennummern aus ursprünglichem build.log. Keine absoluten Rechnerpfade oder APK enthalten.",
   "laeufe": {
     "lauf-4zdiuc_3-gezielt": [
