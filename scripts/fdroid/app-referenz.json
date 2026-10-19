@@ -1,9 +1,9 @@
 {
   "appId": "de.baremos.fristenrechner",
-  "versionName": "0.1.0",
-  "versionCode": 100,
+  "versionName": "0.2.0",
+  "versionCode": 200,
   "apk": {
-    "bytes": 7668430,
-    "sha256": "0645663f481f8eca7d49d6fa91ea758a4443df9712777285424c2673db6f2a02"
+    "bytes": 7668594,
+    "sha256": "e9becd9f8106fc5dd85509d373c22993e3fb687283bb229f8ccf9be6ecc3452f"
   }
 }

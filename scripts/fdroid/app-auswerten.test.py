@@ -328,7 +328,11 @@ class AppAuswertung(unittest.TestCase):
         self.befund("Zeile ohne Kopf: Neue App-Ausgabe")
 
     def app_fixture(self, variante="gezielt"):
-        daten = json.loads((HIER / "fixtures/app-laeufe-2026-09-30.json").read_text(encoding="utf-8"))["laeufe"]
+        # Die echten Protokolle gehören zu der Fassung, die die Prüfdaten selbst nennen;
+        # sie bleiben gültig, wenn app-referenz.json eine neuere Fassung trägt.
+        datei = json.loads((HIER / "fixtures/app-laeufe-2026-09-30.json").read_text(encoding="utf-8"))
+        self.fassung = (datei["fassung"]["versionName"], datei["fassung"]["versionCode"])
+        daten = datei["laeufe"]
         name = {"ohne": "lauf-bms4awvc-ohne", "gezielt": "lauf-hqj89xdz-gezielt",
                 "gezielt-scandelete": "lauf-zhqctq16-gezielt-scandelete"}[variante]
         zeilen = [""] * max(e["zeile"] for e in daten[name])
@@ -339,8 +343,9 @@ class AppAuswertung(unittest.TestCase):
     def protokoll(self, log, variante="gezielt"):
         (self.lauf / "build.log").write_text(log, encoding="utf-8")
         probleme = []
+        version_name, version_code = getattr(self, "fassung", (A.VERSION_NAME, A.VERSION_CODE))
         bekannt, entfernt, ergebnis = A.PROTOKOLL.pruefen(
-            A.BUILD, self.lauf, A.APPID, A.VERSION_NAME, str(A.VERSION_CODE),
+            A.BUILD, self.lauf, A.APPID, version_name, str(version_code),
             "5c43ced5d2dfff021fab14d451415bd9181b3114", variante, probleme)
         return probleme, bekannt, entfernt, ergebnis
 
@@ -474,10 +479,20 @@ class AppAuswertung(unittest.TestCase):
         probleme, *_ = self.protokoll(self.app_fixture("gezielt-scandelete"), "gezielt")
         self.assertTrue(any("ERROR: Unused scandelete path" in p for p in probleme), probleme)
 
+    def mit_fassung(self, version_name, version_code):
+        # Lässt die Gesamtauswertung gegen die Fassung der Prüfdaten laufen statt gegen
+        # die aktuelle Referenz; patch.stopall in setUp nimmt die Ersetzung zurück.
+        patch.object(A, "VERSION_NAME", version_name).start()
+        patch.object(A, "VERSION_CODE", version_code).start()
+        self.meta.update(versionName=version_name, versionCode=version_code)
+        self.json("lauf.json", self.meta)
+
     def test_scannerabbruch_hat_eigenen_befund_ohne_folgefehler(self):
+        log = self.app_fixture("gezielt-scandelete")
+        self.mit_fassung(*self.fassung)
         self.meta.update(variante="gezielt-scandelete", scandeleteVersuch=True, commit="5c43ced5d2dfff021fab14d451415bd9181b3114")
         self.json("lauf.json", self.meta)
-        (self.lauf / "build.log").write_text(self.app_fixture("gezielt-scandelete"), encoding="utf-8")
+        (self.lauf / "build.log").write_text(log, encoding="utf-8")
         for name in ("npm-vorgebaut-nach-scanner.json", "npm-dateien-nach-scanner.json"):
             (self.lauf / name).unlink()
         self.apk.unlink()

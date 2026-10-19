@@ -1,6 +1,6 @@
 # Android-App
 
-Stand 2026-10-16, App-Version 0.1.0, eingefrorener App-Stand `8b17927`, Build-Nachweise bis `d3d432b`. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
+Stand 2026-10-19, App-Version 0.2.0 (`versionCode` 200), Release-Stand `1f6d39f`. Die Nachweise zu Emulator, Browser, F-Droid und Gerät in dieser Datei beziehen sich noch auf den eingefrorenen App-Stand `8b17927` (Build-Nachweise bis `d3d432b`); der Build-Nachweis zur Fassung 0.2.0 steht in einem eigenen Abschnitt. Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
 
 ## Aufbau
 
@@ -37,7 +37,7 @@ Der optionale Gastgebertext `bibliothekenHinweis` setzt in der App den freigegeb
 | Kein eigenes Startbild | Die App verwendet kein `Theme.SplashScreen` und keine Startbildgrafik. Der Start des Release-Builds wurde am 30.09.2026 auf API 30 und 36 gesichtet. |
 | Eigenes Symbol | Ein weißer Kalender mit hervorgehobenem Tag auf rotem Hintergrund ersetzt die Symbole der Vorlage. Das adaptive Symbol enthält auch eine einfarbige Ebene. Die kurze Launcher-Beschriftung lautet „Fristenrechner“. |
 | Nur deutsche Sprachressourcen | `localeFilters += ["de"]` beschränkt die Sprachvarianten der Android-Ressourcen. Sprachneutrale Ressourcen bleiben erhalten. Die App-Oberfläche ist deutsch. |
-| Versionsschema | `versionName` entspricht `app/package.json`; `versionCode = Hauptversion × 10000 + Nebenversion × 100 + Patch`. Version 0.1.0 ergibt 100. |
+| Versionsschema | `versionName` entspricht `app/package.json`; `versionCode = Hauptversion × 10000 + Nebenversion × 100 + Patch`. Version 0.1.0 ergibt 100, Version 0.2.0 ergibt 200. |
 | Kein Signierblock im Projekt | Release-Dateien werden außerhalb von Gradle signiert; das Projekt enthält keine Schlüssel oder Kennwörter. Siehe [signierung.md](signierung.md). |
 | Debug-Schlüssel nur für Prüfläufe im Emulator und auf dem Testgerät | Die Android-Werkzeuge signieren den Debug-Build mit ihrem lokalen Debug-Schlüssel. Diese APK ist nicht zur Veröffentlichung bestimmt. |
 | Zoom eingeschaltet | `android.zoomEnabled=true` lässt Vergrößerung in der WebView zu. Die Bedienung ist noch auf den vorgesehenen Geräten zu prüfen. |
@@ -192,6 +192,21 @@ K4 unterscheidet Kommentare und Zeichenketten: Ein auskommentiertes Verbot ist k
 K5 erlaubt genau `de.baremos.fristenrechner.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. Exportiert sind nur `de.baremos.fristenrechner.MainActivity` und `androidx.profileinstaller.ProfileInstallReceiver`; der Receiver muss `android.permission.DUMP` verlangen. `allowBackup` ist `false`, Klartextverkehr darf nicht freigegeben sein. Beide WebView-Metadaten müssen ihre festgelegten Werte haben; `EmojiCompatInitializer` darf nicht enthalten sein. `debuggable` muss zum geprüften Debug- oder Release-Build passen. Die Bytesuche betrifft `Lcom/google/android/gms/` und `Lcom/google/firebase/`; `Lcom/google/` allein wäre wegen der enthaltenen Guava-Schnittstelle kein geeigneter Nachweis für Google-Dienste.
 
 Ohne Git scheitern K3 und K4 mit einem ausdrücklichen Fehler. K4 prüft den Modus im Index, weil er das Ausführungsrecht in einem frischen Linux-Klon bestimmt; der lokale Dateimodus allein belegt das nicht. Für ein Quellarchiv wäre ein vom Herausgeber bereitgestelltes, vertrauenswürdig abgesichertes Dateimanifest mit relativen Pfaden, Dateimodi und Inhaltsprüfsummen als Referenz erforderlich; ein erst nach dem Sync aus demselben Archiv erzeugtes Manifest würde dessen Unverändertheit nicht belegen. Dieser alternative Prüfweg ist nicht eingerichtet. Bis dahin setzt der vollständige Android-Build eine Git-Arbeitskopie voraus.
+
+## Build-Nachweis zur Fassung 0.2.0 vom 2026-10-19
+
+Die Fassung 0.2.0 (`versionCode` 200) ist die erste für den internen Test bei Google Play vorgesehene Fassung. Gegenüber dem eingefrorenen Stand `8b17927` haben sich am Release-Stand `1f6d39f` an den ausgelieferten App-Inhalten Version und `versionCode`, die Herausgeber-Zeile der App-Seite, der Schlussabschnitt von `docs/datenschutz.md` und die in der App angezeigte `NOTICE` (Rechtsname des Herausgebers seit `57024e0`) geändert. Ohne Wirkung auf die APK sind die Paketmanifeste und READMEs der npm-Pakete (Angaben für die Veröffentlichung, Rechtsname), die Gradle-Prüfsummendatei (`d3d432b`, zwei Einträge für einen Build mit leerem Gradle-Home), `.gitattributes` und die Skripte außerhalb des Builds. Alle folgenden Zeiten sind MESZ.
+
+| Lauf | Werkzeuge und Ablauf | Beobachtetes Ergebnis |
+|---|---|---|
+| Windows, Neubau nach `clean`, 2026-10-19, 07:37 bis 07:42 | Node 24.21.0, npm 11.19.0, JDK 21.0.8, Gradle 8.14.5 `bin`, Build-Tools 35.0.0; ohne `--streng`. `npm run check`, `npm run build`, `node scripts/android-build.mjs --projekt app/android --aufgabe clean`, danach `node scripts/app-bauen.mjs --android --aufgabe assembleRelease` und `node scripts/app-bauen.mjs --android`. | Typprüfung, Web-Build mit K1 und K2 sowie Release und Debug mit K1 bis K5 bestanden; Release unsigniert 7 668 594 Bytes, Debug 9 409 391 Bytes. Arbeitsbaum danach ohne zusätzliche Änderungen. |
+
+| Datei aus dem Windows-Neubau | SHA-256 |
+|---|---|
+| Release, unsigniert | `e9becd9f8106fc5dd85509d373c22993e3fb687283bb229f8ccf9be6ecc3452f` |
+| Debug | `73cdd176d6c91ec8b05b77e3f77d59a2e2f31ab812f784d01ba3b367ae870b59` |
+
+`aapt2 dump badging` meldet für beide Dateien Paket `de.baremos.fristenrechner`, `versionCode` 200, `versionName` 0.2.0, Ziel-API 36 und als einzige Berechtigung `de.baremos.fristenrechner.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. Für diese Fassung noch nicht erneuert sind die frische Windows-Kopie, die Linux-Klone, der F-Droid-Lauf, die Emulator- und Browserläufe sowie die Prüfung auf einem Gerät; bis dahin gelten dafür die Nachweise am eingefrorenen Stand in den folgenden Abschnitten.
 
 ## Build-Nachweis am eingefrorenen Stand vom 2026-10-15
 

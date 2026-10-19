@@ -183,7 +183,7 @@ class Pruefung(unittest.TestCase):
                 return commit
             pfad = args[4].split(':',1)[1]
             if pfad == falscher_pfad: raise ValueError('Datei fehlt')
-            if pfad == 'app/android/app/build.gradle': return 'applicationId "de.baremos.fristenrechner"\nversionName "0.1.0"\nversionCode 100\n'
+            if pfad == 'app/android/app/build.gradle': return 'applicationId "de.baremos.fristenrechner"\nversionName "' + rezept['Builds'][0]['versionName'] + '"\nversionCode ' + str(rezept['Builds'][0]['versionCode']) + '\n'
             if pfad.endswith('gradle-wrapper.properties'): return 'distributionUrl=https://services.gradle.org/distributions/gradle-' + vorgabe['gradle']['version'] + '-bin.zip\ndistributionSha256Sum=' + vorgabe['gradle']['sha256']['bin']
             return '{}'
         with patch.object(b, 'ausgabe', git):
@@ -215,7 +215,7 @@ class Pruefung(unittest.TestCase):
                 elif args[0].endswith('bin' + os.sep + 'javac'): text = 'javac 21.0.12'
                 elif args[0] == 'bash': text = ''
                 elif args[:2] == ['fdroid','build']:
-                    self.assertEqual(args[-1], 'de.baremos.fristenrechner:100')
+                    self.assertEqual(args[-1], 'de.baremos.fristenrechner:' + str(b.APP_STAND['versionCode']))
                     lauf = Path(kwargs['cwd'])
                     meta = json.loads((lauf/'lauf.json').read_text(encoding='utf-8'))
                     self.assertEqual(meta['projekt'], 'app')

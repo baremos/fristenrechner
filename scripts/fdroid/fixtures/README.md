@@ -27,6 +27,10 @@ Stand 5c43ced5d2dfff021fab14d451415bd9181b3114. Die ursprünglichen Zeilennummer
 stehen neben jeder übernommenen Zeile. Absolute Rechnerpfade wurden durch
 /lauf und /werkzeug ersetzt; der Git-Klonbefehl auf seinen Zweck und das
 neutrale Ziel gekürzt. Dateiinhalte, APKs und Zwischenspeicher sind nicht enthalten.
+Das Feld `fassung` nennt Version und `versionCode` der App, mit der die Protokolle
+entstanden sind. Die Tests werten die Protokolle gegen diese Fassung aus, nicht gegen
+die aktuelle Referenz in `app-referenz.json`; die Prüfdaten bleiben damit auch nach
+einer neuen App-Fassung gültige Belege.
 
 - (a) lauf-hqj89xdz-gezielt: gezielte Bereinigung; Build gelungen.
 - (b) lauf-zhqctq16-gezielt-scandelete: gezielte Bereinigung mit scandelete;
