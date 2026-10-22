@@ -1,6 +1,6 @@
 {
   "name": "@baremos/fristenrechner-ui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Oberfläche des Fristenrechners Vergabe",
   "license": "Apache-2.0",
   "author": {
@@ -40,7 +40,7 @@
     "referenz:schreiben": "vitest run test/export-excel.test.ts --update"
   },
   "dependencies": {
-    "@baremos/fristenrechner-kern": "0.1.0",
+    "@baremos/fristenrechner-kern": "0.1.1",
     "fflate": "0.8.3",
     "jspdf": "4.2.1",
     "jspdf-autotable": "5.0.8"

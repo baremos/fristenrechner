@@ -500,6 +500,28 @@ describe('calculateSchedule — Teststellung', () => {
 });
 
 describe('calculateSchedule — Vergabeordnungen VOB/A-EU, SektVO, VSVgV (Kern 1.5.0)', () => {
+  // BAnz AT 24.08.2026 B6, S. 1 und 26; § 12 EU Abs. 3 Nr. 4 Satz 4.
+  it.each(['offen', 'nicht_offen_mit_tnw', 'verhandlung_mit_tnw', 'verhandlung_ohne_tnw'] as const)(
+    'VOB/A-EU %s: nennt Ausgabe 2026 und den späteren angegebenen Veröffentlichungstag',
+    (verfahrensart) => {
+      const result = calculateSchedule(basisInput({ vergabeordnung: 'vob_a_eu', verfahrensart }));
+      expect(result.warnungen).toContain(
+        'VOB/A-EU: Abgebildet ist der 2. Abschnitt der VOB/A (EU-weite Vergabe von Bauleistungen ab Erreichen des Schwellenwerts), Ausgabe 2026.',
+      );
+      expect(result.warnungen).toContain(
+        'Wird bei der Übermittlung der Auftragsbekanntmachung an das Amt für Veröffentlichungen der EU ein späterer Tag zur Veröffentlichung angegeben, kommt es für die Fristberechnung auf diesen Tag an (§ 12 EU Abs. 3 Nr. 4 VOB/A). In diesem Fall den angegebenen Veröffentlichungstag als Absendung der Bekanntmachung eintragen.',
+      );
+      expect(result.warnungen.join(' ')).not.toContain('Ausgabe 2019');
+    },
+  );
+
+  it('gibt den VOB/A-EU-Veröffentlichungshinweis nicht bei VgV oder VOB/A Abschnitt 1 aus', () => {
+    for (const vergabeordnung of ['vgv', 'vob_a_1'] as const) {
+      const result = calculateSchedule(basisInput({ vergabeordnung }));
+      expect(result.warnungen.join(' ')).not.toContain('späterer Tag zur Veröffentlichung');
+    }
+  });
+
   it('ohne vergabeordnung gilt VgV (Projektdateien aus Kern < 1.5.0)', () => {
     const result = calculateSchedule(basisInput());
     expect(result.meilensteine.find((m) => m.id === 'angebotsabgabe')!.rechtsgrundlage).toBe('§ 15 Abs. 2 VgV');

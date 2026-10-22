@@ -36,6 +36,8 @@ Der Rechtsstand wird als Datum im ISO-Format geführt. Eine Angabe wie „Juli 2
 | Feiertage | jährlich im vierten Quartal | Feiertagsgesetze der Länder |
 | Anlassbezogen | sofort | Gesetzesänderung, Hinweis eines Nutzers, Fehler in einer Berechnung |
 
+Die Ergebnisse einschließlich Quellen, Entscheidungen und verbleibender Prüflücken werden unter [Regelprüfungen](regelpruefungen.md) dokumentiert. Der Eintrag vom 2026-10-22 enthält den VOB/A-2026-Abgleich und die noch offenen Nachprüfungen.
+
 ## Prüfung ohne Befund
 
 Auch eine Regelprüfung ohne Änderung wird festgehalten, mit Datum und geprüften Quellen. Der bestätigte Rechtsstand erreicht installierte Apps aber nur mit einem Update. Deshalb erscheint **mindestens einmal in zwölf Monaten** ein Update mit aktuellem Rechtsstand, auch wenn sich keine Regel geändert hat. Sonst würde der Hinweis auf eine veraltete Installation erscheinen, obwohl die Regeln stimmen.

@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf';
 import { pdfAlsDatei } from '../src/fristenrechner-export-pdf';
 import { exportHaftungshinweis, exportHinweis } from '../src/fristenrechner-export-data';
 import { webExportInhalt } from '../src/web-vorgaben';
-import { beispiel, eingabe, ergebnis, ZEITPUNKT, KALENDERTAG } from './beispiel';
+import { beispiel, eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, vob2026Hinweis } from './beispiel';
 import { calculateSchedule, REGELVERSION, RECHTSSTAND_DATUM } from '@baremos/fristenrechner-kern';
 
 const zeit = { zeitpunkt: ZEITPUNKT, kalendertag: KALENDERTAG };
@@ -252,21 +252,39 @@ it('PDF ohne Bindefrist und ohne Phasen bleibt erzeugbar', async () => {
   expect(inhalt).not.toContain('(Zeitschiene)');
   expect(inhalt).toContain(exportHaftungshinweis);
 });
-it('PDF bleibt bei gleichen Zeit- und Zufallswerten bytegleich zur Referenz mit festem Hinweis', async () => {
+it('VOB/A-EU nennt Ausgabe 2026 und den vollständigen Hinweis zum Veröffentlichungstag im PDF', async () => {
+  const input = beispiel({ vergabeordnung: 'vob_a_eu' });
+  const datei = await pdfAlsDatei(input, calculateSchedule(input), zeit, webExportInhalt);
+  const text = pdfSeiten(datei.bytes).flatMap(seite => seite.texte.map(zeile => zeile.text)).join(' ').replace(/\s+/g, ' ');
+  expect(text).toContain('Ausgabe 2026');
+  expect(text).toContain(vob2026Hinweis);
+  expect(text).toContain('Regelversion: 1.9.1');
+  expect(text).toContain('Rechtsstand: Oktober 2026 (2026-10-22)');
+});
+it('PDF bleibt mit aktuellem und historischem Regelstand bytegleich zur jeweiligen Referenz', async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(ZEITPUNKT));
   // Verschiedene Werte erhalten jsPDFs interne Ereigniskennungen eindeutig.
   let zufall = 0;
   vi.spyOn(Math, 'random').mockImplementation(() => 0.25 + (++zufall) / 1000000);
   try {
-    const datei = await pdfAlsDatei(eingabe, ergebnis, zeit, webExportInhalt);
-    // Nur die Darstellung derselben Erstellungszeit in der Zeitzone des Rechners
-    // wird für den plattformübergreifenden Referenzvergleich vereinheitlicht.
-    const text = pdfText(datei.bytes).replace(/\/CreationDate \([^)]*\)/, "/CreationDate (D:20260929003000+02'00')");
-    const bytes = Uint8Array.from(text, zeichen => zeichen.charCodeAt(0));
-    const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-    expect(Array.from(hash, byte => byte.toString(16).padStart(2, '0')).join(''))
-      .toBe('529015e5d2c367acc3dc269c530c27f02a3be3e201f03a3f331d6a1a21a98f18');
+    // Der alte Hash bleibt als Gegenprobe erhalten: Nur zurückgesetzte
+    // Metadaten müssen wieder das unveränderte frühere PDF ergeben.
+    const damaligerStand = { ...ergebnis, regelversion: '1.9.0', rechtsstand: 'Juli 2026', rechtsstandDatum: '2026-07-17' };
+    for (const [result, erwartet] of [
+      [damaligerStand, '529015e5d2c367acc3dc269c530c27f02a3be3e201f03a3f331d6a1a21a98f18'],
+      [ergebnis, '8f470efced482e79b895c21db1b9f3398dc0f06e49d64db31feac126bc1a800c'],
+    ] as const) {
+      zufall = 0;
+      const datei = await pdfAlsDatei(eingabe, result, zeit, webExportInhalt);
+      // Nur die Darstellung derselben Erstellungszeit in der Zeitzone des Rechners
+      // wird für den plattformübergreifenden Referenzvergleich vereinheitlicht.
+      const text = pdfText(datei.bytes).replace(/\/CreationDate \([^)]*\)/, "/CreationDate (D:20260929003000+02'00')");
+      const bytes = Uint8Array.from(text, zeichen => zeichen.charCodeAt(0));
+      const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+      expect(Array.from(hash, byte => byte.toString(16).padStart(2, '0')).join(''))
+        .toBe(erwartet);
+    }
   } finally { vi.restoreAllMocks(); vi.useRealTimers(); }
 });
 it('PDF verwendet den übergebenen Kalendertag und die Inhalte des Gastgebers', async () => {

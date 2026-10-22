@@ -4,7 +4,7 @@ import { beschreibeMappe, createScheduleExcel, excelAlsDatei } from '../src/fris
 import { exportHaftungshinweis, exportHinweis } from '../src/fristenrechner-export-data';
 import { webExportInhalt } from '../src/web-vorgaben';
 import { datumZuSeriennummer, schreibeXlsx } from '../src/xlsx-schreiber';
-import { beispiel, eingabe, ergebnis, ZEITPUNKT, KALENDERTAG } from './beispiel';
+import { beispiel, eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, vob2026Hinweis } from './beispiel';
 import { leseArchiv, pruefeTerminplanTeile } from './struktur.mjs';
 
 const exportieren = () => createScheduleExcel(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, webExportInhalt);
@@ -59,7 +59,10 @@ it('Dateischnittstelle liefert unveränderte Bytes, Namen und MIME-Typ', () => {
   expect(datei.bytes).toEqual(exportieren());
 });
 it('D7 ändert ausschließlich die Ausrichtung der beiden Kopf-Datumswerte', async () => {
-  const m = beschreibeMappe(eingabe, ergebnis, ZEITPUNKT, KALENDERTAG, webExportInhalt);
+  // Dieser historische Vergleich belegt die Formatänderung gegenüber Teil 1.
+  // Die aktuelle Regelprüfung wird separat an der aktuellen Exportreferenz geprüft.
+  const damaligerStand = { ...ergebnis, regelversion: '1.9.0', rechtsstand: 'Juli 2026', rechtsstandDatum: '2026-07-17' };
+  const m = beschreibeMappe(eingabe, damaligerStand, ZEITPUNKT, KALENDERTAG, webExportInhalt);
   const geaendert: string[] = [];
   let leereVerbundeneZellen = 0;
   for (const zeile of m.blatt.zeilen) {
@@ -115,6 +118,15 @@ it('Alle Meilensteine, Warnungen und Bindefrist gelangen in die Mappe', () => {
   for (const warnung of ergebnis.warnungen) expect(werte).toContain(`• ${warnung}`);
   expect(werte).toContainEqual({ datum: ergebnis.bindefrist!.termin });
   expect(m.blatt.fusszeile).not.toContain('©');
+});
+it('VOB/A-EU nennt Ausgabe 2026 und den Hinweis zum Veröffentlichungstag im Excel-Export', () => {
+  const input = beispiel({ vergabeordnung: 'vob_a_eu' });
+  const result = calculateSchedule(input);
+  const xml = leseArchiv(createScheduleExcel(input, result, ZEITPUNKT, KALENDERTAG, webExportInhalt)).get('xl/worksheets/sheet1.xml')!;
+  expect(xml).toContain('Ausgabe 2026');
+  expect(xml).toContain(vob2026Hinweis);
+  expect(xml).toContain('Oktober 2026 (2026-10-22)');
+  expect(xml).toContain('1.9.1');
 });
 it('Ohne Bindefrist und Warnungen bleibt die Struktur vollständig', () => {
   const input = beispiel({ fristen: {}, projekt: undefined });

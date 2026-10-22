@@ -80,6 +80,8 @@ describe('Exportdaten', () => {
 describe('Hilfen der Bedienlogik ohne Browser', () => {
   it.each([
     ['1.8.9', '1.9.0', true], ['1.9.0', '1.9.0', false], ['1.10.0', '1.9.0', false],
+    ['1.9.0', '1.9.1', true], ['1.9.1', '1.9.0', false], ['1.9.1', '1.9.1', false],
+    ['1.9.1', '1.10.0', true], ['1.10.0', '1.9.1', false], ['1.9.9', '1.9.10', true],
     ['2.0.0', '1.9.0', false], [' 1.8.0 ', '1.9.0', true], ['1.8.0+test', '1.9.0', true],
     ['ungueltig', '1.9.0', false], ['1.8.0', 'ungueltig', false],
   ])('Versionsvergleich %s zu %s', (a, b, erwartet) => expect(isVersionBefore(a, b)).toBe(erwartet));
