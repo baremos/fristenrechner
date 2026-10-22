@@ -29,3 +29,5 @@ export const ZEITPUNKT = '2026-09-28T22:30:00Z';
 export const KALENDERTAG = '2026-09-29';
 export const eingabe = beispiel();
 export const ergebnis = calculateSchedule(eingabe);
+
+export const vob2026Hinweis = 'Wird bei der Übermittlung der Auftragsbekanntmachung an das Amt für Veröffentlichungen der EU ein späterer Tag zur Veröffentlichung angegeben, kommt es für die Fristberechnung auf diesen Tag an (§ 12 EU Abs. 3 Nr. 4 VOB/A). In diesem Fall den angegebenen Veröffentlichungstag als Absendung der Bekanntmachung eintragen.';

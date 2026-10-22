@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { RECHTSSTAND_DATUM } from '@baremos/fristenrechner-kern';
 import { heuteLokal, hinweisGrenze, rechtsstandHinweisNoetig } from '../src/rechtsstand-hinweis';
 
 describe('Grenze für den Hinweis zum Rechtsstand', () => {
@@ -21,6 +22,13 @@ describe('Grenze für den Hinweis zum Rechtsstand', () => {
 });
 
 describe('Hinweis nötig', () => {
+  it('erscheint für den Rechtsstand vom 22. Oktober 2026 erst am 23. Oktober 2027', () => {
+    expect(RECHTSSTAND_DATUM).toBe('2026-10-22');
+    expect(hinweisGrenze(RECHTSSTAND_DATUM)).toBe('2027-10-22');
+    expect(rechtsstandHinweisNoetig('2027-10-22', RECHTSSTAND_DATUM)).toBe(false);
+    expect(rechtsstandHinweisNoetig('2027-10-23', RECHTSSTAND_DATUM)).toBe(true);
+  });
+
   it('erscheint erst am Tag nach der Grenze', () => {
     expect(rechtsstandHinweisNoetig('2027-07-17', '2026-07-17')).toBe(false);
     expect(rechtsstandHinweisNoetig('2027-07-18', '2026-07-17')).toBe(true);

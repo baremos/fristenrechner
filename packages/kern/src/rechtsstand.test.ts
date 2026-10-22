@@ -39,6 +39,12 @@ function eingabe(): ScheduleInput {
 }
 
 describe('Regelversion und Rechtsstand', () => {
+  it('nennt den Stand der Regelprüfung vom 2026-10-22', () => {
+    expect(REGELVERSION).toBe('1.9.1');
+    expect(RECHTSSTAND_DATUM).toBe('2026-10-22');
+    expect(RECHTSSTAND).toBe('Oktober 2026');
+  });
+
   it('die Regelversion ist eine Versionsnummer', () => {
     expect(REGELVERSION).toMatch(/^\d+\.\d+\.\d+$/);
     expect(RECHENKERN_VERSION).toBe(REGELVERSION);
@@ -94,6 +100,26 @@ describe('Projektdatei mit Regelversion und Rechtsstand', () => {
     const gelesen = parseProjektDatei(JSON.stringify(alt));
     expect(gelesen.ok).toBe(true);
     if (gelesen.ok) expect(gelesen.datei.rechtsstandDatum).toBeUndefined();
+  });
+
+  it('liest 1.9.0 unverändert ein und speichert die Neuberechnung mit 1.9.1', () => {
+    const alt = {
+      ...erstelleProjektDatei({ ...eingabe(), vergabeordnung: 'vob_a_eu' }, ZEIT),
+      rechenkernVersion: '1.9.0',
+      rechtsstand: 'Juli 2026',
+      rechtsstandDatum: '2026-07-17',
+    };
+    const gelesen = parseProjektDatei(JSON.stringify(alt));
+    expect(gelesen.ok).toBe(true);
+    if (!gelesen.ok) throw new Error(gelesen.fehler.join('\n'));
+    expect(gelesen.datei).toEqual(alt);
+    const ergebnis = calculateSchedule(gelesen.datei.input);
+    expect(ergebnis.regelversion).toBe('1.9.1');
+    expect(ergebnis.meilensteine.find((m) => m.id === 'angebotsabgabe')?.datum).toBe('2026-10-01');
+    const neu = erstelleProjektDatei(gelesen.datei.input, ZEIT);
+    expect(neu.input).toEqual(alt.input);
+    expect(neu.rechenkernVersion).toBe('1.9.1');
+    expect(neu.rechtsstandDatum).toBe('2026-10-22');
   });
 
   it('ein ungültiges Datum wird abgelehnt, auch ein leerer Wert', () => {

@@ -4,7 +4,7 @@ Stand 2026-09-27 · bestätigt von Andreas Schmidt am 2026-09-27
 
 ## Grundsatz
 
-Version 1 der App rechnet dasselbe wie der Fristenrechner auf www.baremos.de. Sie bringt keine neue Fachlogik mit. Ausgangsstand ist der Rechenkern 1.9.0 mit Rechtsstand Juli 2026.
+Version 1 der App und der Fristenrechner auf www.baremos.de verwenden denselben Rechenkern. Ausgangsstand der Planung war die Regelversion 1.9.0 mit Rechtsstand Juli 2026. Für die App-Fassung 1.0.0 wurde am 2026-10-22 die Einarbeitung der VOB/A-EU, Ausgabe 2026, entschieden. Der vorbereitete Stand ist Regelversion 1.9.1 mit Rechtsstand Oktober 2026 (2026-10-22); Fristwerte und Rechenalgorithmus bleiben unverändert. Quellen, Prüflücken und Freigabestand stehen in der [Regelprüfung vom 2026-10-22](regelpruefungen.md).
 
 ## Enthalten
 

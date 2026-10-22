@@ -337,7 +337,7 @@ test('Lesefehler mit negiertem gespeichert ist kein Erfolg; tatsächlicher neuer
   const text='Die Projektdatei konnte nicht vollständig geladen und gespeichert werden. Bitte versuchen Sie es erneut.';
   const messung=t=>({text,statusmeldungen:[{id:'import-message',text:t},vorher.statusmeldungen[1]]});
   assert.doesNotThrow(()=>pruefeFehlerStatus(messung(text),vorher));
-  for(const t of ['Projektdatei gespeichert.','Excel-Datei gespeichert.','PDF gespeichert.','Projektdatei geöffnet (Rechenkern 1.9.0, Rechtsstand: Juli 2026).','Terminplan aktualisiert.','Terminplan aktualisiert. Weiterer Text.'])
+  for(const t of ['Projektdatei gespeichert.','Excel-Datei gespeichert.','PDF gespeichert.','Projektdatei geöffnet (Rechenkern 1.9.0, Rechtsstand: Juli 2026).','Projektdatei geöffnet (Rechenkern 1.9.1, Rechtsstand: Oktober 2026).','Terminplan aktualisiert.','Terminplan aktualisiert. Weiterer Text.'])
     assert.throws(()=>pruefeFehlerStatus(messung(t),vorher),Abweichung);
 });
 

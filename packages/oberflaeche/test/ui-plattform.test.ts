@@ -3,7 +3,7 @@ import * as kern from '@baremos/fristenrechner-kern';
 import { initFristenrechner } from '../src/fristenrechner-ui';
 import { MAX_PROJEKT_BYTES, PlattformFehler, type Auswahl, type DateiErgebnis, type Plattform, type MenueOption } from '../src/plattform';
 import { webExportInhalt, webTexte } from '../src/web-vorgaben';
-import { beispiel } from './beispiel';
+import { beispiel, vob2026Hinweis } from './beispiel';
 import { erstelleTestDom, TestElement, TestInput, TestSelect } from './ui-testdom';
 
 const exporte = vi.hoisted(() => ({ excel: vi.fn(), pdf: vi.fn() }));
@@ -97,6 +97,22 @@ describe('Initialisierung und Speicher über die Plattform', () => {
     expect(env.el('project-file-meta').hidden).toBe(false);
     expect(env.el('project-file-meta').textContent).toContain('Rechenkern');
     expect(env.el('storage-status').textContent).toContain('Lokales Projekt geladen');
+  });
+
+  it('importiert VOB/A-EU aus 1.9.0 mit neuen Hinweisen und Regelstand ohne alte Standardwert-Warnung', async () => {
+    const projekt = kern.erstelleProjektDatei(beispiel({ vergabeordnung: 'vob_a_eu' }), zeit.zeitpunkt);
+    projekt.rechenkernVersion = '1.9.0'; projekt.rechtsstand = 'Juli 2026'; projekt.rechtsstandDatum = '2026-07-17';
+    const env = vorbereiten(); env.start(); await warten();
+    env.auswaehlen(JSON.stringify(projekt)); await warten();
+    expect(env.el('project-file-meta').textContent).toBe('Projektdatei: Rechenkern 1.9.0 · Rechtsstand: Juli 2026');
+    expect(env.el('project-file-meta').classList.contains('project-file-meta--migration')).toBe(false);
+    expect(env.el('result-regelstand').textContent).toBe('Regelversion: 1.9.1 · Rechtsstand: Oktober 2026 (2026-10-22)');
+    expect(env.el('result-warnings').textContent).toContain('Ausgabe 2026');
+    expect(env.el('result-warnings').textContent).toContain(vob2026Hinweis);
+    const gespeichert = JSON.parse(env.gespeichert()!);
+    expect(gespeichert.rechenkernVersion).toBe('1.9.1');
+    expect(gespeichert.rechtsstandDatum).toBe('2026-10-22');
+    expect(gespeichert.input.bekanntmachung).toBe(projekt.input.bekanntmachung);
   });
 
   it('speichert nach 350 ms den letzten Eingabestand und verschiebt den Timer bei erneuter Eingabe', async () => {

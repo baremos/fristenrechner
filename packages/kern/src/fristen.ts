@@ -11,12 +11,17 @@
  * und das Gesetz v. 12.05.2026 (BGBl. 2026 I Nr. 137, in Kraft 01.07.2026,
  * im Folgenden „Änderungsgesetz 2026"): Die Fristwerte der §§ 15–17 VgV und
  * § 134 Abs. 1–2 GWB sind unverändert. VOB/A-EU, SektVO und VSVgV
- * verifiziert 2026-07-30 gegen die Primärquellen.
+ * verifiziert 2026-07-30 gegen die Primärquellen. Zur Regelprüfung vom
+ * 2026-10-22 und ihren Prüflücken siehe docs/regelpruefungen.md.
  */
 
 import type { ISODate, Optionen, Verfahrensart, Vergabeordnung } from './api.js';
 
 // Regelversionen:
+// 1.9.1: VOB/A-EU Ausgabe 2026; Hinweis auf den ausdrücklich angegebenen
+// späteren Veröffentlichungstag (§ 12 EU Abs. 3 Nr. 4 Satz 4 VOB/A).
+// Rechtsstand 2026-10-22. Keine Änderung an Fristwerten, Rechenlogik oder
+// Projektdatei-Schema; bei gleicher Eingabe bleiben die Termine gleich.
 // 1.9.0: Meilenstein „Ende Bewerberfragen" im Teilnahmewettbewerb
 // (`bewerberfragenVorTeilnahmeKT`, Default 8). Versand der Aufforderung zur
 // Angebotsabgabe/Teststellung/nächsten Angebotsrunde standardmäßig 1 AT
@@ -60,7 +65,7 @@ import type { ISODate, Optionen, Verfahrensart, Vergabeordnung } from './api.js'
  * Ergebnis und in jeder Projektdatei. Von der Version des Pakets ist sie
  * unabhängig.
  */
-export const REGELVERSION = '1.9.0';
+export const REGELVERSION = '1.9.1';
 
 /** Gleichbedeutend mit `REGELVERSION`; bleibt für bestehende Aufrufer erhalten. */
 export const RECHENKERN_VERSION = REGELVERSION;
@@ -70,13 +75,13 @@ export const RECHENKERN_VERSION = REGELVERSION;
  * geprüft und bestätigt ist. Wird bei jeder fachlichen Aktualisierung und bei
  * jeder Regelprüfung ohne Änderung mitgepflegt.
  */
-export const RECHTSSTAND_DATUM: ISODate = '2026-07-17';
+export const RECHTSSTAND_DATUM: ISODate = '2026-10-22';
 
 /**
  * Rechtsstand als Anzeigetext, passend zu `RECHTSSTAND_DATUM`. Wird bei jeder
  * fachlichen Aktualisierung mitgepflegt.
  */
-export const RECHTSSTAND = 'Juli 2026';
+export const RECHTSSTAND = 'Oktober 2026';
 
 interface TeilnahmefristProfil {
   /**
@@ -330,10 +335,12 @@ export const VERGABEORDNUNGEN: Record<Vergabeordnung, VergabeordnungProfil> = {
     },
   },
 
-  // Verifiziert 2026-07-30: Es gilt die VOB/A Ausgabe 2019, 2. Abschnitt,
-  // i. d. F. der Bekanntmachungen v. 16.06.2023/06.09.2023 (eForms, keine
-  // Friständerungen); anzuwenden über § 2 Satz 2 VgV. Das Änderungsgesetz
-  // 2026 hat die VOB/A-EU-Fristnormen nicht geändert. Abweichungen zur VgV:
+  // Verifiziert 2026-10-22: VOB/A Ausgabe 2026, 2. Abschnitt,
+  // Bekanntmachung vom 22.07.2026, BAnz AT 24.08.2026 B6, S. 1 (Ausgabe),
+  // S. 22–23 (§§ 10a–10c EU), S. 26 (§ 12 EU Abs. 3 Nr. 4).
+  // Einzelabgleich: docs/normabgleich-vob-a-2026.md. Fristwerte unverändert,
+  // neuer Bezugszeitpunkt in § 12 EU Abs. 3 Nr. 4 Satz 4 (Hinweis unten).
+  // Abweichungen zur VgV:
   // keine Einvernehmensregel für die Angebotsfrist; das
   // Verhandlungsverfahren ohne TNW hat eine echte Mindestfrist von 10 KT
   // (§ 10c EU Abs. 2 VOB/A).
@@ -351,7 +358,8 @@ export const VERGABEORDNUNGEN: Record<Vergabeordnung, VergabeordnungProfil> = {
       norm: '§ 12a EU Abs. 3, § 10a/10b EU Abs. 6 Nr. 1 VOB/A',
     },
     hinweise: [
-      'VOB/A-EU: Abgebildet ist der 2. Abschnitt der VOB/A (EU-weite Vergabe von Bauleistungen ab Erreichen des Schwellenwerts), Ausgabe 2019 i. d. F. 2023.',
+      'VOB/A-EU: Abgebildet ist der 2. Abschnitt der VOB/A (EU-weite Vergabe von Bauleistungen ab Erreichen des Schwellenwerts), Ausgabe 2026.',
+      'Wird bei der Übermittlung der Auftragsbekanntmachung an das Amt für Veröffentlichungen der EU ein späterer Tag zur Veröffentlichung angegeben, kommt es für die Fristberechnung auf diesen Tag an (§ 12 EU Abs. 3 Nr. 4 VOB/A). In diesem Fall den angegebenen Veröffentlichungstag als Absendung der Bekanntmachung eintragen.',
     ],
     verfahren: {
       offen: {
@@ -384,7 +392,8 @@ export const VERGABEORDNUNGEN: Record<Vergabeordnung, VergabeordnungProfil> = {
         },
         angebotsfrist: {
           // Keine Einvernehmensregel wie § 16 Abs. 6 VgV — die VOB/A-EU
-          // kennt nur die festen Mindestfristen (verifiziert 2026-07-30).
+          // kennt nur die festen Mindestfristen (verifiziert 2026-10-22:
+          // BAnz AT 24.08.2026 B6, S. 22–23, § 10b EU Abs. 2–5).
           typ: 'gesetzlich',
           norm: '§ 10b EU Abs. 2 VOB/A',
           standardKT: 30,
