@@ -162,7 +162,8 @@ Die ergänzten Tests decken den VOB/A-Hinweis für alle vier unterstützten Verf
 ### Nächste Prüfung und Abschlussstatus
 
 - **Nächste reguläre Regelprüfung spätestens am 2027-01-22** entsprechend dem vierteljährlichen Rhythmus des Pflegekonzepts.
-- **Gezielte Nachprüfung** der offenen UVgO-Länder- und Feiertagsfragen sowie des fehlenden Volltextabrufs zu § 193 BGB spätestens mit der nächsten Regelprüfung; bis dahin gelten diese Punkte als offen, nicht als erledigt.
+- **Feiertage 2027:** die offenen Länderfragen bis spätestens 2026-12-31 nachprüfen (jährliche Feiertagsprüfung im vierten Quartal nach dem Pflegekonzept).
+- **Gezielte Nachprüfung** der offenen UVgO-Länderfragen und des fehlenden Volltextabrufs zu § 193 BGB spätestens mit der nächsten Regelprüfung; bis dahin gelten diese Punkte als offen, nicht als erledigt.
 - Den Geltungsbeginn der VOB/A-EU-Änderung beim nächsten erfolgreichen amtlichen Abruf der Änderungsverordnung oder des Ministerialerlasses unabhängig nachbestätigen und hier ergänzen.
 - Neue Gesetzesänderungen oder konkrete Fehlerhinweise lösen nach dem Pflegekonzept unabhängig vom Quartalstermin eine anlassbezogene Prüfung aus.
 - Die bestehende fehlende Abbildung der Dringlichkeitsausnahme nach § 19 EU Abs. 3 Nr. 1 sowie die [Text- und Modellgrenzen](normabgleich-vob-a-2026.md#unveränderte-besonderheiten-und-offene-fachpunkte) gesondert bewerten.
