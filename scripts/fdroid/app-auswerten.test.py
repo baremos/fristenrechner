@@ -384,11 +384,13 @@ class AppAuswertung(unittest.TestCase):
     def test_neue_prebuild_zeilen_bleiben_eng_begrenzt(self):
         daten = json.loads((HIER / "fixtures/app-laeufe-2026-10-15.json").read_text(encoding="utf-8"))["laeufe"]
         zeilen = {e["zeile"]: e["text"] for e in daten["lauf-4zdiuc_3-gezielt"]}
-        log = self.app_fixture().replace("> @baremos/fristenrechner-kern@0.0.0 build", zeilen[48])
+        neue_daten = json.loads((HIER / "fixtures/app-laeufe-2026-10-22.json").read_text(encoding="utf-8"))["laeufe"]
+        kern_zeile = next(e["text"] for e in neue_daten["lauf-pq78zzo6-gezielt"] if e["zeile"] == 48)
+        log = self.app_fixture().replace("> @baremos/fristenrechner-kern@0.0.0 build", kern_zeile)
         log = log.replace(zeilen[78], zeilen[78] + "\n" + zeilen[79])
         probleme, bekannt, *_ = self.protokoll(log)
         self.assertEqual(probleme, [])
-        for art, zeile in (("npm_kern_build", zeilen[48]), ("hinweise_dritter_bestanden", zeilen[79])):
+        for art, zeile in (("npm_kern_build", kern_zeile), ("hinweise_dritter_bestanden", zeilen[79])):
             with self.subTest(art=art):
                 self.assertEqual(sum(e["art"] == art for e in bekannt), 1)
                 doppelt, *_ = self.protokoll(log.replace(zeile, zeile + "\n" + zeile))
@@ -399,9 +401,9 @@ class AppAuswertung(unittest.TestCase):
                 self.assertEqual(len(falscher_kontext), 1, falscher_kontext)
                 self.assertIn("Zeile ohne Kopf", falscher_kontext[0])
         for original, ersatz in (
-            *((zeilen[48], zeilen[48].replace("0.1.0", version))
-              for version in ("0.0.1", "0.2.0", "1.1.0", "0.1.0-beta", "0x1x0")),
-            (zeilen[48], zeilen[48] + " Zusatz"),
+            *((kern_zeile, kern_zeile.replace("0.1.1", version))
+              for version in ("0.0.1", "0.1.2", "0.2.0", "1.1.0", "0.1.0-beta", "0.1.1-beta", "0x1x0", "0x1x1")),
+            (kern_zeile, kern_zeile + " Zusatz"),
             (zeilen[79], zeilen[79] + " Zusatz"),
             (zeilen[79], "Hinweise Dritter: nicht bestanden"),
         ):
