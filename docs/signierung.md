@@ -1,6 +1,6 @@
 # Signierung
 
-Stand 2026-10-22 · eingefrorener App-Stand `8b17927` · N1 mit der App, N4/N5 mit einer Testfassung erneut belegt · Probeschlüssel gelöscht · echter Schlüssel am 2026-10-18 erzeugt, N2 belegt, N3 offen · N6 am 2026-10-22 für Android 16 belegt
+Stand 2026-10-22 · eingefrorener App-Stand `8b17927` · N1 mit der App, N4/N5 mit einer Testfassung erneut belegt · Probeschlüssel gelöscht · echter Schlüssel am 2026-10-18 erzeugt, N2 belegt · N3 am 2026-10-22 belegt · N6 am 2026-10-22 für Android 16 belegt
 
 Dieses Dokument legt fest, wie die App signiert wird. Die Festlegungen S1 bis S12 hat der fachlich Verantwortliche am 2026-09-29 getroffen; S1 bleibt unter Vorbehalt, seit dem 2026-10-22 nur noch für Android 17. S4 wurde am 2026-10-17 auf den eingetragenen Namen der Gesellschaft angepasst.
 
@@ -237,9 +237,19 @@ Schritt 2 ist belegt: Die exportierten Zertifikate liegen unter `docs/zertifikat
 | App-Signierschlüssel | `docs/zertifikate/app-signierschluessel.cer` | `ae5d4d7ec4d3ee63763e128a3fb00721c7d164206f066dc26e8e968ff9a92e68` | `AE:5D:4D:7E:C4:D3:EE:63:76:3E:12:8A:3F:B0:07:21:C7:D1:64:20:6F:06:6D:C2:6E:8E:96:8F:F9:A9:2E:68` |
 | Upload-Schlüssel, nur für Google Play | `docs/zertifikate/upload-schluessel.cer` | `8d99b272edbe6a375560a05cc3ddc7c48dc9b5e378a8685e7f9b13a09386920a` | `8D:99:B2:72:ED:BE:6A:37:55:60:A0:5C:C3:DD:C7:C4:8D:C9:B5:E3:78:A8:68:5E:7F:9B:13:A0:93:86:92:0A` |
 
-Der Fingerabdruck des App-Signierschlüssels ist der Wert für `AllowedAPKSigningKeys` im Rezept für F-Droid, für `--fingerabdruck` beim Signieren mit `scripts/signing/apk-signieren.mjs` und für die Registrierung des Zertifikats bei der Developer Verification von Android. Der Upload-Schlüssel signiert nur das App-Bundle für Google Play. Die Sicherung nach S10 hat der fachlich Verantwortliche am 2026-10-18 angelegt; der Nachweis N3, die Wiederherstellung aus der Sicherung mit einer Probesignatur, steht aus und wird vor der ersten Veröffentlichung erbracht.
+Der Fingerabdruck des App-Signierschlüssels ist der Wert für `AllowedAPKSigningKeys` im Rezept für F-Droid, für `--fingerabdruck` beim Signieren mit `scripts/signing/apk-signieren.mjs` und für die Registrierung des Zertifikats bei der Developer Verification von Android. Der Upload-Schlüssel signiert nur das App-Bundle für Google Play. Die Sicherung nach S10 hat der fachlich Verantwortliche am 2026-10-18 angelegt; der Nachweis N3, die Wiederherstellung aus der Sicherung mit einer Probesignatur, ist am 2026-10-22 erbracht, siehe [Wiederherstellung der Sicherung (N3)](#wiederherstellung-der-sicherung-n3).
 
 Nachtrag 2026-10-19: Das [Veröffentlichungsrezept für F-Droid](../scripts/fdroid/veroeffentlichung/de.baremos.fristenrechner.yml) verwendet den Fingerabdruck des App-Signierzertifikats in `AllowedAPKSigningKeys`; ein Test vergleicht den Eintrag mit dem berechneten SHA-256 der DER-kodierten Zertifikatsdatei.
+
+### Wiederherstellung der Sicherung (N3)
+
+Am 2026-10-22 hat der fachlich Verantwortliche nach seiner Angabe beide Schlüsseldateien aus einer der beiden Sicherungskopien nach S10 in einen eigenen Ordner außerhalb der Arbeitsordner wiederhergestellt. Ein Prüfskript (nicht im Repository) hat dann:
+
+1. beide wiederhergestellten Dateien mit den Schlüsseldateien im üblichen Ablageort verglichen: beide bytegleich; gemeldet wurde nur gleich oder ungleich, keine Prüfsumme der Schlüsseldateien,
+2. mit dem wiederhergestellten App-Signierschlüssel die unsignierte Testfassung 0.2.1 aus [N6](#wechsel-zwischen-den-vertriebswegen-am-2026-10-22-n6) über `scripts/signing/apk-signieren.mjs` signiert, mit Prüfung des Fingerabdrucks `ae5d4d7e…a92e68`. Die Datei ist bytegleich zu der mit dem Original signierten Datei (SHA-256 `a3551f490baf13810e0bc16535c15549803f68d283a59fc160a2aa22c44992f2`),
+3. mit dem wiederhergestellten Upload-Schlüssel eine Kopie des unsignierten App-Bundles 0.2.2 mit `jarsigner` signiert und den Fingerabdruck des Signierers geprüft (`8D:99:…:92:0A`, nachgeprüft mit `keytool -printcert`). Die Datei (SHA-256 `d9a658f21ab73d55ee51cbc77a4eecdb1ae1b975b5c1262b5fb3cdbfe9292268`, 3 051 622 Bytes) ist nicht bytegleich zur ersten Signatur desselben Bundles; der Signierer ist derselbe.
+
+Die Kennwörter wurden im Dialog eingegeben (S9). Der Ordner mit der Wiederherstellung war danach entfernt (nachgeprüft). Grenze: geprüft ist eine der beiden Sicherungskopien; Datenträger und Verschlüsselung der Sicherung sind nicht Gegenstand des Nachweises.
 
 ## Wechsel zwischen den Vertriebswegen am 2026-10-22 (N6)
 
@@ -332,12 +342,12 @@ Für den Ablauf folgt daraus: Die Prüfsumme aus der Meldung des Skripts wird fe
 |---|---|---|---|
 | N1 | APK reproduzierbar gebaut | zwei Builds desselben Stands in getrennten Ordnern, danach derselbe Stand unter Windows und unter Linux. Verglichen werden die unsignierten Dateien Byte für Byte. | für die App am 2026-10-15 erneut belegt: Windows nach `clean`, frische Windows-Kopie mit Node.js 22, zwei Linux-Klone und lokaler F-Droid-Lauf; Grenzen siehe [Nachweis am eingefrorenen Stand](#reproduzierbarer-app-build-am-eingefrorenen-stand-n1). |
 | N2 | Zertifikat geprüft | Verfahren, Länge, Gültigkeit mit Enddatum und Angaben gegen dieses Dokument | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel am 2026-10-18 belegt, siehe [Echter Schlüssel](#echter-schlüssel). |
-| N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
+| N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel am 2026-10-22 belegt, siehe [N3](#wiederherstellung-der-sicherung-n3). |
 | N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, Projekt über die App im `localStorage` speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist unverändert vorhanden. Gegenproben: andere Signatur und Rückschritt werden abgelehnt. | am 2026-10-15 mit der Testfassung mit eigener App-ID auf API 30 und 36 erneut bestanden, einschließlich beider Gegenproben und Aufräumen; siehe [N4 am eingefrorenen Stand](#update-des-gespeicherten-projekts-am-eingefrorenen-stand-n4). |
 | N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | am 2026-10-15 mit der Testfassung erneut bestanden, einschließlich Gegenprobe: Build-Tools 35.0.0 (`apksigner` 0.9), `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1; siehe [N5 am eingefrorenen Stand](#übertragung-der-signatur-am-eingefrorenen-stand-n5). |
 | N6 | Wechsel zwischen den Vertriebswegen | Zertifikate und Folge der Schlüssel in den Dateien, die Google Play tatsächlich ausliefert, mit der Fassung für F-Droid vergleichen. Updates mit steigendem Versionscode in beiden Richtungen, ohne Datenverlust, auch auf Android 17. | für Android 16 am 2026-10-22 im internen Test von Google Play belegt: ausgelieferte Dateien nur mit dem App-Signierzertifikat signiert, ohne hybriden Block; Updates 200 → 201 (eigene Signatur) → 202 (Google Play), der dargestellte Projektstand blieb unverändert. Offen: Android 17; als Grenze bleibt der Wechsel über die App von F-Droid statt `adb`; siehe [N6](#wechsel-zwischen-den-vertriebswegen-am-2026-10-22-n6). |
 
-N1 bis N5 gehören zu Stufe 2: N1 prüft die unsignierte App; N2 und N3 waren in Stufe 2 nur für die Probeschlüssel belegt, N4 und N5 für die Testfassung mit eigener App-ID. Der echte Schlüssel ist seit dem 2026-10-18 erzeugt und N2 dafür belegt; N3 bleibt vor der ersten Veröffentlichung offen. N6 gehört zu Stufe 4 und ist am 2026-10-22 für Android 16 belegt.
+N1 bis N5 gehören zu Stufe 2: N1 prüft die unsignierte App; N2 und N3 waren in Stufe 2 nur für die Probeschlüssel belegt, N4 und N5 für die Testfassung mit eigener App-ID. Der echte Schlüssel ist seit dem 2026-10-18 erzeugt und N2 dafür belegt; N3 ist für ihn am 2026-10-22 belegt. N6 gehört zu Stufe 4 und ist am 2026-10-22 für Android 16 belegt.
 
 ## Verlust und Missbrauch
 
@@ -359,7 +369,7 @@ Der Wechsel eines Schlüssels ist ein Notfall und kein Teil des gewöhnlichen Ab
    - die signierte Datei aus der Play Console als Datei des Herausgebers für F-Droid.
    - Bleiben nur Signaturen, die nicht zueinander passen, entfällt Ziel 1. Dann nehmen Nutzer ihre Daten über den Export und den Import der Projektdatei mit. Dieser Weg wäre eigens zu beschreiben und zu prüfen.
 4. Prüfen, mit welcher Version der Build-Tools `apksigner` das Verfahren v3.2 kennt.
-5. Der echte Schlüssel ist am 2026-10-18 erzeugt, N2 ist belegt. N3 ist mit ihm vor der ersten Veröffentlichung zu erbringen. Der App-Signierschlüssel ist am 2026-10-19 bei Google Play eingebracht, der getrennte Upload-Schlüssel dort registriert und ab dem 2026-10-21 wirksam (siehe Nachtrag zu Schritt 9 im [geplanten Ablauf](#geplanter-ablauf)).
+5. Der echte Schlüssel ist am 2026-10-18 erzeugt, N2 ist belegt, N3 am 2026-10-22. Der App-Signierschlüssel ist am 2026-10-19 bei Google Play eingebracht, der getrennte Upload-Schlüssel dort registriert und ab dem 2026-10-21 wirksam (siehe Nachtrag zu Schritt 9 im [geplanten Ablauf](#geplanter-ablauf)).
 6. N1 belegt Gleichheit nur für die genannten Eingaben und Umgebungen. Bei Änderungen bleiben mögliche Ursachen abweichender Builds zu prüfen: Werkzeugversionen, Zeitangaben in Archiven, Bildverarbeitung, Zeilenenden und Zahl der Prozessorkerne.
 7. Beim PEPK-Export am 2026-10-19 stand das Kennwort des App-Schlüsselspeichers einmalig in einem Aufruf, entgegen S9 (siehe Nachtrag zu Schritt 9 im [geplanten Ablauf](#geplanter-ablauf)). Entscheidung des fachlich Verantwortlichen vom 2026-10-19: Das Kennwort bleibt unverändert; nach seiner Angabe war es nur während des Werkzeuglaufs in der Befehlszeile auf dem eigenen Rechner sichtbar und stand in keiner Datei. Nach Angabe des fachlich Verantwortlichen sind die Exportdatei und die Kopien des Werkzeugs gelöscht. S9 gilt unverändert für alle weiteren Aufrufe.
 
