@@ -55,6 +55,8 @@ Gelesen am 2026-09-29 in der Hilfe zur Play Console und in der Dokumentation des
 
 Nicht aus den Quellen hervor geht, ob Google Play auch bei einem eigenen Schlüssel einen hybriden Block anfügt, ob der eigene Schlüssel dann K0 ist und ob Google Play ihm das Recht `ROLLBACK` gibt. Beobachtung vom 2026-10-19: In der Auswahl der Play Console trug nach Angabe des fachlich Verantwortlichen nur die Option mit von Google erzeugtem Schlüssel die Kennzeichnung „Quantenbereit (Beta)“ (Bildschirmansicht während der Durchführung, nicht archiviert); die Abbildungen der Seite „App-Signatur“ nach dem Einbringen des eigenen Schlüssels zeigen keine solche Kennzeichnung. Das ist ein Hinweis, kein Nachweis; N6 bleibt erforderlich.
 
+Beobachtung vom 2026-10-22 (N6): Die Dateien, die Google Play im internen Test für die Versionscodes 200 und 202 ausgeliefert hat, enthalten keinen hybriden Block, keinen Block v3.1 und keine Folge der Schlüssel; einziger Signierer ist das eigene App-Signierzertifikat. Für diese Dateien gilt damit Fall 1 der folgenden Aufzählung. Ob Google Play das Verfahren für diese App später ändert, lässt sich nur an späteren Dateien beobachten. Einzelheiten und Grenzen: [N6](#wechsel-zwischen-den-vertriebswegen-am-2026-10-22-n6).
+
 Folgerung für dieses Projekt, noch ohne Nachweis:
 
 1. Signiert Google Play bei einem eigenen Schlüssel nur klassisch und mit demselben Zertifikat, passen die Fassungen beider Vertriebswege zueinander.
@@ -69,7 +71,7 @@ Getroffen am 2026-09-29.
 
 | Nr. | Thema | Festlegung | Begründung |
 |---|---|---|---|
-| S1 | Zahl der Schlüssel | ein klassischer App-Signierschlüssel für alle Vertriebswege, dazu ein getrennter Upload-Schlüssel für Google Play. **Unter Vorbehalt:** Die Festlegung gilt erst, wenn der Nachweis N6 erbracht ist. | siehe Ziel. Geht der Upload-Schlüssel verloren, lässt er sich ersetzen, ohne dass sich die Signatur der App ändert. |
+| S1 | Zahl der Schlüssel | ein klassischer App-Signierschlüssel für alle Vertriebswege, dazu ein getrennter Upload-Schlüssel für Google Play. Der Vorbehalt bis zum Nachweis N6 ist mit [N6 am 2026-10-22](#wechsel-zwischen-den-vertriebswegen-am-2026-10-22-n6) entfallen; die dort genannten Grenzen bleiben. | siehe Ziel. Geht der Upload-Schlüssel verloren, lässt er sich ersetzen, ohne dass sich die Signatur der App ändert. |
 | S2 | Verfahren und Länge | RSA mit 4096 Bit, für beide selbst erzeugten Schlüssel | Google Play verlangt für eigene Schlüssel und für den Upload-Schlüssel RSA mit mindestens 2048 Bit. Die klassischen Schlüssel, die Google erzeugt, haben 4096 Bit. |
 | S3 | Gültigkeit des Zertifikats | 30 Jahre. Das Enddatum wird nach dem Erzeugen geprüft. | Die Dokumentation von Android empfiehlt mindestens 25 Jahre. Google Play verlangt ein Ende nach dem 22. Oktober 2033. |
 | S4 | Angaben im Zertifikat | `CN=BAREMOS IT Dienstleistungs GmbH, O=BAREMOS IT Dienstleistungs GmbH, L=Berlin, C=DE` | Name und Ort des Herausgebers, nur Angaben, die ohnehin öffentlich sind. Das Zertifikat ist öffentlich und soll über die Lebenszeit der App dasselbe bleiben. Am 2026-10-17 wurde der eingetragene Name der Gesellschaft festgelegt, wie ihn Impressum und Datenschutzerklärung der Website nennen; der Schlüssel war noch nicht erzeugt. |
@@ -239,6 +241,32 @@ Der Fingerabdruck des App-Signierschlüssels ist der Wert für `AllowedAPKSignin
 
 Nachtrag 2026-10-19: Das [Veröffentlichungsrezept für F-Droid](../scripts/fdroid/veroeffentlichung/de.baremos.fristenrechner.yml) verwendet den Fingerabdruck des App-Signierzertifikats in `AllowedAPKSigningKeys`; ein Test vergleicht den Eintrag mit dem berechneten SHA-256 der DER-kodierten Zertifikatsdatei.
 
+## Wechsel zwischen den Vertriebswegen am 2026-10-22 (N6)
+
+Grundlage ist der interne Test bei Google Play. Der fachlich Verantwortliche hat am 2026-10-22 das mit dem Upload-Schlüssel signierte App-Bundle der Fassung 0.2.0 (`versionCode` 200, SHA-256 `5214692d69e5827eacbc38fc9b5b5cf68654f4a1d6544320094b0ec22ee4125f`, siehe Nachtrag zu Schritt 8 im [geplanten Ablauf](#geplanter-ablauf)) in den internen Test hochgeladen. Die Play Console nahm es mit einer Warnung zur fehlenden Offenlegungsdatei an (die App verwendet keine Verschleierung mit R8) und gab es um 11:30 für eine Testerliste mit einem Konto frei (Abbildungen). Bis Google Play die App auf dem Testgerät anbot, vergingen nach der Teilnahme am Test 15 bis 20 Minuten; der Play Store muss dafür mit dem Konto der Testerliste angemeldet sein.
+
+Für die Rückrichtung entstanden zwei Testfassungen auf einem lokalen Branch, der nicht veröffentlicht wird: 0.2.1 (`versionCode` 201) und 0.2.2 (`versionCode` 202). Sie unterscheiden sich vom Stand `00f7a5c` nur in Version und Versionscode (`app/package.json`, Versionszeile des Workspace `app` in `package-lock.json`, `app/android/app/build.gradle`); App und Pakete sind seit dem Tag `v0.2.0` unverändert. Gebaut wurden sie mit `scripts/app-bauen.mjs` (K1 bis K5 bestanden) und `scripts/android-build.mjs`. Die unsignierte APK 0.2.1 (SHA-256 `baf5e1c49d7dd76070386dd480d5f0335e6a380403295567be0af0567c8eaeff`, 7 668 594 Bytes) weicht von der unsignierten Release-APK 0.2.0 nur in `AndroidManifest.xml` und in der Versionsangabe im Abschnitt „Über diese App“ von `assets/public/index.html` ab. Der fachlich Verantwortliche hat 0.2.1 mit `scripts/signing/apk-signieren.mjs` und dem App-Signierschlüssel signiert (SHA-256 `a3551f490baf13810e0bc16535c15549803f68d283a59fc160a2aa22c44992f2`; v2 und v3, alle 420 Einträge unverändert) und das App-Bundle 0.2.2 (unsigniert SHA-256 `a8cb2d87dbb0e87683dd9e23e9391eac6fda28bedb4e210d95c5de63bdb1dea1`) mit dem Upload-Schlüssel (SHA-256 `687d7e1fda1b8639efb628568c36f754899beaefbb9a3d7598d0e1a6581c92d7`, 3 051 620 Bytes; Signierer `8D:99:…:92:0A`, alle 425 ursprünglichen Einträge unverändert). Das Bundle 0.2.2 ging mit eigenem Go am selben Tag in den internen Test.
+
+Geprüft wurde mit `apksigner` aus den Build-Tools 35.0.0 (`verify --verbose --print-certs`, `lineage --print-certs`), mit `aapt2 dump badging` und mit einer eigenen Auflistung der Blöcke im Signaturblock der APK.
+
+| Datei | Herkunft | Ergebnis |
+|---|---|---|
+| Signierte universelle APK, Versionscode 200 | App-Bundle-Explorer der Play Console | SHA-256 `1b7faee440150c06d8b41e488866510a5bc8f6781c6dd9551979d6b12a0c767a`, 3 091 906 Bytes. Blöcke: v2, v3, Source Stamp v2 und ein Füllblock (`0x42726577`). Signierer in v2 und v3 ist das App-Signierzertifikat `ae5d4d7e…a92e68`; der Source Stamp trägt ein Zertifikat von Google (`CN=Android, OU=Android, O=Google Inc.`). Kein Block v3.1, kein unbekannter Block, keine Folge der Schlüssel. Programmcode, Web-Teil und übrige Dateien stimmen mit der eigenen Release-APK 0.2.0 überein; verschieden sind `AndroidManifest.xml`, `resources.arsc` und die Pfade der Ressourcen, weil Google Play die APK aus dem App-Bundle neu zusammensetzt. Die Datei ist kleiner, weil Google Play `classes.dex` komprimiert. `aapt2` nennt als einzige Gerätefunktion `android.hardware.faketouch`, die Android jeder App unterstellt. |
+| `base.apk`, `split_config.de.apk`, `split_config.xxhdpi.apk`, Versionscode 200 | vom Play Store auf dem Testgerät installiert, mit `adb pull` gelesen | jeweils v2 und v3 mit dem App-Signierzertifikat, Source Stamp von Google, Füllblock; kein Block v3.1, kein hybrider oder unbekannter Block |
+| dieselben drei Dateien, Versionscode 202 | ebenso | ebenso |
+
+Updates auf dem Testgerät Samsung Galaxy A17 (SM-A176B, Android 16, One UI 8.5). Vorher wurde eine dort vorhandene, mit dem Debug-Schlüssel signierte Kopie der Fassung 200 entfernt.
+
+| Schritt | Zeit | Vorgang | Ergebnis |
+|---|---|---|---|
+| 1 | 12:30 | Installation der Fassung 200 aus dem Play Store. Der fachlich Verantwortliche legte in der App ein Projekt an. | installiert durch `com.android.vending`, der Play Store ist als Eigentümer der Updates eingetragen |
+| 2 | 12:34 | `adb install -r` der mit dem App-Signierschlüssel signierten Fassung 201 | angenommen ohne Rückfrage, erste Installationszeit unverändert, Projekt vorhanden; danach ist kein Eigentümer der Updates mehr eingetragen |
+| 3 | 12:40 | Der Play Store bot für die Fassung 201 „Aktualisieren“ auf 202 an; ausgelöst über `adb shell input tap` | angenommen, Installation wieder durch `com.android.vending`, erste Installationszeit unverändert, Projekt vorhanden; ein Eigentümer der Updates ist danach nicht eingetragen |
+
+Den Projektstand hat ein Abzug der Bedienoberfläche mit `uiautomator dump` vor Schritt 2 und nach den Schritten 2 und 3 festgehalten. Alle drei Abzüge enthalten dieselben 232 Texte, darunter die Zusammenfassung des Terminplans und die Meldung „Lokales Projekt geladen“ mit der Zeit der Eingabe. Nach einem Update braucht die Oberfläche einige Sekunden, bis die Texte im Abzug erscheinen; ein zu früher Abzug war leer und wurde wiederholt. Die Gegenproben mit anderer Signatur und Rückschritt gehören zu N4 und wurden hier nicht wiederholt.
+
+Grenzen: ein Gerät mit Android 16; das Verhalten unter Android 17 ist nicht beobachtet. Die Richtung zur eigenen Signatur lief über `adb`, nicht über die App von F-Droid. Weil der Play Store als Eigentümer der Updates eingetragen war, fragt Android bei einem Update über eine andere Installations-App voraussichtlich einmal nach; geprüft ist das nicht. Geprüft ist der interne Test, keine Produktion. Belege, Testfassungen und Skripte liegen nicht im Repository.
+
 ## Geplanter Ablauf
 
 | Schritt | Werkzeug | Wer |
@@ -307,7 +335,7 @@ Für den Ablauf folgt daraus: Die Prüfsumme aus der Meldung des Skripts wird fe
 | N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel offen. |
 | N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, Projekt über die App im `localStorage` speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist unverändert vorhanden. Gegenproben: andere Signatur und Rückschritt werden abgelehnt. | am 2026-10-15 mit der Testfassung mit eigener App-ID auf API 30 und 36 erneut bestanden, einschließlich beider Gegenproben und Aufräumen; siehe [N4 am eingefrorenen Stand](#update-des-gespeicherten-projekts-am-eingefrorenen-stand-n4). |
 | N5 | Signatur übertragbar | Die signierte Datei des Herausgebers und ein zweiter, getrennt erzeugter unsignierter Build desselben Stands: Signatur übertragen, danach prüfen. So geht F-Droid beim Vergleich vor. Zwei gleiche unsignierte Dateien allein schließen diesen Nachweis nicht ab. Der Nachweis hält die Fassungen der Werkzeuge zum Signieren, Übertragen und Prüfen fest und prüft genau diese Kombination, siehe S12. | am 2026-10-15 mit der Testfassung erneut bestanden, einschließlich Gegenprobe: Build-Tools 35.0.0 (`apksigner` 0.9), `apksigcopier` 1.1.1 aus fdroidserver 2.4.2-1; siehe [N5 am eingefrorenen Stand](#übertragung-der-signatur-am-eingefrorenen-stand-n5). |
-| N6 | Wechsel zwischen den Vertriebswegen | Zertifikate und Folge der Schlüssel in den Dateien, die Google Play tatsächlich ausliefert, mit der Fassung für F-Droid vergleichen. Updates mit steigendem Versionscode in beiden Richtungen, ohne Datenverlust, auch auf Android 17. | offen, erst mit einem Konto bei Google Play möglich, vor der ersten Veröffentlichung |
+| N6 | Wechsel zwischen den Vertriebswegen | Zertifikate und Folge der Schlüssel in den Dateien, die Google Play tatsächlich ausliefert, mit der Fassung für F-Droid vergleichen. Updates mit steigendem Versionscode in beiden Richtungen, ohne Datenverlust, auch auf Android 17. | am 2026-10-22 im internen Test von Google Play belegt: ausgelieferte Dateien nur mit dem App-Signierzertifikat signiert, ohne hybriden Block; Updates 200 → 201 (eigene Signatur) → 202 (Google Play) auf Android 16 ohne Datenverlust. Offen: Android 17 und der Wechsel über die App von F-Droid; siehe [N6](#wechsel-zwischen-den-vertriebswegen-am-2026-10-22-n6). |
 
 N1 bis N5 gehören zu Stufe 2: N1 prüft die unsignierte App; N2 und N3 waren in Stufe 2 nur für die Probeschlüssel belegt, N4 und N5 für die Testfassung mit eigener App-ID. Der echte Schlüssel ist seit dem 2026-10-18 erzeugt und N2 dafür belegt; N3 bleibt vor der ersten Veröffentlichung offen. N6 gehört zu Stufe 4.
 
@@ -323,9 +351,9 @@ Der Wechsel eines Schlüssels ist ein Notfall und kein Teil des gewöhnlichen Ab
 
 ## Offene Punkte
 
-1. S1 bleibt unter Vorbehalt, bis N6 erbracht ist.
-2. N4 ist für den `localStorage`-Projektstand der Testfassung auf den Testabbildern mit Android 11 und 16 am 2026-10-15 erneut belegt, siehe [Nachweis am eingefrorenen Stand](#update-des-gespeicherten-projekts-am-eingefrorenen-stand-n4). Die Datei im Datenbereich gehörte zur historischen Minimal-App-Probe und bleibt keine Voraussetzung für diesen Nachweis. Ein Store-Update mit der echten App-ID bleibt Teil von N6.
-3. Klären, ob Google Play bei einem eigenen Schlüssel einen hybriden Block anfügt. Das zeigt sich erst an einer Datei, die Google Play ausliefert. Scheitert N6, sind diese Wege zu prüfen:
+1. Erledigt am 2026-10-22: N6 ist erbracht, der Vorbehalt bei S1 ist entfallen. Offen bleiben die Beobachtung auf einem Gerät mit Android 17 und der Wechsel über die App von F-Droid, sobald die App dort veröffentlicht ist.
+2. N4 ist für den `localStorage`-Projektstand der Testfassung auf den Testabbildern mit Android 11 und 16 am 2026-10-15 erneut belegt, siehe [Nachweis am eingefrorenen Stand](#update-des-gespeicherten-projekts-am-eingefrorenen-stand-n4). Die Datei im Datenbereich gehörte zur historischen Minimal-App-Probe und bleibt keine Voraussetzung für diesen Nachweis. Ein Store-Update mit der echten App-ID bleibt Teil von N6; N6 hat es am 2026-10-22 erbracht.
+3. Klären, ob Google Play bei einem eigenen Schlüssel einen hybriden Block anfügt. Für die am 2026-10-22 ausgelieferten Dateien geklärt: kein hybrider Block (N6). Ändert Google Play das Verfahren später, sind diese Wege zu prüfen:
    - der Rückweg zur klassischen Signatur über das Recht `ROLLBACK` für K0. Ob Google Play ihn einrichtet und beibehält, ist offen.
    - eine hybride Signatur auch für die Fassung bei F-Droid. Sie braucht passende Schlüssel und einen Nachweis mit den Werkzeugen von F-Droid.
    - die signierte Datei aus der Play Console als Datei des Herausgebers für F-Droid.
