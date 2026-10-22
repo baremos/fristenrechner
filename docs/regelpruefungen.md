@@ -39,7 +39,7 @@ Der **Geltungsbeginn 2026-09-08** ist aus der Recherche übernommen. Er stützt 
 
 BAnz AT 24.08.2026 B6, S. 1, bezeichnet die Abschnitte 2 und 3 als **Ausgabe 2026**. Abschnitt 2 ersetzt die Fassung 2019 einschließlich der Änderungen vom 16.06.2023 und 06.09.2023.
 
-Die Einarbeitung vor App-Fassung 1.0.0 wurde am 2026-10-22 fachlich entschieden. Die sichtbaren Texte hat der fachlich Verantwortliche am 2026-10-22 freigegeben; das Kreuz-Review ist bestanden. Die Veröffentlichungen stehen noch aus.
+Die Einarbeitung vor App-Fassung 1.0.0 wurde am 2026-10-22 fachlich entschieden. Die sichtbaren Texte hat der fachlich Verantwortliche am 2026-10-22 freigegeben; das Kreuz-Review ist bestanden. Die Pakete 0.1.1 sind am 2026-10-22 veröffentlicht.
 
 **§ 19 EU Abs. 3 (BAnz AT 24.08.2026 B6, S. 32):** Die neue Nummer 2 betrifft Abrufe aus Rahmenvereinbarungen und dynamischen Beschaffungssystemen. Die Suche in `packages/kern/src` und `docs/zuschnitt-v1.md` sowie die Prüfung der API zeigen: Diese Fälle sind nicht abgebildet; Nummer 2 hat daher keine Wirkung auf den Kern. Nummer 1 übernimmt den Ausnahmetatbestand der besonderen Dringlichkeit aus der Fassung 2019/2023 inhaltlich unverändert (BAnz AT 19.02.2019 B2, S. 46); die Einleitung nennt nun ausdrücklich auch die Wartepflicht. Der Kern berücksichtigt diese Ausnahme bisher nicht: Auch bei `verhandlung_ohne_tnw` mit `dringlichkeit: true` bleiben Bieterinformation und vorbelegte Wartefristen von 10 KT bei elektronischem Versand/Fax beziehungsweise 15 KT bei Postversand erhalten. Die allgemeine Dringlichkeitsoption erfasst den besonderen Zulässigkeitsgrund nicht. Das Verhalten bleibt unverändert; Einzelbelege im [Normabgleich](normabgleich-vob-a-2026.md).
 
@@ -47,7 +47,7 @@ Die Umsetzung ändert Ausgabeangabe, Profilhinweis und Metadaten. Bei ausdrückl
 
 | Angabe nach Pflegekonzept | Stand dieser Umsetzung |
 |---|---|
-| App-/Paketversion | Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` 0.1.1; die App-Fassung 1.0.0 folgt mit eigenem Release-Commit. |
+| App-/Paketversion | Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` 0.1.1, veröffentlicht am 2026-10-22; die App-Fassung 1.0.0 folgt mit eigenem Release-Commit. |
 | Regelversion | **1.9.1**: Korrektur und Ergänzung der fachlichen Hinweise ohne Änderung von Fristwerten, Algorithmus, API oder Projektdateischema. |
 | Rechtsstand als Datum | **2026-10-22**, mit den in diesem Protokoll ausdrücklich verbleibenden Prüflücken. |
 | Anzeigetext zum Rechtsstand | **Oktober 2026** |
@@ -55,7 +55,7 @@ Die Umsetzung ändert Ausgabeangabe, Profilhinweis und Metadaten. Bei ausdrückl
 
 **1.9.1** kennzeichnet die Korrektur des bestehenden Regelprofils ohne zusätzlichen Funktionsumfang. Das [Pflegekonzept](pflegekonzept.md#ablauf-einer-fachlichen-änderung) verlangt eine neue Regelversion, legt aber keine Patch-/Minor-Regel fest. Beim Import eines Projekts mit 1.9.0 bleiben dessen Herkunftsmetadaten sichtbar; das neu berechnete Ergebnis nennt 1.9.1. Der [Versionsvergleich der Oberfläche](../packages/oberflaeche/src/fristenrechner-ui.ts) arbeitet numerisch. Der besondere Migrationshinweis für Dateien vor 1.9.0 und das [Projektdateiformat](../packages/kern/src/projekt.ts) bleiben unverändert.
 
-Nach Textfreigabe und Kreuz-Review stehen noch Paketveröffentlichung, Website-Aktualisierung und Android-Release für Google Play und F-Droid aus. Erst dann ist die fachliche Änderung nach dem Pflegekonzept kanalübergreifend abgeschlossen.
+Die Pakete 0.1.1 sind am 2026-10-22 veröffentlicht. Website-Aktualisierung und Android-Release für Google Play und F-Droid stehen noch aus. Erst dann ist die fachliche Änderung nach dem Pflegekonzept kanalübergreifend abgeschlossen.
 
 ### Sichtbare Texte zur Freigabe
 
@@ -167,4 +167,4 @@ Die ergänzten Tests decken den VOB/A-Hinweis für alle vier unterstützten Verf
 - Den Geltungsbeginn der VOB/A-EU-Änderung beim nächsten erfolgreichen amtlichen Abruf der Änderungsverordnung oder des Ministerialerlasses unabhängig nachbestätigen und hier ergänzen.
 - Neue Gesetzesänderungen oder konkrete Fehlerhinweise lösen nach dem Pflegekonzept unabhängig vom Quartalstermin eine anlassbezogene Prüfung aus.
 - Die bestehende fehlende Abbildung der Dringlichkeitsausnahme nach § 19 EU Abs. 3 Nr. 1 sowie die [Text- und Modellgrenzen](normabgleich-vob-a-2026.md#unveränderte-besonderheiten-und-offene-fachpunkte) gesondert bewerten.
-- Textfreigabe und Kreuz-Review am 2026-10-22 erledigt. Die einzelnen Veröffentlichungen (Pakete, Website, Google Play, F-Droid) mit Datum nachtragen; bis dahin ist die fachliche Änderung kanalübergreifend noch nicht abgeschlossen.
+- Textfreigabe und Kreuz-Review am 2026-10-22 erledigt. Die Pakete 0.1.1 sind am 2026-10-22 veröffentlicht. Die übrigen Veröffentlichungen (Website, Google Play, F-Droid) mit Datum nachtragen; bis dahin ist die fachliche Änderung kanalübergreifend noch nicht abgeschlossen.

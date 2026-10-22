@@ -2,6 +2,8 @@
 
 Stand 2026-10-16 · Stufe 2: geprüfter App-Endstand `c7b5230`, Nachweisstand `8987e69`, abgenommen am 2026-10-04 · Go von Andreas Schmidt für Stufe 1 bis 3
 
+Nachtrag 2026-10-22: Für die Fassung 1.0.0 (`versionCode` 10000, Release-Stand `7ec93f4`) sind der Windows-Neubau nach `clean`, eine frische Windows-Kopie mit Node 22, zwei Linux-Klone, der lokale F-Droid-Lauf, der Gerätelauf auf dem Galaxy A17 ohne TalkBack und die Emulatorphasen Menüleiste und Dateien einschließlich Sicherung erneuert; die fünf unsignierten Release-APKs sind bytegleich. Der Browser-Endlauf am Stand `dfd1fb8` ergibt keinen Produktbefund; ungültig bleiben die bekannten Grenzen `fokus-38` in beiden Browsern und der Edge-Wallet-Abruf. Ergebnisse und Grenzen: [App-Nachweise zur Fassung 1.0.0](app.md#build-nachweis-zur-fassung-100-vom-2026-10-22), [F-Droid-Lauf](fdroid-build.md#lauf-an-der-referenz-100-vom-2026-10-22) und [Testmatrix](testmatrix.md). Die Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` 0.1.1 sind am 2026-10-22 veröffentlicht.
+
 ## Überblick
 
 | Stufe | Inhalt | Status |
