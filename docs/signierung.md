@@ -33,7 +33,7 @@ Ob Ziel 1 auf allen Versionen von Android erreichbar ist, steht noch nicht fest.
 
 | Weg | Wer signiert, was der Nutzer installiert | Was für eine passende Signatur nötig ist |
 |---|---|---|
-| Google Play | Google, mit dem App-Signierschlüssel, den Google verwahrt. Für neue Apps ist dieses Verfahren vorgeschrieben. | Der Herausgeber bringt seinen eigenen Schlüssel ein, statt Google einen erzeugen zu lassen. Ob das genügt, ist offen, siehe nächster Abschnitt. |
+| Google Play | Google, mit dem App-Signierschlüssel, den Google verwahrt. Für neue Apps ist dieses Verfahren vorgeschrieben. | Der Herausgeber bringt seinen eigenen Schlüssel ein, statt Google einen erzeugen zu lassen. Ob das genügt, war offen (siehe nächster Abschnitt); für die am 2026-10-22 geprüften Dateien und Umgebungen ist es durch [N6](#wechsel-zwischen-den-vertriebswegen-am-2026-10-22-n6) belegt, Grenzen siehe dort. |
 | F-Droid | in der Voreinstellung F-Droid, mit einem eigenen Schlüssel von F-Droid | Der Build ist reproduzierbar. F-Droid baut aus den Quellen, überträgt die Signatur der Datei des Herausgebers auf den eigenen Build und prüft sie. Gelingt das, veröffentlicht F-Droid die Datei mit der Entwicklersignatur. |
 
 Zu Google Play: Nach der Hilfe zur Play Console lässt sich ein eigener Schlüssel nur wählen, solange keine Version im offenen Test oder in der Produktion veröffentlicht ist. Die Wahl fällt also beim Anlegen der App und vor der ersten Veröffentlichung. Die Hilfe nennt einen zweiten Weg für andere Stores: Google erzeugt den Schlüssel, und der Herausgeber lädt aus der Play Console eine signierte Datei herunter, die er anderswo verteilt. Ob F-Droid eine solche Datei nachbauen kann, ist nicht geprüft.
