@@ -1,0 +1,1 @@
+First published version. Calculation of dates and deadlines for procurement procedures under VgV, VOB/A-EU, SektVO, VSVgV, KonzVgV, UVgO and VOB/A with calculation path and timeline. Export as PDF, Excel and project file through the Android picker, import of project files. Works without network access. Rule version 1.9.1, legal status October 2026. The app is in German.

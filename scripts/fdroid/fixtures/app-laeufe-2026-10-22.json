@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "fassung": { "versionName": "1.0.0", "versionCode": 10000 },
+  "format": "Gekürztes App-Protokoll vom 2026-10-22; Zeilennummern aus ursprünglichem build.log. Keine absoluten Rechnerpfade oder APK enthalten.",
+  "laeufe": {
+    "lauf-pq78zzo6-gezielt": [
+      {
+        "zeile": 13,
+        "text": "2026-10-22 15:45:59,333 INFO: Building version 1.0.0 (10000) of de.baremos.fristenrechner"
+      },
+      {
+        "zeile": 16,
+        "text": "2026-10-22 15:45:59,336 INFO: Getting source for revision 2a9ea85f0af97abf7e1d84263bae85b8ac41055e"
+      },
+      {
+        "zeile": 36,
+        "text": "2026-10-22 15:46:00,557 DEBUG: > bash -e -u -o pipefail -x -c -- cd ../../..; npm ci --ignore-scripts --no-audit --no-fund; cp package-lock.json \"$FR_FDROID_LAUF/package-lock-app.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-vor-web.json\"; node scripts/fdroid/app-vorbereiten.mjs; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-web.json\"; python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe \"$FR_FDROID_LAUF/bereinigung.json\"; python3 \"$FR_FDROID_INVENTAR\" node_modules \"$FR_FDROID_LAUF/npm-vorgebaut-nach-bereinigung.json\"; python3 \"$FR_FDROID_INVENTAR\" --alle node_modules \"$FR_FDROID_LAUF/npm-dateien-vor-scanner.json\""
+      },
+      {
+        "zeile": 48,
+        "text": "> @baremos/fristenrechner-kern@0.1.1 build"
+      }
+    ]
+  }
+}

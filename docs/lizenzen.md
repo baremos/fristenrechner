@@ -607,12 +607,14 @@ Die Maintainer haben die Veröffentlichung am 2026-10-16 freigegeben. Am selben 
 3. `node scripts/npm-pakete.mjs --ausgabe scratchpad/npm-pakete-freigabe --ohne-cr` ausführen und Packliste, Prüfbericht sowie anschließend die tatsächlich erzeugten Archive prüfen. Die README-Pflicht des Kerns ist aktiviert.
 4. Nach gesonderter Veröffentlichungsfreigabe zuerst den Kern, danach die Oberfläche mit derselben Version veröffentlichen. Die Oberfläche erst veröffentlichen, wenn die Registry den Kern mit der erwarteten Prüfsumme liefert.
 
+Am 2026-10-22 sind beide Pakete in Version 0.1.1 durch das npm-Konto `baremos` veröffentlicht worden, zuerst der Kern, danach die Oberfläche. Die Archive stammen nach den Schritten 1 bis 3 aus einem sauberen Linux-Checkout des öffentlichen Repositorys am Stand `97a8860`. Die Archive in der Registry sind bytegleich zu den vorher geprüften (SHA-1 `dbc543a3accd209816ea3c5fc53413cbd1c013cf` für den Kern, `1e253797b7a69a39a830964b8b412e88f2e98b42` für die Oberfläche).
+
 ### Verbleibende Arbeit
 
 Offen bleiben:
 
 1. Die MIT-Ausnahme für `rgbcolor` spätestens zu ihrem Ablauf am 2027-09-29 erneut prüfen; bei Versions- oder Metadatenänderungen muss sie angepasst oder entfernt werden.
-2. Die Paketprüfung bei jeder neuen Paketversion aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen; für Version 0.1.0 erledigt am 2026-10-16.
+2. Die Paketprüfung bei jeder neuen Paketversion aus einem sauberen Linux-Checkout mit `--ohne-cr` wiederholen; für Version 0.1.0 erledigt am 2026-10-16, für Version 0.1.1 am 2026-10-22.
 3. Vor jeder Veröffentlichung die erzeugten `.tgz`-Archive sichten (für Version 0.1.0 erledigt am 2026-10-16) und vor der Einbindung in eine Website deren eigene Hinweise prüfen; die Einbindung der Archive am eingefrorenen Paketstand ist durch die Verbraucherprobe vom 2026-10-16 bestätigt. Die Inhaltsprüfung des App-Web- und Android-Laufzeitbestands mit Originalhinweisen stammt vom 2026-10-05; die automatischen Bündel-, Hinweis- und Gradle-Modellabgleiche sind am 2026-10-15 erneuert. Nach Bündeländerungen ist die Inhaltsprüfung zu erneuern.
 4. Die im lokalen Endstandlauf belegte Behandlung des optionalen sharp-Baums und der weiteren vorgebauten Bestandteile bei Änderungen am Build-Baum erneut prüfen; Quelle und Grenzen: [F-Droid-Nachweis](fdroid-build.md).
 5. Android- und Gradle-Abhängigkeiten ergänzen; **teilweise erledigt am 2026-10-04 für `7fd6c90`**: [Laufzeitmodule mit POM-Lizenzangaben und APK-/SUSS-Abgleich](#android--und-gradle-abhängigkeiten) sind erfasst. Die [Gradle-Prüfsummen](toolchain.md#gradle-prüfsummen) sind seit dem 2026-10-05 umgesetzt. Die Hinweise Dritter einschließlich der eingebetteten Laufzeitanteile sind am 2026-10-05 ergänzt; Werkzeugliste und Werkzeug-Lizenzregel bleiben offen. Die npm-Liste erfasst diese Gradle-Abhängigkeiten weiterhin nicht.

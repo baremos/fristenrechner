@@ -22,8 +22,6 @@ from datetime import datetime, timezone
 HIER = Path(sys.argv[1])
 APPID = "de.baremos.fristenrechner"
 REPO = "https://github.com/baremos/fristenrechner.git"
-TAG = "v0.2.0"
-COMMIT = "5843a92bcc362e4169dc3b3804159006acefc8ac"
 SYSTEMPFAD = "/usr/sbin:/usr/bin:/sbin:/bin"
 
 
@@ -61,8 +59,15 @@ def pfad(wert):
     return datei
 
 
+def vollstaendiger_commit(wert):
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", wert):
+        raise argparse.ArgumentTypeError("Erwartet werden genau 40 Hex-Zeichen; Commit-Kurzformen sind nicht zulässig.")
+    return wert.lower()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Veröffentlichungsrezept mit fdroidserver 2.4.2 unter Debian 13 bauen.")
+    parser.add_argument("--erwarteter-commit", required=True, type=vollstaendiger_commit, help="erwarteter Commit des Tags: genau 40 Hex-Zeichen")
     parser.add_argument("--arbeitsordner", required=True, help="Basis für einen neuen probe-* Ordner; nichts wird gelöscht")
     parser.add_argument("--ausgabeordner", required=True, help="Basis für eine neue Kopie der Protokolle und Metadaten")
     parser.add_argument("--referenz-apk", required=True, help="unsignierte Referenz-APK")
@@ -87,9 +92,22 @@ def main():
     rezept_datei = pfad(args.rezept)
     with rezept_datei.open(encoding="utf-8") as quelle:
         rezept = yaml.load(quelle)
+    soll = json.loads((HIER / "app-referenz.json").read_text(encoding="utf-8"))
+    version = soll.get("versionName")
+    versionscode = soll.get("versionCode")
+    if not isinstance(version, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) or type(versionscode) is not int or versionscode <= 0:
+        raise ValueError("app-referenz.json muss einen Versionsnamen mit drei numerischen Bestandteilen und einen positiven ganzzahligen Versionscode enthalten.")
+    tag = "v" + version
     builds = rezept.get("Builds", [])
-    if len(builds) != 1 or builds[0].get("commit") != TAG or builds[0].get("versionCode") != 200 or str(builds[0].get("versionName")) != "0.2.0":
-        raise ValueError("Erwartet wird genau der Build 0.2.0 / 200 am Tag v0.2.0.")
+    if not isinstance(builds, list) or len(builds) != 1 or not isinstance(builds[0], dict):
+        raise ValueError("Erwartet wird genau ein Build im Veröffentlichungsrezept.")
+    if (builds[0].get("commit") != tag or builds[0].get("versionName") != version
+            or type(builds[0].get("versionCode")) is not int or builds[0]["versionCode"] != versionscode
+            or rezept.get("CurrentVersion") != version
+            or type(rezept.get("CurrentVersionCode")) is not int or rezept["CurrentVersionCode"] != versionscode):
+        raise ValueError("Veröffentlichungsrezept und app-referenz.json widersprechen sich: erwartet wird "
+                         + version + " / " + str(versionscode) + " am Tag " + tag
+                         + " mit übereinstimmenden CurrentVersion/CurrentVersionCode.")
     if rezept.get("RepoType") != "git" or rezept.get("Repo", "").removesuffix(".git") != REPO.removesuffix(".git"):
         raise ValueError("Das Originalrezept muss auf das öffentliche GitHub-Repository zeigen.")
     sudo = builds[0].get("sudo", [])
@@ -105,7 +123,6 @@ def main():
     if ersatz and not ersatz.exists():
         raise ValueError("Der angegebene Quellenersatz fehlt.")
     vorgabe = json.loads((HIER.parent / "toolchain.json").read_text(encoding="utf-8"))
-    soll = json.loads((HIER / "app-referenz.json").read_text(encoding="utf-8"))
     vergleich = apk_daten(referenz)
     if vergleich != soll["apk"]:
         raise ValueError("Die Referenz-APK stimmt nicht mit app-referenz.json überein.")
@@ -197,14 +214,14 @@ def main():
             raise ValueError("Die kopierte gradlew.py weicht ab.")
         quelle = str(ersatz) if ersatz else rezept["Repo"]
         klon = lauf / "fdroid/build" / APPID
-        ausfuehren(["git", "-c", "core.autocrlf=false", "clone", "--no-hardlinks", "--branch", TAG, "--", quelle, klon],
+        ausfuehren(["git", "-c", "core.autocrlf=false", "clone", "--no-hardlinks", "--branch", tag, "--", quelle, klon],
                    protokolldatei="quelle.log")
         _, commit = ausfuehren(["git", "-C", klon, "rev-parse", "HEAD"], protokolldatei="quelle.log")
-        _, tag_commit = ausfuehren(["git", "-C", klon, "rev-parse", TAG + "^{commit}"], protokolldatei="quelle.log")
-        if commit.strip() != tag_commit.strip() or commit.strip() != COMMIT:
-            raise ValueError("Tag v0.2.0 zeigt nicht auf den erwarteten Stand 5843a92.")
+        _, tag_commit = ausfuehren(["git", "-C", klon, "rev-parse", tag + "^{commit}"], protokolldatei="quelle.log")
+        if commit.strip() != tag_commit.strip() or commit.strip() != args.erwarteter_commit:
+            raise ValueError("Tag " + tag + " zeigt nicht auf den erwarteten Stand " + args.erwarteter_commit + ".")
         _, zeitpunkt = ausfuehren(["git", "-C", klon, "log", "-1", "--format=%ct"], protokolldatei="quelle.log")
-        ergebnis.update({"commit": commit.strip(), "tag": TAG, "sourceDateEpoch": zeitpunkt.strip()})
+        ergebnis.update({"commit": commit.strip(), "tag": tag, "sourceDateEpoch": zeitpunkt.strip()})
         # fdroidserver 2.4.2 liest SOURCE_DATE_EPOCH aus diesem vorhandenen Klon.
         # Die passende Herkunftsdatei verhindert sein Entfernen vor dem ersten Fetch.
         # Dadurch ist kein zusätzlicher Commit im Rezept-Arbeitsordner nötig.
@@ -231,16 +248,16 @@ def main():
         else:
             melden("Das Rezept enthält keine sudo-Schritte. Node wird im prebuild ohne Root-Rechte bereitgestellt.")
         # Kein --server: dessen virtuelle Buildmaschine ist nicht Teil dieser Probe.
-        code, _ = ausfuehren(["fdroid", "build", "--verbose", APPID + ":200"], cwd=lauf / "fdroid",
+        code, _ = ausfuehren(["fdroid", "build", "--verbose", APPID + ":" + str(versionscode)], cwd=lauf / "fdroid",
                              protokolldatei="build.log", pruefen=False)
         ergebnis["fdroidBuild"] = code
         # fdroidserver holt den Tag erneut und checkt ihn während des Builds aus.
         # Deshalb muss auch der anschließend gebaute Stand dem Release entsprechen.
         _, commit_nach_build = ausfuehren(["git", "-C", klon, "rev-parse", "HEAD"], protokolldatei="quelle.log")
         ergebnis["commitNachBuild"] = commit_nach_build.strip()
-        if ergebnis["commitNachBuild"] != COMMIT:
+        if ergebnis["commitNachBuild"] != args.erwarteter_commit:
             raise ValueError("HEAD nach fdroid build weicht vom erwarteten Release-Commit ab: "
-                             + ergebnis["commitNachBuild"] + " statt " + COMMIT)
+                             + ergebnis["commitNachBuild"] + " statt " + args.erwarteter_commit)
         node_kandidaten = list((lauf / "home").glob(".cache/fristenrechner-fdroid/node-*/bin/node"))
         if len(node_kandidaten) != 1:
             raise ValueError("Genau ein vom Rezept bereitgestelltes Node im neuen HOME erwartet.")
@@ -254,7 +271,7 @@ def main():
         gradle_archiv = lauf / "fdroid-cache" / ("gradle-" + vorgabe["gradle"]["version"] + "-bin.zip")
         if sha256(gradle_archiv) != vorgabe["gradle"]["sha256"]["bin"]:
             raise ValueError("Gradle-Archiv weicht von scripts/toolchain.json ab.")
-        apk = lauf / "fdroid/unsigned" / (APPID + "_200.apk")
+        apk = lauf / "fdroid/unsigned" / (APPID + "_" + str(versionscode) + ".apk")
         ergebnis["erzeugteApk"] = apk_daten(apk)
         if code or ergebnis["erzeugteApk"] != vergleich:
             raise ValueError("Build fehlgeschlagen oder Größe/SHA-256 der APK weichen von der Referenz ab.")

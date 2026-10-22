@@ -112,6 +112,20 @@ d3d432b87704cdb09e8b1eacb7c6108d777e0ca3; der Build ist gelungen.
 Die ursprünglichen Zeilennummern sind erhalten: Zeile 36 belegt den Kontext
 prebuild, Zeile 48 npm_kern_build mit Kern-Version 0.1.0 und Zeile 79
 hinweise_dritter_bestanden zwischen K3 (78) und K4 (80). Das Kern-Muster
-erlaubt genau 0.0.0 und 0.1.0, damit die bisherigen echten Belege gültig bleiben.
+erlaubte damit genau 0.0.0 und 0.1.0, damit die bisherigen echten Belege gültig bleiben.
 Die übernommenen Zeilen enthalten keine absoluten Rechnerpfade, Benutzernamen
 oder Geheimnisse; Dateiinhalte, APKs und Zwischenspeicher sind nicht enthalten.
+
+## App-Lauf vom 2026-10-22
+
+Die JSON-Datei app-laeufe-2026-10-22.json enthält einen gekürzten Auszug aus
+lauf-pq78zzo6-gezielt, App-Version 1.0.0 (10000), Stand
+2a9ea85f0af97abf7e1d84263bae85b8ac41055e; der Build ist gelungen.
+Das Feld `fassung` hält diese App-Fassung fest. Die ursprünglichen Zeilennummern
+sind erhalten: Zeilen 13 und 16 belegen Fassung und Quellstand, Zeile 36 den Kontext
+prebuild und Zeile 48 npm_kern_build mit Kern-Version 0.1.1. Diese tatsächlich
+beobachtete Buildzeile erweitert das Kern-Muster um genau 0.1.1; 0.0.0 und 0.1.0
+samt bisherigen Belegen bleiben erhalten. Kontext prebuild und höchstens ein
+Vorkommen je Lauf bleiben unverändert. Die übernommenen Zeilen enthalten keine
+absoluten Rechnerpfade, Benutzernamen oder Geheimnisse; Dateiinhalte, APKs und
+Zwischenspeicher sind nicht enthalten.
