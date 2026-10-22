@@ -1,6 +1,6 @@
 # Signierung
 
-Stand 2026-10-22 · eingefrorener App-Stand `8b17927` · N1 mit der App, N4/N5 mit einer Testfassung erneut belegt · Probeschlüssel gelöscht · echter Schlüssel am 2026-10-18 erzeugt, N2 belegt · N3 und N6 am 2026-10-22 belegt
+Stand 2026-10-22 · N1 für die Fassung 1.0.0 am 2026-10-22 erneut belegt · N4/N5 zuletzt am 2026-10-15 am eingefrorenen App-Stand `8b17927` mit einer Testfassung belegt · Probeschlüssel gelöscht · echter Schlüssel am 2026-10-18 erzeugt, N2 belegt · N3 und N6 am 2026-10-22 belegt
 
 Dieses Dokument legt fest, wie die App signiert wird. Die Festlegungen S1 bis S12 hat der fachlich Verantwortliche am 2026-09-29 getroffen; der Vorbehalt bei S1 ist mit N6 am 2026-10-22 entfallen. S4 wurde am 2026-10-17 auf den eingetragenen Namen der Gesellschaft angepasst.
 
@@ -348,7 +348,7 @@ Für den Ablauf folgt daraus: Die Prüfsumme aus der Meldung des Skripts wird fe
 
 | Nr. | Nachweis | Wie | Stand |
 |---|---|---|---|
-| N1 | APK reproduzierbar gebaut | zwei Builds desselben Stands in getrennten Ordnern, danach derselbe Stand unter Windows und unter Linux. Verglichen werden die unsignierten Dateien Byte für Byte. | für die App am 2026-10-15 erneut belegt: Windows nach `clean`, frische Windows-Kopie mit Node.js 22, zwei Linux-Klone und lokaler F-Droid-Lauf; Grenzen siehe [Nachweis am eingefrorenen Stand](#reproduzierbarer-app-build-am-eingefrorenen-stand-n1). |
+| N1 | APK reproduzierbar gebaut | zwei Builds desselben Stands in getrennten Ordnern, danach derselbe Stand unter Windows und unter Linux. Verglichen werden die unsignierten Dateien Byte für Byte. | für die App am 2026-10-15 erneut belegt: Windows nach `clean`, frische Windows-Kopie mit Node.js 22, zwei Linux-Klone und lokaler F-Droid-Lauf; Grenzen siehe [Nachweis am eingefrorenen Stand](#reproduzierbarer-app-build-am-eingefrorenen-stand-n1). Für die Fassung 1.0.0 am 2026-10-22 erneut belegt: Windows nach `clean`, frische Windows-Kopie mit Node.js 22, zwei Linux-Klone und lokaler F-Droid-Lauf, alle bytegleich; siehe [Build-Nachweis zur Fassung 1.0.0](app.md#build-nachweis-zur-fassung-100-vom-2026-10-22). |
 | N2 | Zertifikat geprüft | Verfahren, Länge, Gültigkeit mit Enddatum und Angaben gegen dieses Dokument | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel am 2026-10-18 belegt, siehe [Echter Schlüssel](#echter-schlüssel). |
 | N3 | Sicherung wiederhergestellt | Kopie an einem anderen Ort einlesen, damit signieren, Fingerabdruck vergleichen. Zuerst mit dem Probeschlüssel, später mit dem echten Schlüssel. | für den Probeschlüssel am 2026-09-29 belegt. Für den echten Schlüssel am 2026-10-22 belegt, siehe [N3](#wiederherstellung-der-sicherung-n3). |
 | N4 | Update ohne Datenverlust | Fassung mit Versionscode n installieren, Projekt über die App im `localStorage` speichern, Fassung mit Versionscode n+1 und derselben Signatur installieren, Projekt ist unverändert vorhanden. Gegenproben: andere Signatur und Rückschritt werden abgelehnt. | am 2026-10-15 mit der Testfassung mit eigener App-ID auf API 30 und 36 erneut bestanden, einschließlich beider Gegenproben und Aufräumen; siehe [N4 am eingefrorenen Stand](#update-des-gespeicherten-projekts-am-eingefrorenen-stand-n4). |

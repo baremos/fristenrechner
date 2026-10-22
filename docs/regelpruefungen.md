@@ -47,7 +47,7 @@ Die Umsetzung ändert Ausgabeangabe, Profilhinweis und Metadaten. Bei ausdrückl
 
 | Angabe nach Pflegekonzept | Stand dieser Umsetzung |
 |---|---|
-| App-/Paketversion | Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` 0.1.1, veröffentlicht am 2026-10-22; die App-Fassung 1.0.0 folgt mit eigenem Release-Commit. |
+| App-/Paketversion | Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` 0.1.1, veröffentlicht am 2026-10-22; die App-Fassung 1.0.0 (`versionCode` 10000) hat einen eigenen Release-Commit (`7ec93f4`), ihre Veröffentlichung steht aus. |
 | Regelversion | **1.9.1**: Korrektur und Ergänzung der fachlichen Hinweise ohne Änderung von Fristwerten, Algorithmus, API oder Projektdateischema. |
 | Rechtsstand als Datum | **2026-10-22**, mit den in diesem Protokoll ausdrücklich verbleibenden Prüflücken. |
 | Anzeigetext zum Rechtsstand | **Oktober 2026** |
@@ -144,7 +144,7 @@ Beobachtungsstand vom 2026-10-22; aus diesen Vorhaben werden noch keine zusätzl
 
 ### Umsetzungsprüfung und Referenzvergleich
 
-Prüfungen: werden vor dem Merge mit `npm test`, `npm run check` und `npm run lizenzen` an diesem Stand ausgeführt; Ergebnis siehe Pull Request.
+Prüfungen: `npm test`, `npm run check` und `npm run lizenzen` sind an diesem Stand vor dem Merge (`97a8860`) bestanden, lokal und in der automatischen Prüfung von Pull Request #17.
 
 Die Referenzen für 1.9.0 bleiben als Ausgangsstand erhalten. Der fachliche Vergleich mit 1.9.1 ergibt:
 
