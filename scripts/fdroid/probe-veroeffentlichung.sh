@@ -24,6 +24,7 @@ HIER = Path(sys.argv[1])
 APPID = "de.baremos.fristenrechner"
 REPO = "https://github.com/baremos/fristenrechner.git"
 SYSTEMPFAD = "/usr/sbin:/usr/bin:/sbin:/bin"
+DEBIAN_PAKETE = ("nodejs", "npm", "esbuild", "cargo", "rustc", "build-essential", "cmake")
 
 
 def sha256(datei):
@@ -90,6 +91,30 @@ def pruefe_rezept(rezept, soll, erwarteter_commit):
     return version, versionscode, "v" + version
 
 
+def srclib_dateien(rezept, yaml):
+    eintraege = rezept["Builds"][0].get("srclibs", [])
+    if not isinstance(eintraege, list) or not eintraege:
+        raise ValueError("Das Veröffentlichungsrezept muss srclibs mit Tags nennen.")
+    dateien = {}
+    for eintrag in eintraege:
+        if not isinstance(eintrag, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]*@[^\s/@]+", eintrag):
+            raise ValueError("Ungültige srclib mit Tag: " + str(eintrag))
+        name = eintrag.split("@", 1)[0]
+        if name in dateien:
+            raise ValueError("Doppelte srclib im Rezept: " + name)
+        datei = pfad(str(HIER / "veroeffentlichung/srclibs" / (name + ".yml")))
+        if not datei.is_file():
+            raise ValueError("srclib-Datei fehlt: " + str(datei))
+        with datei.open(encoding="utf-8") as quelle:
+            daten = yaml.load(quelle)
+        if (not isinstance(daten, dict) or set(daten) - {"RepoType", "Repo", "Subdir", "Prepare"}
+                or daten.get("RepoType") != "git" or not isinstance(daten.get("Repo"), str)
+                or not daten["Repo"].startswith("https://")):
+            raise ValueError("Ungültige srclib-Datei (nur RepoType/Repo/Subdir/Prepare, git und HTTPS): " + str(datei))
+        dateien[name] = datei
+    return dateien
+
+
 def main():
     parser = argparse.ArgumentParser(description="Veröffentlichungsrezept mit fdroidserver 2.4.2 unter Debian 13 bauen.")
     parser.add_argument("--erwarteter-commit", required=True, type=vollstaendiger_commit, help="erwarteter Commit des Tags: genau 40 Hex-Zeichen")
@@ -110,7 +135,7 @@ def main():
     for name in ("node", "nodejs", "npm", "npx"):
         if shutil.which(name, path=SYSTEMPFAD):
             raise ValueError(name + " ist bereits im Systempfad. Eine Umgebung ohne systemweite Node-Installation verwenden; die Probe entfernt keine Pakete.")
-    for name in ("fdroid", "git", "bash", "cp", "apt-get"):
+    for name in ("fdroid", "git", "bash", "cp", "apt-get", "dpkg-query"):
         if not shutil.which(name, path=SYSTEMPFAD):
             raise ValueError("Voraussetzung fehlt im Systempfad: " + name)
     from fdroidserver._yaml import yaml
@@ -121,6 +146,7 @@ def main():
     version, versionscode, tag = pruefe_rezept(rezept, soll, args.erwarteter_commit)
     if rezept.get("RepoType") != "git" or rezept.get("Repo", "").removesuffix(".git") != REPO.removesuffix(".git"):
         raise ValueError("Das Originalrezept muss auf das öffentliche GitHub-Repository zeigen.")
+    srclibs = srclib_dateien(rezept, yaml)
     sudo = rezept["Builds"][0].get("sudo", [])
     if isinstance(sudo, str):
         sudo = [sudo]
@@ -148,7 +174,7 @@ def main():
             raise ValueError("Die SDK-Kopie darf keinen Verweis außerhalb der Kopie erhalten: " + str(datei))
     # Nie ein SDK in sich selbst kopieren; Ausgaben dürfen keine Eingaben überlagern.
     for basis in (arbeit, ausgabe):
-        for eingabe in (sdk, starter, jdk, referenz, rezept_datei):
+        for eingabe in (sdk, starter, jdk, referenz, rezept_datei, *srclibs.values()):
             if basis == eingabe or basis.is_relative_to(eingabe):
                 raise ValueError("Arbeits-/Ausgabeordner darf nicht innerhalb einer Eingabe liegen.")
     arbeit.mkdir(parents=True, exist_ok=True)
@@ -191,7 +217,7 @@ def main():
     try:
         melden("Lauf: " + str(lauf))
         melden("Sicherung: " + str(sicherung))
-        for name in ("home", "tmp", "fdroid", "fdroid/metadata", "fdroid/build", "werkzeuge"):
+        for name in ("home", "tmp", "fdroid", "fdroid/metadata", "fdroid/srclibs", "fdroid/build", "werkzeuge"):
             (lauf / name).mkdir(exist_ok=True)
         env = {"PATH": SYSTEMPFAD, "HOME": str(lauf / "home"), "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
                "USER": str(os.getuid()), "LOGNAME": str(os.getuid()), "PYTHONDONTWRITEBYTECODE": "1",
@@ -208,6 +234,12 @@ def main():
         json_schreiben(lauf / "toolchain.json", vorgabe)
         shutil.copyfile(rezept_datei, lauf / "rezept-original.yml")
         shutil.copyfile(HIER / "app-referenz.json", lauf / "app-referenz.json")
+        ergebnis["srclibs"] = {}
+        for name, datei in srclibs.items():
+            ziel = lauf / "fdroid/srclibs" / datei.name
+            shutil.copyfile(datei, ziel)
+            ergebnis["srclibs"][name] = sha256(ziel)
+        melden("srclib-Metadaten kopiert; die Quellen lädt fdroid selbst: " + ", ".join(srclibs))
         melden("Vor dem Rezept: kein node/nodejs/npm/npx im Systempfad; HOME ist neu und leer.")
         melden("Die Probe übernimmt keine Benutzerpfade oder Node-Caches aus der aufrufenden Sitzung.")
         _, fdroid_version = ausfuehren(["fdroid", "--version"])
@@ -258,6 +290,9 @@ def main():
             ausfuehren(sudo_befehl(sudo), cwd=lauf / "fdroid", protokolldatei="sudo.log")
         else:
             melden("Das Rezept enthält keine sudo-Schritte; für diese Probe muss es System-Node und npm bereitstellen.")
+        _, paketversionen = ausfuehren(["dpkg-query", "--show", r"--showformat=${binary:Package}\t${Version}\n", *DEBIAN_PAKETE],
+                                      protokolldatei="debian-pakete.log")
+        ergebnis["debianPaketversionen"] = paketversionen.strip()
         node = shutil.which("node", path=SYSTEMPFAD)
         npm = shutil.which("npm", path=SYSTEMPFAD)
         if node != "/usr/bin/node" or npm != "/usr/bin/npm":
@@ -312,7 +347,7 @@ def main():
         for datei in lauf.iterdir():
             if datei.is_file():
                 shutil.copyfile(datei, sicherung / datei.name)
-        for name in ("metadata", "logs", "unsigned"):
+        for name in ("metadata", "srclibs", "logs", "unsigned"):
             quelle = lauf / "fdroid" / name
             if quelle.is_dir():
                 shutil.copytree(quelle, sicherung / name, symlinks=True)

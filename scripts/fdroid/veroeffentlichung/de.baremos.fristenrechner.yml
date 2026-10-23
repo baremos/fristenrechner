@@ -22,32 +22,51 @@ Builds:
     commit: 61e151091bb509240e16ef86d8a0ad04b44e4582
     subdir: app/android/app
     sudo:
+      - set -eu
       - echo "deb http://deb.debian.org/debian forky main" > /etc/apt/sources.list.d/forky.list
       - apt-get update
-      - apt-get install -y -t forky npm
+      - apt-get install -y -t forky nodejs npm esbuild cargo rustc build-essential cmake
     gradle:
       - yes
+    srclibs:
+      - rolldown@v1.2.9
+      - astro-compiler-rs@v0.4.1
+      - satteri@satteri-v0.10.5
+      - lightningcss@v1.33.0
     prebuild:
       - set -eu
       - cd ../../..
       - export ASTRO_TELEMETRY_DISABLED=1 CI=1
       - npm ci --ignore-scripts --no-audit --no-fund
-      - node scripts/app-bauen.mjs --web
-      - |-
-        node --input-type=module -e '
-        import { spawnSync } from "node:child_process";
-        import { leseAndroidZustand, pruefeSync, pruefeGradle } from "./scripts/app-pruefungen.mjs";
-        import { pruefeBuildHinweise } from "./scripts/app-bauen.mjs";
-        const wurzel = process.cwd();
-        const vorher = leseAndroidZustand({ wurzel });
-        const sync = spawnSync(process.execPath, ["../node_modules/@capacitor/cli/bin/capacitor", "sync", "android"], { cwd: "app", stdio: "inherit" });
-        if (sync.error || sync.status !== 0) throw new Error("Android-Sync gescheitert");
-        const fehler = [...pruefeSync({ wurzel, vorher }), ...pruefeBuildHinweise(wurzel, { nachAndroidSync: true }), ...pruefeGradle({ wurzel })];
-        if (fehler.length) throw new Error(fehler.join("\n"));
-        '
-      - python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe fdroid-bereinigung.json
+      - rm -rf node_modules/@rolldown/binding-linux-x64-gnu node_modules/@astrojs/compiler-binding-linux-x64-gnu node_modules/@bruits/satteri-linux-x64-gnu node_modules/lightningcss-linux-x64-gnu node_modules/@esbuild/linux-x64 node_modules/@img/sharp-linux-x64 node_modules/@img/sharp-libvips-linux-x64
+      - mkdir -p app/dist app/android/app/src/main/assets/public
+      - (cd app && npx --no-install cap update android)
+      - cargo fetch --locked --manifest-path "$$rolldown$$/Cargo.toml"
+      - cargo generate-lockfile --manifest-path "$$astro-compiler-rs$$/Cargo.toml"
+      - cargo fetch --locked --manifest-path "$$astro-compiler-rs$$/Cargo.toml"
+      - cargo fetch --locked --manifest-path "$$satteri$$/Cargo.toml"
+      - cargo fetch --locked --manifest-path "$$lightningcss$$/Cargo.toml"
+    scanignore:
+      - node_modules/@capacitor/cli/assets/capacitor-cordova-android-plugins.tar.gz
+    scandelete:
+      - node_modules/@capacitor/cli/assets
+      - node_modules/@astrojs/astro2tsx/astro2tsx.wasm32-wasi.wasm
+      - node_modules/shiki/dist/onig.wasm
+      - node_modules/xxhash-wasm/workerd/xxhash.wasm
     build:
+      - set -eu
       - cd ../../..
+      - export ASTRO_TELEMETRY_DISABLED=1 CI=1
+      - (cd "$$rolldown$$" && cargo build --offline --release --locked -p rolldown_binding)
+      - (cd "$$astro-compiler-rs$$" && cargo build --offline --release --locked -p astro_napi --features allocator)
+      - (cd "$$satteri$$" && cargo build --offline --release --locked -p satteri-napi)
+      - (cd "$$lightningcss$$" && cargo build --offline --release --locked -p lightningcss_node)
+      - install -m644 "$$rolldown$$/target/release/librolldown_binding.so" node_modules/rolldown/dist/rolldown-binding.linux-x64-gnu.node
+      - install -m644 "$$astro-compiler-rs$$/target/release/libastro_napi.so" node_modules/@astrojs/compiler-binding/astro.linux-x64-gnu.node
+      - install -m644 "$$satteri$$/target/release/libsatteri_napi.so" node_modules/satteri/satteri_napi.linux-x64-gnu.node
+      - install -m644 "$$lightningcss$$/target/release/liblightningcss_node.so" node_modules/lightningcss/lightningcss.linux-x64-gnu.node
+      - node scripts/app-bauen.mjs --web
+      - (cd app && npx --no-install cap copy android)
       - node scripts/fdroid/app-vorbereiten.mjs --nach-scanner
 
 AutoUpdateMode: Version

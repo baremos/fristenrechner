@@ -15,6 +15,15 @@ const rezeptDokument = parseDocument(readFileSync(join(wurzel, 'scripts/fdroid/v
   { version: '1.2', strict: true, uniqueKeys: true });
 assert.deepEqual(rezeptDokument.errors, []);
 const projektRezept = rezeptDokument.toJS({ maxAliasCount: 0 });
+const srclibNamen = ['rolldown', 'astro-compiler-rs', 'satteri', 'lightningcss'];
+const projektSrclibs = Object.fromEntries(srclibNamen.map((name) => {
+  const dokument = parseDocument(readFileSync(join(wurzel, `scripts/fdroid/veroeffentlichung/srclibs/${name}.yml`), 'utf8'),
+    { version: '1.2', strict: true, uniqueKeys: true });
+  assert.deepEqual(dokument.errors, []);
+  return [name, dokument.toJS({ maxAliasCount: 0 })];
+}));
+const debianPakete = ['nodejs', 'npm', 'esbuild', 'cargo', 'rustc', 'build-essential', 'cmake'];
+const paketVersionen = 'nodejs\t24.21.0+dfsg+~cs24.13.4-1\nnpm\t12.2.0+ds1-1\nesbuild\t0.28.2-1\ncargo\t1.97.1+dfsg1-1\nrustc\t1.97.1+dfsg1-1\nbuild-essential\tTestversion\ncmake\tTestversion\n';
 // Synthetische vollständige Hashes; kein Release-Commit ist im Test vorausgesetzt.
 const erwarteterCommit = '0123456789abcdef0123456789abcdef01234567';
 const andererCommit = 'fedcba9876543210fedcba9876543210fedcba98';
@@ -163,6 +172,8 @@ def welches(name, path=None):
         return ("/usr/sbin/" if modus == name + "-falscher-pfad" else "/usr/bin/") + name
     if modus == "apt-fehlt" and name == "apt-get":
         return None
+    if modus == "dpkg-query-fehlt" and name == "dpkg-query":
+        return None
     return "/usr/bin/" + name
 shutil.which = welches
 yaml_modul = types.ModuleType("fdroidserver._yaml")
@@ -192,7 +203,29 @@ referenz_daten = {"appId": APPID, "versionName": version, "versionCode": version
 original = {"RepoType": "git", "Repo": REPO, "Binaries": "https://example.org/v%v/app_%c.apk",
             "CurrentVersion": version, "CurrentVersionCode": versionscode,
             "Builds": [{"versionName": version, "versionCode": versionscode, "commit": test_commit,
+                        "srclibs": ${JSON.stringify(projektRezept.Builds[0].srclibs)},
                         "sudo": ${JSON.stringify(projektRezept.Builds[0].sudo)}}]}
+srclib_quelle = HIER / "veroeffentlichung/srclibs"
+srclib_quelle.mkdir(parents=True)
+for name, daten in ${JSON.stringify(projektSrclibs)}.items():
+    if modus == "srclib-fehlt" and name == "satteri":
+        continue
+    if name == "satteri":
+        if modus == "srclib-fremdes-feld":
+            daten["Version"] = "0.10.5"
+        if modus == "srclib-falscher-repotyp":
+            daten["RepoType"] = "svn"
+        if modus == "srclib-kein-https":
+            daten["Repo"] = "http://example.org/satteri.git"
+    json_schreiben(srclib_quelle / (name + ".yml"), daten)
+if modus == "srclibs-fehlen":
+    del original["Builds"][0]["srclibs"]
+if modus == "srclib-ohne-tag":
+    original["Builds"][0]["srclibs"][0] = "rolldown"
+if modus == "srclib-pfad":
+    original["Builds"][0]["srclibs"][0] = "../rolldown@v1.2.9"
+if modus == "srclib-doppelt":
+    original["Builds"][0]["srclibs"].append(original["Builds"][0]["srclibs"][0])
 if modus == "ohne-sudo":
     del original["Builds"][0]["sudo"]
 for fall, ziel, feld, wert in (
@@ -271,6 +304,10 @@ class Prozess:
             assert not (cwd / ".git").exists()
             assert werkzeuge_installiert
             assert verwendet["Builds"][0]["sudo"] == original["Builds"][0]["sudo"]
+            assert verwendet["Builds"][0]["srclibs"] == original["Builds"][0]["srclibs"]
+            assert sorted(p.name for p in (cwd / "srclibs").iterdir()) == sorted(p.name for p in srclib_quelle.iterdir())
+            for datei in srclib_quelle.iterdir():
+                assert (cwd / "srclibs" / datei.name).read_bytes() == datei.read_bytes()
             assert not list(Path(env["HOME"]).rglob("node"))
             gradle = cwd.parent / "fdroid-cache/versions/8.14.5/bin/gradle"
             gradle.parent.mkdir(parents=True)
@@ -288,6 +325,10 @@ class Prozess:
                 # Der Tag kann sich ändern, während HEAD am Rezept-Commit bleibt.
                 klon_tag_commit = abweichender_commit
             text = "Nachgestellter fdroid-Build\n"
+        elif name == "dpkg-query":
+            assert befehl == ["dpkg-query", "--show", r"--showformat=${'${binary:Package}'}\t${'${Version}'}\n", *DEBIAN_PAKETE]
+            text = ${JSON.stringify(paketVersionen)}
+            self.code = 1 if modus == "dpkg-query-fehler" else 0
         elif name == "node":
             assert werkzeuge_installiert and befehl == ["/usr/bin/node", "--version"]
             text = {"node-alte-version": "v20.19.2", "node-andere-patchversion": "v24.21.1",
@@ -312,7 +353,7 @@ if modus == "ersatz":
     sys.argv.extend(["--quelle", str(quellenersatz)])
 if modus == "rezept-standard":
     standard = HIER / "veroeffentlichung" / (APPID + ".yml")
-    standard.parent.mkdir()
+    standard.parent.mkdir(exist_ok=True)
     shutil.copyfile(rezept_datei, standard)
     sys.argv = sys.argv[:-2]
 if modus == "rezept-relativ":
@@ -363,7 +404,15 @@ for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'a
     assert.equal(ergebnis.bestanden, bestanden);
     assert.equal(ergebnis.uid, 0);
     assert.equal(ergebnis.euid, 0);
-    assert.equal(ergebnis.sudoSchritte, 3);
+    assert.equal(ergebnis.sudoSchritte, projektRezept.Builds[0].sudo.length);
+    assert.equal(ergebnis.debianPaketversionen, paketVersionen.trim());
+    assert.equal(readFileSync(join(sicherung, 'debian-pakete.log'), 'utf8').replaceAll('\r\n', '\n'), paketVersionen);
+    assert.deepEqual(Object.keys(ergebnis.srclibs).sort(), srclibNamen.toSorted());
+    for (const name of srclibNamen) {
+      const kopie = readFileSync(join(sicherung, `srclibs/${name}.yml`));
+      assert.deepEqual(JSON.parse(kopie), projektSrclibs[name]);
+      assert.equal(ergebnis.srclibs[name], createHash('sha256').update(kopie).digest('hex'));
+    }
     assert.equal(ergebnis.nodePfad, '/usr/bin/node');
     assert.equal(ergebnis.nodeVersion, modus === 'andere-node-referenz' ? 'v24.22.1' : 'v24.21.0');
     assert.equal(ergebnis.npmVersion, '12.2.0');
@@ -388,7 +437,8 @@ for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'a
     const sudoIndex = aufrufe.findIndex((x) => x.befehl[0] === 'bash');
     assert.ok(sudoIndex >= 0);
     assert.equal(aufrufe[sudoIndex].befehl.at(-1), projektRezept.Builds[0].sudo.join('; '));
-    assert.deepEqual(aufrufe.slice(sudoIndex + 1, sudoIndex + 4).map((x) => x.befehl), [
+    assert.deepEqual(aufrufe.slice(sudoIndex + 1, sudoIndex + 5).map((x) => x.befehl), [
+      ['dpkg-query', '--show', '--showformat=${binary:Package}\\t${Version}\\n', ...debianPakete],
       ['/usr/bin/node', '--version'], ['/usr/bin/npm', '--version'],
       ['fdroid', 'build', '--verbose', `${referenz.appId}:${versionscode}`],
     ]);
@@ -402,6 +452,7 @@ for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'a
 
 for (const [modus, fehler] of [
   ['sudo-fehler', /Befehl fehlgeschlagen/],
+  ['dpkg-query-fehler', /Befehl fehlgeschlagen.*dpkg-query/],
   ...['ohne-sudo', 'node-fehlt', 'npm-fehlt', 'node-falscher-pfad', 'npm-falscher-pfad']
     .map((modus) => [modus, /Nach den sudo-Schritten werden \/usr\/bin\/node und \/usr\/bin\/npm/]),
   ...['node-alte-version', 'node-andere-patchversion']
@@ -432,8 +483,29 @@ for (const [modus, fehler] of [
   ['sudo-ohne-root', /sudo-Schritte.*als root in einer entbehrlichen/],
   ['node-vor-rezept', /node ist bereits im Systempfad/],
   ['apt-fehlt', /Voraussetzung fehlt im Systempfad: apt-get/],
+  ['dpkg-query-fehlt', /Voraussetzung fehlt im Systempfad: dpkg-query/],
 ]) {
   test(`Voraussetzungen der Systeminstallation werden vor externen Prozessen geprüft: ${modus}`, { skip: !python }, () => {
+    const basis = join(arbeit, modus);
+    mkdirSync(basis);
+    const lauf = auswerten(prozessNachstellung, [basis, modus]);
+    assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
+    assert.match(lauf.stderr, fehler);
+    assert.equal(existsSync(join(basis, 'arbeit')), false);
+    assert.equal(existsSync(join(basis, 'ausgabe')), false);
+    assert.deepEqual(JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8')), []);
+  });
+}
+
+for (const [modus, fehler] of [
+  ['srclib-fehlt', /srclib-Datei fehlt/],
+  ...['srclib-fremdes-feld', 'srclib-falscher-repotyp', 'srclib-kein-https']
+    .map((modus) => [modus, /Ungültige srclib-Datei/]),
+  ['srclibs-fehlen', /muss srclibs mit Tags nennen/],
+  ...['srclib-ohne-tag', 'srclib-pfad'].map((modus) => [modus, /Ungültige srclib mit Tag/]),
+  ['srclib-doppelt', /Doppelte srclib im Rezept/],
+]) {
+  test(`Ungültige srclib-Eingaben brechen vor externen Prozessen ab: ${modus}`, { skip: !python }, () => {
     const basis = join(arbeit, modus);
     mkdirSync(basis);
     const lauf = auswerten(prozessNachstellung, [basis, modus]);
