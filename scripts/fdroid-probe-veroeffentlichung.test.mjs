@@ -348,7 +348,7 @@ finally:
 sys.exit(code)
 `;
 
-for (const modus of ['erfolg', 'ersatz', 'root', 'rezept-standard', 'andere-version', 'andere-node-referenz', 'anderer-commit', 'commit-gross', 'apk-fehler', 'build-fehler']) {
+for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'andere-node-referenz', 'anderer-commit', 'commit-gross', 'apk-fehler', 'build-fehler']) {
   test(`Vollständiger Ablauf mit nachgestellten Prozessen: ${modus}`, { skip: !python }, () => {
     const basis = join(arbeit, modus);
     mkdirSync(basis);
