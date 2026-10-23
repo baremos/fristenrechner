@@ -20,7 +20,9 @@ i = b.inventur
 
 class Bereinigung(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="bereinigung-", dir=os.environ.get("TMP"))
+        tmp = HIER.parents[1] / "scratchpad/test-fdroid-bereinigung"
+        tmp.mkdir(parents=True, exist_ok=True)
+        self.tmp = tempfile.TemporaryDirectory(prefix="bereinigung-", dir=tmp)
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name).resolve()
         self.nm = self.root / "node_modules"

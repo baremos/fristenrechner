@@ -46,7 +46,7 @@ function tagMuster(rezept) {
     assert.ok(ausdruck.test(tag), `Versionstag muss passen: ${tag}`);
   }
   for (const tag of ['v0.2.0-rc1', 'v1.0.0-beta.2', 'v1.0.0+build.1', '0.2.0', 'release-v0.2.0',
-    'v0x2x0', 'v0.2', 'v1.0.0.1', 'main', 'v', 'v1.2.3suffix']) {
+    'v0x2x0', 'v0.2', 'v1.0.0.1', 'main', 'v', 'v1.2.3suffix', 'test/1.0.1-1']) {
     assert.ok(!ausdruck.test(tag), `Fremder Tag darf nicht passen: ${tag}`);
   }
   return ausdruck;
@@ -157,7 +157,8 @@ function rezeptPruefen(text) {
   genaueFelder(build, buildFelder, 'Build');
   assert.equal(build.versionName, referenz.versionName);
   assert.equal(build.versionCode, referenz.versionCode);
-  assert.equal(build.commit, `v${referenz.versionName}`);
+  assert.match(build.commit, /^[0-9a-f]{40}$/, 'Vollständiger Commit mit 40 Hex-Zeichen in Kleinschreibung');
+  assert.equal(build.commit.length, 40, 'Vollständiger Commit ohne zusätzliche Zeichen');
   assert.equal(build.subdir, 'app/android/app');
   assert.deepEqual(build.gradle, ['yes']);
   for (const phase of ['prebuild', 'build']) {
@@ -261,7 +262,9 @@ gegenprobe('Versionsname weicht ab', (r) => { r.Builds[0].versionName = '9.9.9';
 gegenprobe('Versionscode als Text', (r) => { r.CurrentVersionCode = String(referenz.versionCode); });
 gegenprobe('Build-Versionscode weicht ab', (r) => { r.Builds[0].versionCode += 1; });
 gegenprobe('aktuelle Version weicht ab', (r) => { r.CurrentVersion = '9.9.9'; });
-gegenprobe('Commit ohne Tagpräfix', (r) => { r.Builds[0].commit = referenz.versionName; });
+gegenprobe('Tagname im Feld commit', (r) => { r.Builds[0].commit = `v${referenz.versionName}`; }, /Vollständiger Commit/);
+gegenprobe('siebenstellige Commit-Kurzform', (r) => { r.Builds[0].commit = r.Builds[0].commit.slice(0, 7); }, /Vollständiger Commit/);
+gegenprobe('Commit mit Großbuchstaben', (r) => { r.Builds[0].commit = r.Builds[0].commit.toUpperCase(); }, /Vollständiger Commit/);
 gegenprobe('Gradle yes als boolescher Wert', (r) => { r.Builds[0].gradle = [true]; });
 gegenprobe('automatisches Update deaktiviert', (r) => { r.AutoUpdateMode = 'None'; });
 gegenprobe('fremdes Zertifikat', (r) => { r.AllowedAPKSigningKeys = ['0'.repeat(64)]; }, /Zertifikatsfingerabdruck/);

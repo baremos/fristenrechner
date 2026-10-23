@@ -17,7 +17,7 @@ AllowedAPKSigningKeys:
 Builds:
   - versionName: 1.0.0
     versionCode: 10000
-    commit: v1.0.0
+    commit: 61e151091bb509240e16ef86d8a0ad04b44e4582
     subdir: app/android/app
     gradle:
       - yes

@@ -6,10 +6,15 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { dirname, join, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { parseDocument } from 'yaml';
 
 const wurzel = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const skript = join(wurzel, 'scripts/fdroid/probe-veroeffentlichung.sh');
 const referenz = JSON.parse(readFileSync(join(wurzel, 'scripts/fdroid/app-referenz.json'), 'utf8'));
+const rezeptDokument = parseDocument(readFileSync(join(wurzel, 'scripts/fdroid/veroeffentlichung/de.baremos.fristenrechner.yml'), 'utf8'),
+  { version: '1.2', strict: true, uniqueKeys: true });
+assert.deepEqual(rezeptDokument.errors, []);
+const projektRezept = rezeptDokument.toJS({ maxAliasCount: 0 });
 // Synthetische vollständige Hashes; kein Release-Commit ist im Test vorausgesetzt.
 const erwarteterCommit = '0123456789abcdef0123456789abcdef01234567';
 const andererCommit = 'fedcba9876543210fedcba9876543210fedcba98';
@@ -41,6 +46,37 @@ test('Bash und eingebettetes Python sind syntaktisch gültig', { skip: !python |
   const code = auswerten('print("Syntax geprüft")');
   assert.equal(code.status, 0, code.stderr);
 });
+
+test('Abgleichsfunktion akzeptiert das echte Veröffentlichungsrezept und --help bleibt ohne Debian ausführbar', { skip: !python }, () => {
+  const commit = projektRezept.Builds[0].commit;
+  assert.match(commit, /^[0-9a-f]{40}$/);
+  const lauf = auswerten('print(json.dumps(pruefe_rezept(*json.loads(sys.argv[2]))))',
+    [JSON.stringify([projektRezept, referenz, commit])]);
+  assert.equal(lauf.status, 0, lauf.stderr);
+  assert.deepEqual(JSON.parse(lauf.stdout), [referenz.versionName, referenz.versionCode, `v${referenz.versionName}`]);
+  const hilfe = auswerten('sys.exit(main())', ['--help']);
+  assert.equal(hilfe.status, 0, hilfe.stderr);
+  assert.match(hilfe.stdout, /--erwarteter-commit/);
+});
+
+for (const [name, wert, fehler] of [
+  ['Tagname', `v${referenz.versionName}`, /genau 40 Hex-Zeichen/],
+  ['Kurzform', projektRezept.Builds[0].commit.slice(0, 7), /genau 40 Hex-Zeichen/],
+  ['Großbuchstaben', projektRezept.Builds[0].commit.toUpperCase(), /Großbuchstaben/],
+  ['anderer Hash', erwarteterCommit, /weicht von --erwarteter-commit ab/],
+  ['fehlendes Feld', undefined, /genau 40 Hex-Zeichen/],
+  ['Zahl', 10000, /genau 40 Hex-Zeichen/],
+  ['Zeilenumbruch', projektRezept.Builds[0].commit + '\n', /genau 40 Hex-Zeichen/],
+]) {
+  test(`Abgleichsfunktion lehnt geändertes Veröffentlichungsrezept ab: ${name}`, { skip: !python }, () => {
+    const rezept = structuredClone(projektRezept);
+    rezept.Builds[0].commit = wert;
+    const lauf = auswerten('pruefe_rezept(*json.loads(sys.argv[2]))',
+      [JSON.stringify([rezept, referenz, projektRezept.Builds[0].commit])]);
+    assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
+    assert.match(lauf.stderr, fehler);
+  });
+}
 
 test('APK-Vergleich erkennt gleiche Größe mit anderem Inhalt und fehlende Datei', { skip: !python }, () => {
   const original = join(arbeit, 'original.apk');
@@ -141,11 +177,14 @@ referenz_daten = {"appId": APPID, "versionName": version, "versionCode": version
                   "apk": {"bytes": len(apk_inhalt), "sha256": hashlib.sha256(apk_inhalt).hexdigest()}}
 original = {"RepoType": "git", "Repo": REPO, "Binaries": "https://example.org/v%v/app_%c.apk",
             "CurrentVersion": version, "CurrentVersionCode": versionscode,
-            "Builds": [{"versionName": version, "versionCode": versionscode, "commit": tag}]}
+            "Builds": [{"versionName": version, "versionCode": versionscode, "commit": test_commit}]}
 for fall, ziel, feld, wert in (
     ("build-version", original["Builds"][0], "versionName", "9.8.7"),
     ("build-code", original["Builds"][0], "versionCode", versionscode + 1),
-    ("build-tag", original["Builds"][0], "commit", "v9.8.7"),
+    ("build-tag", original["Builds"][0], "commit", tag),
+    ("build-commit-kurz", original["Builds"][0], "commit", test_commit[:7]),
+    ("build-commit-gross", original["Builds"][0], "commit", test_commit.upper()),
+    ("build-commit-abweichend", original["Builds"][0], "commit", ${JSON.stringify(andererCommit)}),
     ("aktuelle-version", original, "CurrentVersion", "9.8.7"),
     ("aktueller-code", original, "CurrentVersionCode", versionscode + 1),
     ("referenz-version", referenz_daten, "versionName", "9.8.7"),
@@ -163,10 +202,11 @@ json_schreiben(rezept_datei, original)
 aufrufe = []
 abweichender_commit = test_commit[:7] + "0" * 33
 klon_commit = abweichender_commit if modus == "tag-fehler" else test_commit
+klon_tag_commit = abweichender_commit if modus in ("tag-fehler", "tag-head-ungleich") else test_commit
 
 class Prozess:
     def __init__(self, befehl, cwd, env, **kwargs):
-        global klon_commit
+        global klon_commit, klon_tag_commit
         self.code = 0
         cwd = Path(cwd)
         aufrufe.append({"befehl": befehl, "cwd": str(cwd), "env": env})
@@ -191,7 +231,7 @@ class Prozess:
         elif name == "git" and "rev-parse" in befehl:
             assert Path(befehl[2]) == cwd / "fdroid/build" / APPID
             assert befehl[-1] in ("HEAD", tag + "^{commit}")
-            text = (abweichender_commit if modus == "tag-head-ungleich" and befehl[-1] != "HEAD" else klon_commit) + "\n"
+            text = (klon_commit if befehl[-1] == "HEAD" else klon_tag_commit) + "\n"
         elif name == "git" and "log" in befehl:
             text = "1790000000\n"
         elif name == "fdroid":
@@ -199,6 +239,7 @@ class Prozess:
             assert cwd.name == "fdroid"
             verwendet = json.loads((cwd / "metadata" / (APPID + ".yml")).read_text())
             assert "Binaries" not in verwendet
+            assert verwendet["Builds"][0]["commit"] == test_commit
             assert json.loads(rezept_datei.read_text()) == original
             repo_erwartet = str(quellenersatz) if modus == "ersatz" else REPO
             assert verwendet["Repo"] == repo_erwartet
@@ -216,10 +257,12 @@ class Prozess:
             (cwd / "logs").mkdir()
             (cwd / "logs/build-metadata.json").write_text("{}")
             self.code = 1 if modus == "build-fehler" else 0
-            if modus == "tag-nach-build":
-                # Der erste Klon war korrekt. Erst fdroidservers erneuter
-                # Fetch/Checkout während des Builds übernimmt den verschobenen Tag.
+            if modus == "head-nach-build":
+                # Ein während des Builds abweichender HEAD muss erkannt werden.
                 klon_commit = abweichender_commit
+            if modus == "tag-nach-build":
+                # Der Tag kann sich ändern, während HEAD am Rezept-Commit bleibt.
+                klon_tag_commit = abweichender_commit
             text = "Nachgestellter fdroid-Build\n"
         elif name == "node":
             text = "v24.21.0\n"
@@ -292,6 +335,7 @@ for (const modus of ['erfolg', 'ersatz', 'root', 'rezept-standard', 'andere-vers
     assert.equal(ergebnis.euid, modus === 'root' ? 0 : 1000);
     assert.equal(ergebnis.fdroidBuild, modus === 'build-fehler' ? 1 : 0);
     assert.equal(ergebnis.commitNachBuild, ergebnis.commit);
+    assert.equal(ergebnis.tagCommitNachBuild, ergebnis.commit);
     assert.equal(ergebnis.commit, modus === 'anderer-commit' ? andererCommit : erwarteterCommit);
     assert.equal(ergebnis.tag, `v${version}`);
     assert.match(readFileSync(join(sicherung, 'build.log'), 'utf8'), /Nachgestellter fdroid-Build/);
@@ -299,6 +343,8 @@ for (const modus of ['erfolg', 'ersatz', 'root', 'rezept-standard', 'andere-vers
     const original = JSON.parse(readFileSync(join(sicherung, 'rezept-original.yml'), 'utf8'));
     const verwendet = JSON.parse(readFileSync(join(sicherung, 'metadata/de.baremos.fristenrechner.yml'), 'utf8'));
     assert.ok(original.Binaries);
+    assert.equal(original.Builds[0].commit, ergebnis.commit);
+    assert.equal(verwendet.Builds[0].commit, ergebnis.commit);
     assert.equal(verwendet.Binaries, undefined);
     const abweichungen = JSON.parse(readFileSync(join(sicherung, 'abweichungen.json'), 'utf8'));
     assert.ok(abweichungen.some((x) => x.includes('Binaries')));
@@ -331,37 +377,45 @@ for (const modus of ['tag-fehler', 'tag-head-ungleich']) {
   });
 }
 
-test('Erneuter Checkout eines verschobenen Tags während fdroid build scheitert trotz bytegleicher APK und sichert den Commit', { skip: !python }, () => {
-  const basis = join(arbeit, 'tag-nach-build');
+for (const modus of ['head-nach-build', 'tag-nach-build']) {
+test(`Abweichender HEAD oder Tag nach fdroid build scheitert trotz bytegleicher APK: ${modus}`, { skip: !python }, () => {
+  const basis = join(arbeit, modus);
   mkdirSync(basis);
-  const lauf = auswerten(prozessNachstellung, [basis, 'tag-nach-build']);
+  const lauf = auswerten(prozessNachstellung, [basis, modus]);
   assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
-  assert.match(lauf.stdout, /ERGEBNIS: Nacharbeit nötig.*HEAD nach fdroid build/);
+  assert.match(lauf.stdout, /ERGEBNIS: Nacharbeit nötig.*(?:HEAD|Tag v[0-9.]+) nach fdroid build/);
   const sicherung = join(basis, 'ausgabe', readdirSync(join(basis, 'ausgabe'))[0]);
   const ergebnis = JSON.parse(readFileSync(join(sicherung, 'ergebnis.json'), 'utf8'));
   assert.equal(ergebnis.bestanden, false);
   assert.equal(ergebnis.fdroidBuild, 0, 'Der nachgestellte Build selbst war erfolgreich');
   assert.equal(ergebnis.commit, erwarteterCommit);
-  assert.equal(ergebnis.commitNachBuild, erwarteterCommit.slice(0, 7) + '0'.repeat(33));
-  assert.ok(ergebnis.fehler.includes(`HEAD nach fdroid build weicht vom erwarteten Release-Commit ab: ${ergebnis.commitNachBuild} statt ${erwarteterCommit}`));
+  const abweichend = erwarteterCommit.slice(0, 7) + '0'.repeat(33);
+  assert.equal(ergebnis.commitNachBuild, modus === 'head-nach-build' ? abweichend : erwarteterCommit);
+  assert.equal(ergebnis.tagCommitNachBuild, modus === 'tag-nach-build' ? abweichend : erwarteterCommit);
+  assert.ok(ergebnis.fehler.includes(`nach fdroid build weicht vom erwarteten Release-Commit ab: ${abweichend} statt ${erwarteterCommit}`));
   assert.deepEqual(readFileSync(join(sicherung, `unsigned/${referenz.appId}_${referenz.versionCode}.apk`)),
     readFileSync(join(basis, 'referenz.apk')), 'Selbst eine bytegleiche APK darf den falschen Commit nicht verdecken');
   const aufrufe = JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8'));
   const buildIndex = aufrufe.findIndex((x) => x.befehl[0] === 'fdroid' && x.befehl[1] === 'build');
   assert.ok(buildIndex >= 0);
   const commitPruefungen = aufrufe.filter((x) => x.befehl[0] === 'git' && x.befehl.includes('rev-parse'));
-  assert.deepEqual(commitPruefungen.map((x) => x.befehl.at(-1)), ['HEAD', `v${referenz.versionName}^{commit}`, 'HEAD']);
+  assert.deepEqual(commitPruefungen.map((x) => x.befehl.at(-1)), ['HEAD', `v${referenz.versionName}^{commit}`, 'HEAD', `v${referenz.versionName}^{commit}`]);
   assert.equal(aufrufe[buildIndex + 1], commitPruefungen[2], 'HEAD wird unmittelbar nach fdroid build erneut geprüft');
   assert.equal(commitPruefungen[2].befehl[2], commitPruefungen[0].befehl[2], 'Beide Prüfungen verwenden denselben Klon');
-  assert.match(readFileSync(join(sicherung, 'quelle.log'), 'utf8'), new RegExp(ergebnis.commitNachBuild));
+  assert.equal(aufrufe[buildIndex + 2], commitPruefungen[3], 'Auch der Tag wird unmittelbar nach fdroid build erneut geprüft');
+  assert.match(readFileSync(join(sicherung, 'quelle.log'), 'utf8'), new RegExp(abweichend));
 });
+}
 
 for (const [modus, fehler] of [
   ['commit-fehlt', /required: --erwarteter-commit/],
   ['commit-ohne-wert', /--erwarteter-commit: expected one argument/],
   ...['commit-kurz', 'commit-ungueltig', 'commit-zu-lang', 'commit-leer', 'commit-zeilenumbruch']
     .map((modus) => [modus, /--erwarteter-commit:.*genau 40 Hex-Zeichen/]),
-  ...['build-version', 'build-code', 'build-tag', 'aktuelle-version', 'aktueller-code',
+  ...['build-tag', 'build-commit-kurz', 'build-commit-gross']
+    .map((modus) => [modus, /Feld commit.*genau 40 Hex-Zeichen/]),
+  ['build-commit-abweichend', /Feld commit.*weicht von --erwarteter-commit ab/],
+  ...['build-version', 'build-code', 'aktuelle-version', 'aktueller-code',
     'referenz-version', 'referenz-code', 'build-code-text', 'aktueller-code-text']
     .map((modus) => [modus, /Veröffentlichungsrezept und app-referenz\.json widersprechen sich/]),
   ['zweiter-build', /genau ein Build/],
