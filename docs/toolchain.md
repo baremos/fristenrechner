@@ -23,6 +23,8 @@ Dieses Dokument legt fest, mit welchen Werkzeugen und in welchen Versionen der F
 7. **Keine Installationsskripte.** `ignore-scripts=true` in der `.npmrc` gilt für npm 10 und npm 11. Braucht ein Paket ein Skript, wird es einzeln freigegeben und hier vermerkt.
 8. **Keine systemweiten Eingriffe durch Skripte.** Die Skripte setzen `JAVA_HOME` und `ANDROID_HOME` nur für den eigenen Lauf. Sie ändern weder `PATH` noch andere Einstellungen des Rechners.
 
+Nachtrag 2026-10-23, nur für das [Veröffentlichungsrezept für F-Droid](fdroid-build.md#node-und-vorbereitung-des-builds): Auf Wunsch des Maintainers und nach Entscheidung des fachlich Verantwortlichen installiert dessen `sudo`-Block Node.js und npm systemweit aus Debian forky. Die Probe dieses Rezepts braucht dafür Root-Rechte in einer entbehrlichen Distribution und wurde mit diesem Rezept nicht lokal wiederholt. Diese Ausnahme ändert die lokale Einrichtung, `build-lokal.py`, die lokalen Rezepte und deren Referenzversionen nicht.
+
 ## Festgelegte Versionen
 
 ### Node.js und npm
@@ -261,7 +263,8 @@ Die Prüfsummen der Gradle-Abhängigkeiten stehen seit dem 2026-10-05 in `app/an
 | `app/android/variables.gradle` | API-Stufen und AndroidX-Versionen | 2.5 |
 | `app/android/gradle/wrapper/gradle-wrapper.properties` | Gradle-Version und Prüfsumme | 2.5 |
 | `app/android/gradle/verification-metadata.xml` | SHA-256 der erfassten Gradle-Artefakte und Metadaten | Vorarbeit Stufe 3 |
-| Build-Rezept für F-Droid | Node-Referenzversion mit Prüfsumme des Linux-Archivs | 2.8 |
+| Lokale Build-Rezepte für F-Droid | Node-Referenzversion aus der Einrichtung im Benutzerbereich mit Prüfsumme des Linux-Archivs | 2.8 |
+| Veröffentlichungsrezept für F-Droid | Node.js und npm aus Debian forky über `sudo`; Suite festgelegt, Paketversionen nicht festgeschrieben (Entscheidung 2026-10-23) | 2.8 |
 
 ## Gradle-Prüfsummen
 
@@ -405,7 +408,7 @@ Freie Lizenzen allein klären nicht, wie F-Droid vorgefertigte Binärdateien beh
 
 | Datei oder Paket | Herkunft | Zweck | Absicherung | Klärung in 2.8 |
 |---|---|---|---|---|
-| Node.js | offizielles Archiv von nodejs.org | Web-Build | SHA-256 im Build-Rezept | Begründung, warum das Paket aus Debian nicht reicht |
+| Node.js | lokal: offizielles Archiv von nodejs.org; Veröffentlichungsrezept seit 2026-10-23: Debian forky | Web-Build | lokal: Archiv-SHA-256 in `scripts/toolchain.json`; Veröffentlichungsrezept: Debian-Paketverwaltung | Umstellung auf Wunsch des F-Droid-Maintainers, Build mit Binärabgleich in Pipeline 2980491535 bestanden; siehe [Veröffentlichungsrezept](fdroid-build.md#node-und-vorbereitung-des-builds) |
 | `rolldown`, `esbuild`, `lightningcss` | npm, plattformabhängige Pakete | Web-Build über Vite und Astro | Prüfsummen im Lockfile | Behandlung durch den Scanner, Zeitpunkt von `npm ci` im Rezept |
 | `sharp` mit `libvips` | npm, optionale Abhängigkeit von Astro | Bildverarbeitung, von der App nicht genutzt | Prüfsummen im Lockfile | aus dem Baum entfernen, wenn möglich |
 | `gradle-wrapper.jar` | Gradle, im Repository eingecheckt | Start des Gradle-Builds | SHA-256 in diesem Dokument, Prüfung im Build-Skript | Behandlung durch den Scanner |

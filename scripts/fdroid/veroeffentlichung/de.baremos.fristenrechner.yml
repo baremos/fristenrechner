@@ -21,16 +21,15 @@ Builds:
     versionCode: 10000
     commit: 61e151091bb509240e16ef86d8a0ad04b44e4582
     subdir: app/android/app
+    sudo:
+      - echo "deb http://deb.debian.org/debian forky main" > /etc/apt/sources.list.d/forky.list
+      - apt-get update
+      - apt-get install -y -t forky npm
     gradle:
       - yes
     prebuild:
       - set -eu
       - cd ../../..
-      - mkdir -p "$HOME/.cache/fristenrechner-fdroid"
-      - curl --fail --location --proto '=https' --proto-redir '=https' --output "$HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64.tar.gz" https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.gz
-      - echo "6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff  $HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64.tar.gz" | sha256sum --check --strict
-      - tar -xzf "$HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64.tar.gz" -C "$HOME/.cache/fristenrechner-fdroid"
-      - export PATH="$HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64/bin:$PATH"
       - export ASTRO_TELEMETRY_DISABLED=1 CI=1
       - npm ci --ignore-scripts --no-audit --no-fund
       - node scripts/app-bauen.mjs --web
@@ -48,7 +47,6 @@ Builds:
         '
       - python3 scripts/fdroid/npm-bereinigen.py --wurzel . --ausgabe fdroid-bereinigung.json
     build:
-      - export PATH="$HOME/.cache/fristenrechner-fdroid/node-v24.21.0-linux-x64/bin:$PATH"
       - cd ../../..
       - node scripts/fdroid/app-vorbereiten.mjs --nach-scanner
 
