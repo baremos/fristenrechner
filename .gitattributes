@@ -38,6 +38,11 @@ scripts/hinweistexte/libwebp-COPYING.txt whitespace=-blank-at-eof
 # Leerzeichen am Zeilenende gehören hier zum unveränderten fremden Wortlaut.
 app/src/hinweise-dritter.txt whitespace=-blank-at-eol
 
+# Die Veröffentlichungsrezepte bleiben bytegleich zur fdroiddata-Fassung.
+scripts/fdroid/veroeffentlichung/** text eol=lf
+# Das Leerzeichen nach Binaries: gehört zur kanonischen Form von fdroid rewritemeta.
+scripts/fdroid/veroeffentlichung/de.baremos.fristenrechner.yml whitespace=-blank-at-eol
+
 # Paketmanifeste und Paketbeschreibungen gehen unverändert in die npm-Pakete.
 # Mit festen Zeilenenden sind die Archive unter Windows und Linux gleich.
 packages/*/package.json text eol=lf

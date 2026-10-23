@@ -24,6 +24,7 @@ HIER = Path(sys.argv[1])
 APPID = "de.baremos.fristenrechner"
 REPO = "https://github.com/baremos/fristenrechner.git"
 SYSTEMPFAD = "/usr/sbin:/usr/bin:/sbin:/bin"
+DEBIAN_PAKETE = ("nodejs", "npm", "esbuild", "cargo", "rustc", "build-essential", "cmake")
 
 
 def sha256(datei):
@@ -90,6 +91,30 @@ def pruefe_rezept(rezept, soll, erwarteter_commit):
     return version, versionscode, "v" + version
 
 
+def srclib_dateien(rezept, yaml):
+    eintraege = rezept["Builds"][0].get("srclibs", [])
+    if not isinstance(eintraege, list) or not eintraege:
+        raise ValueError("Das Veröffentlichungsrezept muss srclibs mit Tags nennen.")
+    dateien = {}
+    for eintrag in eintraege:
+        if not isinstance(eintrag, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]*@[^\s/@]+", eintrag):
+            raise ValueError("Ungültige srclib mit Tag: " + str(eintrag))
+        name = eintrag.split("@", 1)[0]
+        if name in dateien:
+            raise ValueError("Doppelte srclib im Rezept: " + name)
+        datei = pfad(str(HIER / "veroeffentlichung/srclibs" / (name + ".yml")))
+        if not datei.is_file():
+            raise ValueError("srclib-Datei fehlt: " + str(datei))
+        with datei.open(encoding="utf-8") as quelle:
+            daten = yaml.load(quelle)
+        if (not isinstance(daten, dict) or set(daten) - {"RepoType", "Repo", "Subdir", "Prepare"}
+                or daten.get("RepoType") != "git" or not isinstance(daten.get("Repo"), str)
+                or not daten["Repo"].startswith("https://")):
+            raise ValueError("Ungültige srclib-Datei (nur RepoType/Repo/Subdir/Prepare, git und HTTPS): " + str(datei))
+        dateien[name] = datei
+    return dateien
+
+
 def main():
     parser = argparse.ArgumentParser(description="Veröffentlichungsrezept mit fdroidserver 2.4.2 unter Debian 13 bauen.")
     parser.add_argument("--erwarteter-commit", required=True, type=vollstaendiger_commit, help="erwarteter Commit des Tags: genau 40 Hex-Zeichen")
@@ -110,7 +135,7 @@ def main():
     for name in ("node", "nodejs", "npm", "npx"):
         if shutil.which(name, path=SYSTEMPFAD):
             raise ValueError(name + " ist bereits im Systempfad. Eine Umgebung ohne systemweite Node-Installation verwenden; die Probe entfernt keine Pakete.")
-    for name in ("fdroid", "git", "bash", "cp", "apt-get"):
+    for name in ("fdroid", "git", "bash", "cp", "apt-get", "dpkg-query"):
         if not shutil.which(name, path=SYSTEMPFAD):
             raise ValueError("Voraussetzung fehlt im Systempfad: " + name)
     from fdroidserver._yaml import yaml
@@ -121,6 +146,7 @@ def main():
     version, versionscode, tag = pruefe_rezept(rezept, soll, args.erwarteter_commit)
     if rezept.get("RepoType") != "git" or rezept.get("Repo", "").removesuffix(".git") != REPO.removesuffix(".git"):
         raise ValueError("Das Originalrezept muss auf das öffentliche GitHub-Repository zeigen.")
+    srclibs = srclib_dateien(rezept, yaml)
     sudo = rezept["Builds"][0].get("sudo", [])
     if isinstance(sudo, str):
         sudo = [sudo]
@@ -148,7 +174,7 @@ def main():
             raise ValueError("Die SDK-Kopie darf keinen Verweis außerhalb der Kopie erhalten: " + str(datei))
     # Nie ein SDK in sich selbst kopieren; Ausgaben dürfen keine Eingaben überlagern.
     for basis in (arbeit, ausgabe):
-        for eingabe in (sdk, starter, jdk, referenz, rezept_datei):
+        for eingabe in (sdk, starter, jdk, referenz, rezept_datei, *srclibs.values()):
             if basis == eingabe or basis.is_relative_to(eingabe):
                 raise ValueError("Arbeits-/Ausgabeordner darf nicht innerhalb einer Eingabe liegen.")
     arbeit.mkdir(parents=True, exist_ok=True)
@@ -171,10 +197,10 @@ def main():
         protokoll.write(text + "\n")
         protokoll.flush()
 
-    def ausfuehren(befehl, cwd=None, protokolldatei=None, pruefen=True):
+    def ausfuehren(befehl, cwd=None, protokolldatei=None, pruefen=True, zusatzumgebung=None):
         melden("$ " + shlex.join(str(x) for x in befehl))
         with (lauf / (protokolldatei or "werkzeuge.log")).open("a", encoding="utf-8") as log:
-            prozess = subprocess.Popen([str(x) for x in befehl], cwd=cwd or lauf, env=env,
+            prozess = subprocess.Popen([str(x) for x in befehl], cwd=cwd or lauf, env={**env, **(zusatzumgebung or {})},
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                        encoding="utf-8", errors="replace")
             ausgabe_zeilen = []
@@ -191,7 +217,7 @@ def main():
     try:
         melden("Lauf: " + str(lauf))
         melden("Sicherung: " + str(sicherung))
-        for name in ("home", "tmp", "fdroid", "fdroid/metadata", "fdroid/build", "werkzeuge"):
+        for name in ("home", "tmp", "fdroid", "fdroid/metadata", "fdroid/srclibs", "fdroid/build", "werkzeuge"):
             (lauf / name).mkdir(exist_ok=True)
         env = {"PATH": SYSTEMPFAD, "HOME": str(lauf / "home"), "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
                "USER": str(os.getuid()), "LOGNAME": str(os.getuid()), "PYTHONDONTWRITEBYTECODE": "1",
@@ -208,6 +234,12 @@ def main():
         json_schreiben(lauf / "toolchain.json", vorgabe)
         shutil.copyfile(rezept_datei, lauf / "rezept-original.yml")
         shutil.copyfile(HIER / "app-referenz.json", lauf / "app-referenz.json")
+        ergebnis["srclibs"] = {}
+        for name, datei in srclibs.items():
+            ziel = lauf / "fdroid/srclibs" / datei.name
+            shutil.copyfile(datei, ziel)
+            ergebnis["srclibs"][name] = sha256(ziel)
+        melden("srclib-Metadaten kopiert; die Quellen lädt fdroid selbst: " + ", ".join(srclibs))
         melden("Vor dem Rezept: kein node/nodejs/npm/npx im Systempfad; HOME ist neu und leer.")
         melden("Die Probe übernimmt keine Benutzerpfade oder Node-Caches aus der aufrufenden Sitzung.")
         _, fdroid_version = ausfuehren(["fdroid", "--version"])
@@ -223,6 +255,18 @@ def main():
         (lauf / "werkzeuge/gradlew.py").chmod(0o755)
         if sha256(lauf / "werkzeuge/gradlew.py") != vorgabe["gradlewFdroid"]["sha256"]:
             raise ValueError("Die kopierte gradlew.py weicht ab.")
+        json_schreiben(lauf / "fdroid/config.yml", {"sdk_path": str(lauf / "android-sdk"),
+            "gradle": str(lauf / "werkzeuge/gradlew.py"), "java_paths": {"21": str(jdk)},
+            "cachedir": str(lauf / "fdroid-cache")})
+        rezept_kopie = lauf / "fdroid/metadata" / (APPID + ".yml")
+        shutil.copyfile(rezept_datei, rezept_kopie)
+        # --list meldet auch unveränderte Dateien als "Rewriting". Entscheidend
+        # sind die Bytes, vor den bewussten Repo-/Binaries-Anpassungen der Probe.
+        rezept_bytes = rezept_kopie.read_bytes()
+        ausfuehren(["fdroid", "rewritemeta", APPID], cwd=lauf / "fdroid", protokolldatei="rewritemeta.log")
+        ergebnis["rezeptKanonisch"] = rezept_kopie.read_bytes() == rezept_bytes
+        if not ergebnis["rezeptKanonisch"]:
+            raise ValueError("Rezept ist nicht in der kanonischen Form von fdroid rewritemeta")
         quelle = str(ersatz) if ersatz else rezept["Repo"]
         klon = lauf / "fdroid/build" / APPID
         ausfuehren(["git", "-c", "core.autocrlf=false", "clone", "--no-hardlinks", "--branch", tag, "--", quelle, klon],
@@ -246,18 +290,24 @@ def main():
         json_schreiben(lauf / "abweichungen.json", abweichungen)
         for text in abweichungen:
             melden("Abweichung: " + text)
-        # JSON ist YAML 1.2; das Original-YAML wird unverändert separat gesichert.
-        json_schreiben(lauf / "fdroid/metadata" / (APPID + ".yml"), rezept)
-        json_schreiben(lauf / "fdroid/config.yml", {"sdk_path": str(lauf / "android-sdk"),
-            "gradle": str(lauf / "werkzeuge/gradlew.py"), "java_paths": {"21": str(jdk)},
-            "cachedir": str(lauf / "fdroid-cache")})
+        # JSON ist YAML 1.2. Nach den Probe-Anpassungen stellt rewritemeta auch
+        # für den Build wieder kanonisches YAML her; das Original bleibt erhalten.
+        rezept_kopie.unlink()
+        json_schreiben(rezept_kopie, rezept)
+        ausfuehren(["fdroid", "rewritemeta", APPID], cwd=lauf / "fdroid", protokolldatei="rewritemeta.log")
         sudo_datei = lauf / "sudo-aus-rezept.sh"
-        sudo_datei.write_text("#!/bin/bash\n" + shlex.join(sudo_befehl(sudo)) + "\n", encoding="utf-8")
+        sudo_datei.write_text("#!/bin/bash\nDEBIAN_FRONTEND=noninteractive " + shlex.join(sudo_befehl(sudo)) + "\n", encoding="utf-8")
         if sudo:
             melden("Root-Schritte aus dem Rezept (vor fdroid build):\n" + "\n".join(sudo))
-            ausfuehren(sudo_befehl(sudo), cwd=lauf / "fdroid", protokolldatei="sudo.log")
+            # fdroidserver 2.4.2 setzt dies beim sudo-Aufruf; hier läuft Bash
+            # bereits als root und erhält dieselbe Variable nur für diesen Aufruf.
+            ausfuehren(sudo_befehl(sudo), cwd=lauf / "fdroid", protokolldatei="sudo.log",
+                       zusatzumgebung={"DEBIAN_FRONTEND": "noninteractive"})
         else:
             melden("Das Rezept enthält keine sudo-Schritte; für diese Probe muss es System-Node und npm bereitstellen.")
+        _, paketversionen = ausfuehren(["dpkg-query", "--show", r"--showformat=${binary:Package}\t${Version}\n", *DEBIAN_PAKETE],
+                                      protokolldatei="debian-pakete.log")
+        ergebnis["debianPaketversionen"] = paketversionen.strip()
         node = shutil.which("node", path=SYSTEMPFAD)
         npm = shutil.which("npm", path=SYSTEMPFAD)
         if node != "/usr/bin/node" or npm != "/usr/bin/npm":
@@ -287,6 +337,31 @@ def main():
         if ergebnis["tagCommitNachBuild"] != args.erwarteter_commit:
             raise ValueError("Tag " + tag + " nach fdroid build weicht vom erwarteten Release-Commit ab: "
                              + ergebnis["tagCommitNachBuild"] + " statt " + args.erwarteter_commit)
+        ergebnis["srclibCommits"] = {}
+        for eintrag in rezept["Builds"][0]["srclibs"]:
+            name, srclib_tag = eintrag.split("@", 1)
+            srclib_klon = lauf / "fdroid/build/srclib" / name
+            _, srclib_commit = ausfuehren(["git", "-C", srclib_klon, "rev-parse", "HEAD"], protokolldatei="srclib-commits.log")
+            _, srclib_tag_commit = ausfuehren(["git", "-C", srclib_klon, "rev-parse", srclib_tag + "^{commit}"], protokolldatei="srclib-commits.log")
+            daten = {"tag": srclib_tag, "commit": srclib_commit.strip(), "tagCommit": srclib_tag_commit.strip()}
+            ergebnis["srclibCommits"][name] = daten
+            if not re.fullmatch(r"[0-9a-f]{40}", daten["commit"]) or daten["commit"] != daten["tagCommit"]:
+                raise ValueError("srclib " + name + ": HEAD nach fdroid build stimmt nicht mit Tag " + srclib_tag
+                                 + " überein: " + daten["commit"] + " statt " + daten["tagCommit"])
+        esbuild = shutil.which("esbuild", path=SYSTEMPFAD)
+        if not esbuild:
+            raise ValueError("Nach den sudo-Schritten fehlt esbuild im Systempfad.")
+        _, esbuild_version = ausfuehren([esbuild, "--version"])
+        ergebnis.update({"esbuildPfad": esbuild, "esbuildVersion": esbuild_version.strip()})
+        esbuild_paket = json.loads((klon / "node_modules/esbuild/package.json").read_text(encoding="utf-8"))
+        ergebnis["esbuildNpmVersion"] = esbuild_paket.get("version")
+        melden("esbuild nach fdroid build: System " + ergebnis["esbuildVersion"] + " (" + esbuild
+               + "), npm-Paket " + str(ergebnis["esbuildNpmVersion"]) + ".")
+        if (not isinstance(ergebnis["esbuildNpmVersion"], str)
+                or not ergebnis["esbuildNpmVersion"]
+                or ergebnis["esbuildVersion"] != ergebnis["esbuildNpmVersion"]):
+            raise ValueError("System-esbuild und node_modules/esbuild/package.json weichen voneinander ab: "
+                             + ergebnis["esbuildVersion"] + " statt " + str(ergebnis["esbuildNpmVersion"]))
         gradle = lauf / "fdroid-cache/versions" / vorgabe["gradle"]["version"] / "bin/gradle"
         _, gradle_version = ausfuehren([gradle, "--version"])
         if not re.search(r"(?m)^Gradle " + re.escape(vorgabe["gradle"]["version"]) + r"\s*$", gradle_version):
@@ -312,7 +387,7 @@ def main():
         for datei in lauf.iterdir():
             if datei.is_file():
                 shutil.copyfile(datei, sicherung / datei.name)
-        for name in ("metadata", "logs", "unsigned"):
+        for name in ("metadata", "srclibs", "logs", "unsigned"):
             quelle = lauf / "fdroid" / name
             if quelle.is_dir():
                 shutil.copytree(quelle, sicherung / name, symlinks=True)
