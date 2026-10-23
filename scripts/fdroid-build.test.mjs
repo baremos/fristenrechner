@@ -111,6 +111,11 @@ def run():
         zu_pruefen = versuch if gegen else normal
         if "scandelete" in zu_pruefen["Builds"][0]:
             raise ValueError("Basisprobe darf scandelete nicht enthalten")
+    elif art in ("rezepttag", "rezeptkurz", "rezeptgross"):
+        falsch = {"rezepttag": "v" + b.APP_STAND["versionName"],
+                  "rezeptkurz": commit[:7], "rezeptgross": commit.upper()}[art]
+        ergebnis = b.rezept_fuer_lauf(rezept, repo, falsch if gegen else commit)
+        assert ergebnis["Builds"][0]["commit"] == commit
     elif art == "json":
         datei = w / "bericht.json"
         b.neue_json(datei, {"probe": "größer"})
@@ -305,7 +310,7 @@ function laufe(art, gegen) {
   return spawnSync(python, ['-B', '-c', pruefung, hier], {
     input: JSON.stringify({ arbeit: ordner, art, gegen }),
     encoding: 'utf8',
-    env: { ...process.env, TEMP: arbeit, TMP: arbeit, TMPDIR: arbeit, PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
   });
 }
 
@@ -319,6 +324,9 @@ for (const [art, name, fehler] of [
   ['gradleversion', 'Gradle-Version aus Wrapper; Gegenprobe andere Version', /Gradle-Version/],
   ['gradlehash', 'Gradle-Prüfsumme aus Wrapper; Gegenprobe andere Prüfsumme', /Gradle-Prüfsumme/],
   ['rezept', 'Basisrezept ohne scandelete; Gegenprobe ausdrücklicher Versuch', /Basisprobe darf/],
+  ['rezepttag', 'Vollständiger Rezeptcommit; Gegenprobe Tagname', /40 Hex-Zeichen in Kleinschreibung/],
+  ['rezeptkurz', 'Vollständiger Rezeptcommit; Gegenprobe siebenstellige Kurzform', /40 Hex-Zeichen in Kleinschreibung/],
+  ['rezeptgross', 'Vollständiger Rezeptcommit; Gegenprobe Großbuchstaben', /40 Hex-Zeichen in Kleinschreibung/],
   ['json', 'Neue JSON-Datei; Gegenprobe vorhandener Bericht bleibt erhalten', /GEGENPROBE:/],
   ['umgebung', 'Eigene Caches, TEMP und bereinigter PATH; Gegenprobe fremder Cache', /Fremder Zwischenspeicher/],
   ['archiv', 'Gradle-Archiv gegen Vorgabe; Gegenprobe abweichende Bytes', /weicht von toolchain.json ab/],

@@ -65,6 +65,30 @@ def vollstaendiger_commit(wert):
     return wert.lower()
 
 
+def pruefe_rezept(rezept, soll, erwarteter_commit):
+    version = soll.get("versionName")
+    versionscode = soll.get("versionCode")
+    if not isinstance(version, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) or type(versionscode) is not int or versionscode <= 0:
+        raise ValueError("app-referenz.json muss einen Versionsnamen mit drei numerischen Bestandteilen und einen positiven ganzzahligen Versionscode enthalten.")
+    builds = rezept.get("Builds", [])
+    if not isinstance(builds, list) or len(builds) != 1 or not isinstance(builds[0], dict):
+        raise ValueError("Erwartet wird genau ein Build im Veröffentlichungsrezept.")
+    commit = builds[0].get("commit")
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("Das Feld commit im Veröffentlichungsrezept muss genau 40 Hex-Zeichen (0-9, a-f) enthalten; Tagnamen, Kurzformen und Großbuchstaben sind nicht zulässig.")
+    if commit != erwarteter_commit:
+        raise ValueError("Das Feld commit im Veröffentlichungsrezept weicht von --erwarteter-commit ab: "
+                         + commit + " statt " + erwarteter_commit + ".")
+    if (builds[0].get("versionName") != version
+            or type(builds[0].get("versionCode")) is not int or builds[0]["versionCode"] != versionscode
+            or rezept.get("CurrentVersion") != version
+            or type(rezept.get("CurrentVersionCode")) is not int or rezept["CurrentVersionCode"] != versionscode):
+        raise ValueError("Veröffentlichungsrezept und app-referenz.json widersprechen sich: erwartet wird "
+                         + version + " / " + str(versionscode)
+                         + " mit übereinstimmenden CurrentVersion/CurrentVersionCode.")
+    return version, versionscode, "v" + version
+
+
 def main():
     parser = argparse.ArgumentParser(description="Veröffentlichungsrezept mit fdroidserver 2.4.2 unter Debian 13 bauen.")
     parser.add_argument("--erwarteter-commit", required=True, type=vollstaendiger_commit, help="erwarteter Commit des Tags: genau 40 Hex-Zeichen")
@@ -93,24 +117,10 @@ def main():
     with rezept_datei.open(encoding="utf-8") as quelle:
         rezept = yaml.load(quelle)
     soll = json.loads((HIER / "app-referenz.json").read_text(encoding="utf-8"))
-    version = soll.get("versionName")
-    versionscode = soll.get("versionCode")
-    if not isinstance(version, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) or type(versionscode) is not int or versionscode <= 0:
-        raise ValueError("app-referenz.json muss einen Versionsnamen mit drei numerischen Bestandteilen und einen positiven ganzzahligen Versionscode enthalten.")
-    tag = "v" + version
-    builds = rezept.get("Builds", [])
-    if not isinstance(builds, list) or len(builds) != 1 or not isinstance(builds[0], dict):
-        raise ValueError("Erwartet wird genau ein Build im Veröffentlichungsrezept.")
-    if (builds[0].get("commit") != tag or builds[0].get("versionName") != version
-            or type(builds[0].get("versionCode")) is not int or builds[0]["versionCode"] != versionscode
-            or rezept.get("CurrentVersion") != version
-            or type(rezept.get("CurrentVersionCode")) is not int or rezept["CurrentVersionCode"] != versionscode):
-        raise ValueError("Veröffentlichungsrezept und app-referenz.json widersprechen sich: erwartet wird "
-                         + version + " / " + str(versionscode) + " am Tag " + tag
-                         + " mit übereinstimmenden CurrentVersion/CurrentVersionCode.")
+    version, versionscode, tag = pruefe_rezept(rezept, soll, args.erwarteter_commit)
     if rezept.get("RepoType") != "git" or rezept.get("Repo", "").removesuffix(".git") != REPO.removesuffix(".git"):
         raise ValueError("Das Originalrezept muss auf das öffentliche GitHub-Repository zeigen.")
-    sudo = builds[0].get("sudo", [])
+    sudo = rezept["Builds"][0].get("sudo", [])
     if isinstance(sudo, str):
         sudo = [sudo]
     if not isinstance(sudo, list) or any(not isinstance(zeile, str) or not zeile.strip() for zeile in sudo):
@@ -147,7 +157,7 @@ def main():
     if sicherung.exists():
         raise ValueError("Der Ausgabeordner existiert bereits: " + str(sicherung))
     protokoll = (lauf / "probe.log").open("x", encoding="utf-8")
-    ergebnis = {"bestanden": False, "fdroidBuild": None, "commitNachBuild": None, "referenzApk": vergleich,
+    ergebnis = {"bestanden": False, "fdroidBuild": None, "commitNachBuild": None, "tagCommitNachBuild": None, "referenzApk": vergleich,
                 "beginn": datetime.now(timezone.utc).isoformat(), "sudoSchritte": len(sudo),
                 "uid": os.getuid(), "euid": os.geteuid()}
     abweichungen = ["Lokaler Build mit fdroidserver 2.4.2 unter Debian 13; kein echter Buildserver.",
@@ -251,13 +261,18 @@ def main():
         code, _ = ausfuehren(["fdroid", "build", "--verbose", APPID + ":" + str(versionscode)], cwd=lauf / "fdroid",
                              protokolldatei="build.log", pruefen=False)
         ergebnis["fdroidBuild"] = code
-        # fdroidserver holt den Tag erneut und checkt ihn während des Builds aus.
-        # Deshalb muss auch der anschließend gebaute Stand dem Release entsprechen.
+        # Auch nach dem Build müssen HEAD und Release-Tag zum Rezept-Commit passen.
+        # Ein unveränderter HEAD allein würde einen verschobenen Tag nicht erkennen.
         _, commit_nach_build = ausfuehren(["git", "-C", klon, "rev-parse", "HEAD"], protokolldatei="quelle.log")
         ergebnis["commitNachBuild"] = commit_nach_build.strip()
+        _, tag_commit_nach_build = ausfuehren(["git", "-C", klon, "rev-parse", tag + "^{commit}"], protokolldatei="quelle.log")
+        ergebnis["tagCommitNachBuild"] = tag_commit_nach_build.strip()
         if ergebnis["commitNachBuild"] != args.erwarteter_commit:
             raise ValueError("HEAD nach fdroid build weicht vom erwarteten Release-Commit ab: "
                              + ergebnis["commitNachBuild"] + " statt " + args.erwarteter_commit)
+        if ergebnis["tagCommitNachBuild"] != args.erwarteter_commit:
+            raise ValueError("Tag " + tag + " nach fdroid build weicht vom erwarteten Release-Commit ab: "
+                             + ergebnis["tagCommitNachBuild"] + " statt " + args.erwarteter_commit)
         node_kandidaten = list((lauf / "home").glob(".cache/fristenrechner-fdroid/node-*/bin/node"))
         if len(node_kandidaten) != 1:
             raise ValueError("Genau ein vom Rezept bereitgestelltes Node im neuen HOME erwartet.")

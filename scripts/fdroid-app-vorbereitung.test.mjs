@@ -160,6 +160,10 @@ class Pruefung(unittest.TestCase):
             self.assertTrue(any('nach-scanner.json' in x for x in build['build']))
         self.assertEqual(rezept, original)
         with self.assertRaises(ValueError): b.app_rezept_fuer_lauf(rezept, w, commit, 'beliebig')
+    def test_commit_form(self):
+        for falsch in ['v' + b.APP_STAND['versionName'], commit[:7], commit.upper()]:
+            with self.subTest(commit=falsch), self.assertRaisesRegex(ValueError, '40 Hex-Zeichen in Kleinschreibung'):
+                b.app_rezept_fuer_lauf(rezept, w, falsch, 'gezielt')
     def test_referenz(self):
         ref = w / 'ref.apk'; ref.write_bytes(b'APK-Test')
         werte = {'bytes': 8, 'sha256': hashlib.sha256(b'APK-Test').hexdigest()}
@@ -256,5 +260,5 @@ test('Python-Laufsteuerung: Varianten, Byte-Referenz, Argumentgrenzen, Commitque
     encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
   });
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.match(r.stderr, /Ran 7 tests/);
+  assert.match(r.stderr, /Ran 8 tests/);
 });

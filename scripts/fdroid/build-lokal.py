@@ -70,6 +70,8 @@ def pruefe_quelle(repo, rezept, vorgabe):
 
 
 def rezept_fuer_lauf(vorlage, repo, commit, scandelete=False):
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("Der Build-Eintrag benötigt einen vollständigen Commit mit genau 40 Hex-Zeichen in Kleinschreibung")
     rezept = copy.deepcopy(vorlage)
     rezept["Repo"] = Path(repo).as_uri()
     rezept["Builds"][0]["commit"] = commit
