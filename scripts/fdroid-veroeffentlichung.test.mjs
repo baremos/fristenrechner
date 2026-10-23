@@ -10,19 +10,20 @@ import { parseDocument, stringify } from 'yaml';
 const lesen = (pfad) => readFileSync(new URL(pfad, import.meta.url), 'utf8');
 const quelle = lesen('./fdroid/veroeffentlichung/de.baremos.fristenrechner.yml');
 const referenz = JSON.parse(lesen('./fdroid/app-referenz.json'));
-const werkzeuge = JSON.parse(lesen('./toolchain.json'));
 const zertifikat = new X509Certificate(readFileSync(new URL('../docs/zertifikate/app-signierschluessel.cer', import.meta.url)));
 const schluessel = createHash('sha256').update(zertifikat.raw).digest('hex');
-const nodeArchiv = `node-v${werkzeuge.node.referenz}-linux-x64.tar.gz`;
-const nodeAdresse = `https://nodejs.org/dist/v${werkzeuge.node.referenz}/${nodeArchiv}`;
-const nodeSumme = werkzeuge.node.sha256[nodeArchiv];
+const sudoBefehle = [
+  'echo "deb http://deb.debian.org/debian forky main" > /etc/apt/sources.list.d/forky.list',
+  'apt-get update',
+  'apt-get install -y -t forky npm',
+];
 const github = 'https://github.com/baremos/fristenrechner';
 const felder = [
   'Categories', 'License', 'AuthorName', 'AuthorWebSite', 'WebSite', 'SourceCode',
   'IssueTracker', 'Changelog', 'AutoName', 'RepoType', 'Repo', 'Binaries', 'AllowedAPKSigningKeys',
   'Builds', 'AutoUpdateMode', 'UpdateCheckMode', 'CurrentVersion', 'CurrentVersionCode',
 ];
-const buildFelder = ['versionName', 'versionCode', 'commit', 'subdir', 'gradle', 'prebuild', 'build'];
+const buildFelder = ['versionName', 'versionCode', 'commit', 'subdir', 'sudo', 'gradle', 'prebuild', 'build'];
 const bashVorhanden = spawnSync('bash', ['--version'], { timeout: 10_000 }).status === 0;
 
 function yamlLesen(text) {
@@ -161,21 +162,16 @@ function rezeptPruefen(text) {
   assert.match(build.commit, /^[0-9a-f]{40}$/, 'Vollständiger Commit mit 40 Hex-Zeichen in Kleinschreibung');
   assert.equal(build.commit.length, 40, 'Vollständiger Commit ohne zusätzliche Zeichen');
   assert.equal(build.subdir, 'app/android/app');
+  assert.deepEqual(build.sudo, sudoBefehle, 'Genau die drei sudo-Befehle für Debian forky in der vorgesehenen Reihenfolge');
   assert.deepEqual(build.gradle, ['yes']);
   for (const phase of ['prebuild', 'build']) {
     assert.ok(Array.isArray(build[phase]) && build[phase].length > 0, `${phase}: nichtleere Befehlsliste`);
     assert.ok(build[phase].every((zeile) => typeof zeile === 'string' && zeile.trim()), `${phase}: ausschließlich Befehle als Text`);
+    assert.doesNotMatch(build[phase].join('\n'), /\bcurl\b|nodejs\.org|\bsha256sum\b|fristenrechner-fdroid/, `${phase}: kein Node-Download, keine Archivprüfung und kein alter Node-Cache`);
+    assert.doesNotMatch(build[phase].join('\n'), /\bexport\s+(?:PATH\b|[^\n;]*\sPATH\b)/, `${phase}: keine PATH-Exporte`);
   }
   const vorbereitung = build.prebuild.join('\n');
   assert.match(vorbereitung, /^set -eu(?:\n|$)/, 'Vorbereitung bricht beim ersten Fehler ab');
-  assert.ok(vorbereitung.includes(nodeAdresse), 'Festgelegtes Node-Archiv von nodejs.org');
-  assert.ok(vorbereitung.includes(nodeSumme), 'Node-Prüfsumme aus toolchain.json');
-  assert.match(vorbereitung, /\bsha256sum\s+(?:--check|-c)\b/, 'Node-Prüfsumme wird geprüft');
-  const hashBefehl = build.prebuild.find((s) => /\bsha256sum\b/.test(s));
-  assert.doesNotMatch(hashBefehl, /\|\||\btrue\b/, 'Prüfsummenfehler dürfen nicht übergangen werden');
-  const pruefung = vorbereitung.indexOf('sha256sum');
-  const entpacken = vorbereitung.search(/\btar\s/);
-  assert.ok(pruefung > vorbereitung.indexOf(nodeAdresse) && entpacken > pruefung, 'Download, Hashprüfung und Entpacken in dieser Reihenfolge');
   assert.match(vorbereitung, /\bnpm\s+ci\s+[^\n]*--ignore-scripts\b/, 'npm ci ohne Installationsskripte');
   assert.match(vorbereitung, /npm-bereinigen\.py\b/, 'Gezielte Bereinigung');
   const web = build.prebuild.indexOf('node scripts/app-bauen.mjs --web');
@@ -214,39 +210,17 @@ function shellPruefen(befehle) {
   assert.equal(p.status, 0, `Bash-Syntax nach F-Droid-Verkettung: ${p.error?.message ?? p.stderr}`);
 }
 
-test('Veröffentlichungsrezept: gültiges YAML, Metadaten, Referenzversion, DER-Zertifikat und gepinnter Node-Download', () => {
+test('Veröffentlichungsrezept: gültiges YAML, Metadaten, Referenzversion, DER-Zertifikat und Node aus Debian forky', () => {
   rezeptPruefen(quelle);
 });
 
 test('Befehlslisten bleiben nach F-Droid-Verkettung gültige Bash-Syntax; kaputte Befehle und Heredoc scheitern', { skip: !bashVorhanden && 'Bash fehlt' }, () => {
   const build = yamlLesen(quelle).Builds[0];
+  shellPruefen(build.sudo);
   shellPruefen(build.prebuild);
   shellPruefen(build.build);
   assert.throws(() => shellPruefen([...build.prebuild, 'if then']), /Bash-Syntax/);
   assert.throws(() => shellPruefen(["cat <<'ENDE'\nText\nENDE\n", 'true']), /Bash-Syntax/);
-});
-
-test('Echter Prüfsummenbefehl akzeptiert passende Bytes und bricht bei Abweichung ab', { skip: !bashVorhanden && 'Bash fehlt' }, () => {
-  const befehl = yamlLesen(quelle).Builds[0].prebuild.find((s) => /\bsha256sum\b/.test(s));
-  const archivPfad = befehl.match(new RegExp(`[^\\s"']*${nodeArchiv.replaceAll('.', '\\.')}\\b`))?.[0];
-  assert.ok(archivPfad, 'Archivpfad im Prüfsummenbefehl');
-  // /dev/null ist der unveränderliche leere Testinhalt. Nur Pfad und Sollhash
-  // werden ersetzt; die Prüf- und Abbruchlogik kommt aus dem echten Rezept.
-  const leerHash = createHash('sha256').update('').digest('hex');
-  assert.notEqual(nodeSumme, leerHash);
-  for (const passend of [true, false]) {
-    const pruefung = befehl.replace(archivPfad, '/dev/null').replace(nodeSumme, passend ? leerHash : nodeSumme);
-    const p = spawnSync('bash', ['--noprofile', '--norc', '-c', `set -eu; ${pruefung}; printf 'NACH_PRUEFUNG\\n'`], {
-      encoding: 'utf8', timeout: 10_000, env: { ...process.env, BASH_ENV: '/dev/null', ENV: '/dev/null' },
-    });
-    if (passend) {
-      assert.equal(p.status, 0, p.error?.message ?? p.stderr);
-      assert.match(p.stdout, /NACH_PRUEFUNG/);
-    } else {
-      assert.notEqual(p.status, 0, 'Abweichende Bytes müssen den Prozess abbrechen');
-      assert.doesNotMatch(p.stdout, /NACH_PRUEFUNG/, 'Nach fehlgeschlagener Prüfung darf kein Folgeschritt laufen');
-    }
-  }
 });
 
 test('YAML-Gegenproben: fehlerhafte Syntax, doppelte Schlüssel und weitere Dokumente scheitern', () => {
@@ -276,18 +250,26 @@ gegenprobe('lokales Repository', (r) => { r.Repo = '@LOKALES_REPOSITORY@'; }, /l
 for (const variable of ['$FR_FDROID_LAUF', '${FR_FDROID_INVENTAR}']) {
   gegenprobe(`lokale Variable ${variable}`, (r) => { r.Builds[0].prebuild.push(`echo "${variable}"`); }, /lokalen Variablen oder Platzhalter/);
 }
-gegenprobe('anderes Node-Archiv', (r) => {
-  r.Builds[0].prebuild = r.Builds[0].prebuild.map((s) => s.replace(nodeAdresse, nodeAdresse.replace('nodejs.org', 'example.org')));
-}, /Festgelegtes Node-Archiv/);
-gegenprobe('abweichende Node-Prüfsumme', (r) => {
-  r.Builds[0].prebuild = r.Builds[0].prebuild.map((s) => s.replace(nodeSumme, '0'.repeat(64)));
-}, /Node-Prüfsumme aus toolchain.json/);
-gegenprobe('entfernte Node-Prüfsummenprüfung', (r) => {
-  r.Builds[0].prebuild = r.Builds[0].prebuild.map((s) => s.replace(/sha256sum\s+(?:--check|-c)\b/, 'sha256sum'));
-}, /Node-Prüfsumme wird geprüft/);
-gegenprobe('Prüfsummenfehler wird übergangen', (r) => {
-  r.Builds[0].prebuild = r.Builds[0].prebuild.map((s) => s.includes('sha256sum') ? `${s} || true` : s);
-}, /Prüfsummenfehler dürfen nicht übergangen werden/);
+gegenprobe('fehlender sudo-Block', (r) => { delete r.Builds[0].sudo; }, /genau die vorgesehenen Felder/);
+gegenprobe('andere Debian-Suite', (r) => {
+  r.Builds[0].sudo = r.Builds[0].sudo.map((s) => s.replaceAll('forky', 'trixie'));
+}, /Genau die drei sudo-Befehle/);
+gegenprobe('Paketinstallation ohne -t forky', (r) => {
+  schrittAendern(r, 'sudo', /apt-get install -y -t forky npm/, 'apt-get install -y npm');
+}, /Genau die drei sudo-Befehle/);
+gegenprobe('zusätzlicher sudo-Befehl', (r) => { r.Builds[0].sudo.push('apt-get upgrade -y'); }, /Genau die drei sudo-Befehle/);
+gegenprobe('vertauschte sudo-Befehle', (r) => { r.Builds[0].sudo.reverse(); }, /Genau die drei sudo-Befehle/);
+for (const phase of ['prebuild', 'build']) {
+  for (const [name, befehl] of [
+    ['curl', 'curl https://example.org/node.tar.gz'],
+    ['nodejs.org', 'echo https://nodejs.org/dist/'],
+    ['sha256sum', 'sha256sum --check --strict'],
+    ['alter Node-Cache', 'mkdir -p "$HOME/.cache/fristenrechner-fdroid"'],
+  ]) {
+    gegenprobe(`${name} im ${phase}`, (r) => { r.Builds[0][phase].push(befehl); }, /kein Node-Download, keine Archivprüfung und kein alter Node-Cache/);
+  }
+  gegenprobe(`PATH-Export im ${phase}`, (r) => { r.Builds[0][phase].push('export PATH="/anderes-node/bin:$PATH"'); }, /keine PATH-Exporte/);
+}
 gegenprobe('Vorbereitung läuft nach Fehlern weiter', (r) => {
   r.Builds[0].prebuild = r.Builds[0].prebuild.map((s) => s === 'set -eu' ? 'set -u' : s);
 }, /Vorbereitung bricht beim ersten Fehler ab/);

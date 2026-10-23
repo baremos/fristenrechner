@@ -144,15 +144,27 @@ if modus == "anderer-commit":
 HIER = basis / "scripts/fdroid"
 HIER.mkdir(parents=True)
 sys.platform = "linux"
-os.getuid = lambda: 0 if modus == "root" else 1000
-os.geteuid = lambda: 0 if modus == "root" else 1000
+os.getuid = lambda: 1000 if modus == "sudo-ohne-root" else 0
+os.geteuid = lambda: 1000 if modus == "sudo-ohne-root" else 0
 original_lesen = Path.read_text
 def lesen(self, *args, **kwargs):
     if self == Path("/etc/os-release"):
         return 'ID=debian\nVERSION_ID="13"\n'
     return original_lesen(self, *args, **kwargs)
 Path.read_text = lesen
-shutil.which = lambda name, path=None: None if name in ("node", "nodejs", "npm", "npx") else name
+werkzeuge_installiert = False
+def welches(name, path=None):
+    assert path == SYSTEMPFAD
+    if name in ("node", "nodejs", "npm", "npx"):
+        if modus == "node-vor-rezept" and name == "node":
+            return "/usr/bin/node"
+        if not werkzeuge_installiert or modus == name + "-fehlt":
+            return None
+        return ("/usr/sbin/" if modus == name + "-falscher-pfad" else "/usr/bin/") + name
+    if modus == "apt-fehlt" and name == "apt-get":
+        return None
+    return "/usr/bin/" + name
+shutil.which = welches
 yaml_modul = types.ModuleType("fdroidserver._yaml")
 yaml_modul.yaml = types.SimpleNamespace(load=json.load)
 sys.modules["fdroidserver"] = types.ModuleType("fdroidserver")
@@ -172,12 +184,17 @@ quellenersatz = basis / "ersatz.bundle"
 quellenersatz.write_bytes(b"Quellenersatznachstellung")
 vorgabe = {"node": {"referenz": "24.21.0"}, "gradlewFdroid": {"sha256": hashlib.sha256(starter_inhalt).hexdigest()},
            "gradle": {"version": "8.14.5", "sha256": {"bin": hashlib.sha256(gradle_inhalt).hexdigest()}}}
+if modus == "andere-node-referenz":
+    vorgabe["node"]["referenz"] = "24.22.1"
 json_schreiben(HIER.parent / "toolchain.json", vorgabe)
 referenz_daten = {"appId": APPID, "versionName": version, "versionCode": versionscode,
                   "apk": {"bytes": len(apk_inhalt), "sha256": hashlib.sha256(apk_inhalt).hexdigest()}}
 original = {"RepoType": "git", "Repo": REPO, "Binaries": "https://example.org/v%v/app_%c.apk",
             "CurrentVersion": version, "CurrentVersionCode": versionscode,
-            "Builds": [{"versionName": version, "versionCode": versionscode, "commit": test_commit}]}
+            "Builds": [{"versionName": version, "versionCode": versionscode, "commit": test_commit,
+                        "sudo": ${JSON.stringify(projektRezept.Builds[0].sudo)}}]}
+if modus == "ohne-sudo":
+    del original["Builds"][0]["sudo"]
 for fall, ziel, feld, wert in (
     ("build-version", original["Builds"][0], "versionName", "9.8.7"),
     ("build-code", original["Builds"][0], "versionCode", versionscode + 1),
@@ -206,7 +223,7 @@ klon_tag_commit = abweichender_commit if modus in ("tag-fehler", "tag-head-ungle
 
 class Prozess:
     def __init__(self, befehl, cwd, env, **kwargs):
-        global klon_commit, klon_tag_commit
+        global klon_commit, klon_tag_commit, werkzeuge_installiert
         self.code = 0
         cwd = Path(cwd)
         aufrufe.append({"befehl": befehl, "cwd": str(cwd), "env": env})
@@ -234,6 +251,13 @@ class Prozess:
             text = (klon_commit if befehl[-1] == "HEAD" else klon_tag_commit) + "\n"
         elif name == "git" and "log" in befehl:
             text = "1790000000\n"
+        elif name == "bash":
+            assert befehl == sudo_befehl(original["Builds"][0]["sudo"])
+            assert cwd.name == "fdroid"
+            assert not werkzeuge_installiert
+            self.code = 1 if modus == "sudo-fehler" else 0
+            werkzeuge_installiert = self.code == 0
+            text = "Nachgestellte Installation aus Debian forky\n"
         elif name == "fdroid":
             assert befehl == ["fdroid", "build", "--verbose", APPID + ":" + str(versionscode)]
             assert cwd.name == "fdroid"
@@ -245,9 +269,9 @@ class Prozess:
             assert verwendet["Repo"] == repo_erwartet
             assert (cwd / "build" / (".fdroidvcs-" + APPID)).read_text() == "git " + repo_erwartet
             assert not (cwd / ".git").exists()
-            node = Path(env["HOME"]) / ".cache/fristenrechner-fdroid/node-v24.21.0-linux-x64/bin/node"
-            node.parent.mkdir(parents=True)
-            node.write_text("Node aus dem nachgestellten Rezept")
+            assert werkzeuge_installiert
+            assert verwendet["Builds"][0]["sudo"] == original["Builds"][0]["sudo"]
+            assert not list(Path(env["HOME"]).rglob("node"))
             gradle = cwd.parent / "fdroid-cache/versions/8.14.5/bin/gradle"
             gradle.parent.mkdir(parents=True)
             gradle.write_text("Gradle aus dem nachgestellten Build")
@@ -265,7 +289,13 @@ class Prozess:
                 klon_tag_commit = abweichender_commit
             text = "Nachgestellter fdroid-Build\n"
         elif name == "node":
-            text = "v24.21.0\n"
+            assert werkzeuge_installiert and befehl == ["/usr/bin/node", "--version"]
+            text = {"node-alte-version": "v20.19.2", "node-andere-patchversion": "v24.21.1",
+                    "andere-node-referenz": "v24.22.1"}.get(modus, "v24.21.0") + "\n"
+        elif name == "npm":
+            assert werkzeuge_installiert and befehl == ["/usr/bin/npm", "--version"]
+            text = "12.2.0\n"
+            self.code = 1 if modus == "npm-version-fehler" else 0
         elif name == "gradle":
             text = "Gradle 8.14.5\n"
         else:
@@ -318,7 +348,7 @@ finally:
 sys.exit(code)
 `;
 
-for (const modus of ['erfolg', 'ersatz', 'root', 'rezept-standard', 'andere-version', 'anderer-commit', 'commit-gross', 'apk-fehler', 'build-fehler']) {
+for (const modus of ['erfolg', 'ersatz', 'root', 'rezept-standard', 'andere-version', 'andere-node-referenz', 'anderer-commit', 'commit-gross', 'apk-fehler', 'build-fehler']) {
   test(`Vollständiger Ablauf mit nachgestellten Prozessen: ${modus}`, { skip: !python }, () => {
     const basis = join(arbeit, modus);
     mkdirSync(basis);
@@ -331,8 +361,12 @@ for (const modus of ['erfolg', 'ersatz', 'root', 'rezept-standard', 'andere-vers
     const sicherung = join(basis, 'ausgabe', readdirSync(join(basis, 'ausgabe'))[0]);
     const ergebnis = JSON.parse(readFileSync(join(sicherung, 'ergebnis.json'), 'utf8'));
     assert.equal(ergebnis.bestanden, bestanden);
-    assert.equal(ergebnis.uid, modus === 'root' ? 0 : 1000);
-    assert.equal(ergebnis.euid, modus === 'root' ? 0 : 1000);
+    assert.equal(ergebnis.uid, 0);
+    assert.equal(ergebnis.euid, 0);
+    assert.equal(ergebnis.sudoSchritte, 3);
+    assert.equal(ergebnis.nodePfad, '/usr/bin/node');
+    assert.equal(ergebnis.nodeVersion, modus === 'andere-node-referenz' ? 'v24.22.1' : 'v24.21.0');
+    assert.equal(ergebnis.npmVersion, '12.2.0');
     assert.equal(ergebnis.fdroidBuild, modus === 'build-fehler' ? 1 : 0);
     assert.equal(ergebnis.commitNachBuild, ergebnis.commit);
     assert.equal(ergebnis.tagCommitNachBuild, ergebnis.commit);
@@ -349,12 +383,65 @@ for (const modus of ['erfolg', 'ersatz', 'root', 'rezept-standard', 'andere-vers
     const abweichungen = JSON.parse(readFileSync(join(sicherung, 'abweichungen.json'), 'utf8'));
     assert.ok(abweichungen.some((x) => x.includes('Binaries')));
     assert.equal(abweichungen.some((x) => x.includes('Quellenersatz')), modus === 'ersatz');
-    assert.equal(abweichungen.some((x) => x.includes('Build läuft als root')), modus === 'root');
+    assert.equal(abweichungen.some((x) => x.includes('Build läuft als root')), true);
     const aufrufe = JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8'));
+    const sudoIndex = aufrufe.findIndex((x) => x.befehl[0] === 'bash');
+    assert.ok(sudoIndex >= 0);
+    assert.equal(aufrufe[sudoIndex].befehl.at(-1), projektRezept.Builds[0].sudo.join('; '));
+    assert.deepEqual(aufrufe.slice(sudoIndex + 1, sudoIndex + 4).map((x) => x.befehl), [
+      ['/usr/bin/node', '--version'], ['/usr/bin/npm', '--version'],
+      ['fdroid', 'build', '--verbose', `${referenz.appId}:${versionscode}`],
+    ]);
+    assert.match(readFileSync(join(sicherung, 'probe.log'), 'utf8'), /Nach den sudo-Schritten: Node.js v24\.[0-9.]+ \(\/usr\/bin\/node\), npm 12\.2\.0/);
     assert.deepEqual(aufrufe.find((x) => x.befehl[0] === 'fdroid' && x.befehl[1] === 'build').befehl,
       ['fdroid', 'build', '--verbose', `${referenz.appId}:${versionscode}`]);
     assert.ok(existsSync(join(sicherung, `unsigned/${referenz.appId}_${versionscode}.apk`)));
     assert.equal(aufrufe.some((x) => x.befehl.includes('commit')), false);
+  });
+}
+
+for (const [modus, fehler] of [
+  ['sudo-fehler', /Befehl fehlgeschlagen/],
+  ...['ohne-sudo', 'node-fehlt', 'npm-fehlt', 'node-falscher-pfad', 'npm-falscher-pfad']
+    .map((modus) => [modus, /Nach den sudo-Schritten werden \/usr\/bin\/node und \/usr\/bin\/npm/]),
+  ...['node-alte-version', 'node-andere-patchversion']
+    .map((modus) => [modus, /System-Node weicht von der Referenzversion aus scripts\/toolchain.json ab/]),
+  ['npm-version-fehler', /Befehl fehlgeschlagen.*\/usr\/bin\/npm --version/],
+]) {
+  test(`Fehlgeschlagene Bereitstellung der Systemwerkzeuge stoppt vor fdroid build: ${modus}`, { skip: !python }, () => {
+    const basis = join(arbeit, modus);
+    mkdirSync(basis);
+    const lauf = auswerten(prozessNachstellung, [basis, modus]);
+    assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
+    assert.match(lauf.stdout, fehler);
+    const sicherung = join(basis, 'ausgabe', readdirSync(join(basis, 'ausgabe'))[0]);
+    const ergebnis = JSON.parse(readFileSync(join(sicherung, 'ergebnis.json'), 'utf8'));
+    assert.equal(ergebnis.bestanden, false);
+    assert.equal(ergebnis.fdroidBuild, null);
+    assert.match(ergebnis.fehler, fehler);
+    const aufrufe = JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8'));
+    assert.equal(aufrufe.some((x) => x.befehl[0] === 'fdroid' && x.befehl[1] === 'build'), false);
+    if (modus.startsWith('node-') && modus.endsWith('version')) {
+      assert.match(ergebnis.nodeVersion, modus === 'node-alte-version' ? /^v20\.19\.2$/ : /^v24\.21\.1$/);
+      assert.equal(ergebnis.npmVersion, '12.2.0');
+    }
+  });
+}
+
+for (const [modus, fehler] of [
+  ['sudo-ohne-root', /sudo-Schritte.*als root in einer entbehrlichen/],
+  ['node-vor-rezept', /node ist bereits im Systempfad/],
+  ['apt-fehlt', /Voraussetzung fehlt im Systempfad: apt-get/],
+]) {
+  test(`Voraussetzungen der Systeminstallation werden vor externen Prozessen geprüft: ${modus}`, { skip: !python }, () => {
+    const basis = join(arbeit, modus);
+    mkdirSync(basis);
+    const lauf = auswerten(prozessNachstellung, [basis, modus]);
+    assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
+    assert.match(lauf.stderr, fehler);
+    assert.equal(existsSync(join(basis, 'arbeit')), false);
+    assert.equal(existsSync(join(basis, 'ausgabe')), false);
+    assert.deepEqual(JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8')), []);
   });
 }
 

@@ -1,7 +1,8 @@
 #!/bin/bash
 # Debian 13: frischer lokaler Build des Veröffentlichungsrezepts.
-# Alle temporären Dateien und Werkzeugkopien bleiben im Arbeitsordner.
-# Python liest YAML und Dateiprüfsummen; es werden keine Pakete installiert.
+# Arbeitsdateien sowie SDK- und Gradle-Starterkopien liegen im Arbeitsordner.
+# sudo-Schritte des Rezepts installieren Systempakete; dafür ist Root in einer
+# entbehrlichen Distribution nötig. Python liest YAML und Dateiprüfsummen.
 set -euo pipefail
 hier="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 exec /usr/bin/env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 \
@@ -109,7 +110,7 @@ def main():
     for name in ("node", "nodejs", "npm", "npx"):
         if shutil.which(name, path=SYSTEMPFAD):
             raise ValueError(name + " ist bereits im Systempfad. Eine Umgebung ohne systemweite Node-Installation verwenden; die Probe entfernt keine Pakete.")
-    for name in ("fdroid", "git", "bash", "curl", "tar", "sha256sum", "cp"):
+    for name in ("fdroid", "git", "bash", "cp", "apt-get"):
         if not shutil.which(name, path=SYSTEMPFAD):
             raise ValueError("Voraussetzung fehlt im Systempfad: " + name)
     from fdroidserver._yaml import yaml
@@ -256,7 +257,20 @@ def main():
             melden("Root-Schritte aus dem Rezept (vor fdroid build):\n" + "\n".join(sudo))
             ausfuehren(sudo_befehl(sudo), cwd=lauf / "fdroid", protokolldatei="sudo.log")
         else:
-            melden("Das Rezept enthält keine sudo-Schritte. Node wird im prebuild ohne Root-Rechte bereitgestellt.")
+            melden("Das Rezept enthält keine sudo-Schritte; für diese Probe muss es System-Node und npm bereitstellen.")
+        node = shutil.which("node", path=SYSTEMPFAD)
+        npm = shutil.which("npm", path=SYSTEMPFAD)
+        if node != "/usr/bin/node" or npm != "/usr/bin/npm":
+            raise ValueError("Nach den sudo-Schritten werden /usr/bin/node und /usr/bin/npm aus dem Rezept erwartet.")
+        _, node_version = ausfuehren([node, "--version"])
+        _, npm_version = ausfuehren([npm, "--version"])
+        ergebnis.update({"nodePfad": node, "nodeVersion": node_version.strip(), "npmVersion": npm_version.strip()})
+        melden("Nach den sudo-Schritten: Node.js " + node_version.strip() + " (" + node + "), npm " + npm_version.strip() + ".")
+        # Exakte Referenz für den Buildnachweis, nicht nur engines-Kompatibilität:
+        # Eine neue forky-Version erfordert einen erneuten Werkzeugabgleich.
+        if node_version.strip() != "v" + vorgabe["node"]["referenz"]:
+            raise ValueError("System-Node weicht von der Referenzversion aus scripts/toolchain.json ab: "
+                             + node_version.strip() + " statt v" + vorgabe["node"]["referenz"] + ".")
         # Kein --server: dessen virtuelle Buildmaschine ist nicht Teil dieser Probe.
         code, _ = ausfuehren(["fdroid", "build", "--verbose", APPID + ":" + str(versionscode)], cwd=lauf / "fdroid",
                              protokolldatei="build.log", pruefen=False)
@@ -273,12 +287,6 @@ def main():
         if ergebnis["tagCommitNachBuild"] != args.erwarteter_commit:
             raise ValueError("Tag " + tag + " nach fdroid build weicht vom erwarteten Release-Commit ab: "
                              + ergebnis["tagCommitNachBuild"] + " statt " + args.erwarteter_commit)
-        node_kandidaten = list((lauf / "home").glob(".cache/fristenrechner-fdroid/node-*/bin/node"))
-        if len(node_kandidaten) != 1:
-            raise ValueError("Genau ein vom Rezept bereitgestelltes Node im neuen HOME erwartet.")
-        _, node_version = ausfuehren([node_kandidaten[0], "--version"])
-        if node_version.strip() != "v" + vorgabe["node"]["referenz"]:
-            raise ValueError("Node aus dem Rezept hat eine unerwartete Version.")
         gradle = lauf / "fdroid-cache/versions" / vorgabe["gradle"]["version"] / "bin/gradle"
         _, gradle_version = ausfuehren([gradle, "--version"])
         if not re.search(r"(?m)^Gradle " + re.escape(vorgabe["gradle"]["version"]) + r"\s*$", gradle_version):
