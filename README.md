@@ -10,7 +10,7 @@ Die Oberfläche der App und ihre Exporte sind deutsch. Der Fristenrechner folgt 
 
 ## Stand
 
-Das Repository ist im Aufbau. Die npm-Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` sind seit dem 2026-10-16 in Version 0.1.0 veröffentlicht. Die Android-App ist noch nicht veröffentlicht.
+Die npm-Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` sind in Version 0.1.1 veröffentlicht, erstmals am 2026-10-16. Die Android-App steht in Version 1.0.0 als signierte APK im [GitHub-Release v1.0.0](https://github.com/baremos/fristenrechner/releases/tag/v1.0.0) bereit. Prüfsumme der Datei und Fingerabdruck des Signaturzertifikats nennt die Release-Notiz. Bei Google Play und F-Droid ist die App noch nicht veröffentlicht.
 
 | Teil | Stand |
 |---|---|
@@ -18,7 +18,7 @@ Das Repository ist im Aufbau. Die npm-Pakete `@baremos/fristenrechner-kern` und 
 | Projektgerüst | vorhanden |
 | Rechenkern | vorhanden, mit Tests und Referenzfällen |
 | Oberfläche | vorhanden, mit Schnittstellen für Speichern, Importieren und Exportieren |
-| Android-App | baut und läuft im Emulator; Speichern unter, getrenntes Teilen und Projektimport sind umgesetzt und auf API 30 und 36 mit dokumentierten Grenzen geprüft |
+| Android-App | Version 1.0.0 als signierte APK im GitHub-Release; Speichern unter, getrenntes Teilen und Projektimport sind umgesetzt und im Emulator auf API 30 und 36 sowie auf einem Gerät mit Android 16 mit dokumentierten Grenzen geprüft |
 
 Die Arbeitspakete stehen in [docs/arbeitspakete.md](docs/arbeitspakete.md). Die Dokumente im Ordner `docs` sind deutsch.
 
