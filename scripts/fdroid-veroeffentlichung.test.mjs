@@ -19,7 +19,7 @@ const nodeSumme = werkzeuge.node.sha256[nodeArchiv];
 const github = 'https://github.com/baremos/fristenrechner';
 const felder = [
   'Categories', 'License', 'AuthorName', 'AuthorWebSite', 'WebSite', 'SourceCode',
-  'IssueTracker', 'Changelog', 'RepoType', 'Repo', 'Binaries', 'AllowedAPKSigningKeys',
+  'IssueTracker', 'Changelog', 'AutoName', 'RepoType', 'Repo', 'Binaries', 'AllowedAPKSigningKeys',
   'Builds', 'AutoUpdateMode', 'UpdateCheckMode', 'CurrentVersion', 'CurrentVersionCode',
 ];
 const buildFelder = ['versionName', 'versionCode', 'commit', 'subdir', 'gradle', 'prebuild', 'build'];
@@ -143,6 +143,7 @@ function rezeptPruefen(text) {
   assert.equal(rezept.SourceCode, github);
   assert.equal(rezept.IssueTracker, `${github}/issues`);
   assert.equal(rezept.Changelog, `${github}/releases`);
+  assert.equal(rezept.AutoName, readFileSync(new URL('../fastlane/metadata/android/de-DE/title.txt', import.meta.url), 'utf8').trim(), 'AutoName gleich dem App-Titel aus fastlane');
   assert.equal(rezept.RepoType, 'git');
   assert.equal(rezept.Repo, `${github}.git`);
   assert.equal(rezept.Binaries, `${github}/releases/download/v%v/${referenz.appId}_%v_%c.apk`);

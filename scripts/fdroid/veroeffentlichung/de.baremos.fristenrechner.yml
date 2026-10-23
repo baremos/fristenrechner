@@ -8,6 +8,8 @@ SourceCode: https://github.com/baremos/fristenrechner
 IssueTracker: https://github.com/baremos/fristenrechner/issues
 Changelog: https://github.com/baremos/fristenrechner/releases
 
+AutoName: Fristenrechner Vergabe
+
 RepoType: git
 Repo: https://github.com/baremos/fristenrechner.git
 Binaries: https://github.com/baremos/fristenrechner/releases/download/v%v/de.baremos.fristenrechner_%v_%c.apk
