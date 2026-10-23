@@ -12,9 +12,8 @@ AutoName: Fristenrechner Vergabe
 
 RepoType: git
 Repo: https://github.com/baremos/fristenrechner.git
-Binaries: https://github.com/baremos/fristenrechner/releases/download/v%v/de.baremos.fristenrechner_%v_%c.apk
-AllowedAPKSigningKeys:
-  - ae5d4d7ec4d3ee63763e128a3fb00721c7d164206f066dc26e8e968ff9a92e68
+Binaries: 
+  https://github.com/baremos/fristenrechner/releases/download/v%v/de.baremos.fristenrechner_%v_%c.apk
 
 Builds:
   - versionName: 1.0.0
@@ -22,10 +21,10 @@ Builds:
     commit: 61e151091bb509240e16ef86d8a0ad04b44e4582
     subdir: app/android/app
     sudo:
-      - set -eu
       - echo "deb http://deb.debian.org/debian forky main" > /etc/apt/sources.list.d/forky.list
       - apt-get update
-      - apt-get install -y -t forky nodejs npm esbuild cargo rustc build-essential cmake
+      - apt-get install -y -t forky nodejs npm esbuild cargo rustc build-essential
+        cmake
     gradle:
       - yes
     srclibs:
@@ -38,7 +37,9 @@ Builds:
       - cd ../../..
       - export ASTRO_TELEMETRY_DISABLED=1 CI=1
       - npm ci --ignore-scripts --no-audit --no-fund
-      - rm -rf node_modules/@rolldown/binding-linux-x64-gnu node_modules/@astrojs/compiler-binding-linux-x64-gnu node_modules/@bruits/satteri-linux-x64-gnu node_modules/lightningcss-linux-x64-gnu node_modules/@esbuild/linux-x64 node_modules/@img/sharp-linux-x64 node_modules/@img/sharp-libvips-linux-x64
+      - rm -rf node_modules/@rolldown/binding-linux-x64-gnu node_modules/@astrojs/compiler-binding-linux-x64-gnu
+        node_modules/@bruits/satteri-linux-x64-gnu node_modules/lightningcss-linux-x64-gnu
+        node_modules/@esbuild/linux-x64 node_modules/@img/sharp-linux-x64 node_modules/@img/sharp-libvips-linux-x64
       - mkdir -p app/dist app/android/app/src/main/assets/public
       - (cd app && npx --no-install cap update android)
       - cargo fetch --locked --manifest-path "$$rolldown$$/Cargo.toml"
@@ -58,7 +59,8 @@ Builds:
       - cd ../../..
       - export ASTRO_TELEMETRY_DISABLED=1 CI=1
       - (cd "$$rolldown$$" && cargo build --offline --release --locked -p rolldown_binding)
-      - (cd "$$astro-compiler-rs$$" && cargo build --offline --release --locked -p astro_napi --features allocator)
+      - (cd "$$astro-compiler-rs$$" && cargo build --offline --release --locked -p
+        astro_napi --features allocator)
       - (cd "$$satteri$$" && cargo build --offline --release --locked -p satteri-napi)
       - (cd "$$lightningcss$$" && cargo build --offline --release --locked -p lightningcss_node)
       - install -m644 "$$rolldown$$/target/release/librolldown_binding.so" node_modules/rolldown/dist/rolldown-binding.linux-x64-gnu.node
@@ -69,7 +71,9 @@ Builds:
       - (cd app && npx --no-install cap copy android)
       - node scripts/fdroid/app-vorbereiten.mjs --nach-scanner
 
+AllowedAPKSigningKeys: ae5d4d7ec4d3ee63763e128a3fb00721c7d164206f066dc26e8e968ff9a92e68
+
 AutoUpdateMode: Version
-UpdateCheckMode: 'Tags ^v[0-9]+\.[0-9]+\.[0-9]+$'
+UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
 CurrentVersion: 1.0.0
 CurrentVersionCode: 10000

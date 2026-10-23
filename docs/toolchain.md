@@ -23,7 +23,7 @@ Dieses Dokument legt fest, mit welchen Werkzeugen und in welchen Versionen der F
 7. **Keine Installationsskripte.** `ignore-scripts=true` in der `.npmrc` gilt für npm 10 und npm 11. Braucht ein Paket ein Skript, wird es einzeln freigegeben und hier vermerkt.
 8. **Keine systemweiten Eingriffe durch Skripte.** Die Skripte setzen `JAVA_HOME` und `ANDROID_HOME` nur für den eigenen Lauf. Sie ändern weder `PATH` noch andere Einstellungen des Rechners.
 
-Nachtrag 2026-10-23, nur für das [Veröffentlichungsrezept für F-Droid](fdroid-build.md#werkzeuge-aus-quelltext-23102026): Auf Wunsch des Maintainers und nach Andreas' Entscheidung für Option A installiert dessen `sudo`-Block `nodejs`, `npm`, `esbuild`, `cargo`, `rustc`, `build-essential` und `cmake` systemweit aus Debian forky. Die vier nativen Node-Bindungen von Rolldown, Astro compiler-rs, Satteri und Lightning CSS werden aus Quelltext mit dem unveränderten Upstream-Release-Profil gebaut; esbuild kommt aus Debian. Kein rustup und kein `pkg-config` ohne Bedarfsbeleg. Die vollständige Probe dieses Rezepts braucht Root-Rechte in einer entbehrlichen Distribution und steht aus; die Bindungs- und Webmessungen sowie die gezielte `scanignore`-Ausnahme nach E7 für das von der Hinweise-Prüfung benötigte Capacitor-Archiv sind in `fdroid-build.md` dokumentiert. Die lokale Einrichtung, `build-lokal.py`, die lokalen Rezepte und deren Referenzversionen bleiben unverändert: Node-Archiv von nodejs.org und npm-Plattformpakete für die Buildwerkzeuge, danach die lokale Bereinigung nach F5.
+Nachtrag 2026-10-23, nur für das [Veröffentlichungsrezept für F-Droid](fdroid-build.md#werkzeuge-aus-quelltext-23102026): Auf Wunsch des Maintainers und nach Andreas' Entscheidung für Option A installiert dessen `sudo`-Block `nodejs`, `npm`, `esbuild`, `cargo`, `rustc`, `build-essential` und `cmake` systemweit aus Debian forky. Die vier nativen Node-Bindungen von Rolldown, Astro compiler-rs, Satteri und Lightning CSS werden aus Quelltext mit dem unveränderten Upstream-Release-Profil gebaut; esbuild kommt aus Debian. Kein rustup und kein `pkg-config` ohne Bedarfsbeleg. Die vollständige Probe dieses Rezepts am Stand `fae0b24` bestand am 2026-10-23 als root in einer frischen, entbehrlichen Debian-13-Instanz mit Originalprofilen, Scanner und bytegleicher unsignierter APK. Paketversionen, srclib-Commits, Grenzen und die gezielte `scanignore`-Ausnahme nach E7 für das von der Hinweise-Prüfung benötigte Capacitor-Archiv sind in `fdroid-build.md` dokumentiert. Die Repo-Fassung ist inzwischen die kanonische fdroiddata-Fassung, als Fixpunkt mit fdroidserver 2.4.2 geprüft. Die Änderungen danach betreffen Darstellung, die wirkungslose `sudo`-Zeile, Probe, Tests und Doku; die vollständige Probe wird nicht wiederholt, die fdroiddata-Pipeline baut die endgültige Fassung. Die lokale Einrichtung, `build-lokal.py`, die lokalen Rezepte und deren Referenzversionen bleiben unverändert: Node-Archiv von nodejs.org und npm-Plattformpakete für die Buildwerkzeuge, danach die lokale Bereinigung nach F5.
 
 ## Festgelegte Versionen
 
@@ -264,7 +264,7 @@ Die Prüfsummen der Gradle-Abhängigkeiten stehen seit dem 2026-10-05 in `app/an
 | `app/android/gradle/wrapper/gradle-wrapper.properties` | Gradle-Version und Prüfsumme | 2.5 |
 | `app/android/gradle/verification-metadata.xml` | SHA-256 der erfassten Gradle-Artefakte und Metadaten | Vorarbeit Stufe 3 |
 | Lokale Build-Rezepte für F-Droid | Node-Referenzversion aus der Einrichtung im Benutzerbereich mit Prüfsumme des Linux-Archivs | 2.8 |
-| Veröffentlichungsrezept für F-Droid | Node.js, npm, esbuild, cargo/rustc, build-essential und cmake aus Debian forky über `sudo`; Suite festgelegt, Paketversionen nicht festgeschrieben. Vier native Node-Bindungen aus srclib-Tags; Astro-`Cargo.lock` wird in `prebuild` erzeugt, danach `--locked` (Entscheidung 2026-10-23). | 2.8 |
+| Veröffentlichungsrezept für F-Droid | Node.js, npm, esbuild, cargo/rustc, build-essential und cmake aus Debian forky über `sudo`; Suite festgelegt, Paketversionen nicht festgeschrieben. npm-esbuild und Debian-esbuild müssen exakt übereinstimmen, derzeit 0.28.2; die Probe prüft beide Werte. Vier native Node-Bindungen aus srclib-Tags, geprüft gegen das Lockfile des Build-Commits; Astro-`Cargo.lock` wird in `prebuild` erzeugt, danach `--locked` (Entscheidung 2026-10-23). | 2.8 |
 
 ## Gradle-Prüfsummen
 
@@ -394,10 +394,13 @@ F-Droid baut unter Debian. Die Werkzeuge von F-Droid laufen nicht unter Windows.
 | OpenJDK | 21.0.12.1+1 aus Debian 13 | Hauptversion 21 wie festgelegt |
 | Node.js | lokal: Archiv 24.21.0; Veröffentlichungsrezept: forky, gemessen `24.21.0+dfsg+~cs24.13.4-1` am 2026-10-23 | Debian trixie liefert 20.19.2 und ist für Astro 7 zu alt |
 | npm im Veröffentlichungsrezept | forky, gemessen `12.2.0+ds1-1` am 2026-10-23 | lokale Referenz 11.19.0 unverändert |
-| esbuild im Veröffentlichungsrezept | forky, gemessen `0.28.2-1` am 2026-10-23 | npm-Plattformpaket entfernen; Debian-Paket wird über den globalen Node-Suchpfad gefunden, ohne `ESBUILD_BINARY_PATH` |
-| cargo und rustc im Veröffentlichungsrezept | forky, jeweils `1.97.1+dfsg1-1` am 2026-10-23 | alle vier Bindungen damit gebaut; kein rustup, keine Übersteuerung des Release-Profils |
+| esbuild im Veröffentlichungsrezept | forky, gemessen `0.28.2-1` am 2026-10-23 | Muss zur npm-Version 0.28.2 im Lockfile passen; npm-Plattformpaket entfernen, Debian-Paket wird über den globalen Node-Suchpfad gefunden, ohne `ESBUILD_BINARY_PATH` |
+| cargo und rustc im Veröffentlichungsrezept | forky, jeweils `1.97.1+dfsg1-1` am 2026-10-23 | alle vier Bindungen damit gebaut; kein rustup, keine Übersteuerung des Release-Profils; die unterschiedlichen Rust-Pins stehen in [M2](fdroid-build.md#messungen-vom-23102026) |
+| build-essential und cmake im Veröffentlichungsrezept | 12.12 und 4.3.4-1 in der vollständigen Probe vom 2026-10-23 | systemweit über den `sudo`-Block aus forky installiert |
 
 F-Droid verlangt freie Werkzeuge für den gesamten Build und bevorzugt Pakete aus Debian. Das JDK von Oracle ist ausgeschlossen.
+
+**Risiko der esbuild-Versionskopplung:** Der npm-Lader verlangt genau dieselbe Version wie das gestartete Programm. Laut Debian-madison vom 2026-10-23 liefern forky und sid `esbuild` 0.28.2-1, passend zum npm-Paket 0.28.2. Weil das Rezept nur forky festlegt, kann ein späteres Debian-Update den Web-Build ohne Änderung des Lockfiles abbrechen lassen. Die Probe vergleicht `esbuild --version` aus dem Systempfad nach den `sudo`-Schritten mit `node_modules/esbuild/package.json` im Build-Ordner und protokolliert beide Versionen. Als möglicher Ausweg ist die vorhandene fdroiddata-srclib `esbuild` aus `https://github.com/evanw/esbuild.git` mit `go build ./cmd/esbuild` zu prüfen, wie im Rezept `metadata/net.opendsp.x4x4.yml`. Das ist eine Möglichkeit für einen passenden Quelltextbau, keine beschlossene Umstellung.
 
 Auf einem Windows-Rechner braucht der Nachweis aus Arbeitspaket 2.8 eine Linux-Umgebung: WSL 2 mit Debian 13 oder einen Container. Eingerichtet ist seit dem 2026-09-28 WSL 2 mit Debian 13.5, siehe `fdroid-build.md`.
 
@@ -411,7 +414,7 @@ Freie Lizenzen allein klären nicht, wie F-Droid vorgefertigte Binärdateien beh
 
 | Datei oder Paket | Herkunft | Zweck | Absicherung | Klärung in 2.8 |
 |---|---|---|---|---|
-| Node.js | lokal: offizielles Archiv von nodejs.org; Veröffentlichungsrezept seit 2026-10-23: Debian forky | Web-Build | lokal: Archiv-SHA-256 in `scripts/toolchain.json`; Veröffentlichungsrezept: Debian-Paketverwaltung | Pipeline 2980491535 belegt die frühere Umstellung nur von Node.js/npm; vollständige Probe von Option A offen |
+| Node.js | lokal: offizielles Archiv von nodejs.org; Veröffentlichungsrezept seit 2026-10-23: Debian forky | Web-Build | lokal: Archiv-SHA-256 in `scripts/toolchain.json`; Veröffentlichungsrezept: Debian-Paketverwaltung | Pipeline 2980491535 belegt die frühere Umstellung nur von Node.js/npm; vollständige lokale Probe von Option A am Rezeptstand `fae0b24` am 2026-10-23 mit bytegleicher APK bestanden |
 | Rolldown, Astro compiler-rs, Satteri, Lightning CSS | lokal: npm-Plattformpakete; Veröffentlichungsrezept: Quelltext aus vier srclib-Tags | native Node-Bindungen für den Web-Build | lokal: npm-Lockfile; Veröffentlichungsrezept: Tags und Cargo-Locks, Originalprofile; Astro-Lock im `prebuild` neu erzeugt | sieben native Plattformpakete vor dem Scanner entfernen, vier selbst gebaute Bindungen erst in `build` unter den lokalen Rückfallnamen einsetzen; Quellen und Messungen in [E1 bis E10](fdroid-build.md#werkzeuge-aus-quelltext-23102026) |
 | esbuild | lokal: npm-Plattformpaket; Veröffentlichungsrezept: Debian forky | Web-Build über Astro | lokal: npm-Lockfile; Veröffentlichungsrezept: Debian-Paketverwaltung und esbuild-Versionsprüfung | `node_modules/@esbuild/linux-x64` entfernen; Debian-Paket ohne `ESBUILD_BINARY_PATH` verwenden |
 | `sharp` mit `libvips` | npm, optionale Abhängigkeit von Astro | Bildverarbeitung, laut Trace vom 2026-10-23 im Web-Build nicht genutzt | Prüfsummen im Lockfile | Veröffentlichungsrezept entfernt beide Linux-Plattformpakete vor dem Scanner |
@@ -463,7 +466,7 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 | Capacitor | bei neuer Hauptversion | Vorlage vergleichen, Abweichungen neu anwenden |
 | Node | vor Ende der Unterstützung | Wechsel auf die nächste LTS-Version |
 
-Jede Änderung einer Version ändert dieses Dokument, `scripts/toolchain.json` und das Lockfile im selben Schritt.
+Jede Änderung einer Version ändert dieses Dokument, `scripts/toolchain.json` und das Lockfile im selben Schritt. Für jede neue F-Droid-Fassung sind außerdem die vier srclib-Tags und die esbuild-Version gegen das Lockfile des Build-Commits zu prüfen; geänderte Versionen erfordern einen passenden Build-Eintrag per Merge Request in fdroiddata. `AutoUpdateMode: Version` übernimmt die srclibs unverändert aus dem letzten Build-Eintrag; Ablauf und Beleg stehen im [Pflegekonzept](pflegekonzept.md#f-droid-bei-jeder-neuen-fassung).
 
 ## Nachweis
 

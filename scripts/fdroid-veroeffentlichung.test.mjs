@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash, X509Certificate } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
-import { parseDocument, stringify } from 'yaml';
+import { parseDocument, stringify, visit } from 'yaml';
 
 const lesen = (pfad) => readFileSync(new URL(pfad, import.meta.url), 'utf8');
 const quelle = lesen('./fdroid/veroeffentlichung/de.baremos.fristenrechner.yml');
@@ -33,22 +33,57 @@ const scannerPfade = [
   'node_modules/shiki/dist/onig.wasm', 'node_modules/xxhash-wasm/workerd/xxhash.wasm',
 ];
 const sudoBefehle = [
-  'set -eu',
   'echo "deb http://deb.debian.org/debian forky main" > /etc/apt/sources.list.d/forky.list',
   'apt-get update',
   'apt-get install -y -t forky nodejs npm esbuild cargo rustc build-essential cmake',
 ];
 const felder = [
   'Categories', 'License', 'AuthorName', 'AuthorWebSite', 'WebSite', 'SourceCode',
-  'IssueTracker', 'Changelog', 'AutoName', 'RepoType', 'Repo', 'Binaries', 'AllowedAPKSigningKeys',
-  'Builds', 'AutoUpdateMode', 'UpdateCheckMode', 'CurrentVersion', 'CurrentVersionCode',
+  'IssueTracker', 'Changelog', 'AutoName', 'RepoType', 'Repo', 'Binaries', 'Builds',
+  'AllowedAPKSigningKeys', 'AutoUpdateMode', 'UpdateCheckMode', 'CurrentVersion', 'CurrentVersionCode',
 ];
 const buildFelder = ['versionName', 'versionCode', 'commit', 'subdir', 'sudo', 'gradle', 'srclibs', 'prebuild', 'scanignore', 'scandelete', 'build'];
 const bashVorhanden = spawnSync('bash', ['--version'], { timeout: 10_000 }).status === 0;
+// Debian forky und sid: jeweils 0.28.2-1 laut Debian-madison am 2026-10-23.
+// Das npm-Paket esbuild verlangt dieselbe Version wie das ausführbare Programm.
+const debianEsbuildVersion = '0.28.2';
+const lockBindungen = [
+  ['rolldown', 'v', 'rolldown', '@rolldown/binding-linux-x64-gnu'],
+  ['astro-compiler-rs', 'v', '@astrojs/compiler-binding', '@astrojs/compiler-binding-linux-x64-gnu'],
+  ['satteri', 'satteri-v', 'satteri', '@bruits/satteri-linux-x64-gnu'],
+  ['lightningcss', 'v', 'lightningcss', 'lightningcss-linux-x64-gnu'],
+];
 
-function yamlLesen(text) {
+// Reine Prüfung: Das übergebene Lockfile muss zum Build-Commit gehören;
+// weder installierte Pakete noch das Lockfile der aktuellen Arbeitskopie lesen.
+function lockfilePruefen(rezept, lockfile) {
+  const version = (paket) => {
+    const pfad = 'node_modules/' + paket;
+    const wert = lockfile.packages?.[pfad]?.version;
+    assert.ok(typeof wert === 'string' && wert.length > 0, 'Lockfile-Paket fehlt oder hat keine Version: ' + pfad);
+    return wert;
+  };
+  const tags = lockBindungen.map(([name, praefix, hauptpaket, plattformpaket]) => {
+    const hauptversion = version(hauptpaket);
+    assert.equal(version(plattformpaket), hauptversion, 'Plattformversion passt nicht zum Hauptpaket: ' + plattformpaket);
+    return name + '@' + praefix + hauptversion;
+  });
+  assert.equal(rezept.Builds.length, 1, 'Lockfile-Prüfung erwartet genau den ausgewählten Build');
+  assert.deepEqual(rezept.Builds[0].srclibs, tags, 'srclib-Tags müssen den Hauptpaketversionen im Build-Lockfile entsprechen');
+  assert.equal(version('@esbuild/linux-x64'), version('esbuild'), 'Plattformversion passt nicht zum Hauptpaket: @esbuild/linux-x64');
+  assert.equal(version('esbuild'), debianEsbuildVersion, 'esbuild im Build-Lockfile muss zur erwarteten Debian-forky-Version passen');
+}
+
+function yamlLesen(text, ohneKommentare = false) {
   const dokument = parseDocument(text, { version: '1.2', strict: true, uniqueKeys: true });
   assert.deepEqual(dokument.errors.map((fehler) => fehler.message), [], 'Gültiges YAML ohne doppelte Schlüssel');
+  if (ohneKommentare) {
+    const pruefen = (knoten) => {
+      assert.ok(knoten?.comment == null && knoten?.commentBefore == null, 'Keine YAML-Kommentare in der kanonischen Rezeptfassung');
+    };
+    pruefen(dokument);
+    visit(dokument, (_schluessel, knoten) => { pruefen(knoten); });
+  }
   return dokument.toJS({ maxAliasCount: 0 });
 }
 
@@ -77,6 +112,7 @@ function tagMuster(rezept) {
     'v0x2x0', 'v0.2', 'v1.0.0.1', 'main', 'v', 'v1.2.3suffix', 'test/1.0.1-1']) {
     assert.ok(!ausdruck.test(tag), 'Fremder Tag darf nicht passen: ' + tag);
   }
+  assert.equal(rezept.UpdateCheckMode, 'Tags ^v[0-9]+\\.[0-9]+\\.[0-9]+$', 'UpdateCheckMode bleibt als Zeichenkette unverändert');
 }
 
 function schrittNach(liste, befehl, vorher = -1) {
@@ -92,8 +128,9 @@ function rezeptPruefen(text) {
   assert.doesNotMatch(text, /ESBUILD_BINARY_PATH/, 'Kein ESBUILD_BINARY_PATH; Debian-Node-Suchpfad verwenden');
   assert.doesNotMatch(text, /--omit(?:=|\s+)optional/, 'Kein --omit=optional; Hinweise Dritter brauchen optionale jsPDF-Pakete');
   assert.doesNotMatch(text, /CARGO_PROFILE_|RUSTUP_|rustup|--no-default-features/, 'Upstream-Profile und Debian-Rust unverändert verwenden');
-  const rezept = yamlLesen(text);
+  const rezept = yamlLesen(text, true);
   genaueFelder(rezept, felder, 'Rezept');
+  assert.deepEqual(Object.keys(rezept), felder, 'Kanonische Schlüsselreihenfolge im Rezept');
   assert.deepEqual(rezept.Categories, ['Calculator']);
   assert.equal(rezept.License, 'Apache-2.0');
   assert.equal(rezept.AuthorName, 'BAREMOS IT Dienstleistungs GmbH');
@@ -106,7 +143,7 @@ function rezeptPruefen(text) {
   assert.equal(rezept.RepoType, 'git');
   assert.equal(rezept.Repo, github + '.git');
   assert.equal(rezept.Binaries, github + '/releases/download/v%v/' + referenz.appId + '_%v_%c.apk');
-  assert.deepEqual(rezept.AllowedAPKSigningKeys, [schluessel], 'Zertifikatsfingerabdruck aus DER-Inhalt');
+  assert.equal(rezept.AllowedAPKSigningKeys, schluessel, 'Zertifikatsfingerabdruck aus DER-Inhalt als Skalar');
   assert.equal(rezept.CurrentVersion, referenz.versionName);
   assert.equal(rezept.CurrentVersionCode, referenz.versionCode);
   assert.equal(rezept.AutoUpdateMode, 'Version');
@@ -115,6 +152,7 @@ function rezeptPruefen(text) {
   assert.equal(rezept.Builds.length, 1, 'Genau ein Build');
   const build = rezept.Builds[0];
   genaueFelder(build, buildFelder, 'Build');
+  assert.deepEqual(Object.keys(build), buildFelder, 'Kanonische Schlüsselreihenfolge im Build');
   assert.equal(build.versionName, referenz.versionName);
   assert.equal(build.versionCode, referenz.versionCode);
   assert.equal(build.commit, releaseCommit, 'Unveränderter vollständiger Release-Commit 1.0.0');
@@ -126,10 +164,10 @@ function rezeptPruefen(text) {
   for (const phase of ['sudo', 'prebuild', 'build']) {
     assert.ok(Array.isArray(build[phase]) && build[phase].length > 0, phase + ': nichtleere Befehlsliste');
     assert.ok(build[phase].every((zeile) => typeof zeile === 'string' && zeile.trim()), phase + ': ausschließlich Befehle als Text');
-    assert.equal(build[phase][0], 'set -eu', phase + ': beginnt mit set -eu');
   }
   assert.deepEqual(build.sudo, sudoBefehle, 'Nur die festgelegten Debian-forky-Pakete installieren');
   for (const phase of ['prebuild', 'build']) {
+    assert.equal(build[phase][0], 'set -eu', phase + ': beginnt mit set -eu');
     assert.equal(build[phase][1], 'cd ../../..', phase + ': eigener Wechsel zur App-Repositorywurzel');
     assert.ok(build[phase].includes('export ASTRO_TELEMETRY_DISABLED=1 CI=1'), phase + ': eigene Umgebung');
     assert.doesNotMatch(build[phase].join('\n'), /\bcurl\b|nodejs\.org|\bsha256sum\b|fristenrechner-fdroid/, phase + ': kein alter Node-Download');
@@ -179,6 +217,74 @@ function shellPruefen(befehle) {
 
 test('Rezept erfüllt E1–E10 strukturell; Ausführbarkeit und Bytegleichheit sind getrennte Nachweise', () => {
   rezeptPruefen(quelle);
+});
+
+test('srclib-Tags und entfernte Plattformpakete passen zum Lockfile am Build-Commit', (t) => {
+  const rezept = yamlLesen(quelle);
+  const commit = rezept.Builds[0].commit;
+  assert.match(commit, /^[a-f0-9]{40}$/, 'Vollständiger Build-Commit');
+  const optionen = {
+    cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 10_000,
+    env: { ...process.env, GIT_OPTIONAL_LOCKS: '0', GIT_NO_LAZY_FETCH: '1', GIT_TERMINAL_PROMPT: '0' },
+  };
+  const objekt = spawnSync('git', ['cat-file', '--batch-check'], { ...optionen, input: commit + '\n' });
+  assert.equal(objekt.status, 0, objekt.error?.message ?? objekt.stderr);
+  if (objekt.stdout.trim() === commit + ' missing') {
+    t.skip('Build-Commit ' + commit + ' fehlt lokal (z. B. flacher Klon); Lockfile-Prüfung benötigt die Historie, CI verwendet fetch-depth: 0.');
+    return;
+  }
+  assert.match(objekt.stdout.trim(), /^[a-f0-9]{40} commit [0-9]+$/, 'Build-Commit muss ein Commit-Objekt sein');
+  const datei = spawnSync('git', ['show', commit + ':package-lock.json'], optionen);
+  assert.equal(datei.status, 0, datei.error?.message ?? datei.stderr);
+  lockfilePruefen(rezept, JSON.parse(datei.stdout));
+});
+
+function lockfileAttrappe() {
+  const rezept = { Builds: [{ srclibs: [] }] };
+  const lockfile = { packages: {} };
+  for (const [index, [name, praefix, hauptpaket, plattformpaket]] of lockBindungen.entries()) {
+    const version = '9.' + index + '.7';
+    rezept.Builds[0].srclibs.push(name + '@' + praefix + version);
+    for (const paket of [hauptpaket, plattformpaket]) lockfile.packages['node_modules/' + paket] = { version };
+  }
+  for (const paket of ['esbuild', '@esbuild/linux-x64']) lockfile.packages['node_modules/' + paket] = { version: debianEsbuildVersion };
+  return { rezept, lockfile };
+}
+
+test('Lockfile-Prüfung leitet srclib-Tags aus übergebenen Versionen ab', () => {
+  const { rezept, lockfile } = lockfileAttrappe();
+  lockfilePruefen(rezept, lockfile);
+});
+
+for (const [name, , hauptpaket, plattformpaket] of lockBindungen) {
+  test('Lockfile-Gegenprobe: falsche srclib-Version ' + name, () => {
+    const { rezept, lockfile } = lockfileAttrappe();
+    for (const paket of [hauptpaket, plattformpaket]) lockfile.packages['node_modules/' + paket].version = '8.8.8';
+    assert.throws(() => lockfilePruefen(rezept, lockfile), /srclib-Tags/);
+  });
+}
+for (const plattformpaket of [...lockBindungen.map((bindung) => bindung[3]), '@esbuild/linux-x64']) {
+  test('Lockfile-Gegenprobe: falsche Plattformversion ' + plattformpaket, () => {
+    const { rezept, lockfile } = lockfileAttrappe();
+    lockfile.packages['node_modules/' + plattformpaket].version = '8.8.8';
+    assert.throws(() => lockfilePruefen(rezept, lockfile), /Plattformversion/);
+  });
+  test('Lockfile-Gegenprobe: fehlendes Plattformpaket ' + plattformpaket, () => {
+    const { rezept, lockfile } = lockfileAttrappe();
+    delete lockfile.packages['node_modules/' + plattformpaket];
+    assert.throws(() => lockfilePruefen(rezept, lockfile), /Lockfile-Paket fehlt/);
+  });
+}
+test('Lockfile-Gegenprobe: esbuild 0.28.3 passt nicht zur erwarteten Debian-Version', () => {
+  const { rezept, lockfile } = lockfileAttrappe();
+  for (const paket of ['esbuild', '@esbuild/linux-x64']) lockfile.packages['node_modules/' + paket].version = '0.28.3';
+  assert.throws(() => lockfilePruefen(rezept, lockfile), /Debian-forky-Version/);
+});
+
+test('Kanonische Gegenproben: Kommentarzeile und Inline-Kommentar scheitern', () => {
+  for (const text of ['# Kommentar\n' + quelle, quelle + '\n#\n', quelle.replace('License: Apache-2.0', 'License: Apache-2.0 # Kommentar')]) {
+    assert.throws(() => rezeptPruefen(text), /Keine YAML-Kommentare/);
+  }
 });
 test('Vier srclib-Dateien enthalten nur die erlaubten Quellenfelder', () => {
   assert.deepEqual(readdirSync(new URL('./fdroid/veroeffentlichung/srclibs/', import.meta.url)).sort(),
@@ -276,8 +382,18 @@ for (const commit of ['v1.0.0', releaseCommit.slice(0, 7), releaseCommit.toUpper
 }
 gegenprobe('Gradle yes als boolescher Wert', (r) => { r.Builds[0].gradle = [true]; });
 gegenprobe('automatisches Update deaktiviert', (r) => { r.AutoUpdateMode = 'None'; });
-gegenprobe('fremdes Zertifikat', (r) => { r.AllowedAPKSigningKeys = ['0'.repeat(64)]; }, /Zertifikatsfingerabdruck/);
-gegenprobe('zweites Signierzertifikat', (r) => { r.AllowedAPKSigningKeys.push('0'.repeat(64)); }, /Zertifikatsfingerabdruck/);
+gegenprobe('fremdes Zertifikat', (r) => { r.AllowedAPKSigningKeys = '0'.repeat(64); }, /Zertifikatsfingerabdruck/);
+gegenprobe('zweites Signierzertifikat', (r) => { r.AllowedAPKSigningKeys = [schluessel, '0'.repeat(64)]; }, /Zertifikatsfingerabdruck/);
+gegenprobe('Signierzertifikat als einelementige Liste', (r) => { r.AllowedAPKSigningKeys = [schluessel]; }, /als Skalar/);
+gegenprobe('alte Schlüsselreihenfolge', (r) => {
+  const eintraege = Object.entries(r);
+  for (const feld of Object.keys(r)) delete r[feld];
+  for (const [feld, wert] of eintraege) {
+    if (feld === 'Builds') r.AllowedAPKSigningKeys = schluessel;
+    if (feld !== 'AllowedAPKSigningKeys') r[feld] = wert;
+  }
+}, /Kanonische Schlüsselreihenfolge/);
+gegenprobe('set -eu im sudo-Block', (r) => { r.Builds[0].sudo.unshift('set -eu'); }, /Debian-forky-Pakete/);
 gegenprobe('APK-Adresse ohne Versionscode', (r) => { r.Binaries = r.Binaries.replace('_%c', ''); });
 gegenprobe('bewegliche APK-Adresse', (r) => { r.Binaries = r.Binaries.replace('download/v%v', 'latest/download'); });
 gegenprobe('lokales Repository', (r) => { r.Repo = '@LOKALES_REPOSITORY@'; }, /lokalen Variablen/);
@@ -286,8 +402,8 @@ gegenprobe('esbuild-Override', (r) => { r.Builds[0].build.push('export ESBUILD_B
 gegenprobe('optionale Pakete weggelassen', (r) => { r.Builds[0].prebuild[3] += ' --omit=optional'; }, /Kein --omit=optional/);
 gegenprobe('Release-Profil übersteuert', (r) => { r.Builds[0].build.push('export CARGO_PROFILE_RELEASE_LTO=off'); }, /Upstream-Profile/);
 gegenprobe('falsche Debian-Suite', (r) => { r.Builds[0].sudo = r.Builds[0].sudo.map(s => s.replaceAll('forky', 'trixie')); }, /Debian-forky-Pakete/);
-gegenprobe('pkg-config ohne Bedarfsbeleg', (r) => { r.Builds[0].sudo[3] += ' pkg-config'; }, /Debian-forky-Pakete/);
-for (const phase of ['sudo', 'prebuild', 'build']) {
+gegenprobe('pkg-config ohne Bedarfsbeleg', (r) => { r.Builds[0].sudo[2] += ' pkg-config'; }, /Debian-forky-Pakete/);
+for (const phase of ['prebuild', 'build']) {
   gegenprobe(phase + ' ohne Fehlerabbruch', (r) => { r.Builds[0][phase][0] = 'set -u'; }, /beginnt mit set -eu/);
 }
 for (const phase of ['prebuild', 'build']) {

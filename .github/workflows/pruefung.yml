@@ -28,6 +28,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Die Rezeptprüfung liest package-lock.json am jeweiligen Build-Commit.
+          fetch-depth: 0
 
       - name: Node.js nach scripts/toolchain.json einrichten
         run: |

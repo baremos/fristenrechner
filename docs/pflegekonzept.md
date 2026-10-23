@@ -1,6 +1,6 @@
 # Pflegekonzept
 
-Stand 2026-09-27 · bestätigt von Andreas Schmidt am 2026-09-27 · nach Kreuz-Review präzisiert
+Stand 2026-09-27 · bestätigt von Andreas Schmidt am 2026-09-27 · nach Kreuz-Review präzisiert · ergänzt am 2026-10-23: F-Droid-Pflege der Buildwerkzeuge
 
 ## Warum ein Pflegekonzept
 
@@ -53,6 +53,16 @@ Auch eine Regelprüfung ohne Änderung wird festgehalten, mit Datum und geprüft
 7. Android-Release für Google Play und F-Droid.
 
 Eine fachliche Änderung gilt erst als abgeschlossen, wenn Schritt 6 und 7 erledigt sind.
+
+## F-Droid bei jeder neuen Fassung
+
+Vor dem Android-Release sind die Werkzeuge im F-Droid-Build-Eintrag gegen `package-lock.json` des dort genannten Build-Commits zu prüfen:
+
+- Die Tags `rolldown@v<Version>`, `astro-compiler-rs@v<Version>`, `satteri@satteri-v<Version>` und `lightningcss@v<Version>` müssen den Versionen von Rolldown, `@astrojs/compiler-binding`, Satteri und Lightning CSS entsprechen. Die fünf entfernten Linux-Plattformpakete dieser Bindungen und von esbuild müssen dieselbe Version wie ihr Hauptpaket haben.
+- Die Programmversion von esbuild aus Debian muss exakt zur npm-Version im Lockfile passen, derzeit 0.28.2. Ein Wechsel in Debian forky kann diesen Abgleich auch bei unveränderten npm-Abhängigkeiten notwendig machen.
+- Ändern sich die Versionen, sind die srclib-Tags und die esbuild-Beschaffung zu prüfen und der Build-Eintrag in fdroiddata per Merge Request nachzuziehen. Das Repo-Rezept bleibt in der kanonischen fdroiddata-Form. Rezepttests, `rewritemeta`, `fdroid lint` und die Pipeline mit Binärabgleich müssen zur neuen Fassung passen.
+
+`AutoUpdateMode: Version` ersetzt diesen Pflegeposten nicht. Nach dem im unabhängigen Review geprüften Quelltext von fdroidserver 2.4.2 (`checkupdates.py:626,649–663`) kopiert `checkupdates` den letzten Build-Eintrag per `deepcopy` einschließlich der srclibs und ändert nur Version, Versionscode und Commit. Neue npm-Versionen führen damit nicht automatisch zu neuen srclib-Tags. Die Tests lesen das Lockfile des Build-Commits; ein übersprungener Test wegen fehlender Historie in einem flachen Klon ist kein Nachweis. Einzelheiten, die bewegliche Astro-Cargo-Auflösung und ein möglicher Quelltextbau von esbuild stehen im [F-Droid-Nachweis](fdroid-build.md#bei-jeder-neuen-fassung).
 
 ## Dringende Korrekturen
 

@@ -197,10 +197,10 @@ def main():
         protokoll.write(text + "\n")
         protokoll.flush()
 
-    def ausfuehren(befehl, cwd=None, protokolldatei=None, pruefen=True):
+    def ausfuehren(befehl, cwd=None, protokolldatei=None, pruefen=True, zusatzumgebung=None):
         melden("$ " + shlex.join(str(x) for x in befehl))
         with (lauf / (protokolldatei or "werkzeuge.log")).open("a", encoding="utf-8") as log:
-            prozess = subprocess.Popen([str(x) for x in befehl], cwd=cwd or lauf, env=env,
+            prozess = subprocess.Popen([str(x) for x in befehl], cwd=cwd or lauf, env={**env, **(zusatzumgebung or {})},
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                        encoding="utf-8", errors="replace")
             ausgabe_zeilen = []
@@ -255,6 +255,18 @@ def main():
         (lauf / "werkzeuge/gradlew.py").chmod(0o755)
         if sha256(lauf / "werkzeuge/gradlew.py") != vorgabe["gradlewFdroid"]["sha256"]:
             raise ValueError("Die kopierte gradlew.py weicht ab.")
+        json_schreiben(lauf / "fdroid/config.yml", {"sdk_path": str(lauf / "android-sdk"),
+            "gradle": str(lauf / "werkzeuge/gradlew.py"), "java_paths": {"21": str(jdk)},
+            "cachedir": str(lauf / "fdroid-cache")})
+        rezept_kopie = lauf / "fdroid/metadata" / (APPID + ".yml")
+        shutil.copyfile(rezept_datei, rezept_kopie)
+        # --list meldet auch unveränderte Dateien als "Rewriting". Entscheidend
+        # sind die Bytes, vor den bewussten Repo-/Binaries-Anpassungen der Probe.
+        rezept_bytes = rezept_kopie.read_bytes()
+        ausfuehren(["fdroid", "rewritemeta", APPID], cwd=lauf / "fdroid", protokolldatei="rewritemeta.log")
+        ergebnis["rezeptKanonisch"] = rezept_kopie.read_bytes() == rezept_bytes
+        if not ergebnis["rezeptKanonisch"]:
+            raise ValueError("Rezept ist nicht in der kanonischen Form von fdroid rewritemeta")
         quelle = str(ersatz) if ersatz else rezept["Repo"]
         klon = lauf / "fdroid/build" / APPID
         ausfuehren(["git", "-c", "core.autocrlf=false", "clone", "--no-hardlinks", "--branch", tag, "--", quelle, klon],
@@ -278,16 +290,19 @@ def main():
         json_schreiben(lauf / "abweichungen.json", abweichungen)
         for text in abweichungen:
             melden("Abweichung: " + text)
-        # JSON ist YAML 1.2; das Original-YAML wird unverändert separat gesichert.
-        json_schreiben(lauf / "fdroid/metadata" / (APPID + ".yml"), rezept)
-        json_schreiben(lauf / "fdroid/config.yml", {"sdk_path": str(lauf / "android-sdk"),
-            "gradle": str(lauf / "werkzeuge/gradlew.py"), "java_paths": {"21": str(jdk)},
-            "cachedir": str(lauf / "fdroid-cache")})
+        # JSON ist YAML 1.2. Nach den Probe-Anpassungen stellt rewritemeta auch
+        # für den Build wieder kanonisches YAML her; das Original bleibt erhalten.
+        rezept_kopie.unlink()
+        json_schreiben(rezept_kopie, rezept)
+        ausfuehren(["fdroid", "rewritemeta", APPID], cwd=lauf / "fdroid", protokolldatei="rewritemeta.log")
         sudo_datei = lauf / "sudo-aus-rezept.sh"
-        sudo_datei.write_text("#!/bin/bash\n" + shlex.join(sudo_befehl(sudo)) + "\n", encoding="utf-8")
+        sudo_datei.write_text("#!/bin/bash\nDEBIAN_FRONTEND=noninteractive " + shlex.join(sudo_befehl(sudo)) + "\n", encoding="utf-8")
         if sudo:
             melden("Root-Schritte aus dem Rezept (vor fdroid build):\n" + "\n".join(sudo))
-            ausfuehren(sudo_befehl(sudo), cwd=lauf / "fdroid", protokolldatei="sudo.log")
+            # fdroidserver 2.4.2 setzt dies beim sudo-Aufruf; hier läuft Bash
+            # bereits als root und erhält dieselbe Variable nur für diesen Aufruf.
+            ausfuehren(sudo_befehl(sudo), cwd=lauf / "fdroid", protokolldatei="sudo.log",
+                       zusatzumgebung={"DEBIAN_FRONTEND": "noninteractive"})
         else:
             melden("Das Rezept enthält keine sudo-Schritte; für diese Probe muss es System-Node und npm bereitstellen.")
         _, paketversionen = ausfuehren(["dpkg-query", "--show", r"--showformat=${binary:Package}\t${Version}\n", *DEBIAN_PAKETE],
@@ -322,6 +337,31 @@ def main():
         if ergebnis["tagCommitNachBuild"] != args.erwarteter_commit:
             raise ValueError("Tag " + tag + " nach fdroid build weicht vom erwarteten Release-Commit ab: "
                              + ergebnis["tagCommitNachBuild"] + " statt " + args.erwarteter_commit)
+        ergebnis["srclibCommits"] = {}
+        for eintrag in rezept["Builds"][0]["srclibs"]:
+            name, srclib_tag = eintrag.split("@", 1)
+            srclib_klon = lauf / "fdroid/build/srclib" / name
+            _, srclib_commit = ausfuehren(["git", "-C", srclib_klon, "rev-parse", "HEAD"], protokolldatei="srclib-commits.log")
+            _, srclib_tag_commit = ausfuehren(["git", "-C", srclib_klon, "rev-parse", srclib_tag + "^{commit}"], protokolldatei="srclib-commits.log")
+            daten = {"tag": srclib_tag, "commit": srclib_commit.strip(), "tagCommit": srclib_tag_commit.strip()}
+            ergebnis["srclibCommits"][name] = daten
+            if not re.fullmatch(r"[0-9a-f]{40}", daten["commit"]) or daten["commit"] != daten["tagCommit"]:
+                raise ValueError("srclib " + name + ": HEAD nach fdroid build stimmt nicht mit Tag " + srclib_tag
+                                 + " überein: " + daten["commit"] + " statt " + daten["tagCommit"])
+        esbuild = shutil.which("esbuild", path=SYSTEMPFAD)
+        if not esbuild:
+            raise ValueError("Nach den sudo-Schritten fehlt esbuild im Systempfad.")
+        _, esbuild_version = ausfuehren([esbuild, "--version"])
+        ergebnis.update({"esbuildPfad": esbuild, "esbuildVersion": esbuild_version.strip()})
+        esbuild_paket = json.loads((klon / "node_modules/esbuild/package.json").read_text(encoding="utf-8"))
+        ergebnis["esbuildNpmVersion"] = esbuild_paket.get("version")
+        melden("esbuild nach fdroid build: System " + ergebnis["esbuildVersion"] + " (" + esbuild
+               + "), npm-Paket " + str(ergebnis["esbuildNpmVersion"]) + ".")
+        if (not isinstance(ergebnis["esbuildNpmVersion"], str)
+                or not ergebnis["esbuildNpmVersion"]
+                or ergebnis["esbuildVersion"] != ergebnis["esbuildNpmVersion"]):
+            raise ValueError("System-esbuild und node_modules/esbuild/package.json weichen voneinander ab: "
+                             + ergebnis["esbuildVersion"] + " statt " + str(ergebnis["esbuildNpmVersion"]))
         gradle = lauf / "fdroid-cache/versions" / vorgabe["gradle"]["version"] / "bin/gradle"
         _, gradle_version = ausfuehren([gradle, "--version"])
         if not re.search(r"(?m)^Gradle " + re.escape(vorgabe["gradle"]["version"]) + r"\s*$", gradle_version):

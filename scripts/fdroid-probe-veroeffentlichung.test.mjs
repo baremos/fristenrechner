@@ -30,9 +30,10 @@ const andererCommit = 'fedcba9876543210fedcba9876543210fedcba98';
 const text = readFileSync(skript, 'utf8');
 const pythonCode = text.split("<<'PY'\n")[1]?.split('\nPY\n')[0];
 const ohneStart = pythonCode?.split('\ntry:\n    sys.exit(main())')[0];
-const python = ['python3', 'python'].find((name) => spawnSync(name, ['-c', 'import hashlib; assert hasattr(hashlib, "file_digest")']).status === 0);
-const bash = [process.platform === 'win32' ? 'C:/Program Files/Git/usr/bin/bash.exe' : 'bash', 'bash']
-  .find((name) => spawnSync(name, ['-c', 'exit 0']).status === 0);
+const python = (process.platform === 'win32' ? ['python', 'python3'] : ['python3', 'python'])
+  .find((name) => spawnSync(name, ['-c', 'import hashlib; assert hasattr(hashlib, "file_digest")'], { timeout: 5_000 }).status === 0);
+const bash = [process.platform === 'win32' ? 'C:/Program Files/Git/usr/bin/bash.exe' : 'bash']
+  .find((name) => spawnSync(name, ['-c', 'exit 0'], { timeout: 5_000 }).status === 0);
 mkdirSync(join(wurzel, 'scratchpad'), { recursive: true });
 const arbeit = mkdtempSync(join(wurzel, 'scratchpad/fdroid-probe-test-'));
 test.after(() => {
@@ -162,6 +163,7 @@ def lesen(self, *args, **kwargs):
     return original_lesen(self, *args, **kwargs)
 Path.read_text = lesen
 werkzeuge_installiert = False
+rewritemeta_aufrufe = 0
 def welches(name, path=None):
     assert path == SYSTEMPFAD
     if name in ("node", "nodejs", "npm", "npx"):
@@ -173,6 +175,8 @@ def welches(name, path=None):
     if modus == "apt-fehlt" and name == "apt-get":
         return None
     if modus == "dpkg-query-fehlt" and name == "dpkg-query":
+        return None
+    if modus == "esbuild-fehlt" and name == "esbuild":
         return None
     return "/usr/bin/" + name
 shutil.which = welches
@@ -253,10 +257,12 @@ aufrufe = []
 abweichender_commit = test_commit[:7] + "0" * 33
 klon_commit = abweichender_commit if modus == "tag-fehler" else test_commit
 klon_tag_commit = abweichender_commit if modus in ("tag-fehler", "tag-head-ungleich") else test_commit
+srclib_tags = dict(eintrag.split("@", 1) for eintrag in original["Builds"][0].get("srclibs", []) if "@" in eintrag)
+srclib_commits = {name: hashlib.sha1(name.encode()).hexdigest() for name in srclib_tags}
 
 class Prozess:
     def __init__(self, befehl, cwd, env, **kwargs):
-        global klon_commit, klon_tag_commit, werkzeuge_installiert
+        global klon_commit, klon_tag_commit, werkzeuge_installiert, rewritemeta_aufrufe
         self.code = 0
         cwd = Path(cwd)
         aufrufe.append({"befehl": befehl, "cwd": str(cwd), "env": env})
@@ -265,6 +271,7 @@ class Prozess:
         assert set(env).isdisjoint({"NODE_PATH", "NODE_OPTIONS", "FR_FDROID_LAUF", "FR_FDROID_INVENTAR"})
         text = ""
         name = Path(befehl[0]).name
+        assert env.get("DEBIAN_FRONTEND") == ("noninteractive" if name == "bash" else None)
         if befehl == ["fdroid", "--version"]:
             text = "2.4.2\n"
         elif name == "java":
@@ -277,11 +284,24 @@ class Prozess:
             assert "--no-hardlinks" in befehl and befehl[befehl.index("--branch") + 1] == tag
             ziel = Path(befehl[-1])
             ziel.mkdir()
-            (ziel / ".git").mkdir()
         elif name == "git" and "rev-parse" in befehl:
-            assert Path(befehl[2]) == cwd / "fdroid/build" / APPID
-            assert befehl[-1] in ("HEAD", tag + "^{commit}")
-            text = (klon_commit if befehl[-1] == "HEAD" else klon_tag_commit) + "\n"
+            git_klon = Path(befehl[2])
+            if git_klon == cwd / "fdroid/build" / APPID:
+                assert befehl[-1] in ("HEAD", tag + "^{commit}")
+                text = (klon_commit if befehl[-1] == "HEAD" else klon_tag_commit) + "\n"
+            else:
+                srclib_name = git_klon.name
+                assert git_klon == cwd / "fdroid/build/srclib" / srclib_name
+                assert befehl[-1] in ("HEAD", srclib_tags[srclib_name] + "^{commit}")
+                commit = srclib_commits[srclib_name]
+                if modus == "srclib-head-" + srclib_name and befehl[-1] == "HEAD":
+                    commit = "f" * 40
+                if modus == "srclib-tag-" + srclib_name and befehl[-1] != "HEAD":
+                    commit = "e" * 40
+                if modus == "srclib-kurz" and srclib_name == "rolldown":
+                    commit = commit[:7]
+                self.code = 1 if modus == "srclib-tag-fehlt" and befehl[-1] != "HEAD" else 0
+                text = commit + "\n"
         elif name == "git" and "log" in befehl:
             text = "1790000000\n"
         elif name == "bash":
@@ -291,6 +311,23 @@ class Prozess:
             self.code = 1 if modus == "sudo-fehler" else 0
             werkzeuge_installiert = self.code == 0
             text = "Nachgestellte Installation aus Debian forky\n"
+        elif befehl == ["fdroid", "rewritemeta", APPID]:
+            assert cwd.name == "fdroid"
+            rewritemeta_aufrufe += 1
+            metadata = cwd / "metadata" / (APPID + ".yml")
+            if rewritemeta_aufrufe == 1:
+                assert metadata.read_bytes() == rezept_datei.read_bytes()
+                if modus == "rewritemeta-aenderung":
+                    # Semantisch identische Daten, aber abweichende Bytes.
+                    metadata.write_bytes(metadata.read_bytes() + b"\n")
+            else:
+                assert rewritemeta_aufrufe == 2
+                assert "Binaries" not in json.loads(metadata.read_text())
+                # Eine Ausgabeänderung der bewussten Probe-Anpassung ist zulässig.
+                metadata.write_bytes(metadata.read_bytes() + b"\n")
+            self.code = 1 if (modus == "rewritemeta-fehler" or
+                             (modus == "rewritemeta-zweiter-fehler" and rewritemeta_aufrufe == 2)) else 0
+            text = "INFO: Rewriting " + APPID + "\n"
         elif name == "fdroid":
             assert befehl == ["fdroid", "build", "--verbose", APPID + ":" + str(versionscode)]
             assert cwd.name == "fdroid"
@@ -303,6 +340,7 @@ class Prozess:
             assert (cwd / "build" / (".fdroidvcs-" + APPID)).read_text() == "git " + repo_erwartet
             assert not (cwd / ".git").exists()
             assert werkzeuge_installiert
+            assert rewritemeta_aufrufe == 2
             assert verwendet["Builds"][0]["sudo"] == original["Builds"][0]["sudo"]
             assert verwendet["Builds"][0]["srclibs"] == original["Builds"][0]["srclibs"]
             assert sorted(p.name for p in (cwd / "srclibs").iterdir()) == sorted(p.name for p in srclib_quelle.iterdir())
@@ -317,6 +355,13 @@ class Prozess:
             (cwd / "unsigned" / (APPID + "_" + str(versionscode) + ".apk")).write_bytes(b"abweichendes-archiv!!" if modus == "apk-fehler" else apk_inhalt)
             (cwd / "logs").mkdir()
             (cwd / "logs/build-metadata.json").write_text("{}")
+            esbuild_paket = cwd / "build" / APPID / "node_modules/esbuild/package.json"
+            esbuild_paket.parent.mkdir(parents=True)
+            if modus != "esbuild-paket-fehlt":
+                daten = {"version": "0.28.3" if modus == "esbuild-npm-abweichend" else "0.28.2"}
+                if modus == "esbuild-paket-ohne-version":
+                    daten = {}
+                esbuild_paket.write_text("kein JSON" if modus == "esbuild-paket-ungueltig" else json.dumps(daten))
             self.code = 1 if modus == "build-fehler" else 0
             if modus == "head-nach-build":
                 # Ein während des Builds abweichender HEAD muss erkannt werden.
@@ -337,6 +382,10 @@ class Prozess:
             assert werkzeuge_installiert and befehl == ["/usr/bin/npm", "--version"]
             text = "12.2.0\n"
             self.code = 1 if modus == "npm-version-fehler" else 0
+        elif name == "esbuild":
+            assert werkzeuge_installiert and befehl == ["/usr/bin/esbuild", "--version"]
+            text = ("0.28.3" if modus == "esbuild-system-abweichend" else "0.28.2") + "\n"
+            self.code = 1 if modus == "esbuild-version-fehler" else 0
         elif name == "gradle":
             text = "Gradle 8.14.5\n"
         else:
@@ -408,14 +457,24 @@ for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'a
     assert.equal(ergebnis.debianPaketversionen, paketVersionen.trim());
     assert.equal(readFileSync(join(sicherung, 'debian-pakete.log'), 'utf8').replaceAll('\r\n', '\n'), paketVersionen);
     assert.deepEqual(Object.keys(ergebnis.srclibs).sort(), srclibNamen.toSorted());
+    assert.equal(ergebnis.rezeptKanonisch, true);
+    assert.deepEqual(Object.keys(ergebnis.srclibCommits).sort(), srclibNamen.toSorted());
     for (const name of srclibNamen) {
       const kopie = readFileSync(join(sicherung, `srclibs/${name}.yml`));
       assert.deepEqual(JSON.parse(kopie), projektSrclibs[name]);
       assert.equal(ergebnis.srclibs[name], createHash('sha256').update(kopie).digest('hex'));
+      const commit = createHash('sha1').update(name).digest('hex');
+      assert.deepEqual(ergebnis.srclibCommits[name], {
+        tag: projektRezept.Builds[0].srclibs.find((eintrag) => eintrag.startsWith(`${name}@`)).split('@')[1],
+        commit, tagCommit: commit,
+      });
     }
     assert.equal(ergebnis.nodePfad, '/usr/bin/node');
     assert.equal(ergebnis.nodeVersion, modus === 'andere-node-referenz' ? 'v24.22.1' : 'v24.21.0');
     assert.equal(ergebnis.npmVersion, '12.2.0');
+    assert.equal(ergebnis.esbuildPfad, '/usr/bin/esbuild');
+    assert.equal(ergebnis.esbuildVersion, '0.28.2');
+    assert.equal(ergebnis.esbuildNpmVersion, '0.28.2');
     assert.equal(ergebnis.fdroidBuild, modus === 'build-fehler' ? 1 : 0);
     assert.equal(ergebnis.commitNachBuild, ergebnis.commit);
     assert.equal(ergebnis.tagCommitNachBuild, ergebnis.commit);
@@ -436,6 +495,8 @@ for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'a
     const aufrufe = JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8'));
     const sudoIndex = aufrufe.findIndex((x) => x.befehl[0] === 'bash');
     assert.ok(sudoIndex >= 0);
+    assert.equal(aufrufe[sudoIndex].env.DEBIAN_FRONTEND, 'noninteractive');
+    assert.equal(aufrufe.filter((x) => x.env.DEBIAN_FRONTEND !== undefined).length, 1);
     assert.equal(aufrufe[sudoIndex].befehl.at(-1), projektRezept.Builds[0].sudo.join('; '));
     assert.deepEqual(aufrufe.slice(sudoIndex + 1, sudoIndex + 5).map((x) => x.befehl), [
       ['dpkg-query', '--show', '--showformat=${binary:Package}\\t${Version}\\n', ...debianPakete],
@@ -445,6 +506,16 @@ for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'a
     assert.match(readFileSync(join(sicherung, 'probe.log'), 'utf8'), /Nach den sudo-Schritten: Node.js v24\.[0-9.]+ \(\/usr\/bin\/node\), npm 12\.2\.0/);
     assert.deepEqual(aufrufe.find((x) => x.befehl[0] === 'fdroid' && x.befehl[1] === 'build').befehl,
       ['fdroid', 'build', '--verbose', `${referenz.appId}:${versionscode}`]);
+    const umschreiben = aufrufe.filter((x) => x.befehl[0] === 'fdroid' && x.befehl[1] === 'rewritemeta');
+    assert.equal(umschreiben.length, 2);
+    assert.ok(aufrufe.indexOf(umschreiben[1]) < sudoIndex);
+    for (const aufruf of umschreiben) assert.deepEqual(aufruf.befehl, ['fdroid', 'rewritemeta', referenz.appId]);
+    assert.match(readFileSync(join(sicherung, 'rewritemeta.log'), 'utf8'), /INFO: Rewriting/);
+    assert.match(readFileSync(join(sicherung, 'sudo-aus-rezept.sh'), 'utf8'), /^DEBIAN_FRONTEND=noninteractive bash /m);
+    const srclibAbfragen = aufrufe.filter((x) => x.befehl[0] === 'git' && x.befehl[2].replaceAll('\\', '/').includes('/build/srclib/'));
+    assert.equal(srclibAbfragen.length, 8);
+    assert.ok(srclibAbfragen.every((x) => x.befehl[3] === 'rev-parse'));
+    assert.equal(aufrufe.some((x) => x.befehl.includes('describe')), false);
     assert.ok(existsSync(join(sicherung, `unsigned/${referenz.appId}_${versionscode}.apk`)));
     assert.equal(aufrufe.some((x) => x.befehl.includes('commit')), false);
   });
@@ -494,6 +565,64 @@ for (const [modus, fehler] of [
     assert.equal(existsSync(join(basis, 'arbeit')), false);
     assert.equal(existsSync(join(basis, 'ausgabe')), false);
     assert.deepEqual(JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8')), []);
+  });
+}
+
+for (const [modus, fehler] of [
+  ['rewritemeta-aenderung', /Rezept ist nicht in der kanonischen Form von fdroid rewritemeta/],
+  ...['rewritemeta-fehler', 'rewritemeta-zweiter-fehler'].map((modus) => [modus, /Befehl fehlgeschlagen.*fdroid rewritemeta/]),
+]) {
+  test(`Kanonikprüfung bricht vor Paketinstallation und Build ab: ${modus}`, { skip: !python }, () => {
+    const basis = join(arbeit, modus);
+    mkdirSync(basis);
+    const lauf = auswerten(prozessNachstellung, [basis, modus]);
+    assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
+    assert.match(lauf.stdout, fehler);
+    const sicherung = join(basis, 'ausgabe', readdirSync(join(basis, 'ausgabe'))[0]);
+    const ergebnis = JSON.parse(readFileSync(join(sicherung, 'ergebnis.json'), 'utf8'));
+    assert.equal(ergebnis.bestanden, false);
+    assert.equal(ergebnis.fdroidBuild, null);
+    if (modus === 'rewritemeta-aenderung') assert.equal(ergebnis.rezeptKanonisch, false);
+    const aufrufe = JSON.parse(readFileSync(join(basis, 'aufrufe.json'), 'utf8'));
+    assert.equal(aufrufe.some((x) => x.befehl[0] === 'bash' || x.befehl[1] === 'build'), false);
+    assert.deepEqual(readFileSync(join(sicherung, 'rezept-original.yml')), readFileSync(join(basis, 'original.yml')));
+  });
+}
+
+for (const [modus, fehler] of [
+  ...srclibNamen.flatMap((name) => ['head', 'tag'].map((art) => [`srclib-${art}-${name}`, new RegExp(`srclib ${name}: HEAD.*stimmt nicht mit Tag`)])),
+  ['srclib-kurz', /srclib rolldown: HEAD.*stimmt nicht mit Tag/],
+  ['srclib-tag-fehlt', /Befehl fehlgeschlagen.*rev-parse/],
+  ...['esbuild-system-abweichend', 'esbuild-npm-abweichend', 'esbuild-paket-ohne-version']
+    .map((modus) => [modus, /System-esbuild und node_modules\/esbuild\/package.json weichen voneinander ab/]),
+  ['esbuild-fehlt', /Nach den sudo-Schritten fehlt esbuild im Systempfad/],
+  ['esbuild-version-fehler', /Befehl fehlgeschlagen.*esbuild --version/],
+  ['esbuild-paket-fehlt', /(?:No such file or directory|cannot find|nicht finden)/],
+  ['esbuild-paket-ungueltig', /Expecting value/],
+]) {
+  test(`Werkzeugabweichung nach erfolgreichem Build scheitert trotz gleicher APK: ${modus}`, { skip: !python }, () => {
+    const basis = join(arbeit, modus);
+    mkdirSync(basis);
+    const lauf = auswerten(prozessNachstellung, [basis, modus]);
+    assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
+    assert.match(lauf.stdout, fehler);
+    const sicherung = join(basis, 'ausgabe', readdirSync(join(basis, 'ausgabe'))[0]);
+    const ergebnis = JSON.parse(readFileSync(join(sicherung, 'ergebnis.json'), 'utf8'));
+    assert.equal(ergebnis.bestanden, false);
+    assert.equal(ergebnis.fdroidBuild, 0);
+    assert.match(ergebnis.fehler, fehler);
+    assert.deepEqual(readFileSync(join(sicherung, `unsigned/${referenz.appId}_${referenz.versionCode}.apk`)),
+      readFileSync(join(basis, 'referenz.apk')));
+    if (modus === 'esbuild-system-abweichend' || modus === 'esbuild-npm-abweichend') {
+      assert.equal(ergebnis.esbuildVersion, modus === 'esbuild-system-abweichend' ? '0.28.3' : '0.28.2');
+      assert.equal(ergebnis.esbuildNpmVersion, modus === 'esbuild-npm-abweichend' ? '0.28.3' : '0.28.2');
+    }
+    const srclib = srclibNamen.find((name) => modus === `srclib-head-${name}` || modus === `srclib-tag-${name}`);
+    if (srclib) {
+      const commit = createHash('sha1').update(srclib).digest('hex');
+      assert.equal(ergebnis.srclibCommits[srclib].commit, modus === `srclib-head-${srclib}` ? 'f'.repeat(40) : commit);
+      assert.equal(ergebnis.srclibCommits[srclib].tagCommit, modus === `srclib-tag-${srclib}` ? 'e'.repeat(40) : commit);
+    }
   });
 }
 
