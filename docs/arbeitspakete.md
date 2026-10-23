@@ -11,8 +11,8 @@ Nachtrag 2026-10-22: Für die Fassung 1.0.0 (`versionCode` 10000, Release-Stand 
 | 1 | Fachlicher Zuschnitt und Pflegekonzept | bestätigt am 2026-09-27 |
 | 2 | Technischer Nachweis: Android, F-Droid, Signierung | abgenommen am 2026-10-04 nach den Abschlussnachweisen vom 2026-10-03/04. Die Grenzen gelten als bekannte Einschränkungen, die Restpunkte stehen im [Bericht](stufe2-nachweis.md#restpunkte). |
 | 3 | Pakete veröffentlichen, Website bindet sie ein | Go am 2026-10-16; Repository und npm-Pakete 0.1.0 seit 2026-10-16 öffentlich, npm-Pakete 0.1.1 seit 2026-10-22, Website-Einbindung offen |
-| 4 | Google Play: Konto, Store-Material auf Deutsch und Englisch, Einreichung | kein Go |
-| 5 | F-Droid: Einreichung, Metadaten auf Deutsch und Englisch | kein Go |
+| 4 | Google Play: Konto, Store-Material auf Deutsch und Englisch, Einreichung | Fassung 1.0.0 am 2026-10-23 zur Prüfung für die Produktion eingereicht; Prüfung durch Google offen |
+| 5 | F-Droid: Einreichung, Metadaten auf Deutsch und Englisch | [Merge Request 53867](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/53867) am 2026-10-23 eingereicht, CI von `fdroiddata` bestanden; Prüfung und Annahme durch F-Droid offen |
 | 6 | iOS | zurückgestellt |
 
 ## Stufe 1
