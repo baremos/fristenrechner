@@ -432,7 +432,8 @@ Jede dieser Festlegungen fällt, bevor das betreffende Werkzeug installiert wird
 | Thema | Arbeitspaket |
 |---|---|
 | Prüfung mit einem Screenreader: auf einem echten Gerät vor Stufe 4. Die Systemabbilder ohne Google-Dienste bringen keinen mit; im Emulator prüft die App-Prüfung nur den Barrierebaum und die Namen der Bedienelemente. | Testmatrix |
-| Lokalen F-Droid-Lauf mit frischem Gradle-Home und aktiver Gradle-Prüfsummenprüfung belegen – erledigt am 2026-10-15, siehe [Lauf am eingefrorenen Stand](fdroid-build.md#lauf-am-eingefrorenen-stand-vom-2026-10-15) | vor Stufe 5 |
+
+Erledigt am 2026-10-15: der lokale F-Droid-Lauf mit frischem Gradle-Home und aktiver Gradle-Prüfsummenprüfung, vorgesehen vor Stufe 5; siehe [Lauf am eingefrorenen Stand](fdroid-build.md#lauf-am-eingefrorenen-stand-vom-2026-10-15).
 
 ## Bekannte Einschränkungen
 
