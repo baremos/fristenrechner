@@ -23,7 +23,7 @@ Builds:
     sudo:
       - echo "deb http://deb.debian.org/debian forky main" > /etc/apt/sources.list.d/forky.list
       - apt-get update
-      - apt-get install -y -t forky nodejs npm esbuild cargo rustc build-essential
+      - apt-get install -y -t forky nodejs npm golang-go cargo rustc build-essential
         cmake
     gradle:
       - yes
@@ -32,8 +32,8 @@ Builds:
       - astro-compiler-rs@v0.4.1
       - satteri@satteri-v0.10.5
       - lightningcss@v1.33.0
+      - esbuild@v0.28.2
     prebuild:
-      - set -eu
       - cd ../../..
       - export ASTRO_TELEMETRY_DISABLED=1 CI=1
       - npm ci --ignore-scripts --no-audit --no-fund
@@ -41,7 +41,10 @@ Builds:
         node_modules/@bruits/satteri-linux-x64-gnu node_modules/lightningcss-linux-x64-gnu
         node_modules/@esbuild/linux-x64 node_modules/@img/sharp-linux-x64 node_modules/@img/sharp-libvips-linux-x64
       - mkdir -p app/dist app/android/app/src/main/assets/public
-      - (cd app && npx --no-install cap update android)
+      - cd app
+      - npx --no-install cap telemetry off
+      - npx --no-install cap update android
+      - cd ..
       - cargo fetch --locked --manifest-path "$$rolldown$$/Cargo.toml"
       - cargo generate-lockfile --manifest-path "$$astro-compiler-rs$$/Cargo.toml"
       - cargo fetch --locked --manifest-path "$$astro-compiler-rs$$/Cargo.toml"
@@ -55,20 +58,29 @@ Builds:
       - node_modules/shiki/dist/onig.wasm
       - node_modules/xxhash-wasm/workerd/xxhash.wasm
     build:
-      - set -eu
       - cd ../../..
-      - export ASTRO_TELEMETRY_DISABLED=1 CI=1
-      - (cd "$$rolldown$$" && cargo build --offline --release --locked -p rolldown_binding)
-      - (cd "$$astro-compiler-rs$$" && cargo build --offline --release --locked -p
-        astro_napi --features allocator)
-      - (cd "$$satteri$$" && cargo build --offline --release --locked -p satteri-napi)
-      - (cd "$$lightningcss$$" && cargo build --offline --release --locked -p lightningcss_node)
+      - export ASTRO_TELEMETRY_DISABLED=1 CI=1 ESBUILD_BINARY_PATH="$$esbuild$$/esbuild"
+      - go build -C "$$esbuild$$" ./cmd/esbuild
+      - pushd "$$rolldown$$"
+      - cargo build --offline --release --locked -p rolldown_binding
+      - popd
+      - pushd "$$astro-compiler-rs$$"
+      - cargo build --offline --release --locked -p astro_napi --features allocator
+      - popd
+      - pushd "$$satteri$$"
+      - cargo build --offline --release --locked -p satteri-napi
+      - popd
+      - pushd "$$lightningcss$$"
+      - cargo build --offline --release --locked -p lightningcss_node
+      - popd
       - install -m644 "$$rolldown$$/target/release/librolldown_binding.so" node_modules/rolldown/dist/rolldown-binding.linux-x64-gnu.node
       - install -m644 "$$astro-compiler-rs$$/target/release/libastro_napi.so" node_modules/@astrojs/compiler-binding/astro.linux-x64-gnu.node
       - install -m644 "$$satteri$$/target/release/libsatteri_napi.so" node_modules/satteri/satteri_napi.linux-x64-gnu.node
       - install -m644 "$$lightningcss$$/target/release/liblightningcss_node.so" node_modules/lightningcss/lightningcss.linux-x64-gnu.node
       - node scripts/app-bauen.mjs --web
-      - (cd app && npx --no-install cap copy android)
+      - cd app
+      - npx --no-install cap copy android
+      - cd ..
       - node scripts/fdroid/app-vorbereiten.mjs --nach-scanner
 
 AllowedAPKSigningKeys: ae5d4d7ec4d3ee63763e128a3fb00721c7d164206f066dc26e8e968ff9a92e68

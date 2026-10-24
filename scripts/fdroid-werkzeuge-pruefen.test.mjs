@@ -73,7 +73,7 @@ test('das Lockfile des Repositorys passt zu den srclibs des Veröffentlichungsre
   const rezept = readFileSync(join(wurzel, 'scripts/fdroid/veroeffentlichung/de.baremos.fristenrechner.yml'), 'utf8');
   const angaben = [...rezept.matchAll(/^\s+-\s+([a-z-]+@[\w.-]+)\s*$/gm)].map((m) => m[1]).filter((a) => Object.hasOwn(WERKZEUGE, a.split('@')[0]));
   const lock = JSON.parse(readFileSync(join(wurzel, 'package-lock.json'), 'utf8'));
-  assert.ok(angaben.length >= 4, `srclibs im Rezept gefunden: ${angaben.join(', ')}`);
-  const { befunde } = pruefeWerkzeuge(angaben.concat(angaben.some((a) => a.startsWith('esbuild@')) ? [] : [`esbuild@v${lockVersion(lock, 'esbuild')}`]), lock);
+  assert.equal(angaben.length, 5, `srclibs im Rezept gefunden: ${angaben.join(', ')}`);
+  const { befunde } = pruefeWerkzeuge(angaben, lock);
   assert.deepEqual(befunde, []);
 });

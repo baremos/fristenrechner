@@ -24,7 +24,7 @@ HIER = Path(sys.argv[1])
 APPID = "de.baremos.fristenrechner"
 REPO = "https://github.com/baremos/fristenrechner.git"
 SYSTEMPFAD = "/usr/sbin:/usr/bin:/sbin:/bin"
-DEBIAN_PAKETE = ("nodejs", "npm", "esbuild", "cargo", "rustc", "build-essential", "cmake")
+DEBIAN_PAKETE = ("nodejs", "npm", "golang-go", "cargo", "rustc", "build-essential", "cmake")
 
 
 def sha256(datei):
@@ -103,15 +103,22 @@ def srclib_dateien(rezept, yaml):
         if name in dateien:
             raise ValueError("Doppelte srclib im Rezept: " + name)
         datei = pfad(str(HIER / "veroeffentlichung/srclibs" / (name + ".yml")))
-        if not datei.is_file():
+        if name == "esbuild":
+            # In fdroiddata bereits vorhanden; keine zusätzliche Einreichdatei.
+            datei = None
+            inhalt = b"RepoType: git\nRepo: https://github.com/evanw/esbuild.git\n"
+            daten = {"RepoType": "git", "Repo": "https://github.com/evanw/esbuild.git"}
+        elif not datei.is_file():
             raise ValueError("srclib-Datei fehlt: " + str(datei))
-        with datei.open(encoding="utf-8") as quelle:
-            daten = yaml.load(quelle)
+        else:
+            inhalt = datei.read_bytes()
+            with datei.open(encoding="utf-8") as quelle:
+                daten = yaml.load(quelle)
         if (not isinstance(daten, dict) or set(daten) - {"RepoType", "Repo", "Subdir", "Prepare"}
                 or daten.get("RepoType") != "git" or not isinstance(daten.get("Repo"), str)
                 or not daten["Repo"].startswith("https://")):
             raise ValueError("Ungültige srclib-Datei (nur RepoType/Repo/Subdir/Prepare, git und HTTPS): " + str(datei))
-        dateien[name] = datei
+        dateien[name] = (datei, inhalt)
     return dateien
 
 
@@ -174,7 +181,8 @@ def main():
             raise ValueError("Die SDK-Kopie darf keinen Verweis außerhalb der Kopie erhalten: " + str(datei))
     # Nie ein SDK in sich selbst kopieren; Ausgaben dürfen keine Eingaben überlagern.
     for basis in (arbeit, ausgabe):
-        for eingabe in (sdk, starter, jdk, referenz, rezept_datei, *srclibs.values()):
+        for eingabe in (sdk, starter, jdk, referenz, rezept_datei,
+                        *(datei for datei, _ in srclibs.values() if datei is not None)):
             if basis == eingabe or basis.is_relative_to(eingabe):
                 raise ValueError("Arbeits-/Ausgabeordner darf nicht innerhalb einer Eingabe liegen.")
     arbeit.mkdir(parents=True, exist_ok=True)
@@ -235,9 +243,9 @@ def main():
         shutil.copyfile(rezept_datei, lauf / "rezept-original.yml")
         shutil.copyfile(HIER / "app-referenz.json", lauf / "app-referenz.json")
         ergebnis["srclibs"] = {}
-        for name, datei in srclibs.items():
-            ziel = lauf / "fdroid/srclibs" / datei.name
-            shutil.copyfile(datei, ziel)
+        for name, (_, inhalt) in srclibs.items():
+            ziel = lauf / "fdroid/srclibs" / (name + ".yml")
+            ziel.write_bytes(inhalt)
             ergebnis["srclibs"][name] = sha256(ziel)
         melden("srclib-Metadaten kopiert; die Quellen lädt fdroid selbst: " + ", ".join(srclibs))
         melden("Vor dem Rezept: kein node/nodejs/npm/npx im Systempfad; HOME ist neu und leer.")
@@ -348,19 +356,19 @@ def main():
             if not re.fullmatch(r"[0-9a-f]{40}", daten["commit"]) or daten["commit"] != daten["tagCommit"]:
                 raise ValueError("srclib " + name + ": HEAD nach fdroid build stimmt nicht mit Tag " + srclib_tag
                                  + " überein: " + daten["commit"] + " statt " + daten["tagCommit"])
-        esbuild = shutil.which("esbuild", path=SYSTEMPFAD)
-        if not esbuild:
-            raise ValueError("Nach den sudo-Schritten fehlt esbuild im Systempfad.")
+        esbuild = lauf / "fdroid/build/srclib/esbuild/esbuild"
+        if not esbuild.is_file() or esbuild.is_symlink():
+            raise ValueError("Nach fdroid build fehlt die gebaute esbuild-srclib oder ist ein symbolischer Verweis.")
         _, esbuild_version = ausfuehren([esbuild, "--version"])
-        ergebnis.update({"esbuildPfad": esbuild, "esbuildVersion": esbuild_version.strip()})
+        ergebnis.update({"esbuildPfad": str(esbuild), "esbuildVersion": esbuild_version.strip()})
         esbuild_paket = json.loads((klon / "node_modules/esbuild/package.json").read_text(encoding="utf-8"))
         ergebnis["esbuildNpmVersion"] = esbuild_paket.get("version")
-        melden("esbuild nach fdroid build: System " + ergebnis["esbuildVersion"] + " (" + esbuild
+        melden("esbuild nach fdroid build: srclib " + ergebnis["esbuildVersion"] + " (" + str(esbuild)
                + "), npm-Paket " + str(ergebnis["esbuildNpmVersion"]) + ".")
         if (not isinstance(ergebnis["esbuildNpmVersion"], str)
                 or not ergebnis["esbuildNpmVersion"]
                 or ergebnis["esbuildVersion"] != ergebnis["esbuildNpmVersion"]):
-            raise ValueError("System-esbuild und node_modules/esbuild/package.json weichen voneinander ab: "
+            raise ValueError("srclib-esbuild und node_modules/esbuild/package.json weichen voneinander ab: "
                              + ergebnis["esbuildVersion"] + " statt " + str(ergebnis["esbuildNpmVersion"]))
         gradle = lauf / "fdroid-cache/versions" / vorgabe["gradle"]["version"] / "bin/gradle"
         _, gradle_version = ausfuehren([gradle, "--version"])

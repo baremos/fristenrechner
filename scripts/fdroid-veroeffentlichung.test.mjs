@@ -35,7 +35,7 @@ const scannerPfade = [
 const sudoBefehle = [
   'echo "deb http://deb.debian.org/debian forky main" > /etc/apt/sources.list.d/forky.list',
   'apt-get update',
-  'apt-get install -y -t forky nodejs npm esbuild cargo rustc build-essential cmake',
+  'apt-get install -y -t forky nodejs npm golang-go cargo rustc build-essential cmake',
 ];
 const felder = [
   'Categories', 'License', 'AuthorName', 'AuthorWebSite', 'WebSite', 'SourceCode',
@@ -44,14 +44,12 @@ const felder = [
 ];
 const buildFelder = ['versionName', 'versionCode', 'commit', 'subdir', 'sudo', 'gradle', 'srclibs', 'prebuild', 'scanignore', 'scandelete', 'build'];
 const bashVorhanden = spawnSync('bash', ['--version'], { timeout: 10_000 }).status === 0;
-// Debian forky und sid: jeweils 0.28.2-1 laut Debian-madison am 2026-10-23.
-// Das npm-Paket esbuild verlangt dieselbe Version wie das ausführbare Programm.
-const debianEsbuildVersion = '0.28.2';
 const lockBindungen = [
   ['rolldown', 'v', 'rolldown', '@rolldown/binding-linux-x64-gnu'],
   ['astro-compiler-rs', 'v', '@astrojs/compiler-binding', '@astrojs/compiler-binding-linux-x64-gnu'],
   ['satteri', 'satteri-v', 'satteri', '@bruits/satteri-linux-x64-gnu'],
   ['lightningcss', 'v', 'lightningcss', 'lightningcss-linux-x64-gnu'],
+  ['esbuild', 'v', 'esbuild', '@esbuild/linux-x64'],
 ];
 
 // Reine Prüfung: Das übergebene Lockfile muss zum Build-Commit gehören;
@@ -70,8 +68,6 @@ function lockfilePruefen(rezept, lockfile) {
   });
   assert.equal(rezept.Builds.length, 1, 'Lockfile-Prüfung erwartet genau den ausgewählten Build');
   assert.deepEqual(rezept.Builds[0].srclibs, tags, 'srclib-Tags müssen den Hauptpaketversionen im Build-Lockfile entsprechen');
-  assert.equal(version('@esbuild/linux-x64'), version('esbuild'), 'Plattformversion passt nicht zum Hauptpaket: @esbuild/linux-x64');
-  assert.equal(version('esbuild'), debianEsbuildVersion, 'esbuild im Build-Lockfile muss zur erwarteten Debian-forky-Version passen');
 }
 
 function yamlLesen(text, ohneKommentare = false) {
@@ -122,10 +118,21 @@ function schrittNach(liste, befehl, vorher = -1) {
   return index;
 }
 
+function verzeichnisstapelPruefen(befehle) {
+  let tiefe = 0;
+  for (const befehl of befehle) {
+    if (/^pushd\b/.test(befehl)) tiefe += 1;
+    if (/^popd\b/.test(befehl)) {
+      assert.ok(tiefe > 0, 'popd braucht ein vorheriges pushd');
+      tiefe -= 1;
+    }
+  }
+  assert.equal(tiefe, 0, 'Jedes pushd braucht ein passendes popd');
+}
+
 function rezeptPruefen(text) {
   assert.doesNotMatch(text, /\$\{?FR_[A-Z_]+|@[A-Z][A-Z0-9_]*@/, 'Keine lokalen Variablen oder Platzhalter');
   assert.doesNotMatch(text, /npm-inventar\.py|npm-bereinigen\.py|fdroid-bereinigung\.json/, 'Keine lokale Inventur oder alte Bereinigung');
-  assert.doesNotMatch(text, /ESBUILD_BINARY_PATH/, 'Kein ESBUILD_BINARY_PATH; Debian-Node-Suchpfad verwenden');
   assert.doesNotMatch(text, /--omit(?:=|\s+)optional/, 'Kein --omit=optional; Hinweise Dritter brauchen optionale jsPDF-Pakete');
   assert.doesNotMatch(text, /CARGO_PROFILE_|RUSTUP_|rustup|--no-default-features/, 'Upstream-Profile und Debian-Rust unverändert verwenden');
   const rezept = yamlLesen(text, true);
@@ -158,41 +165,55 @@ function rezeptPruefen(text) {
   assert.equal(build.commit, releaseCommit, 'Unveränderter vollständiger Release-Commit 1.0.0');
   assert.equal(build.subdir, 'app/android/app');
   assert.deepEqual(build.gradle, ['yes']);
-  assert.deepEqual(build.srclibs, bindungen.map(([name, tag]) => name + '@' + tag), 'Jede srclib mit beschlossenem Tag');
+  assert.deepEqual(build.srclibs, [...bindungen.map(([name, tag]) => name + '@' + tag), 'esbuild@v0.28.2'], 'Jede srclib mit beschlossenem Tag');
   assert.deepEqual(build.scanignore, [cordovaArchiv], 'scanignore genau das Cordova-Android-Archiv');
   assert.deepEqual(build.scandelete, scannerPfade, 'scandelete nur Capacitor-assets-Ordner und drei WASM-Pfade');
   for (const phase of ['sudo', 'prebuild', 'build']) {
     assert.ok(Array.isArray(build[phase]) && build[phase].length > 0, phase + ': nichtleere Befehlsliste');
     assert.ok(build[phase].every((zeile) => typeof zeile === 'string' && zeile.trim()), phase + ': ausschließlich Befehle als Text');
+    for (const befehl of build[phase]) {
+      assert.doesNotMatch(befehl, /;|&&|\(/, phase + ': keine verketteten Befehle oder Teilshells');
+      assert.doesNotMatch(befehl, /^set\s+-/, phase + ': Fehlerabbruch wird durch F-Droid gesetzt');
+    }
   }
   assert.deepEqual(build.sudo, sudoBefehle, 'Nur die festgelegten Debian-forky-Pakete installieren');
   for (const phase of ['prebuild', 'build']) {
-    assert.equal(build[phase][0], 'set -eu', phase + ': beginnt mit set -eu');
-    assert.equal(build[phase][1], 'cd ../../..', phase + ': eigener Wechsel zur App-Repositorywurzel');
-    assert.ok(build[phase].includes('export ASTRO_TELEMETRY_DISABLED=1 CI=1'), phase + ': eigene Umgebung');
+    assert.equal(build[phase][0], 'cd ../../..', phase + ': beginnt mit Wechsel zur App-Repositorywurzel');
+    const umgebung = 'export ASTRO_TELEMETRY_DISABLED=1 CI=1' + (phase === 'build' ? ' ESBUILD_BINARY_PATH="$$esbuild$$/esbuild"' : '');
+    assert.ok(build[phase].includes(umgebung), phase + ': eigene Umgebung mit passendem ESBUILD_BINARY_PATH im build');
     assert.doesNotMatch(build[phase].join('\n'), /\bcurl\b|nodejs\.org|\bsha256sum\b|fristenrechner-fdroid/, phase + ': kein alter Node-Download');
     assert.doesNotMatch(build[phase].join('\n'), /\bexport\s+(?:PATH\b|[^\n;]*\sPATH\b)/, phase + ': keine PATH-Exporte');
   }
-  assert.doesNotMatch(build.build.join('\n'), /\b(?:curl|wget)\b|\bgit\s+clone\b|\bcargo\s+(?:fetch|generate-lockfile)\b|\bnpm\s+(?:ci|install|i)\b/, 'build ohne Installation oder Netzwerkwerkzeug');
+  assert.deepEqual(build.build.filter((befehl) => befehl.includes('ESBUILD_BINARY_PATH')),
+    ['export ASTRO_TELEMETRY_DISABLED=1 CI=1 ESBUILD_BINARY_PATH="$$esbuild$$/esbuild"'], 'ESBUILD_BINARY_PATH nur einmal und auf die esbuild-srclib setzen');
+  assert.doesNotMatch(build.build.join('\n'), /\b(?:curl|wget)\b|\bgit\s+(?:clone|fetch|pull)\b|\bcargo\s+(?:fetch|generate-lockfile|install|update)\b|\bnpm\s+(?:ci|install|i)\b|\bgo\s+(?:get|install|mod\s+download)\b|\bapt(?:-get)?\s+(?:install|update)\b/, 'build ohne Installation oder Netzwerkwerkzeug');
   assert.doesNotMatch(build.prebuild.join('\n'), /app-bauen\.mjs|\bcap\s+(?:copy|sync)\b|\bcargo\s+build\b/, 'prebuild ohne Web-Build, cap copy/sync oder Rust-Build');
+  verzeichnisstapelPruefen(build.build);
   let vor = schrittNach(build.prebuild, 'npm ci --ignore-scripts --no-audit --no-fund');
   vor = schrittNach(build.prebuild, 'rm -rf ' + plattformpakete.map((paket) => 'node_modules/' + paket).join(' '), vor);
   vor = schrittNach(build.prebuild, 'mkdir -p app/dist app/android/app/src/main/assets/public', vor);
-  vor = schrittNach(build.prebuild, '(cd app && npx --no-install cap update android)', vor);
+  vor = schrittNach(build.prebuild, 'cd app', vor);
+  vor = schrittNach(build.prebuild, 'npx --no-install cap telemetry off', vor);
+  vor = schrittNach(build.prebuild, 'npx --no-install cap update android', vor);
+  vor = schrittNach(build.prebuild, 'cd ..', vor);
   for (const [name] of bindungen) {
     const manifest = '"$$' + name + '$$/Cargo.toml"';
     if (name === 'astro-compiler-rs') vor = schrittNach(build.prebuild, 'cargo generate-lockfile --manifest-path ' + manifest, vor);
     vor = schrittNach(build.prebuild, 'cargo fetch --locked --manifest-path ' + manifest, vor);
   }
-  let gebaut = -1;
+  let gebaut = schrittNach(build.build, 'go build -C "$$esbuild$$" ./cmd/esbuild');
   for (const [name, , , paket, features] of bindungen) {
-    gebaut = schrittNach(build.build, '(cd "$$' + name + '$$" && cargo build --offline --release --locked -p ' + paket + features + ')', gebaut);
+    gebaut = schrittNach(build.build, 'pushd "$$' + name + '$$"', gebaut);
+    assert.equal(build.build[++gebaut], 'cargo build --offline --release --locked -p ' + paket + features, 'Schritt fehlt im srclib-Verzeichnis: Cargo-Build für ' + name);
+    assert.equal(build.build[++gebaut], 'popd', 'Nach dem Cargo-Build ins vorherige Verzeichnis zurückkehren');
   }
   for (const [name, , , paket, , ziel] of bindungen) {
     gebaut = schrittNach(build.build, 'install -m644 "$$' + name + '$$/target/release/lib' + paket.replaceAll('-', '_') + '.so" node_modules/' + ziel, gebaut);
   }
   gebaut = schrittNach(build.build, 'node scripts/app-bauen.mjs --web', gebaut);
-  gebaut = schrittNach(build.build, '(cd app && npx --no-install cap copy android)', gebaut);
+  gebaut = schrittNach(build.build, 'cd app', gebaut);
+  gebaut = schrittNach(build.build, 'npx --no-install cap copy android', gebaut);
+  gebaut = schrittNach(build.build, 'cd ..', gebaut);
   schrittNach(build.build, 'node scripts/fdroid/app-vorbereiten.mjs --nach-scanner', gebaut);
   return rezept;
 }
@@ -247,7 +268,6 @@ function lockfileAttrappe() {
     rezept.Builds[0].srclibs.push(name + '@' + praefix + version);
     for (const paket of [hauptpaket, plattformpaket]) lockfile.packages['node_modules/' + paket] = { version };
   }
-  for (const paket of ['esbuild', '@esbuild/linux-x64']) lockfile.packages['node_modules/' + paket] = { version: debianEsbuildVersion };
   return { rezept, lockfile };
 }
 
@@ -263,7 +283,7 @@ for (const [name, , hauptpaket, plattformpaket] of lockBindungen) {
     assert.throws(() => lockfilePruefen(rezept, lockfile), /srclib-Tags/);
   });
 }
-for (const plattformpaket of [...lockBindungen.map((bindung) => bindung[3]), '@esbuild/linux-x64']) {
+for (const plattformpaket of lockBindungen.map((bindung) => bindung[3])) {
   test('Lockfile-Gegenprobe: falsche Plattformversion ' + plattformpaket, () => {
     const { rezept, lockfile } = lockfileAttrappe();
     lockfile.packages['node_modules/' + plattformpaket].version = '8.8.8';
@@ -275,12 +295,6 @@ for (const plattformpaket of [...lockBindungen.map((bindung) => bindung[3]), '@e
     assert.throws(() => lockfilePruefen(rezept, lockfile), /Lockfile-Paket fehlt/);
   });
 }
-test('Lockfile-Gegenprobe: esbuild 0.28.3 passt nicht zur erwarteten Debian-Version', () => {
-  const { rezept, lockfile } = lockfileAttrappe();
-  for (const paket of ['esbuild', '@esbuild/linux-x64']) lockfile.packages['node_modules/' + paket].version = '0.28.3';
-  assert.throws(() => lockfilePruefen(rezept, lockfile), /Debian-forky-Version/);
-});
-
 test('Kanonische Gegenproben: Kommentarzeile und Inline-Kommentar scheitern', () => {
   for (const text of ['# Kommentar\n' + quelle, quelle + '\n#\n', quelle.replace('License: Apache-2.0', 'License: Apache-2.0 # Kommentar')]) {
     assert.throws(() => rezeptPruefen(text), /Keine YAML-Kommentare/);
@@ -393,25 +407,48 @@ gegenprobe('alte Schlüsselreihenfolge', (r) => {
     if (feld !== 'AllowedAPKSigningKeys') r[feld] = wert;
   }
 }, /Kanonische Schlüsselreihenfolge/);
-gegenprobe('set -eu im sudo-Block', (r) => { r.Builds[0].sudo.unshift('set -eu'); }, /Debian-forky-Pakete/);
+gegenprobe('esbuild aus Debian statt Go', (r) => {
+  r.Builds[0].sudo[2] = r.Builds[0].sudo[2].replace('golang-go', 'esbuild');
+}, /Debian-forky-Pakete/);
 gegenprobe('APK-Adresse ohne Versionscode', (r) => { r.Binaries = r.Binaries.replace('_%c', ''); });
 gegenprobe('bewegliche APK-Adresse', (r) => { r.Binaries = r.Binaries.replace('download/v%v', 'latest/download'); });
 gegenprobe('lokales Repository', (r) => { r.Repo = '@LOKALES_REPOSITORY@'; }, /lokalen Variablen/);
 gegenprobe('alte Bereinigung', (r) => { r.Builds[0].prebuild.push('python3 scripts/fdroid/npm-bereinigen.py'); }, /alte Bereinigung/);
-gegenprobe('esbuild-Override', (r) => { r.Builds[0].build.push('export ESBUILD_BINARY_PATH=/usr/bin/esbuild'); }, /Kein ESBUILD_BINARY_PATH/);
-gegenprobe('optionale Pakete weggelassen', (r) => { r.Builds[0].prebuild[3] += ' --omit=optional'; }, /Kein --omit=optional/);
+gegenprobe('fehlendes ESBUILD_BINARY_PATH', (r) => {
+  r.Builds[0].build = r.Builds[0].build.map(s => s.replace(' ESBUILD_BINARY_PATH="$$esbuild$$/esbuild"', ''));
+}, /ESBUILD_BINARY_PATH/);
+gegenprobe('falsches ESBUILD_BINARY_PATH', (r) => {
+  r.Builds[0].build = r.Builds[0].build.map(s => s.replace('ESBUILD_BINARY_PATH="$$esbuild$$/esbuild"', 'ESBUILD_BINARY_PATH=/usr/bin/esbuild'));
+}, /ESBUILD_BINARY_PATH/);
+gegenprobe('ESBUILD_BINARY_PATH später überschrieben', (r) => {
+  r.Builds[0].build.push('export ESBUILD_BINARY_PATH=/usr/bin/esbuild');
+}, /ESBUILD_BINARY_PATH nur einmal/);
+gegenprobe('optionale Pakete weggelassen', (r) => {
+  const befehle = r.Builds[0].prebuild;
+  befehle[befehle.indexOf('npm ci --ignore-scripts --no-audit --no-fund')] += ' --omit=optional';
+}, /Kein --omit=optional/);
 gegenprobe('Release-Profil übersteuert', (r) => { r.Builds[0].build.push('export CARGO_PROFILE_RELEASE_LTO=off'); }, /Upstream-Profile/);
 gegenprobe('falsche Debian-Suite', (r) => { r.Builds[0].sudo = r.Builds[0].sudo.map(s => s.replaceAll('forky', 'trixie')); }, /Debian-forky-Pakete/);
 gegenprobe('pkg-config ohne Bedarfsbeleg', (r) => { r.Builds[0].sudo[2] += ' pkg-config'; }, /Debian-forky-Pakete/);
-for (const phase of ['prebuild', 'build']) {
-  gegenprobe(phase + ' ohne Fehlerabbruch', (r) => { r.Builds[0][phase][0] = 'set -u'; }, /beginnt mit set -eu/);
+for (const phase of ['sudo', 'prebuild', 'build']) {
+  gegenprobe(phase + ' mit eigenem set -eu', (r) => { r.Builds[0][phase].push('set -eu'); }, /Fehlerabbruch wird durch F-Droid gesetzt/);
+  for (const befehl of ['true; true', 'true && true', '(true)']) {
+    gegenprobe(phase + ' mit verketteten Befehlen oder Teilshell: ' + befehl, (r) => {
+      r.Builds[0][phase].push(befehl);
+    }, /keine verketteten Befehle oder Teilshells/);
+  }
 }
 for (const phase of ['prebuild', 'build']) {
-  gegenprobe(phase + ' ohne cd', (r) => { r.Builds[0][phase][1] = 'true'; }, /eigener Wechsel/);
+  gegenprobe(phase + ' ohne cd am Anfang', (r) => { r.Builds[0][phase][0] = 'true'; }, /beginnt mit Wechsel/);
+  gegenprobe(phase + ' ohne Telemetrie- und CI-Umgebung', (r) => {
+    r.Builds[0][phase] = r.Builds[0][phase].filter(s => !s.startsWith('export ASTRO_TELEMETRY_DISABLED='));
+  }, /eigene Umgebung/);
   gegenprobe(phase + ' mit PATH-Override', (r) => { r.Builds[0][phase].push('export PATH=/falsch/bin:$PATH'); }, /keine PATH-Exporte/);
 }
 for (const befehl of ['npm ci', 'npm install foo', 'curl https://example.org', 'wget https://example.org',
-  'git clone https://example.org/a.git', 'cargo fetch --locked', 'cargo generate-lockfile']) {
+  'git clone https://example.org/a.git', 'git fetch', 'git pull', 'cargo fetch --locked', 'cargo generate-lockfile',
+  'cargo install foo', 'cargo update', 'go get example.org/a', 'go install example.org/a', 'go mod download',
+  'apt-get install foo', 'apt-get update', 'apt install foo']) {
   gegenprobe('Netzwerk/Installation im build: ' + befehl, (r) => { r.Builds[0].build.push(befehl); }, /ohne Installation oder Netzwerkwerkzeug|kein alter Node-Download/);
 }
 for (const paket of plattformpakete) {
@@ -435,27 +472,55 @@ for (const pfad of ['node_modules', 'node_modules/anderes.wasm', ...scannerPfade
     else r.Builds[0].scandelete.push(pfad);
   }, /scandelete nur/);
 }
-for (const [name, tag] of bindungen) {
+for (const [name, tag] of [...bindungen, ['esbuild', 'v0.28.2']]) {
   gegenprobe('srclib ohne Tag: ' + name, (r) => { r.Builds[0].srclibs = r.Builds[0].srclibs.map(s => s === name + '@' + tag ? name : s); }, /srclib mit beschlossenem Tag/);
 }
+gegenprobe('esbuild-srclib fehlt', (r) => {
+  r.Builds[0].srclibs = r.Builds[0].srclibs.filter(s => !s.startsWith('esbuild@'));
+}, /srclib mit beschlossenem Tag/);
+gegenprobe('falscher esbuild-Tag', (r) => {
+  r.Builds[0].srclibs = r.Builds[0].srclibs.map(s => s.replace('esbuild@v0.28.2', 'esbuild@v0.28.3'));
+}, /srclib mit beschlossenem Tag/);
+gegenprobe('pushd ohne popd', (r) => {
+  const befehle = r.Builds[0].build;
+  befehle.splice(befehle.indexOf('popd'), 1);
+}, /Jedes pushd braucht ein passendes popd/);
+gegenprobe('popd ohne pushd', (r) => { r.Builds[0].build.push('popd'); }, /popd braucht ein vorheriges pushd/);
+gegenprobe('Cargo-Build außerhalb des srclib-Verzeichnisses', (r) => {
+  const befehle = r.Builds[0].build;
+  const index = befehle.indexOf('pushd "$$rolldown$$"');
+  [befehle[index], befehle[index + 1]] = [befehle[index + 1], befehle[index]];
+}, /Schritt fehlt im srclib-Verzeichnis/);
 for (const [name, phase, muster] of [
   ['npm ohne ignore-scripts', 'prebuild', '--ignore-scripts'],
   ['fehlendes assets/public', 'prebuild', 'mkdir -p app/dist app/android/app/src/main/assets/public'],
-  ['fehlendes cap update', 'prebuild', '(cd app && npx --no-install cap update android)'],
+  ['fehlendes cap telemetry off', 'prebuild', 'npx --no-install cap telemetry off'],
+  ['fehlendes cap update', 'prebuild', 'npx --no-install cap update android'],
   ['fehlendes Compiler-Lockfile', 'prebuild', 'cargo generate-lockfile'],
   ['Cargo ohne offline', 'build', '--offline'],
   ['Cargo ohne locked', 'build', '--locked'],
   ['Compiler ohne allocator', 'build', '--features allocator'],
+  ['fehlender Go-Build', 'build', 'go build -C "$$esbuild$$" ./cmd/esbuild'],
   ['fehlender Web-Build', 'build', 'node scripts/app-bauen.mjs --web'],
-  ['fehlendes cap copy', 'build', '(cd app && npx --no-install cap copy android)'],
+  ['fehlendes cap copy', 'build', 'npx --no-install cap copy android'],
   ['fehlende Nachscanner-Prüfung', 'build', 'node scripts/fdroid/app-vorbereiten.mjs --nach-scanner'],
 ]) {
   gegenprobe(name, (r) => { r.Builds[0][phase] = r.Builds[0][phase].map(s => s.replace(muster, '')); }, /Schritt fehlt|ausschließlich Befehle/);
 }
 gegenprobe('Web-Build zurück im prebuild', (r) => { r.Builds[0].prebuild.push('node scripts/app-bauen.mjs --web'); }, /prebuild ohne Web-Build/);
+gegenprobe('cap telemetry off erst nach cap update', (r) => {
+  const befehle = r.Builds[0].prebuild;
+  const telemetry = befehle.splice(befehle.indexOf('npx --no-install cap telemetry off'), 1)[0];
+  befehle.splice(befehle.indexOf('npx --no-install cap update android') + 1, 0, telemetry);
+}, /Schritt fehlt oder ist zu früh/);
+gegenprobe('Go-Build erst nach Web-Build', (r) => {
+  const befehle = r.Builds[0].build;
+  const go = befehle.splice(befehle.indexOf('go build -C "$$esbuild$$" ./cmd/esbuild'), 1)[0];
+  befehle.splice(befehle.indexOf('node scripts/app-bauen.mjs --web') + 1, 0, go);
+}, /Schritt fehlt oder ist zu früh/);
 gegenprobe('cap copy vor Web-Build', (r) => {
   const befehle = r.Builds[0].build;
-  const copy = befehle.splice(befehle.indexOf('(cd app && npx --no-install cap copy android)'), 1)[0];
+  const copy = befehle.splice(befehle.indexOf('npx --no-install cap copy android'), 1)[0];
   befehle.splice(befehle.indexOf('node scripts/app-bauen.mjs --web'), 0, copy);
 }, /Schritt fehlt oder ist zu früh/);
 for (const muster of ['^v.*$', '^v[0-9]+.[0-9]+.[0-9]+$', '^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-rc1)?$', 'v[0-9]+\\.[0-9]+\\.[0-9]+']) {
