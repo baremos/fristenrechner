@@ -203,7 +203,7 @@ SOFTWARE.
 
 ### Vergleich aller Dateien
 
-Die Pfade beziehen sich auf `app/android/`. „Entfernt“ bedeutet, dass die Datei aus dem Vorlagenarchiv nicht übernommen wird. „Neu“ bezeichnet einen Pfad, den das Archiv nicht enthält. „Unverändert“ beruht auf einem Bytevergleich. Von den **52 Vorlagendateien** sind **6 unverändert**, **12 geändert** und **34 entfernt**. Hinzu kommen **7 neue Dateien**, insgesamt also **25 Dateien** für die Übernahme. Die ersten 52 Tabellenzeilen gehören zur Vorlage, die letzten sieben sind neu.
+Die Pfade beziehen sich auf `app/android/`. „Entfernt“ bedeutet, dass die Datei aus dem Vorlagenarchiv nicht übernommen wird. „Neu“ bezeichnet einen Pfad, den das Archiv nicht enthält. „Unverändert“ beruht auf einem Bytevergleich. Von den **52 Vorlagendateien** sind **5 unverändert**, **13 geändert** und **34 entfernt** (Stand nach der Umstellung auf R8; davor war `app/proguard-rules.pro` unverändert). Hinzu kommen **7 neue Dateien**, insgesamt also **25 Dateien** für die Übernahme. Die ersten 52 Tabellenzeilen gehören zur Vorlage, die letzten sieben sind neu.
 
 | Datei | unverändert / geändert / entfernt / neu | Grund |
 |---|---|---|
@@ -211,7 +211,7 @@ Die Pfade beziehen sich auf `app/android/`. „Entfernt“ bedeutet, dass die Da
 | `app/.gitignore` | geändert | Erzeugte Build-Dateien vollständig ausschließen; der Platzhalter der Vorlage wird nicht benötigt. |
 | `app/build.gradle` | geändert | App-ID, Version, SDK und deutsche Ressourcen festlegen; lokale Jar-Suche, Testabhängigkeiten, direkte Startbildbibliothek und Google-Services-Block entfernen. |
 | `app/build/.npmkeep` | entfernt | Platzhalter eines erzeugten Build-Ordners; für den Build nicht erforderlich. |
-| `app/proguard-rules.pro` | unverändert | Vorlage für ProGuard-Regeln; keine zusätzliche Regel aktiviert. |
+| `app/proguard-rules.pro` | geändert | Bis zur Umstellung auf R8 unverändert übernommen. Seitdem eigene Regeln für den Release-Build: keine Umbenennung, Zeilennummern behalten, zwei Keep-Regeln für kotlinx.coroutines; siehe [app.md](app.md#r8-im-release-build). |
 | `app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java` | entfernt | Beispieltest und Beispiel-Paket gehören nicht zur App. |
 | `app/src/main/AndroidManifest.xml` | geändert | App-Komponenten und Metadaten festlegen; Netzwerkberechtigung und FileProvider entfernen, Sicherung ausschließen. |
 | `app/src/main/java/com/getcapacitor/myapp/MainActivity.java` | entfernt | Beispielklasse durch die Activity im eigenen Paket ersetzen. |

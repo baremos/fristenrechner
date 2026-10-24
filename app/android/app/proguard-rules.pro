@@ -6,9 +6,10 @@
 # @JavascriptInterface hält die Vorgabedatei.
 
 # Keine Umbenennung von Klassen und Methoden. Dadurch bleiben Stacktraces
-# ohne Zuordnungsdatei lesbar, die statische Prüfung K5 der Klassennamen in
-# den DEX-Dateien und die Klassenbelege der Hinweise Dritter bleiben wirksam,
-# und Dritte können den Inhalt der APK mit dexdump nachvollziehen. Entfernen
+# weitgehend ohne Zuordnungsdatei lesbar, die Namenssuche der Prüfung K5 in
+# den DEX-Dateien findet erhaltene Klassen unter ihrem Namen, und Dritte
+# können den Inhalt der APK mit dexdump nachvollziehen. Eingebetteter oder
+# zusammengelegter Code erscheint nicht unter eigenem Namen. Entfernen
 # ungenutzten Codes und Optimierung bleiben eingeschaltet.
 -dontobfuscate
 
