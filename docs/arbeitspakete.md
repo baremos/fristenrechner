@@ -128,6 +128,6 @@ Ergebnis aus Paket 2.1 für Paket 2.5: Das Systemabbild mit Android 7.0 bringt e
 
 ## Erste Sitzung im neuen Projekt
 
-1. `CLAUDE.md` und die lokalen Hinweise lesen.
+1. Projektregeln und lokale Hinweise lesen.
 2. Paket 2.1: Versionen festlegen, Kreuz-Review, dann installieren.
 3. Pakete 2.2 und 2.3 umsetzen, jeweils mit Kreuz-Review.

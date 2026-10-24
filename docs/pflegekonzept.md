@@ -11,7 +11,7 @@ Eine Website übernimmt eine geänderte Regel mit dem nächsten Deploy. Eine ins
 | Rolle | Wer |
 |---|---|
 | Fachlich verantwortlich für Rechtsstand und Freigabe | Andreas Schmidt, BAREMOS IT GmbH |
-| Umsetzung und Tests | Claude Code und Codex, kreuzweise Review |
+| Umsetzung und Tests | BAREMOS IT GmbH, kreuzweises Review vor jedem Merge |
 | Veröffentlichung in den Stores | nach Freigabe durch Andreas Schmidt |
 
 Alle Angaben der Software erfolgen ohne Gewähr. Der Hinweis entbindet nicht von der Pflege.
