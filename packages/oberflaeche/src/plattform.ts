@@ -43,6 +43,12 @@ export interface RechnerInstanz {
 export type ImportBedienung = 'dateifeld' | 'schaltflaeche';
 /** Platz des Hinweiskastens mit Datenschutztext und Speicherstatus: über dem Formular (Vorgabe) oder unter dem rechtlichen Hinweis. */
 export type HinweisPosition = 'oben' | 'unten';
+/** Farbschema der Komponente: immer hell (Vorgabe) oder dem System folgend über prefers-color-scheme. */
+export type Farbschema = 'hell' | 'system';
+export function pruefeFarbschema(farbschema: Farbschema = 'hell'): Farbschema {
+  if (farbschema !== 'hell' && farbschema !== 'system') throw new Error('Unbekanntes Farbschema.');
+  return farbschema;
+}
 export type AusgabeTexte = Partial<Record<AusgabeWeg, Partial<Record<AusgabeFormat, string>>>>;
 export class PlattformFehler extends Error {
   constructor(readonly code: Fehlercode, message: string) { super(message); this.name = 'PlattformFehler'; }

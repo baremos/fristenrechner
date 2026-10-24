@@ -24,7 +24,7 @@ const ACCENT: [number, number, number] = [167, 48, 60];
 const DARK: [number, number, number] = [52, 52, 56];
 const MUTED: [number, number, number] = [93, 93, 98];
 
-// Phasenfarben wie in der Web-Zeitschiene (fristenrechner-ui.ts phaseColors)
+// Phasenfarben wie in der hellen Web-Zeitschiene (Fristenrechner.astro, --phase-<id>)
 const PHASE_RGB: Record<string, [number, number, number]> = {
   einholung: [167, 48, 60],
   teilnahmewettbewerb: [118, 82, 143],

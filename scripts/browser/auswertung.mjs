@@ -5,7 +5,7 @@ import { sichtstatusBestaetigt, grenzstatusBestaetigt } from './sichtpruefung.mj
 export const PHASEN = Object.keys(ERGEBNISKATALOG);
 // Die benannte Gruppe bleibt auch nach Ergänzung späterer Phasen auf Vertrag und Webadapter begrenzt.
 export const PHASENGRUPPEN = { 'grundlagen': ['vertrag', 'webadapter'], alle: [...PHASEN] };
-export const HTML_HASH = 'e6465ae87407c4e1e53036ecae4f9f2ac7e1f90b90fb5362483436fab41e8898';
+export const HTML_HASH = '9c01653e420762695cbc42f62f4e2899dc8a63426ecceb628657b5dd7770edf0';
 
 export function argumente(argv) {
   const werte = {};

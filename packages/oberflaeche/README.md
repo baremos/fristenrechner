@@ -59,7 +59,11 @@ import { webTexte, webExportInhalt } from '@baremos/fristenrechner-ui/ui';
 </script>
 ```
 
-Die Props `texte` und `exportInhalt` sind erforderlich. Der optionale Prop `importBedienung` wählt `dateifeld` (Vorgabe, für den Web-Adapter) oder `schaltflaeche` (für einen passenden Importadapter). Beide Varianten haben genau ein aktives Element mit `data-project-import` und der Kennung `open-json`. Der optionale Prop `hinweisPosition` stellt den Hinweiskasten mit Datenschutztext und Speicherstatus (`storage-status`) über das Formular (`oben`, Vorgabe) oder unter den rechtlichen Hinweis (`unten`, so in der App); das vorgerenderte HTML der Vorgabe bleibt unverändert. Die Komponente stellt sie als JSON in `data-gastgeber-texte` und `data-export-inhalt` bereit. Astro maskiert die Attributwerte. Das Beispiel liest diese Werte; die Bedienlogik erwartet keine eingebetteten Skripte und setzt Gastgebertexte nicht als HTML ein.
+Die Props `texte` und `exportInhalt` sind erforderlich. Der optionale Prop `importBedienung` wählt `dateifeld` (Vorgabe, für den Web-Adapter) oder `schaltflaeche` (für einen passenden Importadapter). Beide Varianten haben genau ein aktives Element mit `data-project-import` und der Kennung `open-json`. Der optionale Prop `hinweisPosition` stellt den Hinweiskasten mit Datenschutztext und Speicherstatus (`storage-status`) über das Formular (`oben`, Vorgabe) oder unter den rechtlichen Hinweis (`unten`, so in der App); das vorgerenderte HTML der Vorgabe bleibt unverändert.
+
+Der optionale Prop `farbschema` wählt `hell` (Vorgabe) oder `system`. Mit `hell` bleibt die Komponente unabhängig vom Gerät hell; das HTML enthält kein zusätzliches Attribut. Mit `system` trägt die Komponente `data-farbschema="system"` und folgt `prefers-color-scheme`: bei dunklem Systemfarbschema gilt eine eigene dunkle Palette einschließlich `color-scheme: dark` für Formularfelder, bei aktivem Menü auch für Leiste und Sheet (Klasse `fr-menue-system`). Die dunkle Palette gilt nur auf dem Bildschirm; Druck, PDF und Excel bleiben hell. Ein unbekannter Wert löst einen Fehler aus. Der Typ `Farbschema` und `pruefeFarbschema` sind über `@baremos/fristenrechner-ui/ui` verfügbar.
+
+In Fenstern bis 48rem Breite zeigt die Komponente die Tabelle „Termine und Rechenwege“ als Karten je Zeile ohne seitliches Rollen; im HTML bleibt sie eine Tabelle mit ausdrücklichen Tabellenrollen, der Tabellenkopf ist nur visuell verborgen. Dieselbe Breite entfernt die äußeren Rahmen von Formular, Ergebnis und Fieldsets und zeigt „Neues Projekt“ als Schaltfläche. Breitere Fenster, Druck und die Exporte sind davon nicht betroffen. Die Komponente stellt sie als JSON in `data-gastgeber-texte` und `data-export-inhalt` bereit. Astro maskiert die Attributwerte. Das Beispiel liest diese Werte; die Bedienlogik erwartet keine eingebetteten Skripte und setzt Gastgebertexte nicht als HTML ein.
 
 `rechner.dispose()` entfernt Ereignisbehandler, beendet den Speichertimer und verwirft noch nicht begonnene Schreibaufträge. Ein bereits laufender Schreibauftrag darf abschließen; bis dahin wird auch eine neue Initialisierung abgewiesen. Der Gastgeber besitzt den Adapter: Dessen gesondertes `dispose()` beendet eine offene Dateiauswahl und entfernt seine Ereignisbehandler. `Plattform` selbst verlangt keine `dispose`-Methode, weil die Lebensdauer anderer Adapter vom Gastgeber bestimmt wird.
 
@@ -108,15 +112,17 @@ Fehlt `navigator.userActivation` beim Erzeugen des Adapters, registriert er zus�
 
 Der optionale Slot `herausgeber` steht in der Fußzeile für ein vom Gastgeber bereitgestelltes Logo oder andere Herausgeberinhalte. `nach-hinweis` folgt auf den fachlichen Hinweis und kann Kontaktinhalte aufnehmen. Das Paket liefert kein Logo und keine festen Kontaktlinks. Die sichtbare Fußzeile nennt den Herausgeber und, sofern vorhanden, den Hostnamen der Exportadresse.
 
-Die Rechnerstile sind auf `.fristenrechner` begrenzt. Die Komponente legt `box-sizing: border-box` für ihre Elemente selbst fest. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Gastgeberwerte bleiben durch Fallbacks an der Verwendungsstelle wirksam:
+Die Rechnerstile sind auf `.fristenrechner` begrenzt. Die Komponente legt `box-sizing: border-box` für ihre Elemente selbst fest. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Alle Farben der Komponente stehen als `--fr-*`- und `--phase-*`-Variablen in einer hellen Palette auf `.fristenrechner`; die Gastgebervariablen gehen dort mit ihren bisherigen Fallbacks ein und bleiben an denselben Stellen wirksam:
 
-| CSS-Variable | Vorgabe |
-|---|---|
-| `--color-border` | `#d7d7d3` |
-| `--color-accent` | `#a7303c` |
-| `--color-accent-deep` | `#862630` |
-| `--color-text` | `#343438` |
-| `--field-label-height` | `1.6rem`; das Bindefrist-Raster verwendet `2.9rem` |
+| CSS-Variable | Vorgabe | Wirkung |
+|---|---|---|
+| `--color-border` | `#d7d7d3` | Rahmen von Formular, Ergebnis und rechtlichem Hinweis (`--fr-rahmen-karte`) |
+| `--color-accent` | `#a7303c` | Akzent, Fokusrahmen, Primärschaltfläche (`--fr-akzent`, `--fr-primaer`) |
+| `--color-accent-deep` | `#862630` | Primärschaltfläche bei Hover (`--fr-primaer-hover`) |
+| `--color-text` | `#343438` | Text in Feldern und Schaltflächen (`--fr-text`) |
+| `--field-label-height` | `1.6rem`; das Bindefrist-Raster verwendet `2.9rem` | Beschriftungshöhe |
+
+Die Phasenfarben der Zeitschiene heißen `--phase-einholung`, `--phase-teilnahmewettbewerb`, `--phase-verhandlung`, `--phase-bewertung`, `--phase-teststellung` und `--phase-zuschlag`; die Bedienlogik schreibt die Phase als `data-phase` an die Karte. Die dunkle Palette setzt dieselben Variablen mit eigenen Werten; Gastgebervariablen wirken dort nicht. Der Kontrasttest im Repository prüft beide Paletten.
 
 Das Paket lädt keine Schriftdatei. Seine Druckregeln gelten nur für die Komponente. Seitenränder mit `@page` sowie Regeln für Website-Kopf, Website-Fuß, Breadcrumbs und äußere Layoutflächen gehören zum Gastgeber. Der Prüfplan zur Barrierefreiheit im Repository trennt automatische Prüfungen von ausstehenden Sicht- und Bedienprüfungen.
 

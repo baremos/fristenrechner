@@ -24,7 +24,9 @@ export function erzeugeMenue(root: HTMLElement, option: Exclude<MenueOption, 'au
   const id = `fr-menue-${nummer}`;
   const stil = element('style', 'fr-menue-stil'); stil.textContent = css;
   const reserve = element('div', 'fr-menue-reserve'); reserve.setAttribute('aria-hidden', 'true');
-  const leiste = element('div', 'fr-menue-leiste');
+  // Leiste und Overlay folgen dem Farbschema der Komponente; die Leiste liegt außerhalb des Rechners.
+  const schema = root.dataset.farbschema === 'system' ? ' fr-menue-system' : '';
+  const leiste = element('div', `fr-menue-leiste${schema}`);
   leiste.append(element('span', 'fr-menue-kurztitel', option.titel ?? 'Fristenrechner'));
   const symbol = (name: string, kreuze: boolean): HTMLButtonElement => {
     const button = element('button', 'fr-menue-symbol'); button.type = 'button'; button.setAttribute('aria-label', name);
@@ -44,7 +46,7 @@ export function erzeugeMenue(root: HTMLElement, option: Exclude<MenueOption, 'au
   const knopf = symbol('Dateiaktionen', false);
   knopf.setAttribute('aria-controls', id); knopf.setAttribute('aria-expanded', 'false');
   leiste.append(knopf);
-  const overlay = element('div', 'fr-menue-overlay'); overlay.hidden = true;
+  const overlay = element('div', `fr-menue-overlay${schema}`); overlay.hidden = true;
   const sheet = element('div', 'fr-menue-sheet'); sheet.id = id;
   sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true'); sheet.setAttribute('aria-labelledby', `${id}-titel`);
   const kopf = element('div', 'fr-menue-kopf');
