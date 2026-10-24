@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Helles Schema: entspricht der Seitenfläche der App-Seite. -->
+    <color name="fenster_hintergrund">#FFFFFF</color>
+    <bool name="helle_systemleisten">true</bool>
+</resources>

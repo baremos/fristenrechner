@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/white</item>
-        <item name="android:statusBarColor">@android:color/white</item>
-        <item name="android:navigationBarColor">@android:color/white</item>
+    <!-- Tag/Nacht-Theme: Fenster und Systemleisten in der Fensterfarbe aus values bzw. values-night.
+         Die WebView richtet prefers-color-scheme nach dem App-Theme aus; algorithmisches Abdunkeln bleibt aus. -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/fenster_hintergrund</item>
+        <item name="android:statusBarColor">@color/fenster_hintergrund</item>
+        <item name="android:navigationBarColor">@color/fenster_hintergrund</item>
+        <item name="android:windowLightStatusBar">@bool/helle_systemleisten</item>
+        <item name="android:windowLightNavigationBar">@bool/helle_systemleisten</item>
         <item name="android:forceDarkAllowed">false</item>
     </style>
     <style name="AppTheme.NoActionBar" parent="AppTheme">

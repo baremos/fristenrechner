@@ -25,7 +25,7 @@ const texte = {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light" />
+  <meta name="color-scheme" content="light dark" />
   <title>Fristenrechner Vergabe</title>
   <script is:inline>
     (function () {
@@ -48,7 +48,7 @@ const texte = {
     <p id="app-startfehler" class="app-hinweis" role="alert" hidden>Im Fristenrechner ist ein Fehler aufgetreten. Bitte starten Sie die App neu. Tritt der Fehler erneut auf, ist die Systemkomponente „Android System WebView“ möglicherweise zu alt.</p>
     <p id="app-rechtsstand-hinweis" class="app-hinweis" role="status" hidden
        data-rechtsstand={RECHTSSTAND_DATUM}>Diese Fassung rechnet mit dem Rechtsstand {RECHTSSTAND}. Seitdem sind mehr als zwölf Monate vergangen. Eine neuere Version des Fristenrechners kann vorliegen. Die Berechnung bleibt möglich.</p>
-    <Fristenrechner texte={texte} exportInhalt={webExportInhalt} importBedienung="schaltflaeche" hinweisPosition="unten" menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }} />
+    <Fristenrechner texte={texte} exportInhalt={webExportInhalt} importBedienung="schaltflaeche" hinweisPosition="unten" menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }} farbschema="system" />
     <details class="app-abschnitt">
       <summary>Über diese App</summary>
       <p>Fristenrechner Vergabe, Version {app.version}</p>
@@ -88,9 +88,14 @@ const texte = {
 </body>
 </html>
 <style is:global>
-  :root { color-scheme: light; --color-accent: #a7303c; --color-accent-deep: #931834;
-          --color-text: #333333; --color-border: #dddddd;
-          font-family: system-ui, sans-serif; line-height: 1.5; color: var(--color-text); background: #fff; }
+  /* Die App folgt dem Systemfarbschema; die Komponente erhält dafür farbschema="system". */
+  :root { color-scheme: light dark; --color-accent: #a7303c; --color-accent-deep: #931834;
+          --color-text: #333333; --color-border: #dddddd; --app-flaeche: #fff;
+          font-family: system-ui, sans-serif; line-height: 1.5; color: var(--color-text); background: var(--app-flaeche); }
+  @media screen and (prefers-color-scheme: dark) {
+    /* Werte wie in der dunklen Palette der Komponente; Seitenfläche etwas dunkler als ihre Flächen. */
+    :root { --color-accent: #e8858e; --color-accent-deep: #f0a0a7; --color-text: #e8e8e5; --color-border: #3b3b40; --app-flaeche: #141416; }
+  }
   *, *::before, *::after { box-sizing: border-box; }
   body { margin: 0; }
   button, input, select, textarea { font: inherit; }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dunkles Schema: entspricht --app-flaeche der App-Seite bei prefers-color-scheme: dark. -->
+    <color name="fenster_hintergrund">#141416</color>
+    <bool name="helle_systemleisten">false</bool>
+</resources>
