@@ -15,6 +15,6 @@
     "zoomEnabled": true
   },
   "plugins": {
-    "SystemBars": { "insetsHandling": "native", "style": "LIGHT" }
+    "SystemBars": { "insetsHandling": "native", "style": "DEFAULT" }
   }
 }

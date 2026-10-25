@@ -74,6 +74,26 @@ afterEach(async () => {
 });
 
 describe('Initialisierung und Speicher über die Plattform', () => {
+  it.each([undefined, 'standard', 'kompakt'])('setzt Tabellenrollen und Phasenhülle nur in der kompakten Ansicht (%s)', async ansicht => {
+    const env = vorbereiten();
+    if (ansicht !== undefined) env.root.dataset.ansicht = ansicht;
+    env.start(); await warten();
+    const pruefen = () => {
+      const zeilen = env.el('schedule-table-body').kinder;
+      expect(zeilen.length).toBeGreaterThan(0);
+      for (const zeile of zeilen) {
+        expect(zeile.getAttribute('role')).toBe(ansicht === 'kompakt' ? 'row' : null);
+        expect(zeile.kinder).toHaveLength(4);
+        for (const zelle of zeile.kinder) expect(zelle.getAttribute('role')).toBe(ansicht === 'kompakt' ? 'cell' : null);
+        expect(zeile.kinder[2]!.querySelectorAll('.milestone-phase')).toHaveLength(ansicht === 'kompakt' ? 1 : 0);
+      }
+    };
+    pruefen();
+    env.aendern('projektname', 'Neu berechnet');
+    env.senden(env.el('schedule-form'), 'submit'); await warten();
+    pruefen();
+  });
+
   it('rendert mit Plattformzeit und speichert bei leerem Speicher ein gültiges Projekt', async () => {
     const env = vorbereiten(); env.start(); await warten();
     expect(env.lesen).toHaveBeenCalledTimes(1);

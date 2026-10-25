@@ -8,9 +8,9 @@ import { expect, it } from 'vitest';
 import * as exportDaten from '../src/fristenrechner-export-data';
 import * as plattform from '../src/plattform';
 import { webExportInhalt, webTexte } from '../src/web-vorgaben';
-import type { HinweisPosition, ImportBedienung, MenueOption } from '../src/plattform';
+import type { Ansicht, Farbschema, HinweisPosition, ImportBedienung, MenueOption } from '../src/plattform';
 
-async function rendern(importBedienung?: ImportBedienung, importBeschriftung = webTexte.importBeschriftung, hinweisPosition?: HinweisPosition, menue?: MenueOption, bibliothekenHinweis?: string) {
+async function rendern(importBedienung?: ImportBedienung, importBeschriftung = webTexte.importBeschriftung, hinweisPosition?: HinweisPosition, menue?: MenueOption, bibliothekenHinweis?: string, farbschema?: Farbschema, ansicht?: Ansicht) {
   const quelle = readFileSync(new URL('../src/Fristenrechner.astro', import.meta.url), 'utf8');
   const kompiliert = transform(quelle, {
     filename: 'Fristenrechner.astro',
@@ -34,14 +34,43 @@ async function rendern(importBedienung?: ImportBedienung, importBeschriftung = w
   new Function('require', 'module', 'exports', code)(laden, modul, modul.exports);
   const container = await AstroContainer.create();
   return container.renderToString(modul.exports.default, {
-    props: { texte: { ...webTexte, importBeschriftung, ...(bibliothekenHinweis === undefined ? {} : { bibliothekenHinweis }) }, exportInhalt: webExportInhalt, importBedienung, hinweisPosition, menue },
+    props: { texte: { ...webTexte, importBeschriftung, ...(bibliothekenHinweis === undefined ? {} : { bibliothekenHinweis }) }, exportInhalt: webExportInhalt, importBedienung, hinweisPosition, menue, farbschema, ansicht },
   });
 }
 
 it('behält das vorgerenderte HTML mit den Web-Vorgaben vollständig bei', async () => {
   const html = await rendern();
-  // Referenz aus der unveränderten Komponente von main (cad2a7d), mit demselben Renderer.
+  // Referenz aus doku-arbeitsdateien (ursprünglich cad2a7d), mit demselben Renderer.
   expect(createHash('sha256').update(html).digest('hex')).toBe('e6465ae87407c4e1e53036ecae4f9f2ac7e1f90b90fb5362483436fab41e8898');
+});
+
+it('gibt das Farbschema nur bei system als Attribut aus und lehnt unbekannte Werte ab', async () => {
+  const vorgabe = await rendern();
+  expect(await rendern(undefined, undefined, undefined, undefined, undefined, 'hell')).toBe(vorgabe);
+  expect(vorgabe).not.toContain('data-farbschema');
+  const system = await rendern(undefined, undefined, undefined, undefined, undefined, 'system');
+  expect(system.match(/data-farbschema="system"/g)).toHaveLength(1);
+  expect(system.replace(' data-farbschema="system"', '')).toBe(vorgabe);
+  await expect(rendern(undefined, undefined, undefined, undefined, undefined, 'dunkel' as unknown as Farbschema)).rejects.toThrow('Unbekanntes Farbschema');
+});
+
+it('gibt Ansicht und Tabellenrollen nur für kompakt aus und lehnt unbekannte Werte ab', async () => {
+  const vorgabe = await rendern();
+  expect(await rendern(undefined, undefined, undefined, undefined, undefined, undefined, 'standard')).toBe(vorgabe);
+  expect(vorgabe).not.toContain('data-ansicht');
+  expect(vorgabe).not.toMatch(/role="(?:table|rowgroup|row|columnheader)"/);
+  const html = await rendern(undefined, undefined, undefined, undefined, undefined, undefined, 'kompakt');
+  expect(html.match(/data-ansicht="kompakt"/g)).toHaveLength(1);
+  expect(html).toContain('<table role="table">');
+  expect(html).toContain('<thead role="rowgroup">');
+  expect(html).toContain('<tr role="row">');
+  expect(html.match(/<th scope="col" role="columnheader">/g)).toHaveLength(4);
+  expect(html).toContain('<tbody id="schedule-table-body" role="rowgroup"></tbody>');
+  expect(html.replace(' data-ansicht="kompakt"', '').replace(/ role="(?:table|rowgroup|row|columnheader)"/g, '')).toBe(vorgabe);
+  expect(html).not.toContain('data-farbschema');
+  const system = await rendern(undefined, undefined, undefined, undefined, undefined, 'system', 'kompakt');
+  expect(system.replace(' data-farbschema="system"', '')).toBe(html);
+  await expect(rendern(undefined, undefined, undefined, undefined, undefined, undefined, 'unbekannt' as unknown as Ansicht)).rejects.toThrow('Unbekannte Ansicht.');
 });
 
 it('ersetzt den Bibliothekssatz nur bei gesetztem Gastgebertext und erhält sonst die Vorgabe', async () => {

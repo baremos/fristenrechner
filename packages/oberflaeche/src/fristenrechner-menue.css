@@ -25,6 +25,19 @@
 .fr-menue-leiste.fr-menue-tastatur :focus, .fr-menue-overlay.fr-menue-tastatur :focus { outline: 2px solid var(--color-accent, #a7303c); outline-offset: -2px; }
 .fr-menue-sheet.fr-menue-kompakt { display: block; overflow-y: auto; overscroll-behavior-y: contain; }
 .fr-menue-kompakt .fr-menue-liste { overflow: visible; }
+/* Dunkle Palette nur mit farbschema="system" der Komponente und dunklem Systemfarbschema. */
+@media screen and (prefers-color-scheme: dark) {
+  .fr-menue-leiste.fr-menue-system, .fr-menue-overlay.fr-menue-system { color: #e8e8e5; color-scheme: dark; }
+  .fr-menue-leiste.fr-menue-system { background: #1c1c1f; border-bottom-color: #3b3b40; }
+  .fr-menue-leiste.fr-menue-system button, .fr-menue-overlay.fr-menue-system button { background: #1c1c1f; }
+  .fr-menue-overlay.fr-menue-system { background: rgba(0, 0, 0, .6); }
+  .fr-menue-system .fr-menue-sheet { background: #1c1c1f; border-color: #3b3b40; }
+  .fr-menue-system .fr-menue-kopf, .fr-menue-system .fr-menue-neu { border-color: #3b3b40; }
+  .fr-menue-system .fr-menue-griff { background: #5a5a60; }
+  .fr-menue-system .fr-menue-liste button:disabled { color: #b4b4b8; background: #28282c; }
+  .fr-menue-system .fr-menue-sperre { border-color: #8e8e93; background: #28282c; }
+  .fr-menue-leiste.fr-menue-system.fr-menue-tastatur :focus, .fr-menue-overlay.fr-menue-system.fr-menue-tastatur :focus { outline-color: #e8858e; }
+}
 @media print {
   .fr-menue-reserve, .fr-menue-leiste, .fr-menue-overlay { display: none !important; }
   html { overflow: visible !important; }

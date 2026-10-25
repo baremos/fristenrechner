@@ -38,21 +38,8 @@ const phaseLabels: Record<Meilenstein['phase'], string> = {
   zuschlag: 'Zuschlag',
 };
 
-const phaseColors: Record<Meilenstein['phase'], string> = {
-  einholung: '#a7303c',
-  teilnahmewettbewerb: '#76528f',
-  verhandlung: '#315f8c',
-  bewertung: '#2f6f73',
-  teststellung: '#a56721',
-  zuschlag: '#4d6b3c',
-};
-
-// Nur die kleine Phasenbeschriftung; Zeitschiene und Exportfarben bleiben gleich.
-const phaseOrderColors: Record<Meilenstein['phase'], string> = {
-  ...phaseColors,
-  teststellung: '#9a5f1f',
-};
-
+// Die Phasenfarben der Zeitschiene stehen je Farbschema im CSS der Komponente
+// (--phase-<id>); die Phase wird nur als data-phase an die Karte geschrieben.
 const typeLabels: Record<Meilenstein['fristTyp'], string> = {
   gesetzlich: 'Gesetzliche Frist',
   praxis: 'Praxiswert',
@@ -637,10 +624,9 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
     result.phasen.forEach((phase, index) => {
       const item = document.createElement('li');
       item.className = 'timeline-phase';
-      item.style.setProperty('--phase-color', phaseColors[phase.id]);
+      item.dataset.phase = phase.id;
 
       const order = makeTextElement('span', `Phase ${index + 1}`, 'timeline-phase-order');
-      order.style.color = phaseOrderColors[phase.id];
       const header = document.createElement('header');
       header.append(
         order,
@@ -685,24 +671,34 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
   const renderTable = (result: ScheduleResult): void => {
     leerenUndAnhaengen(tableBody);
     const phaseNames = new Map(result.phasen.map((phase) => [phase.id, phase.label]));
+    const kompakt = root.dataset.ansicht === 'kompakt';
+    // Ausdrückliche Rollen: In der Kartenansicht schmaler Fenster werden Zeilen und
+    // Zellen als Blöcke dargestellt; die Tabellensemantik bleibt dadurch erhalten.
+    const cell = (): HTMLTableCellElement => {
+      const element = document.createElement('td');
+      if (kompakt) element.setAttribute('role', 'cell');
+      return element;
+    };
     result.meilensteine.forEach((milestone) => {
       const row = document.createElement('tr');
-      const dateCell = document.createElement('td');
+      if (kompakt) row.setAttribute('role', 'row');
+      const dateCell = cell();
       appendMilestoneDate(dateCell, milestone);
 
-      const labelCell = document.createElement('td');
+      const labelCell = cell();
       labelCell.append(makeTextElement('span', milestone.label, 'milestone-label'));
       milestone.warnungen.forEach((warning) => {
         labelCell.append(makeTextElement('div', warning, 'milestone-warning'));
       });
 
-      const typeCell = document.createElement('td');
+      const typeCell = cell();
       typeCell.append(makeTextElement('span', typeLabels[milestone.fristTyp], 'type-badge'));
-      typeCell.append(document.createElement('br'), document.createTextNode(
-        phaseNames.get(milestone.phase) ?? phaseLabels[milestone.phase],
-      ));
+      const phase = phaseNames.get(milestone.phase) ?? phaseLabels[milestone.phase];
+      typeCell.append(document.createElement('br'), kompakt
+        ? makeTextElement('span', phase, 'milestone-phase')
+        : document.createTextNode(phase));
 
-      const detailCell = document.createElement('td');
+      const detailCell = cell();
       detailCell.append(document.createTextNode(milestone.rechenweg));
       if (milestone.rechtsgrundlage) {
         detailCell.append(document.createElement('br'), makeTextElement('strong', milestone.rechtsgrundlage));

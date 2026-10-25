@@ -45,6 +45,8 @@ export function erzeugeMenue(root: HTMLElement, option: Exclude<MenueOption, 'au
   knopf.setAttribute('aria-controls', id); knopf.setAttribute('aria-expanded', 'false');
   leiste.append(knopf);
   const overlay = element('div', 'fr-menue-overlay'); overlay.hidden = true;
+  // Leiste und Overlay folgen dem Farbschema der Komponente; die Leiste liegt außerhalb des Rechners.
+  if (root.dataset.farbschema === 'system') for (const teil of [leiste, overlay]) teil.classList.add('fr-menue-system');
   const sheet = element('div', 'fr-menue-sheet'); sheet.id = id;
   sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true'); sheet.setAttribute('aria-labelledby', `${id}-titel`);
   const kopf = element('div', 'fr-menue-kopf');

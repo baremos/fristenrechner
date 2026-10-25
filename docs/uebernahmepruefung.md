@@ -248,7 +248,7 @@ Die Pfade beziehen sich auf `app/android/`. „Entfernt“ bedeutet, dass die Da
 | `app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png` | entfernt | Rastergrafik der Vorlage durch das eigene adaptive Vektorsymbol ersetzen. |
 | `app/src/main/res/values/ic_launcher_background.xml` | geändert | Hintergrundfarbe des eigenen Symbols. |
 | `app/src/main/res/values/strings.xml` | geändert | Deutscher App-Name, kurze Beschriftung, eigenes Paket und Meldung bei fehlender WebView. |
-| `app/src/main/res/values/styles.xml` | geändert | AppCompat-Theme mit weißen Systemleisten, ohne Theme.SplashScreen oder eigenes Startbild. |
+| `app/src/main/res/values/styles.xml` | geändert | AppCompat-Tag/Nacht-Theme, Fenster und Systemleisten in der Fensterfarbe aus `values/farben.xml` und `values-night/farben.xml` (beide neu), ohne Theme.SplashScreen oder eigenes Startbild. Bis zum 2026-10-25 helles Theme mit weißen Systemleisten. |
 | `app/src/main/res/xml/file_paths.xml` | entfernt | Breite Freigabe externer Dateien entfällt zusammen mit dem FileProvider. |
 | `app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java` | entfernt | Beispieltest ohne Bezug zur App entfernen. |
 | `build.gradle` | geändert | Google-Services-Klassenpfad entfernen; clean verwendet rootProject.layout.buildDirectory. Übrige Bytes einschließlich Leerraum bleiben erhalten. |
