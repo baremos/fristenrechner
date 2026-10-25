@@ -49,6 +49,12 @@ export function pruefeFarbschema(farbschema: Farbschema = 'hell'): Farbschema {
   if (farbschema !== 'hell' && farbschema !== 'system') throw new Error('Unbekanntes Farbschema.');
   return farbschema;
 }
+/** Darstellung: bisherige Ansicht (Vorgabe) oder kompakte Karten auf schmalen Bildschirmen. */
+export type Ansicht = 'standard' | 'kompakt';
+export function pruefeAnsicht(ansicht: Ansicht = 'standard'): Ansicht {
+  if (ansicht !== 'standard' && ansicht !== 'kompakt') throw new Error('Unbekannte Ansicht.');
+  return ansicht;
+}
 export type AusgabeTexte = Partial<Record<AusgabeWeg, Partial<Record<AusgabeFormat, string>>>>;
 export class PlattformFehler extends Error {
   constructor(readonly code: Fehlercode, message: string) { super(message); this.name = 'PlattformFehler'; }

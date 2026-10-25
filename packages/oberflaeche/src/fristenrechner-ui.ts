@@ -671,16 +671,17 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
   const renderTable = (result: ScheduleResult): void => {
     leerenUndAnhaengen(tableBody);
     const phaseNames = new Map(result.phasen.map((phase) => [phase.id, phase.label]));
+    const kompakt = root.dataset.ansicht === 'kompakt';
     // Ausdrückliche Rollen: In der Kartenansicht schmaler Fenster werden Zeilen und
     // Zellen als Blöcke dargestellt; die Tabellensemantik bleibt dadurch erhalten.
     const cell = (): HTMLTableCellElement => {
       const element = document.createElement('td');
-      element.setAttribute('role', 'cell');
+      if (kompakt) element.setAttribute('role', 'cell');
       return element;
     };
     result.meilensteine.forEach((milestone) => {
       const row = document.createElement('tr');
-      row.setAttribute('role', 'row');
+      if (kompakt) row.setAttribute('role', 'row');
       const dateCell = cell();
       appendMilestoneDate(dateCell, milestone);
 
@@ -692,9 +693,10 @@ export function initFristenrechner(root: HTMLElement, optionen: RechnerOptionen)
 
       const typeCell = cell();
       typeCell.append(makeTextElement('span', typeLabels[milestone.fristTyp], 'type-badge'));
-      typeCell.append(document.createElement('br'), document.createTextNode(
-        phaseNames.get(milestone.phase) ?? phaseLabels[milestone.phase],
-      ));
+      const phase = phaseNames.get(milestone.phase) ?? phaseLabels[milestone.phase];
+      typeCell.append(document.createElement('br'), kompakt
+        ? makeTextElement('span', phase, 'milestone-phase')
+        : document.createTextNode(phase));
 
       const detailCell = cell();
       detailCell.append(document.createTextNode(milestone.rechenweg));

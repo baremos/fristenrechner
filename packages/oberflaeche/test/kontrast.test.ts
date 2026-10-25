@@ -12,6 +12,7 @@ type Farbpaar = { selector: string; vordergrund: RGB; hintergrund: RGB; schwelle
 const DUNKEL = 'screen and (prefers-color-scheme: dark)';
 const SCHMAL = 'screen and (max-width: 48rem)';
 const DUNKLER_SELEKTOR = '.fristenrechner[data-farbschema="system"]';
+const KOMPAKTER_SELEKTOR = '.fristenrechner[data-ansicht="kompakt"]';
 const phasen = ['einholung', 'teilnahmewettbewerb', 'verhandlung', 'bewertung', 'teststellung', 'zuschlag'];
 
 // Flache Regeln mit ihrem Media-Kontext. CSS-Verschachtelung gibt es nicht (WebView 83).
@@ -128,8 +129,9 @@ function farbpaare(css: string, menue: string): Farbpaar[] {
   };
   for (const { name, farben } of paletten(css)) {
     const farbe = (wert: string): RGB => rgb(aufloesen(wert, farben));
-    const lesen = (selector: string, eigenschaft: string, kontext = ''): RGB => farbe(deklaration(css, `.fristenrechner ${selector}`, eigenschaft, kontext));
-    const lesenRand = (selector: string, eigenschaft: string, kontext = ''): RGB => farbe(rand(deklaration(css, `.fristenrechner ${selector}`, eigenschaft, kontext)));
+    const wurzel = (kontext: string): string => kontext === SCHMAL ? KOMPAKTER_SELEKTOR : '.fristenrechner';
+    const lesen = (selector: string, eigenschaft: string, kontext = ''): RGB => farbe(deklaration(css, `${wurzel(kontext)} ${selector}`, eigenschaft, kontext));
+    const lesenRand = (selector: string, eigenschaft: string, kontext = ''): RGB => farbe(rand(deklaration(css, `${wurzel(kontext)} ${selector}`, eigenschaft, kontext)));
     const variable = (wert: string): RGB => farbe(`var(${wert})`);
     const text = (selector: string, hintergrund: RGB, kontext = ''): void => paar(`${name}: ${selector} (Text)`, lesen(selector, 'color', kontext), hintergrund, 4.7);
     const weiss = lesen('form', 'background');
@@ -181,6 +183,7 @@ function farbpaare(css: string, menue: string): Farbpaar[] {
     text('.project-file-meta', weiss);
     text('#storage-status', hinweis);
     text('#result-summary', weiss);
+    text('.result-bindefrist', weiss);
     text('.export-message', weiss);
     text('.section-heading-row p', weiss);
     text('.timeline-milestones time', weiss);
@@ -213,6 +216,15 @@ function pruefen(paar: Farbpaar): void {
 }
 
 it.each(farbpaare(komponente, menueStil))('$selector erreicht mindestens $schwelle:1', pruefen);
+
+it('begrenzt sämtliche neuen Handyregeln auf die ausdrücklich gewählte kompakte Ansicht', () => {
+  const handyregeln = regeln(komponente).filter(regel => regel.kontext === SCHMAL);
+  expect(handyregeln.length).toBeGreaterThan(0);
+  for (const regel of handyregeln) {
+    expect(regel.selektoren.length).toBeGreaterThan(0);
+    for (const selector of regel.selektoren) expect(selector.startsWith(`${KOMPAKTER_SELEKTOR} `)).toBe(true);
+  }
+});
 
 it('bindet die Phasenfarben über data-phase an die Paletten statt an Inline-Stile', () => {
   expect(bedienlogik).toContain("item.className = 'timeline-phase';");
@@ -257,6 +269,36 @@ it('hält die helle Palette auf den bisherigen Werten und leitet die Phasenköpf
     const dunkelKopf = rgb(dunkel.farben[`--phase-${phase}-flaeche`]);
     const dunkelSoll = mischung(rgb(dunkel.farben[`--phase-${phase}`]), rgb(dunkel.farben['--fr-flaeche']), 0.15);
     dunkelKopf.forEach((kanal, index) => expect(Math.abs(kanal - dunkelSoll[index])).toBeLessThanOrEqual(1));
+  }
+});
+
+it('gibt der dunklen Komponente auf einer hellen Gastseite eine eigene kontrastreiche Text- und Grundfarbe', () => {
+  const farben = { '--color-text': '#222222', '--color-background': '#ffffff', ...paletten(komponente)[1].farben };
+  const text = deklaration(komponente, DUNKLER_SELEKTOR, 'color', DUNKEL);
+  const grund = deklaration(komponente, DUNKLER_SELEKTOR, 'background', DUNKEL);
+  expect(text).toBe('var(--fr-text)');
+  expect(grund).toBe('var(--fr-flaeche)');
+  expect(aufloesen(text, farben)).toBe('#e8e8e5');
+  expect(aufloesen(grund, farben)).toBe('#1c1c1f');
+  expect(kontrast(rgb(aufloesen(text, farben)), rgb(aufloesen(grund, farben)))).toBeGreaterThanOrEqual(4.5);
+  // Transparente Bereiche der kompakten Ansicht liegen auf der Komponentenfläche.
+  for (const selector of ['form', '.results']) {
+    expect(deklaration(komponente, `${KOMPAKTER_SELEKTOR} ${selector}`, 'background', SCHMAL)).toBe('transparent');
+  }
+  // Ohne Farbschema-Opt-in werden weiterhin die Farben der Gastseite geerbt.
+  expect(() => deklaration(komponente, '.fristenrechner', 'color')).toThrow('Keine eindeutige CSS-Deklaration');
+  expect(() => deklaration(komponente, '.fristenrechner', 'background')).toThrow('Keine eindeutige CSS-Deklaration');
+});
+
+it('behält den festen Hellwert betonter Texte auch bei abweichender Gastfarbe bei', () => {
+  const [hell, dunkel] = paletten(komponente);
+  const gastfarbe = { '--color-text': '#006699' };
+  expect(aufloesen('var(--fr-text)', { ...hell.farben, ...gastfarbe })).toBe(gastfarbe['--color-text']);
+  for (const selector of ['.result-bindefrist', '.timeline-phase > header strong']) {
+    const text = deklaration(komponente, `.fristenrechner ${selector}`, 'color');
+    expect(text).toBe('var(--fr-text-betont)');
+    expect(aufloesen(text, { ...hell.farben, ...gastfarbe })).toBe('#343438');
+    expect(aufloesen(text, { ...dunkel.farben, ...gastfarbe })).toBe('#e8e8e5');
   }
 });
 

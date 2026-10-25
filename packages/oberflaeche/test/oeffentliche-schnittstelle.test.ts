@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 import {
-  FEHLERCODES, MAX_PROJEKT_BYTES, PlattformFehler, WEB_SPEICHERSCHLUESSEL, pruefeProjektGroesse, pruefeFarbschema, initFristenrechner,
+  FEHLERCODES, MAX_PROJEKT_BYTES, PlattformFehler, WEB_SPEICHERSCHLUESSEL, pruefeProjektGroesse, pruefeAnsicht, pruefeFarbschema, initFristenrechner,
   type AusgabeDatei, type AusgabeFormat, type AusgabeWeg, type DateiErgebnis, type DateiImport,
-  type DateiAusgabe, type Farbschema, type Fehlercode, type GastgeberTexte, type HinweisPosition, type ImportBedienung, type Plattform, type ProjektSpeicher,
+  type DateiAusgabe, type Ansicht, type Farbschema, type Fehlercode, type GastgeberTexte, type HinweisPosition, type ImportBedienung, type Plattform, type ProjektSpeicher,
   type DateiAktion, type DateiAktionsZustand, type RechnerAktionen, type RechnerInstanz, type MenueZurueck,
 } from '@baremos/fristenrechner-ui/ui';
 
@@ -10,6 +10,11 @@ it('stellt den App-Adaptern Konstanten und Typen über den öffentlichen Einstie
   const bedienung: ImportBedienung = 'schaltflaeche';
   const hinweis: HinweisPosition = 'unten';
   expect(hinweis).toBe('unten');
+  const ansicht: Ansicht = 'kompakt';
+  expect(pruefeAnsicht(ansicht)).toBe('kompakt');
+  expect(pruefeAnsicht()).toBe('standard');
+  expect(pruefeAnsicht('standard')).toBe('standard');
+  expect(() => pruefeAnsicht('unbekannt' as unknown as Ansicht)).toThrow('Unbekannte Ansicht.');
   const schema: Farbschema = 'system';
   expect(pruefeFarbschema(schema)).toBe('system');
   expect(pruefeFarbschema()).toBe('hell');

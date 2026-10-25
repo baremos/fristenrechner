@@ -48,7 +48,7 @@ const texte = {
     <p id="app-startfehler" class="app-hinweis" role="alert" hidden>Im Fristenrechner ist ein Fehler aufgetreten. Bitte starten Sie die App neu. Tritt der Fehler erneut auf, ist die Systemkomponente „Android System WebView“ möglicherweise zu alt.</p>
     <p id="app-rechtsstand-hinweis" class="app-hinweis" role="status" hidden
        data-rechtsstand={RECHTSSTAND_DATUM}>Diese Fassung rechnet mit dem Rechtsstand {RECHTSSTAND}. Seitdem sind mehr als zwölf Monate vergangen. Eine neuere Version des Fristenrechners kann vorliegen. Die Berechnung bleibt möglich.</p>
-    <Fristenrechner texte={texte} exportInhalt={webExportInhalt} importBedienung="schaltflaeche" hinweisPosition="unten" menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }} farbschema="system" />
+    <Fristenrechner texte={texte} exportInhalt={webExportInhalt} importBedienung="schaltflaeche" hinweisPosition="unten" menue={{ darstellung: 'bottom-sheet', titel: 'Fristenrechner' }} farbschema="system" ansicht="kompakt" />
     <details class="app-abschnitt">
       <summary>Über diese App</summary>
       <p>Fristenrechner Vergabe, Version {app.version}</p>

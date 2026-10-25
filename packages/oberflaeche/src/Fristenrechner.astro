@@ -1,5 +1,5 @@
 ---
-import { pruefeFarbschema, pruefeMenueOption, type Farbschema, type MenueOption, type ExportInhalt, type GastgeberTexte, type HinweisPosition, type ImportBedienung } from './plattform';
+import { pruefeAnsicht, pruefeFarbschema, pruefeMenueOption, type Ansicht, type Farbschema, type MenueOption, type ExportInhalt, type GastgeberTexte, type HinweisPosition, type ImportBedienung } from './plattform';
 import { pruefeExportInhalt } from './fristenrechner-export-data';
 
 interface Props {
@@ -9,11 +9,14 @@ interface Props {
   hinweisPosition?: HinweisPosition;
   menue?: MenueOption;
   farbschema?: Farbschema;
+  ansicht?: Ansicht;
 }
 
 const { texte, exportInhalt, importBedienung = 'dateifeld', hinweisPosition = 'oben' } = Astro.props;
 const menue = pruefeMenueOption(Astro.props.menue);
 const farbschema = pruefeFarbschema(Astro.props.farbschema);
+// Ausdrückliche Tabellenrollen erhalten bei kompakter Blockdarstellung die Tabellensemantik.
+const ansicht = pruefeAnsicht(Astro.props.ansicht);
 pruefeExportInhalt(exportInhalt);
 const fusszeilenAdresse = exportInhalt.adresse ? new URL(exportInhalt.adresse.href).hostname : '';
 
@@ -27,7 +30,7 @@ const bundeslaender = [
 ---
 
 <div class="fristenrechner" data-fristenrechner data-pagefind-ignore="all"
-     data-gastgeber-texte={JSON.stringify(texte)} data-export-inhalt={JSON.stringify(exportInhalt)} data-menue={menue === 'aus' ? undefined : JSON.stringify(menue)} data-farbschema={farbschema === 'system' ? 'system' : undefined}>
+     data-gastgeber-texte={JSON.stringify(texte)} data-export-inhalt={JSON.stringify(exportInhalt)} data-menue={menue === 'aus' ? undefined : JSON.stringify(menue)} data-farbschema={farbschema === 'system' ? 'system' : undefined} data-ansicht={ansicht === 'kompakt' ? 'kompakt' : undefined}>
   {hinweisPosition === 'oben' && <div class="privacy-note">
     <strong>{texte.datenschutzTitel}</strong>
     {texte.datenschutzText}
@@ -438,19 +441,16 @@ const bundeslaender = [
     <section class="table-section" aria-labelledby="table-heading">
       <h3 id="table-heading">Termine und Rechenwege</h3>
       <div class="table-scroll" tabindex="0" role="group" aria-labelledby="table-heading">
-        {/* Ausdrückliche Tabellenrollen: In schmalen Fenstern werden die Zeilen
-            als Karten mit Blockdarstellung gezeigt; Spaltenbezüge bleiben so
-            für Hilfstechnik erhalten, der Tabellenkopf bleibt nur visuell verborgen. */}
-        <table role="table">
-          <thead role="rowgroup">
-            <tr role="row">
-              <th scope="col" role="columnheader">Datum</th>
-              <th scope="col" role="columnheader">Meilenstein</th>
-              <th scope="col" role="columnheader">Typ / Phase</th>
-              <th scope="col" role="columnheader">Rechenweg und Grundlage</th>
+        <table role={ansicht === 'kompakt' ? 'table' : undefined}>
+          <thead role={ansicht === 'kompakt' ? 'rowgroup' : undefined}>
+            <tr role={ansicht === 'kompakt' ? 'row' : undefined}>
+              <th scope="col" role={ansicht === 'kompakt' ? 'columnheader' : undefined}>Datum</th>
+              <th scope="col" role={ansicht === 'kompakt' ? 'columnheader' : undefined}>Meilenstein</th>
+              <th scope="col" role={ansicht === 'kompakt' ? 'columnheader' : undefined}>Typ / Phase</th>
+              <th scope="col" role={ansicht === 'kompakt' ? 'columnheader' : undefined}>Rechenweg und Grundlage</th>
             </tr>
           </thead>
-          <tbody id="schedule-table-body" role="rowgroup"></tbody>
+          <tbody id="schedule-table-body" role={ansicht === 'kompakt' ? 'rowgroup' : undefined}></tbody>
         </table>
       </div>
     </section>
@@ -504,6 +504,7 @@ const bundeslaender = [
      gilt nur mit farbschema="system" bei dunklem Systemfarbschema. */
   .fristenrechner {
     --fr-text: var(--color-text, #343438);
+    --fr-text-betont: #343438;
     --fr-text-beschriftung: #37373b;
     --fr-text-dezent: #68686c;
     --fr-text-hinweis: #626267;
@@ -1048,7 +1049,7 @@ const bundeslaender = [
 
   .fristenrechner .result-bindefrist {
     margin: 0.3rem 0 0;
-    color: var(--fr-text);
+    color: var(--fr-text-betont);
     font-weight: 700;
   }
 
@@ -1181,7 +1182,7 @@ const bundeslaender = [
   }
 
   .fristenrechner .timeline-phase > header strong {
-    color: var(--fr-text);
+    color: var(--fr-text-betont);
     font-size: 0.9rem;
   }
 
@@ -1396,11 +1397,11 @@ const bundeslaender = [
     }
   }
 
-  /* Schmale Bildschirme: flachere Gliederung ohne Rahmen in Rahmen und die
+  /* Kompakte Ansicht auf schmalen Bildschirmen: flachere Gliederung ohne Rahmen in Rahmen und die
      Terminliste als Karten. Druck und breite Ansicht bleiben unverändert. */
   @media screen and (max-width: 48rem) {
-    .fristenrechner form,
-    .fristenrechner .results {
+    .fristenrechner[data-ansicht="kompakt"] form,
+    .fristenrechner[data-ansicht="kompakt"] .results {
       padding: 0;
       border: 0;
       border-radius: 0;
@@ -1408,83 +1409,87 @@ const bundeslaender = [
       box-shadow: none;
     }
 
-    .fristenrechner .results {
+    .fristenrechner[data-ansicht="kompakt"] .results {
       margin-top: 2rem;
       padding-top: 1.5rem;
       border-top: 1px solid var(--fr-rahmen);
     }
 
-    .fristenrechner .legal-note {
+    .fristenrechner[data-ansicht="kompakt"] .legal-note {
       border: 0;
       box-shadow: none;
     }
 
-    .fristenrechner .form-header {
-      gap: 0.75rem;
+    .fristenrechner[data-ansicht="kompakt"] .form-header {
+      display: block;
     }
 
-    .fristenrechner .button-quiet {
+    .fristenrechner[data-ansicht="kompakt"] .form-header > :not(:first-child) {
+      margin-top: 0.75rem;
+    }
+
+    .fristenrechner[data-ansicht="kompakt"] .button-quiet {
       min-height: 2.75rem;
       color: var(--fr-text);
       border-color: var(--fr-rahmen-knopf);
       text-decoration: none;
     }
 
-    .fristenrechner fieldset {
+    .fristenrechner[data-ansicht="kompakt"] fieldset {
       margin-top: 1.75rem;
       padding: 0;
       border: 0;
       border-radius: 0;
     }
 
-    .fristenrechner legend {
+    .fristenrechner[data-ansicht="kompakt"] legend {
       padding: 0 0 0.6rem;
       font-size: 1.05rem;
     }
 
-    .fristenrechner .advanced-settings {
+    .fristenrechner[data-ansicht="kompakt"] .advanced-settings {
       border: 0;
       border-top: 1px solid var(--fr-rahmen);
       border-bottom: 1px solid var(--fr-rahmen);
       border-radius: 0;
     }
 
-    .fristenrechner .advanced-settings summary {
+    .fristenrechner[data-ansicht="kompakt"] .advanced-settings summary {
       padding: 0.85rem 0;
     }
 
-    .fristenrechner .advanced-settings[open] {
+    .fristenrechner[data-ansicht="kompakt"] .advanced-settings[open] {
       padding: 0 0 1rem;
     }
 
-    .fristenrechner .advanced-settings[open] summary {
+    .fristenrechner[data-ansicht="kompakt"] .advanced-settings[open] summary {
       margin-inline: 0;
     }
 
-    .fristenrechner .timeline-section,
-    .fristenrechner .table-section {
+    .fristenrechner[data-ansicht="kompakt"] .timeline-section,
+    .fristenrechner[data-ansicht="kompakt"] .table-section {
       margin-top: 1.5rem;
     }
 
-    .fristenrechner .timeline {
+    .fristenrechner[data-ansicht="kompakt"] .timeline {
       padding: 0;
       border: 0;
       background: none;
     }
 
-    .fristenrechner .table-scroll {
+    .fristenrechner[data-ansicht="kompakt"] .table-scroll {
       overflow: visible;
       border: 0;
       border-radius: 0;
     }
 
-    .fristenrechner table {
+    .fristenrechner[data-ansicht="kompakt"] table {
       min-width: 0;
       display: block;
     }
 
     /* Nur visuell verborgen: Spaltenüberschriften bleiben für Hilfstechnik erhalten. */
-    .fristenrechner thead {
+    .fristenrechner[data-ansicht="kompakt"] thead {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -1496,12 +1501,12 @@ const bundeslaender = [
       border: 0;
     }
 
-    .fristenrechner tbody {
+    .fristenrechner[data-ansicht="kompakt"] tbody {
       display: grid;
       gap: 0.75rem;
     }
 
-    .fristenrechner tr {
+    .fristenrechner[data-ansicht="kompakt"] tr {
       display: block;
       padding: 0.8rem 0.9rem;
       border: 1px solid var(--fr-rahmen);
@@ -1509,40 +1514,49 @@ const bundeslaender = [
       background: var(--fr-flaeche);
     }
 
-    .fristenrechner td {
+    .fristenrechner[data-ansicht="kompakt"] td {
       display: block;
       padding: 0;
       border: 0;
       font-size: 0.9rem;
     }
 
-    .fristenrechner td:first-child {
+    .fristenrechner[data-ansicht="kompakt"] td:first-child {
       color: var(--fr-text-datum);
       font-size: 0.8rem;
       font-weight: 700;
       white-space: normal;
     }
 
-    .fristenrechner td:nth-child(2) {
+    .fristenrechner[data-ansicht="kompakt"] td:nth-child(2) {
       margin-top: 0.15rem;
       font-size: 1rem;
     }
 
-    .fristenrechner td:nth-child(3) {
-      margin-top: 0.55rem;
+    .fristenrechner[data-ansicht="kompakt"] td:nth-child(3) {
+      margin-top: 0.2rem;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 0.35rem 0.6rem;
       color: var(--fr-text-hinweis);
       font-size: 0.82rem;
     }
 
-    .fristenrechner td:nth-child(3) br {
+    /* Kindabstände funktionieren auch vor der Unterstützung für Flex-gap. */
+    .fristenrechner[data-ansicht="kompakt"] td:nth-child(3) .type-badge,
+    .fristenrechner[data-ansicht="kompakt"] td:nth-child(3) .milestone-phase {
+      margin-top: 0.35rem;
+    }
+
+    .fristenrechner[data-ansicht="kompakt"] td:nth-child(3) .type-badge {
+      margin-right: 0.6rem;
+    }
+
+    .fristenrechner[data-ansicht="kompakt"] td:nth-child(3) br {
       display: none;
     }
 
-    .fristenrechner td:nth-child(4) {
+    .fristenrechner[data-ansicht="kompakt"] td:nth-child(4) {
       margin-top: 0.6rem;
       padding-top: 0.6rem;
       border-top: 1px solid var(--fr-rahmen-zart);
@@ -1561,7 +1575,10 @@ const bundeslaender = [
   @media screen and (prefers-color-scheme: dark) {
     .fristenrechner[data-farbschema="system"] {
       color-scheme: dark;
+      color: var(--fr-text);
+      background: var(--fr-flaeche);
       --fr-text: #e8e8e5;
+      --fr-text-betont: #e8e8e5;
       --fr-text-beschriftung: #e0e0dd;
       --fr-text-dezent: #b4b4b8;
       --fr-text-hinweis: #b4b4b8;
