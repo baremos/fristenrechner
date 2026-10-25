@@ -15,15 +15,16 @@ const rezeptDokument = parseDocument(readFileSync(join(wurzel, 'scripts/fdroid/v
   { version: '1.2', strict: true, uniqueKeys: true });
 assert.deepEqual(rezeptDokument.errors, []);
 const projektRezept = rezeptDokument.toJS({ maxAliasCount: 0 });
-const srclibNamen = ['rolldown', 'astro-compiler-rs', 'satteri', 'lightningcss'];
+const srclibNamen = ['rolldown', 'astro-compiler-rs', 'satteri', 'lightningcss', 'esbuild'];
 const projektSrclibs = Object.fromEntries(srclibNamen.map((name) => {
+  if (name === 'esbuild') return [name, { RepoType: 'git', Repo: 'https://github.com/evanw/esbuild.git' }];
   const dokument = parseDocument(readFileSync(join(wurzel, `scripts/fdroid/veroeffentlichung/srclibs/${name}.yml`), 'utf8'),
     { version: '1.2', strict: true, uniqueKeys: true });
   assert.deepEqual(dokument.errors, []);
   return [name, dokument.toJS({ maxAliasCount: 0 })];
 }));
-const debianPakete = ['nodejs', 'npm', 'esbuild', 'cargo', 'rustc', 'build-essential', 'cmake'];
-const paketVersionen = 'nodejs\t24.21.0+dfsg+~cs24.13.4-1\nnpm\t12.2.0+ds1-1\nesbuild\t0.28.2-1\ncargo\t1.97.1+dfsg1-1\nrustc\t1.97.1+dfsg1-1\nbuild-essential\tTestversion\ncmake\tTestversion\n';
+const debianPakete = ['nodejs', 'npm', 'golang-go', 'cargo', 'rustc', 'build-essential', 'cmake'];
+const paketVersionen = 'nodejs\t24.21.0+dfsg+~cs24.13.4-1\nnpm\t12.2.0+ds1-1\ngolang-go\tTestversion\ncargo\t1.97.1+dfsg1-1\nrustc\t1.97.1+dfsg1-1\nbuild-essential\tTestversion\ncmake\tTestversion\n';
 // Synthetische vollständige Hashes; kein Release-Commit ist im Test vorausgesetzt.
 const erwarteterCommit = '0123456789abcdef0123456789abcdef01234567';
 const andererCommit = 'fedcba9876543210fedcba9876543210fedcba98';
@@ -176,8 +177,6 @@ def welches(name, path=None):
         return None
     if modus == "dpkg-query-fehlt" and name == "dpkg-query":
         return None
-    if modus == "esbuild-fehlt" and name == "esbuild":
-        return None
     return "/usr/bin/" + name
 shutil.which = welches
 yaml_modul = types.ModuleType("fdroidserver._yaml")
@@ -212,6 +211,8 @@ original = {"RepoType": "git", "Repo": REPO, "Binaries": "https://example.org/v%
 srclib_quelle = HIER / "veroeffentlichung/srclibs"
 srclib_quelle.mkdir(parents=True)
 for name, daten in ${JSON.stringify(projektSrclibs)}.items():
+    if name == "esbuild":
+        continue
     if modus == "srclib-fehlt" and name == "satteri":
         continue
     if name == "satteri":
@@ -343,9 +344,10 @@ class Prozess:
             assert rewritemeta_aufrufe == 2
             assert verwendet["Builds"][0]["sudo"] == original["Builds"][0]["sudo"]
             assert verwendet["Builds"][0]["srclibs"] == original["Builds"][0]["srclibs"]
-            assert sorted(p.name for p in (cwd / "srclibs").iterdir()) == sorted(p.name for p in srclib_quelle.iterdir())
+            assert sorted(p.name for p in (cwd / "srclibs").iterdir()) == sorted([p.name for p in srclib_quelle.iterdir()] + ["esbuild.yml"])
             for datei in srclib_quelle.iterdir():
                 assert (cwd / "srclibs" / datei.name).read_bytes() == datei.read_bytes()
+            assert (cwd / "srclibs/esbuild.yml").read_text() == "RepoType: git\nRepo: https://github.com/evanw/esbuild.git\n"
             assert not list(Path(env["HOME"]).rglob("node"))
             gradle = cwd.parent / "fdroid-cache/versions/8.14.5/bin/gradle"
             gradle.parent.mkdir(parents=True)
@@ -357,6 +359,10 @@ class Prozess:
             (cwd / "logs/build-metadata.json").write_text("{}")
             esbuild_paket = cwd / "build" / APPID / "node_modules/esbuild/package.json"
             esbuild_paket.parent.mkdir(parents=True)
+            esbuild_binary = cwd / "build/srclib/esbuild/esbuild"
+            esbuild_binary.parent.mkdir(parents=True)
+            if modus != "esbuild-fehlt":
+                esbuild_binary.write_text("esbuild aus dem nachgestellten Quellbau")
             if modus != "esbuild-paket-fehlt":
                 daten = {"version": "0.28.3" if modus == "esbuild-npm-abweichend" else "0.28.2"}
                 if modus == "esbuild-paket-ohne-version":
@@ -383,8 +389,8 @@ class Prozess:
             text = "12.2.0\n"
             self.code = 1 if modus == "npm-version-fehler" else 0
         elif name == "esbuild":
-            assert werkzeuge_installiert and befehl == ["/usr/bin/esbuild", "--version"]
-            text = ("0.28.3" if modus == "esbuild-system-abweichend" else "0.28.2") + "\n"
+            assert werkzeuge_installiert and befehl == [str(cwd / "fdroid/build/srclib/esbuild/esbuild"), "--version"]
+            text = ("0.28.3" if modus == "esbuild-srclib-abweichend" else "0.28.2") + "\n"
             self.code = 1 if modus == "esbuild-version-fehler" else 0
         elif name == "gradle":
             text = "Gradle 8.14.5\n"
@@ -461,7 +467,7 @@ for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'a
     assert.deepEqual(Object.keys(ergebnis.srclibCommits).sort(), srclibNamen.toSorted());
     for (const name of srclibNamen) {
       const kopie = readFileSync(join(sicherung, `srclibs/${name}.yml`));
-      assert.deepEqual(JSON.parse(kopie), projektSrclibs[name]);
+      assert.deepEqual(parseDocument(kopie.toString('utf8')).toJS(), projektSrclibs[name]);
       assert.equal(ergebnis.srclibs[name], createHash('sha256').update(kopie).digest('hex'));
       const commit = createHash('sha1').update(name).digest('hex');
       assert.deepEqual(ergebnis.srclibCommits[name], {
@@ -472,7 +478,7 @@ for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'a
     assert.equal(ergebnis.nodePfad, '/usr/bin/node');
     assert.equal(ergebnis.nodeVersion, modus === 'andere-node-referenz' ? 'v24.22.1' : 'v24.21.0');
     assert.equal(ergebnis.npmVersion, '12.2.0');
-    assert.equal(ergebnis.esbuildPfad, '/usr/bin/esbuild');
+    assert.equal(ergebnis.esbuildPfad, join(basis, 'arbeit', readdirSync(join(basis, 'arbeit'))[0], 'fdroid/build/srclib/esbuild/esbuild'));
     assert.equal(ergebnis.esbuildVersion, '0.28.2');
     assert.equal(ergebnis.esbuildNpmVersion, '0.28.2');
     assert.equal(ergebnis.fdroidBuild, modus === 'build-fehler' ? 1 : 0);
@@ -513,7 +519,7 @@ for (const modus of ['erfolg', 'ersatz', 'rezept-standard', 'andere-version', 'a
     assert.match(readFileSync(join(sicherung, 'rewritemeta.log'), 'utf8'), /INFO: Rewriting/);
     assert.match(readFileSync(join(sicherung, 'sudo-aus-rezept.sh'), 'utf8'), /^DEBIAN_FRONTEND=noninteractive bash /m);
     const srclibAbfragen = aufrufe.filter((x) => x.befehl[0] === 'git' && x.befehl[2].replaceAll('\\', '/').includes('/build/srclib/'));
-    assert.equal(srclibAbfragen.length, 8);
+    assert.equal(srclibAbfragen.length, srclibNamen.length * 2);
     assert.ok(srclibAbfragen.every((x) => x.befehl[3] === 'rev-parse'));
     assert.equal(aufrufe.some((x) => x.befehl.includes('describe')), false);
     assert.ok(existsSync(join(sicherung, `unsigned/${referenz.appId}_${versionscode}.apk`)));
@@ -593,10 +599,10 @@ for (const [modus, fehler] of [
   ...srclibNamen.flatMap((name) => ['head', 'tag'].map((art) => [`srclib-${art}-${name}`, new RegExp(`srclib ${name}: HEAD.*stimmt nicht mit Tag`)])),
   ['srclib-kurz', /srclib rolldown: HEAD.*stimmt nicht mit Tag/],
   ['srclib-tag-fehlt', /Befehl fehlgeschlagen.*rev-parse/],
-  ...['esbuild-system-abweichend', 'esbuild-npm-abweichend', 'esbuild-paket-ohne-version']
-    .map((modus) => [modus, /System-esbuild und node_modules\/esbuild\/package.json weichen voneinander ab/]),
-  ['esbuild-fehlt', /Nach den sudo-Schritten fehlt esbuild im Systempfad/],
-  ['esbuild-version-fehler', /Befehl fehlgeschlagen.*esbuild --version/],
+  ...['esbuild-srclib-abweichend', 'esbuild-npm-abweichend', 'esbuild-paket-ohne-version']
+    .map((modus) => [modus, /srclib-esbuild und node_modules\/esbuild\/package.json weichen voneinander ab/]),
+  ['esbuild-fehlt', /Nach fdroid build fehlt die gebaute esbuild-srclib/],
+  ['esbuild-version-fehler', /Befehl fehlgeschlagen.*esbuild'? --version/],
   ['esbuild-paket-fehlt', /(?:No such file or directory|cannot find|nicht finden)/],
   ['esbuild-paket-ungueltig', /Expecting value/],
 ]) {
@@ -613,8 +619,8 @@ for (const [modus, fehler] of [
     assert.match(ergebnis.fehler, fehler);
     assert.deepEqual(readFileSync(join(sicherung, `unsigned/${referenz.appId}_${referenz.versionCode}.apk`)),
       readFileSync(join(basis, 'referenz.apk')));
-    if (modus === 'esbuild-system-abweichend' || modus === 'esbuild-npm-abweichend') {
-      assert.equal(ergebnis.esbuildVersion, modus === 'esbuild-system-abweichend' ? '0.28.3' : '0.28.2');
+    if (modus === 'esbuild-srclib-abweichend' || modus === 'esbuild-npm-abweichend') {
+      assert.equal(ergebnis.esbuildVersion, modus === 'esbuild-srclib-abweichend' ? '0.28.3' : '0.28.2');
       assert.equal(ergebnis.esbuildNpmVersion, modus === 'esbuild-npm-abweichend' ? '0.28.3' : '0.28.2');
     }
     const srclib = srclibNamen.find((name) => modus === `srclib-head-${name}` || modus === `srclib-tag-${name}`);
