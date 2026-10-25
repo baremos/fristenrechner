@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dunkles Schema: entspricht --app-flaeche der App-Seite und der dunklen Grundfläche der Komponente. -->
+    <!-- Dunkles Schema: entspricht der dunklen Seitenfläche der App-Seite und der dunklen Grundfläche der Komponente. -->
     <color name="fenster_hintergrund">#1c1c1f</color>
     <bool name="helle_systemleisten">false</bool>
 </resources>
