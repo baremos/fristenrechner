@@ -1,0 +1,1 @@
+Dark mode: the app follows the light or dark system setting. On phones, the schedule appears as cards instead of a wide table, and the input form is more clearly structured. The app is much smaller because unused code is removed during the build. The calculation is unchanged: rule version 1.9.1, legal status October 2026. The app is in German.
