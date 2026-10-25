@@ -24,11 +24,13 @@ export function xmlBefunde(text) {
   if (!/^<\?xml version="1\.0" encoding="utf-8"\?>/i.test(text.replace(/^﻿/, '')) && !text.trimStart().startsWith('<')) {
     befunde.push('beginnt nicht mit XML');
   }
-  for (const kommentar of text.matchAll(/<!--([\s\S]*?)-->/g)) {
+  // CDATA-Abschnitte und Verarbeitungsanweisungen enthalten keine Kommentare.
+  const ohneCdata = text.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '').replace(/<\?[\s\S]*?\?>/g, '');
+  for (const kommentar of ohneCdata.matchAll(/<!--([\s\S]*?)-->/g)) {
     if (kommentar[1].includes('--')) befunde.push('Kommentar enthält "--"');
     if (kommentar[1].endsWith('-')) befunde.push('Kommentar endet mit "-"');
   }
-  const ohneKommentare = text.replace(/<!--[\s\S]*?-->/g, '');
+  const ohneKommentare = ohneCdata.replace(/<!--[\s\S]*?-->/g, '');
   if (ohneKommentare.includes('<!--')) befunde.push('nicht geschlossener Kommentar');
   return befunde;
 }
@@ -45,4 +47,6 @@ test('Gegenproben: verbotene Kommentarformen werden erkannt', () => {
   assert.deepEqual(xmlBefunde('<a><!-- entspricht --app-flaeche --></a>'), ['Kommentar enthält "--"']);
   assert.deepEqual(xmlBefunde('<a><!-- Ende ---></a>'), ['Kommentar endet mit "-"']);
   assert.deepEqual(xmlBefunde('<a><!-- offen </a>'), ['nicht geschlossener Kommentar']);
+  assert.deepEqual(xmlBefunde('<a><![CDATA[<!-- --x -->]]></a>'), [], 'Text in CDATA ist kein Kommentar');
+  assert.deepEqual(xmlBefunde('<?xml version="1.0" encoding="utf-8"?><?probe <!-- -- -->?><a/>'), [], 'Verarbeitungsanweisung ist kein Kommentar');
 });
