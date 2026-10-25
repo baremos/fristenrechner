@@ -114,7 +114,7 @@ Fehlt `navigator.userActivation` beim Erzeugen des Adapters, registriert er zus�
 
 Der optionale Slot `herausgeber` steht in der Fußzeile für ein vom Gastgeber bereitgestelltes Logo oder andere Herausgeberinhalte. `nach-hinweis` folgt auf den fachlichen Hinweis und kann Kontaktinhalte aufnehmen. Das Paket liefert kein Logo und keine festen Kontaktlinks. Die sichtbare Fußzeile nennt den Herausgeber und, sofern vorhanden, den Hostnamen der Exportadresse.
 
-Die Rechnerstile sind auf `.fristenrechner` begrenzt. Die Komponente legt `box-sizing: border-box` für ihre Elemente selbst fest. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Alle Farben der Komponente stehen als `--fr-*`- und `--phase-*`-Variablen in einer hellen Palette auf `.fristenrechner`; die Gastgebervariablen gehen dort mit ihren bisherigen Fallbacks ein und bleiben an denselben Stellen wirksam:
+Die Rechnerstile sind auf `.fristenrechner` begrenzt. Die Komponente legt `box-sizing: border-box` für ihre Elemente selbst fest. Das aktivierte Menü verwendet eigene `fr-menue-`-Klassen und setzt zusätzlich die rücknehmbare Scrollsperre und den oberen Scrollabstand des Dokuments. Alle Farben der Komponente stehen als `--fr-*`- und `--phase-*`-Variablen in einer hellen Palette auf `.fristenrechner`; die Gastgebervariablen gehen dort mit ihren bisherigen Fallbacks ein und wirken an denselben Stellen. Sie werden am Element `.fristenrechner` aufgelöst; der Gastgeber setzt sie deshalb an `:root`, `body` oder einem anderen Vorfahren der Komponente, nicht an einzelnen Elementen innerhalb der Komponente:
 
 | CSS-Variable | Vorgabe | Wirkung |
 |---|---|---|
