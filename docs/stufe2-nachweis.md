@@ -6,7 +6,7 @@ Geprüfter App-Endstand: `c7b5230`; Nachweisstand: `8987e69`. App-Version **0.1.
 
 Der Fristenrechner ist eine unverbindliche Rechenhilfe. Er ersetzt keine Rechtsberatung. Alle Angaben erfolgen ohne Gewähr. Herausgeber ist BAREMOS IT GmbH, Berlin; siehe [README.md, einleitender Hinweis](../README.md#fristenrechner-vergabe).
 
-Die Abschlussläufe sind eingetragen. Codex hat den Bericht verfasst, Claude Code hat ihn am 2026-10-04 kreuzweise geprüft. Andreas Schmidt hat den Bericht am 2026-10-04 abgenommen. Die unten einzeln benannten Grenzen gelten damit als bekannte Einschränkungen; keine wurde durch eine zusätzliche Prüfung geschlossen. Die Restpunkte bleiben bestehen und sind den Stufen 3 bis 5 und der Pflege zugeordnet. Die Abnahme ersetzt nicht die Freigabe einer späteren Stufe.
+Die Abschlussläufe sind eingetragen. Der Bericht wurde am 2026-10-04 kreuzweise geprüft. Andreas Schmidt hat den Bericht am 2026-10-04 abgenommen. Die unten einzeln benannten Grenzen gelten damit als bekannte Einschränkungen; keine wurde durch eine zusätzliche Prüfung geschlossen. Die Restpunkte bleiben bestehen und sind den Stufen 3 bis 5 und der Pflege zugeordnet. Die Abnahme ersetzt nicht die Freigabe einer späteren Stufe.
 
 ## Zweck und Umfang
 
