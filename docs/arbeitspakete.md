@@ -4,6 +4,8 @@ Stand 2026-10-16 · Stufe 2: geprüfter App-Endstand `c7b5230`, Nachweisstand `8
 
 Nachtrag 2026-10-22: Für die Fassung 1.0.0 (`versionCode` 10000, Release-Stand `7ec93f4`) sind der Windows-Neubau nach `clean`, eine frische Windows-Kopie mit Node 22, zwei Linux-Klone, der lokale F-Droid-Lauf, der Gerätelauf auf dem Galaxy A17 ohne TalkBack und die Emulatorphasen Menüleiste und Dateien einschließlich Sicherung erneuert; die fünf unsignierten Release-APKs sind bytegleich. Der Browser-Endlauf am Stand `dfd1fb8` ergibt keinen Produktbefund; ungültig bleiben die bekannten Grenzen `fokus-38` in beiden Browsern und der Edge-Wallet-Abruf. Ergebnisse und Grenzen: [App-Nachweise zur Fassung 1.0.0](app.md#build-nachweis-zur-fassung-100-vom-2026-10-22), [F-Droid-Lauf](fdroid-build.md#lauf-an-der-referenz-100-vom-2026-10-22) und [Testmatrix](testmatrix.md). Die Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` 0.1.1 sind am 2026-10-22 veröffentlicht.
 
+Nachtrag 2026-10-26: Für die Fassung 1.1.0 (`versionCode` 10100, Release-Stand `74eb3ab`; R8 im Release-Build, Dunkelmodus, kompakte Handy-Ansicht) sind der Windows-Release-Build mit K1 bis K5, der Debug-Build und der Gerätelauf auf dem Galaxy A17 erneuert; am Release-Build mit R8 sind auf dem Gerät der Dunkelmodus einschließlich Kaltstart und Schemawechsel sowie Menü, Speichern, Teilen, Import, Zurück-Taste und „Neues Projekt“ geprüft, ohne TalkBack. Nicht erneuert sind Linux-Klone, lokaler F-Droid-Lauf, Emulatorphasen und Browser-Endlauf. Ergebnisse und Grenzen: [App-Nachweise zur Fassung 1.1.0](app.md#nachweise-zur-fassung-110-vom-2026-10-26) und [Prüfung auf dem Gerät](app.md#prüfung-der-fassung-110-am-26102026).
+
 ## Überblick
 
 | Stufe | Inhalt | Status |

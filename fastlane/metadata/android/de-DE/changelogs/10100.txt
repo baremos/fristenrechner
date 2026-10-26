@@ -1,0 +1,1 @@
+Dunkelmodus: Die App folgt der Systemeinstellung hell oder dunkel. Am Handy erscheint die Terminliste als Karten statt als breite Tabelle, die Eingaben sind übersichtlicher gegliedert. Die App ist deutlich kleiner, weil beim Bauen ungenutzter Code entfernt wird. Die Berechnung ist unverändert: Regelversion 1.9.1, Rechtsstand Oktober 2026.
