@@ -35,6 +35,7 @@ Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren.
 | Feiertage | gesetzliche Feiertage je Bundesland, berechnet ohne Netzwerkzugriff |
 | Ausgabe | PDF, Excel und Projektdatei |
 | Nachvollziehbarkeit | Jede Berechnung und jeder Export nennt Regelversion und Rechtsstand |
+| Rechtsquellen | amtliche Fundstellen der Vorschriften und der Feiertagsgesetze in [docs/rechtsquellen.md](docs/rechtsquellen.md) |
 
 ## Dateien und Datenschutz in der App
 
