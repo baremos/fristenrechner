@@ -35,6 +35,7 @@ From the data entered, the software produces a schedule of dates and deadlines f
 | Public holidays | statutory public holidays per federal state, calculated without network access |
 | Output | PDF, Excel and project file |
 | Traceability | Every calculation and every export states the rule version and the date of the legal status |
+| Legal sources | official references of the regulations and of the public holiday acts in [docs/rechtsquellen.md](docs/rechtsquellen.md) (German) |
 
 ## Files and privacy in the app
 

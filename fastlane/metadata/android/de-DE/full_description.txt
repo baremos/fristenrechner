@@ -2,11 +2,28 @@ Fristenrechner Vergabe ist eine Rechenhilfe für Termine und Fristen in Vergabev
 
 Der Fristenrechner ist eine unverbindliche Rechenhilfe. Er ersetzt keine Rechtsberatung. Alle Angaben erfolgen ohne Gewähr.
 
+Diese App ist kein Angebot einer Behörde oder anderen staatlichen Stelle und vertritt keine solche. Herausgeber ist ein privates Unternehmen. Maßgeblich sind die amtlichen Texte, siehe „Rechtsquellen“.
+
 Was die App rechnet
 
 Aus den Eingaben entsteht ein Termin- und Fristenplan für ein Vergabeverfahren. Sie wählen die Vergabeordnung und die Verfahrensart selbst, zum Beispiel offenes Verfahren, nicht offenes Verfahren oder Verhandlungsverfahren mit Teilnahmewettbewerb nach der VgV, öffentliche oder beschränkte Ausschreibung nach der VOB/A oder Verhandlungsvergabe nach der UVgO. Die App berechnet daraus die Termine des Verfahrens, zeigt zu jedem Termin den Rechenweg und stellt den Ablauf als Zeitschiene dar. Gesetzliche Feiertage je Bundesland sind enthalten und werden ohne Netzwerkzugriff berechnet.
 
 Jede Berechnung und jeder Export nennt Regelversion und Rechtsstand. Ist der Rechtsstand älter als zwölf Monate, zeigt die App einen Hinweis.
+
+Rechtsquellen
+
+Amtliche Texte der Vorschriften, mit denen die App rechnet:
+
+- VgV: https://www.gesetze-im-internet.de/vgv_2016/
+- SektVO: https://www.gesetze-im-internet.de/sektvo_2016/
+- VSVgV: https://www.gesetze-im-internet.de/vsvgv/
+- KonzVgV: https://www.gesetze-im-internet.de/konzvgv/
+- GWB, Teil 4: https://www.gesetze-im-internet.de/gwb/
+- Fristberechnung: BGB, §§ 186 bis 193: https://www.gesetze-im-internet.de/bgb/ und Verordnung (EWG, Euratom) Nr. 1182/71, Art. 3: https://eur-lex.europa.eu/eli/reg/1971/1182/oj
+- VOB/A, 1. Abschnitt, Ausgabe 2019 mit Änderungen 2023: https://www.verwaltungsvorschriften-im-internet.de/bsvwvbund_31012019_BWI781063060120180001604634.htm und Änderung 2025 (BAnz AT 16.12.2025 B7): https://www.bundesanzeiger.de/pub/publication/YMf6Lbag7JCWIIZdpXc
+- VOB/A-EU, 2. Abschnitt, Ausgabe 2026 (BAnz AT 24.08.2026 B6): https://www.bundesanzeiger.de/pub/publication/73xO0rpP1jfX5HRt0Ja
+- UVgO (BAnz AT 07.02.2017 B1), Bundeswirtschaftsministerium: https://www.bundeswirtschaftsministerium.de/Redaktion/DE/Artikel/Service/unterschwellenvergabeordnung-uvgo.html
+- Gesetzliche Feiertage und Hinweise zum Landesvergaberecht: Quellen der Länder, Liste mit Adressen: https://github.com/baremos/fristenrechner/blob/main/docs/rechtsquellen.md
 
 Dateien
 

@@ -2,11 +2,28 @@ Fristenrechner Vergabe ("Procurement Deadline Calculator (Germany)") is a calcul
 
 The calculator is a non-binding calculation aid. It does not replace legal advice. All information is provided without guarantee.
 
+This app is not an offering of any public authority or other government entity and does not represent one. It is published by a private company. The official texts prevail, see "Official sources".
+
 What the app calculates
 
 From the data entered, the app produces a schedule of dates and deadlines for a procurement procedure. You select the procurement regulation and the type of procedure yourself, for example an open procedure, a restricted procedure or a negotiated procedure with a call for competition under the VgV, a public or restricted invitation to tender under the VOB/A, or a negotiated award under the UVgO. The app calculates the dates of the procedure, shows the calculation path for each date and presents the sequence as a timeline. Statutory public holidays per German federal state are included and are calculated without network access.
 
 Every calculation and every export states the rule version and the date of the legal status. If the legal status is older than twelve months, the app shows a notice.
+
+Official sources
+
+Official texts of the rules used:
+
+- VgV: https://www.gesetze-im-internet.de/vgv_2016/
+- SektVO: https://www.gesetze-im-internet.de/sektvo_2016/
+- VSVgV: https://www.gesetze-im-internet.de/vsvgv/
+- KonzVgV: https://www.gesetze-im-internet.de/konzvgv/
+- GWB, Part 4: https://www.gesetze-im-internet.de/gwb/
+- Time limits: BGB, sections 186 to 193: https://www.gesetze-im-internet.de/bgb/; Regulation (EEC, Euratom) No 1182/71, Art. 3: https://eur-lex.europa.eu/eli/reg/1971/1182/oj
+- VOB/A, Abschnitt 1 (2019, amended 2023): https://www.verwaltungsvorschriften-im-internet.de/bsvwvbund_31012019_BWI781063060120180001604634.htm; amendment 2025 (BAnz AT 16.12.2025 B7): https://www.bundesanzeiger.de/pub/publication/YMf6Lbag7JCWIIZdpXc
+- VOB/A-EU, Abschnitt 2 (2026, BAnz AT 24.08.2026 B6): https://www.bundesanzeiger.de/pub/publication/73xO0rpP1jfX5HRt0Ja
+- UVgO (BAnz AT 07.02.2017 B1), Federal Ministry for Economic Affairs and Energy: https://www.bundeswirtschaftsministerium.de/Redaktion/DE/Artikel/Service/unterschwellenvergabeordnung-uvgo.html
+- Public holidays and state procurement law notes: sources of the federal states, list with links: https://github.com/baremos/fristenrechner/blob/main/docs/rechtsquellen.md
 
 Files
 
@@ -27,10 +44,10 @@ What the app does not do
 
 Language
 
-The user interface of the app and its exports are in German. The calculator follows German procurement law, and its technical terms are German.
+The user interface and the exports are in German, as are the technical terms of German procurement law.
 
 Open source
 
-The calculation core, the user interface and the app are open source under the Apache-2.0 license. Source code and issue tracker: https://github.com/baremos/fristenrechner
+Calculation core, user interface and app are open source under the Apache-2.0 license. Source code and issue tracker: https://github.com/baremos/fristenrechner
 
 Publisher: BAREMOS IT Dienstleistungs GmbH, Berlin, Germany.
