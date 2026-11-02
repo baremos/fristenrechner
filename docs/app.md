@@ -1,6 +1,6 @@
 # Android-App
 
-Stand 2026-10-26, App-Version 1.1.0 (`versionCode` 10100), Release-Stand `74eb3ab`; der Tag `v1.1.0` folgt nach dem Merge. Für die Fassung 1.1.0 erneuert sind der Windows-Release-Build mit K1 bis K5, der Debug-Build und der Gerätelauf auf dem Galaxy A17; am Release-Build mit R8 sind auf dem Gerät der Dunkelmodus und die nativen Dateiabläufe geprüft, ohne TalkBack. Nicht erneuert sind die Linux-Klone, der lokale F-Droid-Lauf, die Emulatorphasen, der Browser-Endlauf und die Store-Aufnahmen; die TalkBack-Wortlautprotokolle gelten weiterhin für 0.2.0. Die Nachweise zur Fassung 1.0.0 stehen in den Abschnitten [Build-Nachweis zur Fassung 1.0.0](#build-nachweis-zur-fassung-100-vom-2026-10-22) und [Prüfung der Fassung 1.0.0](#prüfung-der-fassung-100-am-22102026). Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
+Stand 2026-11-02, App-Version 1.1.0 (`versionCode` 10100), Release-Stand `74eb3ab`, Tag `v1.1.0` am Merge-Commit `e078493`; APK und App-Bundle sind am 2026-11-02 signiert, die APK liegt im [GitHub-Release v1.1.0](https://github.com/baremos/fristenrechner/releases/tag/v1.1.0). Für die Fassung 1.1.0 erneuert sind der Windows-Release-Build mit K1 bis K5, der Debug-Build und der Gerätelauf auf dem Galaxy A17; am Release-Build mit R8 sind auf dem Gerät der Dunkelmodus und die nativen Dateiabläufe geprüft, ohne TalkBack. Nicht erneuert sind die Linux-Klone, der lokale F-Droid-Lauf, die Emulatorphasen, der Browser-Endlauf und die Store-Aufnahmen; die TalkBack-Wortlautprotokolle gelten weiterhin für 0.2.0. Die Nachweise zur Fassung 1.0.0 stehen in den Abschnitten [Build-Nachweis zur Fassung 1.0.0](#build-nachweis-zur-fassung-100-vom-2026-10-22) und [Prüfung der Fassung 1.0.0](#prüfung-der-fassung-100-am-22102026). Die App verbindet den Rechenkern und die Oberfläche des Repositorys mit einer Android-Hülle aus Capacitor 8.5.2. Sie ist eine unverbindliche Rechenhilfe für Vergabefristen. Die Vergabeordnung wird ausdrücklich gewählt. Konten, Erinnerungen, Tracking und Netzwerkzugriffe im Betrieb gehören nicht zum Zuschnitt.
 
 ## Aufbau
 
@@ -216,8 +216,13 @@ Die Fassung 1.1.0 (`versionCode` 10100) hat den Release-Stand `74eb3ab` auf Basi
 |---|---|
 | Release, unsigniert (Windows, Release-Stand `74eb3ab`) | `31b94aae3dc57062a1de2e43ec5944bffead7022371fa31db53d5adefed2437e` |
 | Debug (Windows, Release-Stand `74eb3ab`) | `b3366a4227214e790c7e2dc1bab900050a309d4caf22408812be9b734c309996` |
+| App-Bundle, unsigniert (Merge-Commit `e078493`, Tag `v1.1.0`) | `72e691fb4209eda49000aace70d5d8285628cbdf67898353ead45b1377f6e861` |
+| Release, mit dem App-Signierschlüssel signiert (GitHub-Release `v1.1.0`) | `a2870643ff90993a664f1ab3fdd831e27310d61f0affcef9f5a0a28dfd3dfd81` |
+| App-Bundle, mit dem Upload-Schlüssel signiert | `a3c56bee9650df4485c7b1596c96eb26f919d61bb6fec7545826522485108bdf` |
 
-Nicht erneuert sind die frische Windows-Kopie, die Linux-Klone, der lokale F-Droid-Lauf, die Emulatorphasen und der Browser-Endlauf. Die Bytegleichheit zwischen Windows und Linux ist für diese Fassung nicht belegt; sie wird mit dem F-Droid-Lauf nachgeholt. Die Prüfsummen der signierten Dateien folgen nach der Signatur.
+Nicht erneuert sind die frische Windows-Kopie, die Linux-Klone, der lokale F-Droid-Lauf, die Emulatorphasen und der Browser-Endlauf. Die Bytegleichheit zwischen Windows und Linux ist für diese Fassung nicht belegt; sie wird mit dem F-Droid-Lauf nachgeholt.
+
+Das App-Bundle für Google Play entstand am 2026-10-26 gegen 15:17 am Merge-Commit `e078493` (Tag `v1.1.0`), der gegenüber dem Release-Stand `74eb3ab` nur Dokumentation ändert: zuerst ein Release-Build über `app-bauen --android --aufgabe assembleRelease` mit K1 bis K5, in dem Gradle die vorhandene Release-APK als aktuell übernahm, danach `scripts/android-build.mjs` mit der Gradle-Aufgabe `bundleRelease` (11 ausgeführte und 105 bereits aktuelle Gradle-Aufgaben). Das unsignierte App-Bundle hat 1 377 256 Bytes; die Release-APK im Ausgabeordner blieb dabei unverändert und gleich der Referenz oben. Die Signierung von APK und App-Bundle am 2026-11-02 und der GitHub-Release `v1.1.0` stehen im Nachtrag zur Fassung 1.1.0 in [signierung.md](signierung.md#geplanter-ablauf).
 
 ## Build-Nachweis zur Fassung 1.0.0 vom 2026-10-22
 

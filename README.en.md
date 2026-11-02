@@ -10,7 +10,7 @@ The user interface of the app and its exports are in German. The calculator foll
 
 ## Status
 
-Version 0.1.1 of the npm packages `@baremos/fristenrechner-kern` and `@baremos/fristenrechner-ui` is published; the first version was released on 2026-10-16. Version 1.0.0 of the Android app is available as a signed APK in the [GitHub release v1.0.0](https://github.com/baremos/fristenrechner/releases/tag/v1.0.0). The release notes list the file checksum and the fingerprint of the signing certificate. The app is not yet published on Google Play or F-Droid.
+Version 0.1.1 of the npm packages `@baremos/fristenrechner-kern` and `@baremos/fristenrechner-ui` is published; the first version was released on 2026-10-16. Version 1.1.0 of the Android app is available as a signed APK in the [GitHub release v1.1.0](https://github.com/baremos/fristenrechner/releases/tag/v1.1.0). The release notes list the file checksum and the fingerprint of the signing certificate. The app is not yet published on Google Play or F-Droid.
 
 | Part | Status |
 |---|---|
@@ -18,7 +18,7 @@ Version 0.1.1 of the npm packages `@baremos/fristenrechner-kern` and `@baremos/f
 | Project scaffold | in place |
 | Calculation core | in place, with tests and reference cases |
 | User interface | in place, with interfaces for saving, importing and exporting |
-| Android app | version 1.0.0 available as a signed APK in the GitHub release; Save as, separate sharing actions and project import are implemented and tested in the emulator on API 30 and 36 and on a device with Android 16, with documented limitations |
+| Android app | version 1.1.0 available as a signed APK in the GitHub release; Save as, separate sharing actions and project import are implemented and tested with documented limitations: in the emulator on API 30 and 36 with version 1.0.0, on a device with Android 16 with version 1.1.0 |
 
 The work packages are listed in [docs/arbeitspakete.md](docs/arbeitspakete.md). The documents in the folder `docs` are in German.
 
