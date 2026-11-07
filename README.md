@@ -10,7 +10,7 @@ Die Oberfläche der App und ihre Exporte sind deutsch. Der Fristenrechner folgt 
 
 ## Stand
 
-Die npm-Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` sind in Version 0.1.1 veröffentlicht, erstmals am 2026-10-16. Die Android-App steht in Version 1.1.0 als signierte APK im [GitHub-Release v1.1.0](https://github.com/baremos/fristenrechner/releases/tag/v1.1.0) bereit. Prüfsumme der Datei und Fingerabdruck des Signaturzertifikats nennt die Release-Notiz. Bei Google Play und F-Droid ist die App noch nicht veröffentlicht.
+Die npm-Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` sind in Version 0.1.1 veröffentlicht, erstmals am 2026-10-16. Die Android-App steht in Version 1.1.0 als signierte APK im [GitHub-Release v1.1.0](https://github.com/baremos/fristenrechner/releases/tag/v1.1.0) bereit. Prüfsumme der Datei und Fingerabdruck des Signaturzertifikats nennt die Release-Notiz. Bei [Google Play](https://play.google.com/store/apps/details?id=de.baremos.fristenrechner) ist die App seit dem 2026-11-07 veröffentlicht. Bei F-Droid ist sie noch nicht veröffentlicht.
 
 | Teil | Stand |
 |---|---|
@@ -18,7 +18,7 @@ Die npm-Pakete `@baremos/fristenrechner-kern` und `@baremos/fristenrechner-ui` s
 | Projektgerüst | vorhanden |
 | Rechenkern | vorhanden, mit Tests und Referenzfällen |
 | Oberfläche | vorhanden, mit Schnittstellen für Speichern, Importieren und Exportieren |
-| Android-App | Version 1.1.0 als signierte APK im GitHub-Release; Speichern unter, getrenntes Teilen und Projektimport sind umgesetzt und mit dokumentierten Grenzen geprüft: im Emulator auf API 30 und 36 mit der Fassung 1.0.0, auf einem Gerät mit Android 16 mit der Fassung 1.1.0 |
+| Android-App | Version 1.1.0 als signierte APK im GitHub-Release und bei Google Play; Speichern unter, getrenntes Teilen und Projektimport sind umgesetzt und mit dokumentierten Grenzen geprüft: im Emulator auf API 30 und 36 mit der Fassung 1.0.0, auf einem Gerät mit Android 16 mit der Fassung 1.1.0; zusätzlich sind auf einem Gerät mit Android 11 mit der Fassung 1.1.0 helles und dunkles Schema, Bedienung, Projektspeichern und Projektimport geprüft, siehe [docs/app.md](docs/app.md#prüfung-der-fassung-110-auf-api-30-am-0211-und-03112026) |
 
 Die Arbeitspakete stehen in [docs/arbeitspakete.md](docs/arbeitspakete.md). Die Dokumente im Ordner `docs` sind deutsch.
 

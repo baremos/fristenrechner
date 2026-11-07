@@ -55,7 +55,7 @@ Die Umsetzung ändert Ausgabeangabe, Profilhinweis und Metadaten. Bei ausdrückl
 
 **1.9.1** kennzeichnet die Korrektur des bestehenden Regelprofils ohne zusätzlichen Funktionsumfang. Das [Pflegekonzept](pflegekonzept.md#ablauf-einer-fachlichen-änderung) verlangt eine neue Regelversion, legt aber keine Patch-/Minor-Regel fest. Beim Import eines Projekts mit 1.9.0 bleiben dessen Herkunftsmetadaten sichtbar; das neu berechnete Ergebnis nennt 1.9.1. Der [Versionsvergleich der Oberfläche](../packages/oberflaeche/src/fristenrechner-ui.ts) arbeitet numerisch. Der besondere Migrationshinweis für Dateien vor 1.9.0 und das [Projektdateiformat](../packages/kern/src/projekt.ts) bleiben unverändert.
 
-Die Pakete 0.1.1 sind am 2026-10-22 veröffentlicht. Website-Aktualisierung und Android-Release für Google Play und F-Droid stehen noch aus. Erst dann ist die fachliche Änderung nach dem Pflegekonzept kanalübergreifend abgeschlossen.
+Die Pakete 0.1.1 sind am 2026-10-22 veröffentlicht. Die App-Fassung 1.1.0 mit der Regelversion 1.9.1 ist seit dem 2026-11-07 bei Google Play veröffentlicht. Website-Aktualisierung und Veröffentlichung bei F-Droid stehen noch aus. Erst dann ist die fachliche Änderung nach dem Pflegekonzept kanalübergreifend abgeschlossen.
 
 ### Sichtbare Texte zur Freigabe
 
@@ -167,4 +167,4 @@ Die ergänzten Tests decken den VOB/A-Hinweis für alle vier unterstützten Verf
 - Den Geltungsbeginn der VOB/A-EU-Änderung beim nächsten erfolgreichen amtlichen Abruf der Änderungsverordnung oder des Ministerialerlasses unabhängig nachbestätigen und hier ergänzen.
 - Neue Gesetzesänderungen oder konkrete Fehlerhinweise lösen nach dem Pflegekonzept unabhängig vom Quartalstermin eine anlassbezogene Prüfung aus.
 - Die bestehende fehlende Abbildung der Dringlichkeitsausnahme nach § 19 EU Abs. 3 Nr. 1 sowie die [Text- und Modellgrenzen](normabgleich-vob-a-2026.md#unveränderte-besonderheiten-und-offene-fachpunkte) gesondert bewerten.
-- Textfreigabe und Kreuz-Review am 2026-10-22 erledigt. Die Pakete 0.1.1 sind am 2026-10-22 veröffentlicht. Die übrigen Veröffentlichungen (Website, Google Play, F-Droid) mit Datum nachtragen; bis dahin ist die fachliche Änderung kanalübergreifend noch nicht abgeschlossen.
+- Textfreigabe und Kreuz-Review am 2026-10-22 erledigt. Die Pakete 0.1.1 sind am 2026-10-22 veröffentlicht, die App-Fassung 1.1.0 mit der Regelversion 1.9.1 am 2026-11-07 bei Google Play. Die übrigen Veröffentlichungen (Website, F-Droid) mit Datum nachtragen; bis dahin ist die fachliche Änderung kanalübergreifend noch nicht abgeschlossen.
